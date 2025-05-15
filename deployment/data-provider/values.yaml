@@ -100,8 +100,6 @@ digital-twin-registry:
   enableKeycloak: false
 
   postgresql:
-    auth:
-      existingSecret: registry-db-postresinit
     primary:
       persistence:
         enabled: false
