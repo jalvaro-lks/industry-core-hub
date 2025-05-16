@@ -23,10 +23,9 @@
 #################################################################################
 
 from typing import Dict, List, Optional
-from models.services.part_management import BatchCreate, BatchRead, CatalogPartCreate, CatalogPartDelete, CatalogPartRead, JISPartCreate, JISPartDelete, JISPartRead, PartnerCatalogPartBase, PartnerCatalogPartCreate, PartnerCatalogPartDelete, SerializedPartCreate, SerializedPartDelete, SerializedPartRead
+from models.services.part_management import BatchCreate, BatchRead, CatalogPartCreate, CatalogPartDelete, CatalogPartRead, JISPartCreate, JISPartDelete, JISPartRead, PartnerCatalogPartBase, PartnerCatalogPartCreate, PartnerCatalogPartDelete, SerializedPartCreate, SerializedPartDelete, SerializedPartRead, SerializedPartQuery
 from models.services.partner_management import BusinessPartnerRead
-from managers.metadata_database.repositories import CatalogPartRepository, BusinessPartnerRepository, LegalEntityRepository, PartnerCatalogPartRepository
-from managers.metadata_database.manager import RepositoryManager, RepositoryManagerFactory
+from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.models import CatalogPart, Batch, SerializedPart, JISPart, PartnerCatalogPart
 
 class PartManagementService():
@@ -261,13 +260,36 @@ class PartManagementService():
         # Logic to retrieve a serialized part
         pass
 
-    def get_serialized_parts(self, manufacturer_id: str = None, manufacturer_part_id: str = None, part_instance_id: str = None) -> List[SerializedPartRead]:
+    def get_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SerializedPartRead]:
         """
         Retrieves serialized parts from the system according to given parameters.
         """
-        
-        # Logic to retrieve all serialized parts
-        pass
+        with RepositoryManagerFactory.create() as repos:
+            db_serialized_parts: List[SerializedPart] = repos.serialized_part_repository.find(
+                manufacturer_id=query.manufacturer_id,
+                manufacturer_part_id=query.manufacturer_part_id,
+                part_instance_id=query.part_instance_id,
+                business_partner_number=query.business_partner_number,
+                customer_part_id=query.customer_part_id,
+                van=query.van
+            )
+
+            result = []
+            for db_serialized_part in db_serialized_parts:
+                result.append(
+                    SerializedPartRead(
+                        manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
+                        manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
+                        partInstanceId=db_serialized_part.part_instance_id,
+                        customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
+                        businessPartner=BusinessPartnerRead(
+                            name=db_serialized_part.partner_catalog_part.business_partner.name,
+                            bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
+                        ),
+                        van=db_serialized_part.van
+                    )
+                )
+            return result
 
     def create_jis_part(self, jis_part_create: JISPartCreate) -> JISPartRead:
         """

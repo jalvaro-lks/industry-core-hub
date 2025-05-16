@@ -204,6 +204,40 @@ class SerializedPartRepository(BaseRepository[SerializedPart]):
             SerializedPart.part_instance_id == part_instance_id)
         return self._session.scalars(stmt).first()
     
+    def find(self,
+        manufacturer_id: Optional[str] = None,
+        manufacturer_part_id: Optional[str] = None,
+        business_partner_number: Optional[str] = None,
+        customer_part_id: Optional[str] = None,
+        part_instance_id: Optional[str] = None,
+        van: Optional[str] = None) -> List[SerializedPart]:
+        
+        stmt = select(SerializedPart).join(
+            PartnerCatalogPart, PartnerCatalogPart.id == SerializedPart.partner_catalog_part_id).join(
+            CatalogPart, CatalogPart.id == PartnerCatalogPart.catalog_part_id).join(
+            LegalEntity, LegalEntity.id == CatalogPart.legal_entity_id)
+
+        if business_partner_number:
+            stmt = stmt.join(BusinessPartner, BusinessPartner.id == PartnerCatalogPart.business_partner_id
+                ).where(BusinessPartner.bpnl == business_partner_number)
+        
+        if manufacturer_id:
+            stmt = stmt.where(LegalEntity.bpnl == manufacturer_id)
+
+        if manufacturer_part_id:
+            stmt = stmt.where(CatalogPart.manufacturer_part_id == manufacturer_part_id)
+        
+        if part_instance_id:
+            stmt = stmt.where(SerializedPart.part_instance_id == part_instance_id)
+
+        if van:
+            stmt = stmt.where(SerializedPart.van == van)
+
+        if customer_part_id:
+            stmt = stmt.where(PartnerCatalogPart.customer_part_id == customer_part_id)
+
+        return self._session.scalars(stmt).all()
+
     def create_new(self, partner_catalog_part_id: int, part_instance_id: str, van: Optional[str]) -> SerializedPart:
         """Create a new SerializedPart instance."""
         serialized_part = SerializedPart(

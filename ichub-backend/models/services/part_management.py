@@ -62,6 +62,10 @@ class PartnerCatalogPartCreate(CatalogPartBase, PartnerCatalogPartBase):
 class PartnerCatalogPartDelete(PartnerCatalogPartCreate):
     pass
 
+class PartnerCatalogPartQuery(CatalogPartQuery):
+    business_partner_number: Optional[str] = Field(alias="businessPartnerNumber", description="The unique BPNL of the business partner.", default=None)
+    customer_part_id: Optional[str] = Field(alias="customerPartId", description="The customer part ID of the part.", default=None)
+
 class BatchBase(BaseModel):
     batch_id: str = Field(alias="batchId", description="The batch ID of the part.")
 
@@ -91,7 +95,7 @@ class SerializedPartCreate(SerializedPartBase, PartnerRelatedPartCreateBase):
 class SerializedPartDelete(SerializedPartBase):
     business_partner_name: str = Field(alias="businessPartnerName", description="The unique name of the business partner to map the catalog part to.")
 
-class SerializedPartQuery(CatalogPartQuery):
+class SerializedPartQuery(PartnerCatalogPartQuery):
     part_instance_id: Optional[str] = Field(alias="partInstanceId", description="The part instance ID of the serialized part.", default=None)
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)
 

@@ -33,7 +33,7 @@ from services.part_management_service import PartManagementService
 from services.partner_management_service import PartnerManagementService
 from services.twin_management_service import TwinManagementService
 from services.part_sharing_shortcut_service import PartSharingShortcutService
-from models.services.part_management import CatalogPartBase, CatalogPartRead, CatalogPartCreate, SerializedPartCreate, SerializedPartRead
+from models.services.part_management import CatalogPartBase, CatalogPartRead, CatalogPartCreate, SerializedPartCreate, SerializedPartRead, SerializedPartQuery
 from models.services.partner_management import BusinessPartnerRead, BusinessPartnerCreate, DataExchangeAgreementRead
 from models.services.twin_management import TwinRead, TwinAspectRead, TwinAspectCreate, CatalogPartTwinRead, CatalogPartTwinDetailsRead, CatalogPartTwinCreate, CatalogPartTwinShare
 from tools.submodel_type_util import InvalidSemanticIdError
@@ -76,6 +76,14 @@ async def part_management_get_catalog_parts() -> List[CatalogPartRead]:
 @app.post("/part-management/catalog-part", response_model=CatalogPartRead, tags=["Part Management"])
 async def part_management_create_catalog_part(catalog_part_create: CatalogPartCreate) -> CatalogPartRead:
     return part_management_service.create_catalog_part(catalog_part_create)
+
+@app.get("/part-management/serialized-part", response_model=List[SerializedPartRead], tags=["Part Management"])
+async def part_management_get_serialized_parts() -> List[SerializedPartRead]:
+    return part_management_service.get_serialized_parts()
+
+@app.post("/part-management/serialized-part/query", response_model=List[SerializedPartRead], tags=["Part Management"])
+async def part_management_query_serialized_parts(query: SerializedPartQuery) -> List[SerializedPartRead]:
+    return part_management_service.get_serialized_parts(query)
 
 @app.post("/part-management/serialized-part", response_model=SerializedPartRead, tags=["Part Management"])
 async def part_management_create_serialized_part(serialized_part_create: SerializedPartCreate) -> SerializedPartRead:
