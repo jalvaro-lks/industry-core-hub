@@ -35,6 +35,7 @@ from models.metadata_database.models import (
     EnablementServiceStack,
     LegalEntity,
     PartnerCatalogPart,
+    SerializedPart,
     Twin,
     TwinAspect,
     TwinAspectRegistration,
@@ -195,6 +196,23 @@ class EnablementServiceStackRepository(BaseRepository[EnablementServiceStack]):
             LegalEntity, LegalEntity.id == EnablementServiceStack.legal_entity_id).where(
             LegalEntity.bpnl == legal_entity_bpnl)
         return self._session.scalars(stmt).all()
+
+class SerializedPartRepository(BaseRepository[SerializedPart]):
+    def get_by_partner_catalog_part_id_part_instance_id(self, partner_catalog_part_id: int, part_instance_id: str) -> Optional[SerializedPart]:
+        stmt = select(SerializedPart).where(
+            SerializedPart.partner_catalog_part_id == partner_catalog_part_id).where(
+            SerializedPart.part_instance_id == part_instance_id)
+        return self._session.scalars(stmt).first()
+    
+    def create_new(self, partner_catalog_part_id: int, part_instance_id: str, van: Optional[str]) -> SerializedPart:
+        """Create a new SerializedPart instance."""
+        serialized_part = SerializedPart(
+            partner_catalog_part_id=partner_catalog_part_id,
+            part_instance_id=part_instance_id,
+            van=van
+        )
+        self.create(serialized_part)
+        return serialized_part
 
 class TwinRepository(BaseRepository[Twin]):
     def create_new(self, global_id: UUID = None, dtr_aas_id: UUID = None):

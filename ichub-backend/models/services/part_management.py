@@ -29,13 +29,18 @@ from pydantic import BaseModel, Field
 
 from models.services.partner_management import BusinessPartnerRead
 
+class PartnerRelatedPartReadBase(BaseModel):
+    business_partner: BusinessPartnerRead = Field(alias="businessPartner", description="The business partner to whom the part is being offered.")
+
+class PartnerRelatedPartCreateBase(BaseModel):
+    business_partner_number: str = Field(alias="businessPartnerNumber", description="The unique BPNL of the business partner.")
+
 class CatalogPartBase(BaseModel):
     manufacturer_id: str = Field(alias="manufacturerId", description="The BPNL (manufactuer ID) of the part to register.")
     manufacturer_part_id: str = Field(alias="manufacturerPartId", description="The manufacturer part ID of the part.")
 
-class PartnerCatalogPartBase(BaseModel):
+class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
-    business_partner_name: str = Field(alias="businessPartnerName", description="The unique name of the business partner to map the catalog part to.")
 
 class CatalogPartRead(CatalogPartBase):
     customer_part_ids: Optional[Dict[str, BusinessPartnerRead]] = Field(alias="customerPartIds", description="The list of customer part IDs mapped to the respective Business Partners.", default={})
@@ -74,15 +79,14 @@ class BatchQuery(CatalogPartQuery):
 
 class SerializedPartBase(CatalogPartBase):
     part_instance_id: str = Field(alias="partInstanceId", description="The part instance ID of the serialized part.")
+
+class SerializedPartRead(SerializedPartBase, PartnerRelatedPartReadBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID of the part.")
-
-class SerializedPartRead(SerializedPartBase):
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)
-    business_partner: BusinessPartnerRead = Field(alias="businessPartner", description="The business partner to whom the part is being offered.")
 
-class SerializedPartCreate(SerializedPartBase):
+class SerializedPartCreate(SerializedPartBase, PartnerRelatedPartCreateBase):
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)
-    business_partner_name: str = Field(alias="businessPartnerName", description="The unique name of the business partner to map the catalog part to.")
+    customer_part_id: Optional[str] = Field(alias="customerPartId", description="The customer part ID of the part.")
 
 class SerializedPartDelete(SerializedPartBase):
     business_partner_name: str = Field(alias="businessPartnerName", description="The unique name of the business partner to map the catalog part to.")
