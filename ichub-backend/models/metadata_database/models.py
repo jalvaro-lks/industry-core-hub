@@ -121,7 +121,7 @@ class Twin(SQLModel, table=True):
     global_id: UUID = Field(default_factory=uuid4, unique=True, description="The global ID (aka. Catena-X ID) of the twin.")
     aas_id: UUID = Field(default_factory=uuid4, unique=True, description="The AAS ID of the twin.")
     created_date: datetime = Field(index=True, default_factory=datetime.utcnow, description="The creation date of the twin.")
-    modified_date: datetime = Field(inted=True, default_factory=datetime.utcnow, description="The last modification date of the twin.")
+    modified_date: datetime = Field(index=True, default_factory=datetime.utcnow, description="The last modification date of the twin.")
     asset_class: Optional[str] = Field(default=None, description="The asset class of the twin.")
     additional_context: Optional[str] = Field(default=None, description="Additional context for the twin.")
 
@@ -180,7 +180,7 @@ class CatalogPart(SQLModel, table=True):
     batches: List["Batch"] = Relationship(back_populates="catalog_part")
 
     __table_args__ = (
-        UniqueConstraint("legal_entity_id", "manufacturer_part_id", name="uk_catalog_part_legal_entity_id_manufacturer_part_id")
+        UniqueConstraint("legal_entity_id", "manufacturer_part_id", name="uk_catalog_part_legal_entity_id_manufacturer_part_id"),
     )
 
     __tablename__ = "catalog_part"
@@ -279,7 +279,7 @@ class SerializedPart(SQLModel, table=True):
     twin: Optional[Twin] = Relationship(back_populates="serialized_part")
 
     __table_args__ = (
-        UniqueConstraint("part_instance_id", "partner_catalog_part_id", name="uk_serialized_part_partner_catalog_part_id_part_instance_id")
+        UniqueConstraint("part_instance_id", "partner_catalog_part_id", name="uk_serialized_part_partner_catalog_part_id_part_instance_id"),
     )
 
     __tablename__ = "serialized_part"
@@ -319,7 +319,7 @@ class JISPart(SQLModel, table=True):
     twin: Optional[Twin] = Relationship(back_populates="jis_part")
 
     __table_args__ = (
-        UniqueConstraint("jis_number", "partner_catalog_part_id", name="uk_jis_part_partner_catalog_part_id_jis_number")
+        UniqueConstraint("jis_number", "partner_catalog_part_id", name="uk_jis_part_partner_catalog_part_id_jis_number"),
     )
 
     __tablename__ = "jis_part"
@@ -434,7 +434,7 @@ class DataExchangeAgreement(SQLModel, table=True):
     twin_exchanges: List["TwinExchange"] = Relationship(back_populates="data_exchange_agreement")
 
     __table_args__ = (
-        UniqueConstraint("business_partner_id", "name", name="uk_data_exchange_agreement_name_business_partner_id")
+        UniqueConstraint("business_partner_id", "name", name="uk_data_exchange_agreement_name_business_partner_id"),
     )
 
     __tablename__ = "data_exchange_agreement"
@@ -538,7 +538,7 @@ class TwinAspect(SQLModel, table=True):
     twin_aspect_registrations: List["TwinAspectRegistration"] = Relationship(back_populates="twin_aspect")
 
     __table_args__ = (
-        UniqueConstraint("twin_id", "semantic_id", name="uk_twin_aspect_twin_id_semantic_id")
+        UniqueConstraint("twin_id", "semantic_id", name="uk_twin_aspect_twin_id_semantic_id"),
     )
 
     __tablename__ = "twin_aspect"
