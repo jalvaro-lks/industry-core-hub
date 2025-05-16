@@ -38,12 +38,14 @@ from models.services.twin_management import (
     CatalogPartTwinDetailsRead,
     SerializedPartTwinCreate,
     SerializedPartTwinRead,
+    SerializedPartTwinDetailsRead,
     TwinRead,
     TwinAspectCreate,
     TwinAspectRead,
     TwinAspectRegistration,
     TwinAspectRegistrationStatus,
     TwinsAspectRegistrationMode,
+    TwinDetailsReadBase,
 )
 from models.metadata_database.models import Twin
 
@@ -355,6 +357,47 @@ class TwinManagementService:
             
             return result
 
+    def get_serialized_part_twin_details(self, global_id: UUID) -> Optional[SerializedPartTwinDetailsRead]:
+        with RepositoryManagerFactory.create() as repo:
+            db_twins = repo.twin_repository.find_serialized_part_twins(
+                global_id=global_id,
+                include_data_exchange_agreements=True,
+                include_aspects=True,
+                include_registrations=True
+            )
+            if not db_twins:
+                return None
+            
+            db_twin = db_twins[0]
+            
+            db_serialized_part = db_twin.serialized_part
+            twin_result = SerializedPartTwinDetailsRead(
+                globalId=db_twin.global_id,
+                dtrAasId=db_twin.aas_id,
+                createdDate=db_twin.created_date,
+                modifiedDate=db_twin.modified_date,
+                manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
+                manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
+                name=db_serialized_part.partner_catalog_part.catalog_part.name,
+                category=db_serialized_part.partner_catalog_part.catalog_part.category,
+                bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
+                businessPartner=BusinessPartnerRead(
+                    name=db_serialized_part.partner_catalog_part.business_partner.name,
+                    bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
+                ),
+                customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
+                partInstanceId=db_serialized_part.part_instance_id,
+                van=db_serialized_part.van,
+                additionalContext=db_twin.additional_context,
+            )
+
+            self._fill_shares(db_twin, twin_result)
+            self._fill_registrations(db_twin, twin_result)
+            self._fill_aspects(db_twin, twin_result)
+
+            return twin_result
+
+
     def create_twin_aspect(self, twin_aspect_create: TwinAspectCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> TwinAspectRead:
         """
         Create a new twin aspect for a give twin.
@@ -503,36 +546,9 @@ class TwinManagementService:
                 ) for partner_catalog_part in db_catalog_part.partner_catalog_parts}
             )
 
-            twin_result.shares = [
-                DataExchangeAgreementRead(
-                    name=db_twin_exchange.data_exchange_agreement.name,
-                    businessPartner=BusinessPartnerRead(
-                        name=db_twin_exchange.data_exchange_agreement.business_partner.name,
-                        bpnl=db_twin_exchange.data_exchange_agreement.business_partner.bpnl
-                    )
-                ) for db_twin_exchange in db_twin.twin_exchanges
-            ]
-
-            twin_result.registrations = {
-                db_twin_registration.enablement_service_stack.name: db_twin_registration.dtr_registered
-                    for db_twin_registration in db_twin.twin_registrations
-            }
-
-            twin_result.aspects = {
-                db_twin_aspect.semantic_id: TwinAspectRead(
-                    semanticId=db_twin_aspect.semantic_id,
-                    submodelId=db_twin_aspect.submodel_id,
-                    registrations={
-                        db_twin_aspect_registration.enablement_service_stack.name: TwinAspectRegistration(
-                            enablementServiceStackName=db_twin_aspect_registration.enablement_service_stack.name,
-                            status=TwinAspectRegistrationStatus(db_twin_aspect_registration.status),
-                            mode=TwinsAspectRegistrationMode(db_twin_aspect_registration.registration_mode),
-                            createdDate=db_twin_aspect_registration.created_date,
-                            modifiedDate=db_twin_aspect_registration.modified_date
-                        ) for db_twin_aspect_registration in db_twin_aspect.twin_aspect_registrations
-                    } 
-                ) for db_twin_aspect in db_twin.twin_aspects
-            }
+            self._fill_shares(db_twin, twin_result)
+            self._fill_registrations(db_twin, twin_result)
+            self._fill_aspects(db_twin, twin_result)
 
             return twin_result
 
@@ -547,6 +563,31 @@ class TwinManagementService:
                 )
             ) for db_twin_exchange in db_twin.twin_exchanges
         ]
+
+    @staticmethod   
+    def _fill_registrations(db_twin: Twin, twin_result: TwinDetailsReadBase):
+        twin_result.registrations = {
+                db_twin_registration.enablement_service_stack.name: db_twin_registration.dtr_registered
+                    for db_twin_registration in db_twin.twin_registrations
+            }
+
+    @staticmethod
+    def _fill_aspects(db_twin: Twin, twin_result: TwinDetailsReadBase):
+        twin_result.aspects = {
+                db_twin_aspect.semantic_id: TwinAspectRead(
+                    semanticId=db_twin_aspect.semantic_id,
+                    submodelId=db_twin_aspect.submodel_id,
+                    registrations={
+                        db_twin_aspect_registration.enablement_service_stack.name: TwinAspectRegistration(
+                            enablementServiceStackName=db_twin_aspect_registration.enablement_service_stack.name,
+                            status=TwinAspectRegistrationStatus(db_twin_aspect_registration.status),
+                            mode=TwinsAspectRegistrationMode(db_twin_aspect_registration.registration_mode),
+                            createdDate=db_twin_aspect_registration.created_date,
+                            modifiedDate=db_twin_aspect_registration.modified_date
+                        ) for db_twin_aspect_registration in db_twin_aspect.twin_aspect_registrations
+                    } 
+                ) for db_twin_aspect in db_twin.twin_aspects
+            }
 
 def _create_dtr_manager(connection_settings: Optional[Dict[str, Any]]) -> DTRManager:
     """

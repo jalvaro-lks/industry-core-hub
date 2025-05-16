@@ -109,8 +109,8 @@ async def partner_management_get_data_exchange_agreements(business_partner_numbe
 async def twin_management_get_catalog_part_twins(include_data_exchange_agreements: bool = False) -> List[CatalogPartTwinRead]:
     return twin_management_service.get_catalog_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
 
-@app.get("/twin-management/catalog-part-twin/{global_id}", response_model=List[CatalogPartTwinDetailsRead], tags=["Twin Management"])
-async def twin_management_get_catalog_part_twin(global_id: UUID) -> List[CatalogPartTwinDetailsRead]:
+@app.get("/twin-management/catalog-part-twin/{global_id}", response_model=Optional[CatalogPartTwinDetailsRead], tags=["Twin Management"])
+async def twin_management_get_catalog_part_twin(global_id: UUID) -> Optional[CatalogPartTwinDetailsRead]:
     return twin_management_service.get_catalog_part_twin_details(global_id)
 
 @app.post("/twin-management/catalog-part-twin", response_model=TwinRead, tags=["Twin Management"])
@@ -131,9 +131,9 @@ async def twin_management_share_catalog_part_twin(catalog_part_twin_share: Catal
 async def twin_management_get_serialized_part_twins(include_data_exchange_agreements: bool = False) -> List[SerializedPartTwinRead]:
     return twin_management_service.get_serialized_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
 
-#@app.get("/twin-management/serialized-part-twin/{global_id}", response_model=List[SerializedPartTwinDetailsRead], tags=["Twin Management"])
-#async def twin_management_get_serialized_part_twin(global_id: UUID) -> List[SerializedPartTwinDetailsRead]:
-#    return twin_management_service.get_serialized_part_twin_details(global_id)
+@app.get("/twin-management/serialized-part-twin/{global_id}", response_model=Optional[SerializedPartTwinDetailsRead], tags=["Twin Management"])
+async def twin_management_get_serialized_part_twin(global_id: UUID) -> Optional[SerializedPartTwinDetailsRead]:
+    return twin_management_service.get_serialized_part_twin_details(global_id)
 
 @app.post("/twin-management/serialized-part-twin", response_model=TwinRead, tags=["Twin Management"])
 async def twin_management_create_serialized_part_twin(serialized_part_twin_create: SerializedPartTwinCreate) -> TwinRead:
