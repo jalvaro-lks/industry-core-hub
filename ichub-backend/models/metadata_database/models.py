@@ -170,6 +170,7 @@ class CatalogPart(SQLModel, table=True):
     manufacturer_part_id: str = Field(index=True, description="The manufacturer part ID.")
     legal_entity_id: int = Field(foreign_key="legal_entity.id", description="The ID of the associated legal entity.")
     twin_id: Optional[int] = Field(unique=True, foreign_key="twin.id", description="The ID of the associated twin.")
+    name: str = Field(default="", description="The name of the catalog part at the manufacturer.")
     category: Optional[str] = Field(default=None, description="The category of the catalog part.")
     bpns: Optional[str] = Field(default=None, description="The optional site information (BPNS) of the catalog part.")
 

@@ -62,6 +62,7 @@ CREATE TABLE public.catalog_part (
     manufacturer_part_id character varying NOT NULL,
     legal_entity_id integer NOT NULL,
     twin_id integer,
+	name character varying NOT NULL,
 	category character varying,
 	bpns character varying
 );

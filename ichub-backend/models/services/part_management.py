@@ -43,8 +43,10 @@ class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
 
 class CatalogPartRead(CatalogPartBase):
-    customer_part_ids: Optional[Dict[str, BusinessPartnerRead]] = Field(alias="customerPartIds", description="The list of customer part IDs mapped to the respective Business Partners.", default={})
+    name: str = Field(description="The name of the part.")
     category: Optional[str] = Field(description="The category of the part.", default=None)
+    bpns: Optional[str] = Field(description="The site number (BPNS) the part is attached to.", default=None)
+    customer_part_ids: Optional[Dict[str, BusinessPartnerRead]] = Field(alias="customerPartIds", description="The list of customer part IDs mapped to the respective Business Partners.", default={})
 
 class CatalogPartCreate(CatalogPartRead):
     pass

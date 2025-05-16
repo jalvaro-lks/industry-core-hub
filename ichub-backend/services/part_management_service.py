@@ -56,7 +56,9 @@ class PartManagementService():
                 db_catalog_part = CatalogPart(
                     manufacturer_part_id=catalog_part_create.manufacturer_part_id,
                     legal_entity=db_legal_entity,
+                    name=catalog_part_create.name,
                     category=catalog_part_create.category,
+                    bpns=catalog_part_create.bpns
                 )
                 repos.catalog_part_repository.create(db_catalog_part)
 
@@ -64,7 +66,9 @@ class PartManagementService():
             result = CatalogPartRead(
                 manufacturerId=catalog_part_create.manufacturer_id,
                 manufacturerPartId=catalog_part_create.manufacturer_part_id,
-                category=catalog_part_create.category)
+                name=catalog_part_create.name,
+                category=catalog_part_create.category,
+                bpns=catalog_part_create.bpns)
 
             # Check if we already should create some customer part IDs for the given catalog part
             if catalog_part_create.customer_part_ids:
@@ -97,7 +101,9 @@ class PartManagementService():
     def create_catalog_part_by_ids(self,
         manufacturer_id: str,
         manufacturer_part_id: str,
+        name: str,
         category: Optional[str],
+        bpns: Optional[str],
         customer_parts: Optional[List[PartnerCatalogPartBase]]) -> CatalogPartRead:
         """Convenience method to create a catalog part by its IDs."""
 
@@ -112,7 +118,9 @@ class PartManagementService():
         catalog_part_create = CatalogPartCreate(
             manufacturerId=manufacturer_id,
             manufacturerPartId=manufacturer_part_id,
+            name=name,
             category=category,
+            bpns=bpns,
             customerPartIds=partner_catalog_parts
         )
 
@@ -140,7 +148,9 @@ class PartManagementService():
                         CatalogPartRead(
                             manufacturerId=db_catalog_part.legal_entity.bpnl,
                             manufacturerPartId=db_catalog_part.manufacturer_part_id,
+                            name=db_catalog_part.name,
                             category=db_catalog_part.category,
+                            bpns=db_catalog_part.bpns,
                             customerPartIds={partner_catalog_part.customer_part_id: BusinessPartnerRead(
                                 name=partner_catalog_part.business_partner.name,
                                 bpnl=partner_catalog_part.business_partner.bpnl
