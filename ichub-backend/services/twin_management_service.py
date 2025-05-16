@@ -35,6 +35,8 @@ from models.services.twin_management import (
     CatalogPartTwinCreate,
     CatalogPartTwinShare,
     CatalogPartTwinDetailsRead,
+    SerializedPartTwinCreate,
+    SerializedPartTwinRead,
     TwinRead,
     TwinAspectCreate,
     TwinAspectRead,
@@ -229,6 +231,89 @@ class TwinManagementService:
                 return True
             else:
                 return False
+
+    def create_serialized_part_twin(self, create_input: SerializedPartTwinCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> TwinRead:
+        with RepositoryManagerFactory.create() as repo:
+            # Step 1: Retrieve the catalog part entity according to the catalog part data (manufacturer_id, manufacturer_part_id)
+            db_serialized_parts = repo.serialized_part_repository.find(
+                manufacturer_id=create_input.manufacturer_id,
+                manufacturer_part_id=create_input.manufacturer_part_id,
+                part_instance_id=create_input.part_instance_id,
+            )
+            if not db_serialized_parts:
+                raise ValueError("Catalog part not found.")
+            else:
+                db_serialized_part = db_serialized_parts[0]
+
+            # Step 2: Retrieve the enablement service stack entity from the DB according to the given name
+            # (if not there => raise error)
+            db_enablement_service_stack = repo.enablement_service_stack_repository.get_by_name(
+                enablement_service_stack_name,
+                join_legal_entity=True
+            )
+            if not db_enablement_service_stack:
+                raise ValueError(f"Enablement service stack '{enablement_service_stack_name}' not found.")
+
+            # Step 2a: Enablement service stack consistency check
+            if db_enablement_service_stack.legal_entity.bpnl != create_input.manufacturer_id:
+                raise ValueError(f"Enablement service stack '{enablement_service_stack_name}' does not belong to the legal entity '{create_input.manufacturer_id}'.")
+
+            # Step 3a: Load existing twin metadata from the DB (if there)
+            if db_serialized_part.twin_id:
+                db_twin = repo.twin_repository.find_by_id(db_serialized_part.twin_id)
+                if not db_twin:
+                    raise ValueError("Twin not found.")
+            # Step 3b: If no twin was there, create it now in the DB (generating on demand a new global_id and dtr_aas_id)
+            else:
+                db_twin = repo.twin_repository.create_new(
+                    global_id=create_input.global_id,
+                    dtr_aas_id=create_input.dtr_aas_id)
+                repo.commit()
+                repo.refresh(db_twin)
+
+                db_serialized_part.twin_id = db_twin.id
+                repo.commit()
+
+            # Step 4: Try to find the twin registration for the twin id and enablement service stack id
+            # (if not there => create it now, setting the dtr_registered flag to False)
+            db_twin_registration = repo.twin_registration_repository.get_by_twin_id_enablement_service_stack_id(
+                db_twin.id,
+                db_enablement_service_stack.id
+            )
+            if not db_twin_registration:
+                db_twin_registration = repo.twin_registration_repository.create_new(
+                    twin_id=db_twin.id,
+                    enablement_service_stack_id=db_enablement_service_stack.id
+                )
+                repo.commit()
+
+            # Step 6: Check the dtr_registered flag on the twin registration entity
+            # (if True => we can skip the operation from here on => nothing to do)
+            # (if False => we need to register the twin in the DTR using the industry core SDK, then
+            #  update the twin registration entity with the dtr_registered flag to True)
+            if not db_twin_registration.dtr_registered:
+                dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
+                
+                dtr_manager.create_shell_descriptor_serialized_part(
+                    global_id=db_twin.global_id,
+                    aas_id=db_twin.aas_id,
+                    manufacturer_id=create_input.manufacturer_id,
+                    manufacturer_part_id=create_input.manufacturer_part_id,
+                    customer_part_id=db_serialized_part.partner_catalog_part.customer_part_id,
+                    part_instance_id=create_input.part_instance_id,
+                    van=db_serialized_part.van,
+                    business_partner_number=db_serialized_part.partner_catalog_part.business_partner.bpnl,
+                    part_category=db_serialized_part.partner_catalog_part.catalog_part.category
+                )
+
+                db_twin_registration.dtr_registered = True
+
+            return TwinRead(
+                globalId=db_twin.global_id,
+                dtrAasId=db_twin.aas_id,
+                createdDate=db_twin.created_date,
+                modifiedDate=db_twin.modified_date
+            )
 
     def create_twin_aspect(self, twin_aspect_create: TwinAspectCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> TwinAspectRead:
         """
