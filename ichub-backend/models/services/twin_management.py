@@ -123,3 +123,6 @@ class SerializedPartTwinCreate(SerializedPartBase, TwinCreateBase):
 
 class SerializedPartTwinRead(SerializedPartRead, TwinRead):
     """Represents a serialized part twin within the Digital Twin Registry."""
+
+class SerializedPartTwinDetailsRead(SerializedPartTwinRead, TwinDetailsReadBase):
+    """Represents the details of a serialized part twin within the Digital Twin Registry."""

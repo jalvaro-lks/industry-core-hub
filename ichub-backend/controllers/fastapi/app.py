@@ -35,7 +35,7 @@ from services.twin_management_service import TwinManagementService
 from services.part_sharing_shortcut_service import PartSharingShortcutService
 from models.services.part_management import CatalogPartBase, CatalogPartRead, CatalogPartCreate, SerializedPartCreate, SerializedPartRead, SerializedPartQuery
 from models.services.partner_management import BusinessPartnerRead, BusinessPartnerCreate, DataExchangeAgreementRead
-from models.services.twin_management import TwinRead, TwinAspectRead, TwinAspectCreate, CatalogPartTwinRead, CatalogPartTwinDetailsRead, CatalogPartTwinCreate, CatalogPartTwinShare, SerializedPartTwinCreate
+from models.services.twin_management import TwinRead, TwinAspectRead, TwinAspectCreate, CatalogPartTwinRead, CatalogPartTwinDetailsRead, CatalogPartTwinCreate, CatalogPartTwinShare, SerializedPartTwinCreate, SerializedPartTwinRead, SerializedPartTwinDetailsRead
 from tools.submodel_type_util import InvalidSemanticIdError
 
 tags_metadata = [
@@ -126,6 +126,14 @@ async def twin_management_share_catalog_part_twin(catalog_part_twin_share: Catal
         return JSONResponse(status_code=201, content={"description":"Catalog part twin shared successfully"})
     else:
         return JSONResponse(status_code=204, content={"description":"Catalog part twin already shared"})
+
+@app.get("/twin-management/serialized-part-twin", response_model=List[SerializedPartTwinRead], tags=["Twin Management"])
+async def twin_management_get_serialized_part_twins(include_data_exchange_agreements: bool = False) -> List[SerializedPartTwinRead]:
+    return twin_management_service.get_serialized_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
+
+#@app.get("/twin-management/serialized-part-twin/{global_id}", response_model=List[SerializedPartTwinDetailsRead], tags=["Twin Management"])
+#async def twin_management_get_serialized_part_twin(global_id: UUID) -> List[SerializedPartTwinDetailsRead]:
+#    return twin_management_service.get_serialized_part_twin_details(global_id)
 
 @app.post("/twin-management/serialized-part-twin", response_model=TwinRead, tags=["Twin Management"])
 async def twin_management_create_serialized_part_twin(serialized_part_twin_create: SerializedPartTwinCreate) -> TwinRead:
