@@ -39,13 +39,15 @@ class CatalogPartBase(BaseModel):
     manufacturer_id: str = Field(alias="manufacturerId", description="The BPNL (manufactuer ID) of the part to register.")
     manufacturer_part_id: str = Field(alias="manufacturerPartId", description="The manufacturer part ID of the part.")
 
-class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
-    customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
-
-class CatalogPartRead(CatalogPartBase):
+class PartReadBase(CatalogPartBase):
     name: str = Field(description="The name of the part.")
     category: Optional[str] = Field(description="The category of the part.", default=None)
     bpns: Optional[str] = Field(description="The site number (BPNS) the part is attached to.", default=None)
+
+class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
+    customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
+
+class CatalogPartRead(PartReadBase):
     customer_part_ids: Optional[Dict[str, BusinessPartnerRead]] = Field(alias="customerPartIds", description="The list of customer part IDs mapped to the respective Business Partners.", default={})
 
 class CatalogPartCreate(CatalogPartRead):
@@ -86,7 +88,7 @@ class BatchQuery(CatalogPartQuery):
 class SerializedPartBase(CatalogPartBase):
     part_instance_id: str = Field(alias="partInstanceId", description="The part instance ID of the serialized part.")
 
-class SerializedPartRead(SerializedPartBase, PartnerRelatedPartReadBase):
+class SerializedPartRead(PartReadBase, SerializedPartBase, PartnerRelatedPartReadBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID of the part.")
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)
 

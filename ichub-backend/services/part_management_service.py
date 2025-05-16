@@ -290,6 +290,9 @@ class PartManagementService():
                     SerializedPartRead(
                         manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
                         manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
+                        name=db_serialized_part.partner_catalog_part.catalog_part.name,
+                        category=db_serialized_part.partner_catalog_part.catalog_part.category,
+                        bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
                         partInstanceId=db_serialized_part.part_instance_id,
                         customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
                         businessPartner=BusinessPartnerRead(
