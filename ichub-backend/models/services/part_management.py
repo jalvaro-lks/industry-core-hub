@@ -27,6 +27,7 @@ from typing import Dict, Optional, List
 
 from pydantic import BaseModel, Field
 
+from models.metadata_database.models import Material, Measurement
 from models.services.partner_management import BusinessPartnerRead
 
 class PartnerRelatedPartReadBase(BaseModel):
@@ -42,6 +43,14 @@ class CatalogPartBase(BaseModel):
 class PartReadBase(CatalogPartBase):
     name: str = Field(description="The name of the part.")
     category: Optional[str] = Field(description="The category of the part.", default=None)
+    materials: List[Material] = Field(description="List of materials, e.g. [{'name':'aluminum','share':'20'}]", default=[])
+    width: Optional[Measurement] = Field(description="The width of the part.", default=None)
+    height: Optional[Measurement] = Field(description="The height of the part.", default=None)
+    length: Optional[Measurement] = Field(description="The length of the part.", default=None)
+    weight: Optional[Measurement] = Field(description="The weight of the part.", default=None)
+
+class CatalogPartReadWithStatus(CatalogPartRead):
+    status: int = Field(description="The status of the part. (0: draft, 1:pending, 2: registered, 3: shared)")
     bpns: Optional[str] = Field(description="The site number (BPNS) the part is attached to.", default=None)
 
 class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
