@@ -189,3 +189,6 @@ simple-data-backend:
     requests:
       cpu: 500m
       memory: 1024Mi
+      
+vault:
+  enabled: false
