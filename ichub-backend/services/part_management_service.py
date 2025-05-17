@@ -117,8 +117,8 @@ class PartManagementService():
         manufacturer_part_id: str,
         name: str,
         category: Optional[str],
+        bpns: Optional[str],
         customer_parts: Optional[List[PartnerCatalogPartBase]]) -> CatalogPartReadWithStatus:
-        bpns: Optional[str]
           
         """Convenience method to create a catalog part by its IDs."""
 
@@ -274,7 +274,15 @@ class PartManagementService():
                     name=db_business_partner.name,
                     bpnl=db_business_partner.bpnl
                 ),
-                van=serialized_part_create.van
+                van=serialized_part_create.van,
+                materials=db_catalog_part.materials,
+                width=db_catalog_part.width,
+                height=db_catalog_part.height,
+                length=db_catalog_part.length,
+                weight=db_catalog_part.weight,
+                category=db_catalog_part.category,
+                name=db_catalog_part.name,
+                bpns=db_catalog_part.bpns,
             )
 
 
@@ -317,6 +325,11 @@ class PartManagementService():
                         name=db_serialized_part.partner_catalog_part.catalog_part.name,
                         category=db_serialized_part.partner_catalog_part.catalog_part.category,
                         bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
+                        materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
+                        width=db_serialized_part.partner_catalog_part.catalog_part.width,
+                        height=db_serialized_part.partner_catalog_part.catalog_part.height,
+                        length=db_serialized_part.partner_catalog_part.catalog_part.length,
+                        weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
                         partInstanceId=db_serialized_part.part_instance_id,
                         customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
                         businessPartner=BusinessPartnerRead(

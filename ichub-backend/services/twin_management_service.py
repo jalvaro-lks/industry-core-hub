@@ -189,7 +189,7 @@ class TwinManagementService:
             )
             if not db_catalog_parts:
                 raise ValueError("Catalog part not found.")
-            db_catalog_parts, _ = db_catalog_parts[0]
+            db_catalog_part, _ = db_catalog_parts[0]
 
             # Step 2: Retrieve the business partner entity according to the business_partner_name
             # (if not there => raise error)
@@ -346,6 +346,11 @@ class TwinManagementService:
                     name=db_serialized_part.partner_catalog_part.catalog_part.name,
                     category=db_serialized_part.partner_catalog_part.catalog_part.category,
                     bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
+                    materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
+                    width=db_serialized_part.partner_catalog_part.catalog_part.width,
+                    height=db_serialized_part.partner_catalog_part.catalog_part.height,
+                    length=db_serialized_part.partner_catalog_part.catalog_part.length,
+                    weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
                     customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
                     businessPartner=BusinessPartnerRead(
                         name=db_serialized_part.partner_catalog_part.business_partner.name,
@@ -385,6 +390,11 @@ class TwinManagementService:
                 name=db_serialized_part.partner_catalog_part.catalog_part.name,
                 category=db_serialized_part.partner_catalog_part.catalog_part.category,
                 bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
+                materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
+                width=db_serialized_part.partner_catalog_part.catalog_part.width,
+                height=db_serialized_part.partner_catalog_part.catalog_part.height,
+                length=db_serialized_part.partner_catalog_part.catalog_part.length,
+                weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
                 businessPartner=BusinessPartnerRead(
                     name=db_serialized_part.partner_catalog_part.business_partner.name,
                     bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
