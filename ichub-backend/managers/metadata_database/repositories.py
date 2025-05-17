@@ -22,7 +22,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from sqlmodel import SQLModel, Session, select
+from sqlmodel import SQLModel, Session, select, desc
 from sqlalchemy.orm import selectinload
 from typing import TypeVar, Type, List, Optional, Generic
 from uuid import UUID, uuid4
@@ -307,6 +307,10 @@ class TwinRepository(BaseRepository[Twin]):
             van: Optional[str] = None,
             business_partner_number: Optional[str] = None,
             global_id: Optional[UUID] = None,
+            min_incl_created_date: Optional[datetime] = None,
+            max_excl_created_date: Optional[datetime] = None,
+            limit: int = 50,
+            offset: int = 0,
             include_data_exchange_agreements: bool = False,
             include_aspects: bool = False,
             include_registrations: bool = False) -> List[Twin]:
@@ -341,6 +345,19 @@ class TwinRepository(BaseRepository[Twin]):
         if business_partner_number:
             stmt = stmt.join(BusinessPartner, BusinessPartner.id == PartnerCatalogPart.business_partner_id
                 ).where(BusinessPartner.bpnl == business_partner_number)
+
+        if min_incl_created_date:
+            stmt = stmt.where(Twin.created_date >= min_incl_created_date)
+
+        if max_excl_created_date:
+            stmt = stmt.where(Twin.created_date < max_excl_created_date)
+
+        if limit or offset:
+            stmt = stmt.order_by(desc(Twin.created_date))
+            if offset:
+                stmt = stmt.offset(offset)
+            if limit:
+                stmt = stmt.limit(limit)
 
         return self._session.scalars(stmt).all()
 
