@@ -40,6 +40,9 @@ class CatalogPartBase(BaseModel):
     manufacturer_id: str = Field(alias="manufacturerId", description="The BPNL (manufactuer ID) of the part to register.")
     manufacturer_part_id: str = Field(alias="manufacturerPartId", description="The manufacturer part ID of the part.")
 
+class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
+    customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
+
 class SimpleCatalogRead(CatalogPartBase):
     name: str = Field(description="The name of the part.")
     category: Optional[str] = Field(description="The category of the part.", default=None)
@@ -53,9 +56,6 @@ class CatalogPartRead(SimpleCatalogRead):
     length: Optional[Measurement] = Field(description="The length of the part.", default=None)
     weight: Optional[Measurement] = Field(description="The weight of the part.", default=None)
 
-
-class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
-    customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
 
 class CatalogPartReadWithStatus(CatalogPartRead):
     status: int = Field(description="The status of the part. (0: draft, 1:pending, 2: registered, 3: shared)")
