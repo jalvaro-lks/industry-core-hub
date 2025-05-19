@@ -101,9 +101,12 @@ class BatchQuery(CatalogPartQuery):
 class SerializedPartBase(CatalogPartBase):
     part_instance_id: str = Field(alias="partInstanceId", description="The part instance ID of the serialized part.")
 
-class SerializedPartRead(CatalogPartRead, SerializedPartBase, PartnerRelatedPartReadBase):
+class SimpleSerializedPartRead(SimpleCatalogRead, SerializedPartBase, PartnerRelatedPartReadBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID of the part.")
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)
+
+class SerializedPartRead(SimpleSerializedPartRead, CatalogPartRead):
+    pass
 
 class SerializedPartCreate(SerializedPartBase, PartnerRelatedPartCreateBase):
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)

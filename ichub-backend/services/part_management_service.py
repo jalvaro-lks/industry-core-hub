@@ -23,7 +23,7 @@
 #################################################################################
 
 from typing import Dict, List, Optional
-from models.services.part_management import BatchCreate, BatchRead, CatalogPartCreate, CatalogPartDelete, CatalogPartRead,SimpleCatalogPartReadWithStatus, JISPartCreate, JISPartDelete, JISPartRead, PartnerCatalogPartBase, PartnerCatalogPartCreate, PartnerCatalogPartDelete, SerializedPartCreate, SerializedPartDelete, SerializedPartRead, CatalogPartReadWithStatus, SerializedPartQuery
+from models.services.part_management import BatchCreate, BatchRead, CatalogPartCreate, CatalogPartDelete, CatalogPartRead, SimpleCatalogPartReadWithStatus, CatalogPartReadWithStatus, JISPartCreate, JISPartDelete, JISPartRead, PartnerCatalogPartBase, PartnerCatalogPartCreate, PartnerCatalogPartDelete, SerializedPartCreate, SerializedPartDelete, SerializedPartRead, SerializedPartQuery, SimpleSerializedPartRead
 from models.services.partner_management import BusinessPartnerRead
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.models import CatalogPart, Batch, LegalEntity, SerializedPart, JISPart, PartnerCatalogPart
@@ -330,7 +330,7 @@ class PartManagementService():
         # Logic to retrieve a serialized part
         pass
 
-    def get_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SerializedPartRead]:
+    def get_simple_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SimpleSerializedPartRead]:
         """
         Retrieves serialized parts from the system according to given parameters.
         """
@@ -347,18 +347,12 @@ class PartManagementService():
             result = []
             for db_serialized_part in db_serialized_parts:
                 result.append(
-                    SerializedPartRead(
+                    SimpleSerializedPartRead(
                         manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
                         manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
                         name=db_serialized_part.partner_catalog_part.catalog_part.name,
-                        description=db_serialized_part.partner_catalog_part.catalog_part.description,
                         category=db_serialized_part.partner_catalog_part.catalog_part.category,
                         bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
-                        materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
-                        width=db_serialized_part.partner_catalog_part.catalog_part.width,
-                        height=db_serialized_part.partner_catalog_part.catalog_part.height,
-                        length=db_serialized_part.partner_catalog_part.catalog_part.length,
-                        weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
                         partInstanceId=db_serialized_part.part_instance_id,
                         customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
                         businessPartner=BusinessPartnerRead(
