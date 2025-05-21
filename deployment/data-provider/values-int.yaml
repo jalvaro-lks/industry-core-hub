@@ -43,6 +43,9 @@ tractusx-connector:
           secret_alias: client-provider-secret
 
   controlplane:
+    env:
+      EDC_DCP_V08_FORCED: true
+      EDC_CATALOG_CACHE_EXECUTION: false
     enabled: true
     endpoints:
       management:
@@ -75,6 +78,9 @@ tractusx-connector:
           # -- If present overwrites the default secret name
           secretName: "tls-secret-provider-controlplane"
   dataplane:
+    env:
+      EDC_DCP_V08_FORCED: true
+      EDC_CATALOG_CACHE_EXECUTION: false
     enabled: true
     endpoints:
       proxy:
@@ -156,8 +162,7 @@ digital-twin-registry:
         cert-manager.io/cluster-issuer: "letsencrypt-prod"
         nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
         nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-    
-
+  
   postgresql:
     auth:
       password: "<path:industry-core-hub/data/dtr#password>"
