@@ -115,7 +115,9 @@ class DTRManager:
             existing_shell = self.aas_service.get_asset_administration_shell_descriptor_by_id(aas_id.urn)
             logger.info(f"Shell with ID {aas_id} already exists and will be updated.")
             specific_asset_ids = existing_shell.specificAssetIds or []
+            print(specific_asset_ids)
             existing_keys = {(id.name, id.value) for id in specific_asset_ids}
+            print(existing_keys)
         except Exception:
             existing_shell = None
             specific_asset_ids = []
@@ -163,8 +165,14 @@ class DTRManager:
             specificAssetIds=specific_asset_ids,
         )
 
+        print(manufacturer_id)
         if existing_shell:
-            res = self.aas_service.update_asset_administration_shell_descriptor(shell, bpn=manufacturer_id)
+            logger.info(f"Sharing Asset Administration Shell [{aas_id.urn}] with {bpn_list}")
+            try:
+                res = self.aas_service.update_asset_administration_shell_descriptor(shell, bpn=manufacturer_id)
+            except:
+                logger.error("Failed to update AAS {aas_id.urn}")
+            logger.info(f"Sharing Asset Administration Shell [{aas_id.urn}] with {bpn_list}")
         else:
             res = self.aas_service.create_asset_administration_shell_descriptor(shell)
 
