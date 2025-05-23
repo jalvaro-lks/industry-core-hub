@@ -141,15 +141,15 @@ class SharingService:
             catalog_part_id=db_catalog_part.id
         )
 
-        if partner_catalog_part and partner_catalog_part.customer_part_id == customer_part_id:
-            return { customer_part_id: bp_read }
-
-        if partner_catalog_part:
-            logger.warning(f"A provider customer_part_id already exists in the database {partner_catalog_part.customer_part_id}, updating to the provided one {customer_part_id}")
-
         if not customer_part_id:
             customer_part_id = db_business_partner.bpnl + "_" + db_catalog_part.manufacturer_part_id
 
+        if partner_catalog_part and partner_catalog_part.customer_part_id == customer_part_id:
+            return { customer_part_id: bp_read }
+        
+        if partner_catalog_part:
+            logger.warning(f"A provider customer_part_id already exists in the database {partner_catalog_part.customer_part_id}, updating to the provided one {customer_part_id}")
+        
         self._create_or_update_partner_catalog_part(
             repo=repo,
             customer_part_id=customer_part_id,
