@@ -169,7 +169,8 @@ class DTRManager:
         if existing_shell:
             logger.info(f"Sharing Asset Administration Shell [{aas_id.urn}] with {bpn_list}")
             try:
-                res = self.aas_service.update_asset_administration_shell_descriptor(shell, bpn=manufacturer_id)
+                print(shell.to_dict())
+                res = self.aas_service.update_asset_administration_shell_descriptor(shell, aas_identifier=aas_id.urn, bpn=manufacturer_id)
             except:
                 logger.error("Failed to update AAS {aas_id.urn}")
             logger.info(f"Sharing Asset Administration Shell [{aas_id.urn}] with {bpn_list}")
