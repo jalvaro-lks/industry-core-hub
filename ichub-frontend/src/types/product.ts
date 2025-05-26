@@ -18,17 +18,44 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-export interface PartInstance {
-    uuid: string,
-    name: string,
-    status: string,
-    manufacturer: string,
-    manufacturerPartId: string,
-    class: string,
-    description: string,
-    image: string
-    created: string
-    updated: string
+import { StatusVariants } from './statusVariants'
+
+export enum Unit {
+  MM = "mm",
+  CM = "cm",
+  M = "m",
+  G = "g",
+  KG = "kg",
 }
+
+export interface Measurement {
+  value: number;
+  unit: Unit;
+}
+
+export interface Material {
+  name: string;
+  share: number; // Percentage, 0-100
+}
+
+export interface PartType {
+  manufacturerId: string;
+  manufacturerPartId: string;
+  name: string;
+  status?: StatusVariants;
+  description?: string;
+  category?: string;
+  materials: Material[];
+  bpns?: string; // Site BPN
+  width?: Measurement;
+  height?: Measurement;
+  length?: Measurement;
+  weight?: Measurement;
+  customerPartIds?: Record<string, { name: string; bpnl: string }>; // e.g., { "CUSTOMER_BPNL_XYZ": { name: "BMW", bpnl: "BPNL00000003CRHK" } }
+}
+
+export type ApiPartData = Omit<PartType, 'status'> & {
+  status: number; // Status from API is a number
+};

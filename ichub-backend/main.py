@@ -20,9 +20,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from config.log_manager import LoggingManager
-from config.config_manager import ConfigManager
+# Import custom logging and configuration modules, and database utility
+from managers.config.log_manager import LoggingManager
+from managers.config.config_manager import ConfigManager
+from managers.enablement_services import ConnectorManager
 from database import connect_and_test
+from managers.enablement_services.dtr_manager import DTRManager
+from uuid import uuid4
 
 ## FAST API example for keycloak
 # from fastapi_keycloak_middleware import CheckPermissions
@@ -36,15 +40,17 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 sys.dont_write_bytecode = True
 
+# Import the startup function for the FastAPI application
 from runtimes.fastapi import start
 
+# Disable SSL warnings from urllib3 and capture warnings into logs
 urllib3.disable_warnings()
 captureWarnings(True)
 
-# Load the logging config
+# Initialize the logging system based on project configuration
 LoggingManager.init_logging()
 
-# Load the configuation for the application
+# Load application-specific configuration settings
 ConfigManager.load_config()
 
 # Test database connection
@@ -62,9 +68,9 @@ if __name__ == "__main__":
      _/ // /__/_____/ __  / /_/ / /_/ /  / /_/ / /_/ / /__/ ,< /  __/ / / / /_/ /  
     /___/\____/    /_/ /_/\__,_/_.___/  /_____/\__,_/\___/_/|_|\___/_/ /_/\__,_/   
     """)
-    print("\n\n\t\t\t\t\t\t\t\t\t\tv0.0.1")
+    print("\n\n\t\t\t\t\t\t\t\t\t\tv0.1.0")
     print("Application starting, listening to requests...\n")
-
+    
     start()
 
     print("\nClosing the application... Thank you for using the Eclipse Tractus-X Industry Core Hub Backend!")

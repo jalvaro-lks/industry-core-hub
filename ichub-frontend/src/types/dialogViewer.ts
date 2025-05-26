@@ -20,10 +20,10 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { PartInstance } from "./product";
+import { PartType } from "./product";
 
 export interface ProductDetailDialogProps {
     open: boolean;
     onClose: () => void;
-    partData: PartInstance;  // Use PartInstance interface here
+    partData: PartType;  // Use PartInstance interface here
 }

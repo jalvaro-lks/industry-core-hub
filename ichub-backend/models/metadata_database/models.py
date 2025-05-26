@@ -28,11 +28,30 @@ These models are designed to interact with a PostgreSQL database using
 SQLAlchemy and SQLModel.
 """
 
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 from datetime import datetime
+from pydantic import BaseModel, Field as PydField
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Column, JSON, UniqueConstraint
+from sqlalchemy import case, select, exists, Column, JSON, UniqueConstraint, SmallInteger
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import aliased
+
+class Unit(str, Enum):
+    mm = "mm"
+    cm = "cm"
+    m  = "m"
+    g  = "g"
+    kg = "kg"
+
+class Measurement(SQLModel, table=False):
+    value: float = PydField(description="Numeric value of the measurement")
+    unit: Unit = PydField(description="Unit of measure")
+
+class Material(BaseModel):
+    name: str = PydField(description="Name of the material")
+    share: int = PydField(description="Share of the material in percent. 0-100")
 
 class LegalEntity(SQLModel, table=True):
     """
@@ -84,7 +103,7 @@ class BusinessPartner(SQLModel, table=True):
     # Relationships
     partner_catalog_parts: List["PartnerCatalogPart"] = Relationship(back_populates="business_partner")
     data_exchange_agreements: List["DataExchangeAgreement"] = Relationship(back_populates="business_partner")
-
+    
     __tablename__ = "business_partner"
 
 
@@ -120,12 +139,13 @@ class Twin(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     global_id: UUID = Field(default_factory=uuid4, unique=True, description="The global ID (aka. Catena-X ID) of the twin.")
     aas_id: UUID = Field(default_factory=uuid4, unique=True, description="The AAS ID of the twin.")
-    created_date: datetime = Field(default_factory=datetime.utcnow, description="The creation date of the twin.")
-    modified_date: datetime = Field(default_factory=datetime.utcnow, description="The last modification date of the twin.")
+    created_date: datetime = Field(index=True, default_factory=datetime.utcnow, description="The creation date of the twin.")
+    modified_date: datetime = Field(index=True, default_factory=datetime.utcnow, description="The last modification date of the twin.")
     asset_class: Optional[str] = Field(default=None, description="The asset class of the twin.")
     additional_context: Optional[str] = Field(default=None, description="Additional context for the twin.")
 
     # Relationships
+    batch: Optional["Batch"] = Relationship(back_populates="twin")
     catalog_part: Optional["CatalogPart"] = Relationship(back_populates="twin")
     serialized_part: Optional["SerializedPart"] = Relationship(back_populates="twin")
     jis_part: Optional["JISPart"] = Relationship(back_populates="twin")
@@ -166,17 +186,29 @@ class CatalogPart(SQLModel, table=True):
         catalog_part
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    manufacturer_part_id: str = Field(index=True, unique=True, description="The manufacturer part ID.")
-    legal_entity_id: int = Field(foreign_key="legal_entity.id", description="The ID of the associated legal entity.")
-    twin_id: Optional[int] = Field(foreign_key="twin.id", description="The ID of the associated twin.", unique=True)
+    manufacturer_part_id: str = Field(index=True, description="The manufacturer part ID.")
+    legal_entity_id: int = Field(index=True, foreign_key="legal_entity.id", description="The ID of the associated legal entity.")
+    twin_id: Optional[int] = Field(unique=True, foreign_key="twin.id", description="The ID of the associated twin.")
+    name: str = Field(default="", description="The name of the catalog part at the manufacturer.")
+    description: Optional[str] = Field(default=None, description="The description of the catalog part.")
     category: Optional[str] = Field(default=None, description="The category of the catalog part.")
     bpns: Optional[str] = Field(default=None, description="The optional site information (BPNS) of the catalog part.")
+    materials: List[Material] = Field(default_factory=list, sa_column=Column(JSON), description="List of materials, e.g. [{'name':'aluminum','share':'20'}]")
+    width: Optional[Measurement] = Field(default=None, sa_column=Column(JSON), description="Width of the part")
+    height: Optional[Measurement] = Field(default=None, sa_column=Column(JSON), description="Height of the part")
+    length: Optional[Measurement] = Field(default=None, sa_column=Column(JSON), description="Length of the part")
+    weight: Optional[Measurement] = Field(default=None, sa_column=Column(JSON), description="Weight of the part")
 
     # Relationships
     legal_entity: LegalEntity = Relationship(back_populates="catalog_parts")
     twin: Optional[Twin] = Relationship(back_populates="catalog_part")
     partner_catalog_parts: List["PartnerCatalogPart"] = Relationship(back_populates="catalog_part")
     batches: List["Batch"] = Relationship(back_populates="catalog_part")
+    
+
+    __table_args__ = (
+        UniqueConstraint("legal_entity_id", "manufacturer_part_id", name="uk_catalog_part_legal_entity_id_manufacturer_part_id"),
+    )
 
     __tablename__ = "catalog_part"
 
@@ -223,9 +255,9 @@ class PartnerCatalogPart(SQLModel, table=True):
         UniqueConstraint:  Ensures that the combination of business_partner_id and catalog_part_id is unique. 
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    business_partner_id: int = Field(foreign_key="business_partner.id", description="The ID of the associated business partner.")
-    catalog_part_id: int = Field(foreign_key="catalog_part.id", description="The ID of the associated catalog part.")
-    customer_part_id: str = Field(default="", description="The customer part ID.")
+    business_partner_id: int = Field(index=True, foreign_key="business_partner.id", description="The ID of the associated business partner.")
+    catalog_part_id: int = Field(index=True, foreign_key="catalog_part.id", description="The ID of the associated catalog part.")
+    customer_part_id: str = Field(index=True, default="", description="The customer part ID.")
 
     # Relationships
     business_partner: BusinessPartner = Relationship(back_populates="partner_catalog_parts")
@@ -235,7 +267,7 @@ class PartnerCatalogPart(SQLModel, table=True):
 
     # Composite Unique Constraint
     __table_args__ = (
-        UniqueConstraint("business_partner_id", "catalog_part_id", name="uq_partner_catalog_part"),
+        UniqueConstraint("business_partner_id", "catalog_part_id", name="uk_partner_catalog_part_business_partner_id_catalog_part_id"),
     )
 
     __tablename__ = "partner_catalog_part"
@@ -264,14 +296,18 @@ class SerializedPart(SQLModel, table=True):
         serialized_part
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    partner_catalog_part_id: int = Field(foreign_key="partner_catalog_part.id", description="The ID of the associated partner catalog part.")
-    part_instance_id: str = Field(index=True, unique=True, description="The part instance ID.")
-    van: Optional[str] = Field(default=None, description="The optional VAN (Vehicle Assembly Number).")
-    twin_id: Optional[int] = Field(foreign_key="twin.id", description="The ID of the associated twin.")
+    partner_catalog_part_id: int = Field(index=True, foreign_key="partner_catalog_part.id", description="The ID of the associated partner catalog part.")
+    part_instance_id: str = Field(index=True, description="The part instance ID.")
+    van: Optional[str] = Field(index=True, default=None, description="The optional VAN (Vehicle Assembly Number).")
+    twin_id: Optional[int] = Field(unique=True, foreign_key="twin.id", description="The ID of the associated twin.")
 
     # Relationships
     partner_catalog_part: PartnerCatalogPart = Relationship(back_populates="serialized_parts")
     twin: Optional[Twin] = Relationship(back_populates="serialized_part")
+
+    __table_args__ = (
+        UniqueConstraint("part_instance_id", "partner_catalog_part_id", name="uk_serialized_part_partner_catalog_part_id_part_instance_id"),
+    )
 
     __tablename__ = "serialized_part"
 
@@ -299,15 +335,19 @@ class JISPart(SQLModel, table=True):
         jis_part
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    partner_catalog_part_id: int = Field(foreign_key="partner_catalog_part.id", description="The ID of the associated partner catalog part.")
-    jis_number: str = Field(index=True, unique=True, description="The JIS number.")
-    parent_order_number: Optional[str] = Field(default=None, description="The parent order number.")
-    jis_call_date: Optional[datetime] = Field(default=None, description="The JIS call date.")
-    twin_id: Optional[int] = Field(foreign_key="twin.id", description="The ID of the associated twin.")
+    partner_catalog_part_id: int = Field(index=True, foreign_key="partner_catalog_part.id", description="The ID of the associated partner catalog part.")
+    jis_number: str = Field(index=True, description="The JIS number.")
+    parent_order_number: Optional[str] = Field(index=True, default=None, description="The parent order number.")
+    jis_call_date: Optional[datetime] = Field(index=True, default=None, description="The JIS call date.")
+    twin_id: Optional[int] = Field(unique=True, foreign_key="twin.id", description="The ID of the associated twin.")
 
     # Relationships
     partner_catalog_part: PartnerCatalogPart = Relationship(back_populates="jis_parts")
     twin: Optional[Twin] = Relationship(back_populates="jis_part")
+
+    __table_args__ = (
+        UniqueConstraint("jis_number", "partner_catalog_part_id", name="uk_jis_part_partner_catalog_part_id_jis_number"),
+    )
 
     __tablename__ = "jis_part"
 
@@ -328,6 +368,7 @@ class Batch(SQLModel, table=True):
         id (Optional[int]): The unique identifier for the batch.
         batch_id (str): The batch ID.
         catalog_part_id (int): The ID of the associated catalog part (foreign key to catalog_part).
+        twin_id (Optional[int]): The ID of the associated twin (foreign key to twin).
 
     Relationships:
         catalog_part (CatalogPart): The catalog part associated with this batch.
@@ -341,16 +382,18 @@ class Batch(SQLModel, table=True):
 
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    batch_id: str = Field(index=True, unique=True, description="The batch ID.")
-    catalog_part_id: int = Field(foreign_key="catalog_part.id", description="The ID of the associated catalog part.")
+    batch_id: str = Field(index=True, description="The batch ID.")
+    catalog_part_id: int = Field(index=True, foreign_key="catalog_part.id", description="The ID of the associated catalog part.")
+    twin_id: Optional[int] = Field(unique=True, foreign_key="twin.id", description="The ID of the associated twin.")
 
     # Relationships
     catalog_part: CatalogPart = Relationship(back_populates="batches")
     batch_business_partners: List["BatchBusinessPartner"] = Relationship(back_populates="batch")
+    twin: Optional[Twin] = Relationship(back_populates="batch")
 
     # Composite Unique Constraint
     __table_args__ = (
-        UniqueConstraint("catalog_part_id", "batch_id", name="uq_catalog_batch_id"),
+        UniqueConstraint("catalog_part_id", "batch_id", name="uk_batch_catalog_part_id_batch_id"),
     )
 
     __tablename__ = "batch"
@@ -375,7 +418,7 @@ class BatchBusinessPartner(SQLModel, table=True):
 
     
     """
-    batch_id: str = Field(foreign_key="batch.id", description="The batch ID.", primary_key=True)
+    batch_id: int = Field(foreign_key="batch.id", description="The batch ID.", primary_key=True)
     business_partner_id: int = Field(foreign_key="business_partner.id", description="The ID of the associated business partner.", primary_key=True)
 
     # Relationships
@@ -409,13 +452,17 @@ class DataExchangeAgreement(SQLModel, table=True):
     
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True, unique=True, description="The name of the data exchange agreement.")
-    business_partner_id: int = Field(foreign_key="business_partner.id", description="The ID of the associated business partner.")
+    name: str = Field(index=True, description="The name of the data exchange agreement.")
+    business_partner_id: int = Field(index=True, foreign_key="business_partner.id", description="The ID of the associated business partner.")
 
     # Relationships
     business_partner: BusinessPartner = Relationship(back_populates="data_exchange_agreements")
     data_exchange_contracts: List["DataExchangeContract"] = Relationship(back_populates="data_exchange_agreement")
     twin_exchanges: List["TwinExchange"] = Relationship(back_populates="data_exchange_agreement")
+
+    __table_args__ = (
+        UniqueConstraint("business_partner_id", "name", name="uk_data_exchange_agreement_name_business_partner_id"),
+    )
 
     __tablename__ = "data_exchange_agreement"
 
@@ -480,12 +527,13 @@ class EnablementServiceStack(SQLModel, table=True):
         sa_column=Column(JSON),  # Specify JSON column type
         description="Connection settings stored as JSON"
     )
-    legal_entity_id: int = Field(foreign_key="legal_entity.id", description="The ID of the associated legal entity.")
+    legal_entity_id: int = Field(index=True, foreign_key="legal_entity.id", description="The ID of the associated legal entity.")
 
     # Relationships
     legal_entity: LegalEntity = Relationship(back_populates="enablement_service_stacks")
     twin_aspect_registrations: List["TwinAspectRegistration"] = Relationship(back_populates="enablement_service_stack")
     twin_registrations: List["TwinRegistration"] = Relationship(back_populates="enablement_service_stack")
+
 
     __tablename__ = "enablement_service_stack"
 
@@ -511,13 +559,17 @@ class TwinAspect(SQLModel, table=True):
 
     """
     id: Optional[int] = Field(default=None, primary_key=True)
-    submodel_id: UUID = Field(default_factory=UUID, unique=True, description="The submodel ID.")
-    semantic_id: str = Field(description="The semantic ID.")
-    twin_id: int = Field(foreign_key="twin.id", description="The ID of the associated twin.")
+    submodel_id: UUID = Field(default_factory=uuid4, unique=True, description="The submodel ID.")
+    semantic_id: str = Field(index=True, description="The semantic ID.")
+    twin_id: int = Field(index=True, foreign_key="twin.id", description="The ID of the associated twin.")
 
     # Relationships
     twin: Twin = Relationship(back_populates="twin_aspects")
     twin_aspect_registrations: List["TwinAspectRegistration"] = Relationship(back_populates="twin_aspect")
+
+    __table_args__ = (
+        UniqueConstraint("twin_id", "semantic_id", name="uk_twin_aspect_twin_id_semantic_id"),
+    )
 
     __tablename__ = "twin_aspect"
 
@@ -556,10 +608,10 @@ class TwinAspectRegistration(SQLModel, table=True):
     """
     twin_aspect_id: int = Field(foreign_key="twin_aspect.id", primary_key=True, description="The ID of the associated twin aspect.")
     enablement_service_stack_id: int = Field(foreign_key="enablement_service_stack.id", primary_key=True, description="The ID of the associated enablement service stack.")
-    status: int = Field(default=0, description="The status of the registration.") # TODO: Use Enum for status
-    registration_mode: int = Field(default=0, description="The registration mode.") # TODO: Use Enum for registration mode
-    created_date: datetime = Field(default_factory=datetime.utcnow, description="The creation date of the registration.")
-    modified_date: datetime = Field(default_factory=datetime.utcnow, description="The last modification date of the registration.")
+    status: int = Field(index=True, default=0, description="The status of the registration.", sa_type=SmallInteger) # TODO: Use Enum for status
+    registration_mode: int = Field(index=True, default=0, description="The registration mode.", sa_type=SmallInteger) # TODO: Use Enum for registration mode
+    created_date: datetime = Field(index=True, default_factory=datetime.utcnow, description="The creation date of the registration.")
+    modified_date: datetime = Field(index=True, default_factory=datetime.utcnow, description="The last modification date of the registration.")
 
     # Relationships
     twin_aspect: TwinAspect = Relationship(back_populates="twin_aspect_registrations")
@@ -590,7 +642,7 @@ class TwinExchange(SQLModel, table=True):
     
     """
     twin_id: int = Field(foreign_key="twin.id", primary_key=True, description="The ID of the associated twin.")
-    data_exchange_agreement_id: int = Field(foreign_key="data_exchange_agreement.id", primary_key=True, description="The ID of the associated data exchange agreement.")
+    data_exchange_agreement_id: int = Field(index=True, foreign_key="data_exchange_agreement.id", primary_key=True, description="The ID of the associated data exchange agreement.")
 
     # Relationships
     twin: Twin = Relationship(back_populates="twin_exchanges")
@@ -620,7 +672,7 @@ class TwinRegistration(SQLModel, table=True):
     """
     twin_id: int = Field(foreign_key="twin.id", primary_key=True, description="The ID of the associated twin.")
     enablement_service_stack_id: int = Field(foreign_key="enablement_service_stack.id", primary_key=True, description="The ID of the associated enablement service stack.")
-    dtr_registered: bool = Field(default=False, description="Whether the twin is registered in the DTR.")
+    dtr_registered: bool = Field(index=True, default=False, description="Whether the twin is registered in the DTR.")
 
     # Relationships
     twin: Twin = Relationship(back_populates="twin_registrations")

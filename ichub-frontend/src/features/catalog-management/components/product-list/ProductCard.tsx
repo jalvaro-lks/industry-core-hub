@@ -23,26 +23,37 @@
 import IosShare from "@mui/icons-material/IosShare";
 import MoreVert from "@mui/icons-material/MoreVert";
 import Launch from "@mui/icons-material/Launch";
-import { Box, Typography, IconButton, Button } from "@mui/material";
-import { CardChip, StatusVariants } from "./CardChip";
+import CloudQueueIcon from '@mui/icons-material/CloudQueue';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { Box, Typography, IconButton, Button, Tooltip } from "@mui/material";
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import { CardChip } from "./CardChip";
+import { StatusVariants } from "../../../../types/statusVariants";
+import { ErrorNotFound } from "../../../../components/general/ErrorNotFound";
+import LoadingSpinner from "../../../../components/general/LoadingSpinner";
 
 export interface AppContent {
-  uuid?: string;
+  id?: string;
+  manufacturerId: string;
+  manufacturerPartId: string;
   name?: string;
-  class?: string;
+  category?: string;
   status?: StatusVariants;
 }
 
 export interface CardDecisionProps {
   items: AppContent[];
-  onShare: (e: string) => void;
-  onMore: (e: string) => void;
+  onShare: (e1: string, e2: string) => void;
+  onMore: (e1: string, e2: string) => void;
   onClick: (e: string) => void;
+  onRegisterClick?: (manufacturerId: string, manufacturerPartId: string) => void; 
+  isLoading: boolean;
 }
 
 export enum ButtonEvents {
   SHARE,
   MORE,
+  REGISTER, 
 }
 
 export const ProductCard = ({
@@ -50,54 +61,91 @@ export const ProductCard = ({
   onShare,
   onMore,
   onClick,
+  onRegisterClick, 
+  isLoading,
 }: CardDecisionProps) => {
 
   const handleDecision = (
     e: React.SyntheticEvent,
-    id: string,
+    manufacturerId: string,
+    manufacturerPartId: string,
     type: ButtonEvents
   ) => {
     e.stopPropagation();
-    return type == ButtonEvents.SHARE ? onShare(id) : onMore(id);
+    if (type === ButtonEvents.SHARE) {
+      return onShare(manufacturerId, manufacturerPartId);
+    } else if (type === ButtonEvents.MORE) {
+      return onMore(manufacturerId, manufacturerPartId);
+    } else if (type === ButtonEvents.REGISTER) {
+      if (onRegisterClick) {
+        onRegisterClick(manufacturerId, manufacturerPartId);
+      }
+    }
   };
 
   return (
     <Box className="custom-cards-list">
+      {isLoading && (
+        <LoadingSpinner />
+      )}
+      {!isLoading && items.length === 0 && (
+        <ErrorNotFound icon={ReportProblemIcon} message="No catalog parts available, please check your ichub-backend connection/configuration"/>
+      )}
       {items.map((item) => {
-        const id = item.uuid ?? "";
         const name = item.name ?? "";
+        const productId = item.manufacturerId + "/" + item.manufacturerPartId;
         return (
-          <Box key={id} className="custom-card-box">
+          <Box key={productId} className="custom-card-box">
             <Box
               className="custom-card"
               sx={{
                 height: "220px"
               }}
               onClick={() => {
-                onClick(id);
+                onClick(productId);
               }}
             >
               <Box className="custom-card-header">
                 <CardChip status={item.status} statusText={item.status} />
 
                 <Box className="custom-card-header-buttons">                  
-                  {item.status !== StatusVariants.draft && (
-                    /* If the item is not in draft, sharing is enabled */
+                  {(item.status === StatusVariants.draft || item.status === StatusVariants.pending) && (
+                    <Tooltip title="Register part" arrow>
+                      <span> 
+                        <IconButton
+                          onClick={(e) => {
+                            handleDecision(e, item.manufacturerId, item.manufacturerPartId, ButtonEvents.REGISTER);
+                          }}
+                        >
+                          {item.status === StatusVariants.draft ? (
+                            <CloudUploadIcon className="register-btn"/>
+                          ) : (
+                            <CloudQueueIcon sx={{ color: "rgba(255, 255, 255, 0.5)" }} />
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  )}
+                  {item.status !== StatusVariants.draft && item.status !== StatusVariants.pending && (
+                    <Tooltip title="Share part" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          handleDecision(e, item.manufacturerId, item.manufacturerPartId, ButtonEvents.SHARE);
+                        }}
+                      >
+                        <IosShare sx={{ color: "white"}} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="More options" arrow>
                     <IconButton
                       onClick={(e) => {
-                        handleDecision(e, id, ButtonEvents.SHARE);
+                        handleDecision(e, item.manufacturerId, item.manufacturerPartId, ButtonEvents.MORE);
                       }}
                     >
-                      <IosShare sx={{ color: "white"}} />
+                      <MoreVert sx={{ color: "rgba(255, 255, 255, 0.68)" }} />
                     </IconButton>
-                  )}
-                  <IconButton
-                    onClick={(e) => {
-                      handleDecision(e, id, ButtonEvents.MORE);
-                    }}
-                  >
-                    <MoreVert sx={{ color: "rgba(255, 255, 255, 0.68)" }} />
-                  </IconButton>
+                  </Tooltip>
                 </Box>
               </Box>
               <Box className="custom-card-content">
@@ -106,7 +154,7 @@ export const ProductCard = ({
                 </Typography>
                 <br></br>
                 <Typography variant="label2">
-                  {item.class}
+                  {item.category}
                 </Typography>
               </Box>
               <Box className="custom-card-button-box">
