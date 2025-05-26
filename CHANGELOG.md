@@ -5,7 +5,7 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.0.3] - 2025-05-26
+## [0.1.0] - 2025-05-26
 
 ### Added
 
@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Refactor sharing functionality with improved requests, digital twin registry, and submodel dispatching ([#239](https://github.com/eclipse-tractusx/industry-core-hub/pull/239))
 - Add structured product view with materials pie chart and physical characteristics ([#242](https://github.com/eclipse-tractusx/industry-core-hub/pull/242))
 - Add register button for catalog parts with response snackbar and tooltip enhancements ([#244](https://github.com/eclipse-tractusx/industry-core-hub/pull/244))
+- Added new EDC 0.10.0 compatibility and DTR 0.8.0 ([#218](https://github.com/eclipse-tractusx/industry-core-hub/pull/218))
 
 ### Fixed
 
@@ -33,6 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fix catalog part relationships, add description field, and update APIs for filtering ([#237](https://github.com/eclipse-tractusx/industry-core-hub/pull/237))
 - Add loading spinner in catalog parts to prevent premature error message display ([#243](https://github.com/eclipse-tractusx/industry-core-hub/pull/243))
 - Improve catalog pagination, disable partner edit/delete buttons, add success messages, and enhance share dropdown and table ([#245](https://github.com/eclipse-tractusx/industry-core-hub/pull/245))
+- Fixed bug regarding registration and then sharing ([#251](https://github.com/eclipse-tractusx/industry-core-hub/pull/251)
+
 
 ### Changed
 
