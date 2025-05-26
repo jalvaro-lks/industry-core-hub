@@ -145,7 +145,7 @@ class TwinManagementService:
             db_twin_registration.dtr_registered = True
             
             ## Create submodel when registering
-            self.create_twin_aspect(
+            self.create_twin_aspect_and_submodel(
                 global_id=db_twin.global_id,
                 manufacturer_part_id=create_input.manufacturer_part_id,
                 name=db_catalog_part.name,
@@ -261,7 +261,7 @@ class TwinManagementService:
             else:
                 return False
     
-    def create_twin_aspect(self, global_id: str, manufacturer_part_id: str, name: str, bpns: List[str], manufacturer_id: str) -> TwinAspectRead:
+    def create_twin_aspect_and_submodel(self, global_id: str, manufacturer_part_id: str, name: str, bpns: str, manufacturer_id: str) -> TwinAspectRead:
         """
         Create a twin aspect representing part type information for the catalog part twin.
         """

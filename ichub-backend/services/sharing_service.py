@@ -66,7 +66,7 @@ class SharingService:
             # Step 7: Ensure a twin exchange exists between the twin and the data exchange agreement
             self._ensure_twin_exchange(repo, db_twin, db_data_exchange_agreement)
             # Step 8: Create the part twin aspect with part type information (if already not created)
-            self.twin_management_service.create_twin_aspect(
+            self.twin_management_service.create_twin_aspect_and_submodel(
                 global_id=db_twin.global_id,
                 manufacturer_part_id=catalog_part_to_share.manufacturer_part_id,
                 name=db_catalog_part.name,
