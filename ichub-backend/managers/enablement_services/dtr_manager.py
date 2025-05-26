@@ -468,7 +468,7 @@ class DTRManager:
             key = ("customerPartId", customer_part_id)
             if key in existing_keys:
                 # If asset ID already exists, update its BPN reference if needed
-                specific_asset_ids = self._handle_existing_customer_part_id(specific_asset_ids, customer_part_id, bpn, existing_keys)
+                specific_asset_ids = self._handle_existing_customer_part_id(specific_asset_ids, customer_part_id, bpn)
             else:
                 # Create a new SpecificAssetId for this customerPartId
                 specific_customer_part_asset_id = SpecificAssetId(
