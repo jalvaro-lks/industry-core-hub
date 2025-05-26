@@ -55,6 +55,10 @@ backend:
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
       echo: true
+    # Configuration for the logger settings
+    logger:
+     # Possible values: WARNING, INFO, DEBUG
+      level: "INFO"
 
   podAnnotations: {}
 
