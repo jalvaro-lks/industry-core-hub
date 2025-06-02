@@ -25,10 +25,7 @@
 from fastapi import FastAPI, Request, Header, Body
 from fastapi.responses import JSONResponse
 
-from services.submodel_dispatcher_service import SubmodelNotSharedWithBusinessPartnerError
-
-from tools.submodel_type_util import InvalidSemanticIdError
-from tools import InvalidUUIDError
+from tools.exceptions import BaseError
 
 from tractusx_sdk.dataspace.tools import op
 
@@ -72,36 +69,14 @@ app.include_router(twin_management.router)
 app.include_router(submodel_dispatcher.router)
 app.include_router(sharing_handler.router)
 
-@app.exception_handler(SubmodelNotSharedWithBusinessPartnerError)
-async def submodel_not_shared_with_business_partner_exception_handler(
-        request: Request,
-        exc: SubmodelNotSharedWithBusinessPartnerError) -> JSONResponse:
-    """
-    Custom exception handler for SubmodelNotSharedWithBusinessPartnerError.
-    Returns a 403 Forbidden response with the error message.
-    """
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
-
-@app.exception_handler(InvalidSemanticIdError)
-async def invalid_semantic_id_exception_handler(
-        request: Request,
-        exc: InvalidSemanticIdError) -> JSONResponse:
-    """
-    Custom exception handler for InvalidSemanticIdError.
-    Returns a 400 Bad Request with the error message.
-    """
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-@app.exception_handler(InvalidUUIDError)
-async def invalid_uuid_error_exception_handler(
+@app.exception_handler(BaseError)
+async def base_error_exception_handler(
     request: Request,
-    exc: InvalidUUIDError) -> JSONResponse:
+    exc: BaseError) -> JSONResponse:
     """
-    Custom exception handler for InvalidUUIDError.
-    Returns a 422 Unprocessable Entity with the error message.
+    Generic exception handler for all exceptions derived from BaseError.
     """
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
-
+    return JSONResponse(status_code=exc.status_code, content=exc.detail)
 
 @app.get("/health")
 def check_health():

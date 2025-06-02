@@ -29,6 +29,7 @@ from managers.metadata_database.repositories import CatalogPartRepository, Busin
 from managers.metadata_database.manager import RepositoryManager, RepositoryManagerFactory
 from models.metadata_database.models import CatalogPart, Batch, LegalEntity, SerializedPart, JISPart, PartnerCatalogPart
 from managers.config.log_manager import LoggingManager
+from tools.exceptions import InvalidError, NotFoundError, AlreadyExistsError
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -48,9 +49,9 @@ class PartManagementService():
             total_share = sum(material.share for material in catalog_part_create.materials)
             # We only allow the share to be 0-100%
             if total_share < 0:
-                raise ValueError("The share of materials can't be lower than 0%.")
+                raise InvalidError(f"The share of materials ({total_share}%) is invalid. It must be between 0% and 100%.")
             if total_share > 100:
-                raise ValueError("The total share of materials can't be higher than 100%.")
+                raise InvalidError(f"The share of materials ({total_share}%) is invalid. It must be between 0% and 100%.")
         with RepositoryManagerFactory.create() as repos:
             
             # First check if the legal entity exists for the given manufacturer ID
@@ -63,7 +64,7 @@ class PartManagementService():
                 repos.legal_entity_repository.commit()
             
             if not db_legal_entity:
-                raise ValueError(f"Failed to create or retrieve the legal entity '{catalog_part_create.manufacturer_id}'")
+                raise NotFoundError(f"Failed to create or retrieve the legal entity '{catalog_part_create.manufacturer_id}'")
             
             # Check if the business partner exists for the given manufacturer ID
             # Check if the catalog part already exists
@@ -71,7 +72,7 @@ class PartManagementService():
                 db_legal_entity.id, catalog_part_create.manufacturer_part_id
             )
             if db_catalog_part:
-                raise ValueError("Catalog part already exists.")
+                raise AlreadyExistsError("Catalog part already exists.")
             else:
                 # Create the catalog part in the metadata database, using legal_entity_id as foreign key
                 db_catalog_part = CatalogPart(
@@ -93,15 +94,15 @@ class PartManagementService():
                     
                     # We need both the customer part ID and the name of the business partner
                     if not partner_catalog_part_create.customer_part_id:
-                        raise ValueError("Customer part ID is required for a customer part mapping.")
+                        raise InvalidError("Customer part ID is required for a customer part mapping.")
                     
                     if not partner_catalog_part_create.business_partner_name:
-                        raise ValueError("Business partner name is required for a customer part mapping.")
+                        raise InvalidError("Business partner name is required for a customer part mapping.")
                     
                     # Resolve the business partner by name from the metadata database
                     db_business_partner = repos.business_partner_repository.get_by_name(partner_catalog_part_create.business_partner_name)
                     if not db_business_partner:
-                        raise ValueError(f"Business partner '{partner_catalog_part_create.business_partner_name}' does not exist. Please create it first.")
+                        raise NotFoundError(f"Business partner '{partner_catalog_part_create.business_partner_name}' does not exist. Please create it first.")
 
                     # Create the partner catalog part entry in the metadata database
                     repos.partner_catalog_part_repository.create(PartnerCatalogPart(
@@ -327,6 +328,5 @@ class PartManagementService():
         """
         Delete a partner catalog part from the system.
         """
-        
         # Logic to delete a partner catalog part
         pass
