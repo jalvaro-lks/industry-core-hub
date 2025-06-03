@@ -24,8 +24,9 @@
 
 from fastapi import FastAPI, Request, Header, Body
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
-from tools.exceptions import BaseError
+from tools.exceptions import BaseError, ValidationError
 
 from tractusx_sdk.dataspace.tools import op
 
@@ -76,7 +77,14 @@ async def base_error_exception_handler(
     """
     Generic exception handler for all exceptions derived from BaseError.
     """
-    return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    return JSONResponse(status_code=exc.status_code, content=exc.detail.model_dump())
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """
+    Exception handler for validation errors.
+    """
+    raise ValidationError(exc.errors()[0]["msg"])
 
 @app.get("/health")
 def check_health():

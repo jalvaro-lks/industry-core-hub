@@ -43,6 +43,10 @@ exception_responses ={
             "description": "Catalog part already exists",
             "model": ErrorDetail
         },
+        422: {
+            "description": "Validation Error",
+            "model": ErrorDetail
+        },
         502: {
             "description": "Bad Gateway - The server received an invalid response from the upstream server.",
             "model": ErrorDetail
@@ -57,7 +61,7 @@ class BaseError(Exception):
     def __init__(self, status_code: int, message: str):
         self.status_code = status_code
         self.detail = ErrorDetail(status=status_code, message=message)
-        super().__init__(status_code=status_code, detail=self.detail)
+        super().__init__(message)
 
 class InvalidError(BaseError):
     """
@@ -79,6 +83,13 @@ class AlreadyExistsError(BaseError):
     """
     def __init__(self, message: str):
         super().__init__(status_code=409, message=message)
+
+class ValidationError(BaseError):
+    """
+    Exception raised when validation fails.
+    """
+    def __init__(self, message: str):
+        super().__init__(status_code=422, message=message)
 
 class ExternalAPIError(BaseError):
     """
