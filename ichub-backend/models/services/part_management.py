@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field
 from models.metadata_database.models import Material, Measurement
 from models.services.partner_management import BusinessPartnerRead
 
-class SharingStatus(enum.Enum):
+class SharingStatus(enum.IntEnum):
     """The status of the part. (0: draft, 1: pending, 2: registered, 3: shared)"""
 
     DRAFT = 0
@@ -63,15 +63,15 @@ class CatalogPartBase(BaseModel):
 class PartnerCatalogPartBase(PartnerRelatedPartCreateBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID for partner specific mapping of the catalog part.")
 
-class SimpleCatalogPartRead(CatalogPartBase):
+class CatalogPartRead(CatalogPartBase):
     name: str = Field(description="The name of the part.")
     category: Optional[str] = Field(description="The category of the part.", default=None)
     bpns: Optional[str] = Field(description="The site number (BPNS) the part is attached to.", default=None)
     
-class SimpleCatalogPartReadWithStatus(SimpleCatalogPartRead, StatusBase):
+class CatalogPartReadWithStatus(CatalogPartRead, StatusBase):
     """Simple catalog part read model with status information."""
 
-class CatalogPartRead(SimpleCatalogPartRead):
+class CatalogPartDetailsRead(CatalogPartRead):
     description: Optional[str] = Field(description="The decription of the part.", default=None)
     materials: Optional[List[Material]] = Field(description="List of materials, e.g. [{'name':'aluminum','share':'20'}]", default=[])
     width: Optional[Measurement] = Field(description="The width of the part.", default=None)
@@ -80,10 +80,10 @@ class CatalogPartRead(SimpleCatalogPartRead):
     weight: Optional[Measurement] = Field(description="The weight of the part.", default=None)
     customer_part_ids: Optional[Dict[str, BusinessPartnerRead]] = Field(alias="customerPartIds", description="The list of customer part IDs mapped to the respective Business Partners.", default={})
 
-class CatalogPartReadWithStatus(CatalogPartRead, StatusBase):
+class CatalogPartDetailsReadWithStatus(CatalogPartDetailsRead, StatusBase):
     """Catalog part read model with status information."""
 
-class CatalogPartCreate(CatalogPartRead):
+class CatalogPartCreate(CatalogPartDetailsRead):
     pass
 
 class CatalogPartDelete(CatalogPartBase):
@@ -106,7 +106,7 @@ class PartnerCatalogPartQuery(CatalogPartQuery):
 class BatchBase(BaseModel):
     batch_id: str = Field(alias="batchId", description="The batch ID of the part.")
 
-class BatchRead(CatalogPartRead, BatchBase):
+class BatchRead(CatalogPartDetailsRead, BatchBase):
     pass
 
 class BatchCreate(CatalogPartCreate, BatchBase):  
@@ -121,11 +121,11 @@ class BatchQuery(CatalogPartQuery):
 class SerializedPartBase(CatalogPartBase):
     part_instance_id: str = Field(alias="partInstanceId", description="The part instance ID of the serialized part.")
 
-class SimpleSerializedPartRead(SimpleCatalogPartRead, SerializedPartBase, PartnerRelatedPartReadBase):
+class SerializedPartRead(CatalogPartRead, SerializedPartBase, PartnerRelatedPartReadBase):
     customer_part_id: str = Field(alias="customerPartId", description="The customer part ID of the part.")
     van: Optional[str] = Field(description="The optional VAN (Vehicle Assembly Number) of the serialized part.", default=None)
 
-class SerializedPartRead(SimpleSerializedPartRead, CatalogPartRead):
+class SerializedPartDetailsRead(SerializedPartRead, CatalogPartDetailsRead):
     pass
 
 class SerializedPartCreate(SerializedPartBase, PartnerRelatedPartCreateBase):

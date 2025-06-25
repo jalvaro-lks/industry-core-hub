@@ -22,11 +22,36 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from typing import Dict, List, Optional
-from models.services.part_management import BatchCreate, BatchRead, CatalogPartCreate, CatalogPartDelete, CatalogPartRead,  SimpleCatalogPartReadWithStatus, CatalogPartReadWithStatus,JISPartCreate, JISPartDelete, JISPartRead, PartnerCatalogPartBase, PartnerCatalogPartCreate, PartnerCatalogPartDelete, SerializedPartCreate, SerializedPartDelete, SerializedPartRead, SerializedPartQuery, SimpleSerializedPartRead
+from typing import List, Optional
+from models.services.part_management import (
+    BatchCreate,
+    BatchRead,
+    CatalogPartCreate,
+    CatalogPartDelete,
+    CatalogPartDetailsRead,
+    CatalogPartReadWithStatus,
+    CatalogPartDetailsReadWithStatus,
+    JISPartCreate,
+    JISPartDelete,
+    JISPartRead,
+    PartnerCatalogPartBase,
+    PartnerCatalogPartCreate,
+    PartnerCatalogPartDelete,
+    SerializedPartCreate,
+    SerializedPartDelete,
+    SerializedPartDetailsRead,
+    SerializedPartQuery,
+    SerializedPartRead,
+    SharingStatus,
+)
 from models.services.partner_management import BusinessPartnerRead
 from managers.metadata_database.manager import RepositoryManagerFactory
-from models.metadata_database.models import CatalogPart, Batch, LegalEntity, SerializedPart, JISPart, PartnerCatalogPart
+from models.metadata_database.models import (
+    CatalogPart,
+    LegalEntity,
+    SerializedPart,
+    PartnerCatalogPart,
+)
 from managers.config.log_manager import LoggingManager
 
 logger = LoggingManager.get_logger(__name__)
@@ -36,7 +61,7 @@ class PartManagementService():
     Service class for managing parts and their relationships in the system.
     """
 
-    def create_catalog_part(self, catalog_part_create: CatalogPartCreate) -> CatalogPartReadWithStatus:
+    def create_catalog_part(self, catalog_part_create: CatalogPartCreate) -> CatalogPartDetailsReadWithStatus:
         """
         Create a new catalog part in the system.
         Optionally also create attached partner catalog parts - i.e. partner specific mappings of the catalog part.
@@ -81,7 +106,7 @@ class PartManagementService():
                 repos.catalog_part_repository.commit()
                 
             # Prepare the result object
-            result = CatalogPartReadWithStatus(
+            result = CatalogPartDetailsReadWithStatus(
                 **catalog_part_create.model_dump(by_alias=True),
                 status=0,  # Default status is draft
             )
@@ -120,7 +145,7 @@ class PartManagementService():
         name: str,
         category: Optional[str],
         bpns: Optional[str],
-        customer_parts: Optional[List[PartnerCatalogPartBase]]) -> CatalogPartReadWithStatus:
+        customer_parts: Optional[List[PartnerCatalogPartBase]]) -> CatalogPartDetailsReadWithStatus:
           
         """Convenience method to create a catalog part by its IDs."""
 
@@ -154,29 +179,6 @@ class PartManagementService():
         # Logic to delete a catalog part
         pass
 
-    def get_simple_catalog_parts(self, manufacturer_id: Optional[str] = None, manufacturer_part_id: Optional[str] = None) -> List[SimpleCatalogPartReadWithStatus]:
-        with RepositoryManagerFactory.create() as repos:
-            result = []
-            
-            db_catalog_parts: List[tuple[CatalogPart, int]] = repos.catalog_part_repository.find_by_manufacturer_id_manufacturer_part_id(
-                manufacturer_id, manufacturer_part_id, join_partner_catalog_parts=True
-            )
-            
-            if db_catalog_parts:
-                for db_catalog_part, status in db_catalog_parts:
-                    result.append(
-                        SimpleCatalogPartReadWithStatus(
-                            manufacturerId=db_catalog_part.legal_entity.bpnl,
-                            manufacturerPartId=db_catalog_part.manufacturer_part_id,
-                            name=db_catalog_part.name,
-                            category=db_catalog_part.category,
-                            bpns=db_catalog_part.bpns,
-                            status=status
-                        )
-                    )
-            
-            return result
-
     def get_catalog_parts(self, manufacturer_id: Optional[str] = None, manufacturer_part_id: Optional[str] = None) -> List[CatalogPartReadWithStatus]:
         with RepositoryManagerFactory.create() as repos:
             result = []
@@ -194,30 +196,44 @@ class PartManagementService():
                             name=db_catalog_part.name,
                             category=db_catalog_part.category,
                             bpns=db_catalog_part.bpns,
-                            materials=db_catalog_part.materials,
-                            width=db_catalog_part.width,
-                            height=db_catalog_part.height,
-                            length=db_catalog_part.length,
-                            weight=db_catalog_part.weight,
-                            description=db_catalog_part.description,
-                            customerPartIds={partner_catalog_part.customer_part_id: BusinessPartnerRead(
-                                 name=partner_catalog_part.business_partner.name,
-                                 bpnl=partner_catalog_part.business_partner.bpnl
-                             ) for partner_catalog_part in db_catalog_part.partner_catalog_parts},
                             status=status
                         )
                     )
             
             return result
-    
-    
-    def get_catalog_part(self, manufacturer_id: str, manufacturer_part_id: str) -> Optional[CatalogPartReadWithStatus]:
+
+    def get_catalog_part_details(self, manufacturer_id: str, manufacturer_part_id: str) -> Optional[CatalogPartDetailsReadWithStatus]:
         """
         Retrieve a catalog part from the system.
         """
+        with RepositoryManagerFactory.create() as repos:
+            db_catalog_parts: List[tuple[CatalogPart, int]] = repos.catalog_part_repository.find_by_manufacturer_id_manufacturer_part_id(
+                manufacturer_id, manufacturer_part_id, join_partner_catalog_parts=True
+            )
+            
+            if not db_catalog_parts:
+                return None
+            
+            db_catalog_part, status = db_catalog_parts[0]  # Assuming we only want the first match
 
-        part_list = self.get_catalog_parts(manufacturer_id, manufacturer_part_id)
-        return part_list[0] if part_list else None
+            result = CatalogPartDetailsReadWithStatus(
+                manufacturerId=db_catalog_part.legal_entity.bpnl,
+                manufacturerPartId=db_catalog_part.manufacturer_part_id,
+                name=db_catalog_part.name,
+                category=db_catalog_part.category,
+                bpns=db_catalog_part.bpns,
+                materials=db_catalog_part.materials,
+                width=db_catalog_part.width,
+                height=db_catalog_part.height,
+                length=db_catalog_part.length,
+                weight=db_catalog_part.weight,
+                description=db_catalog_part.description,
+                status=SharingStatus(status)  # Assuming SharingStatus is an enum or similar type for status
+            )
+
+            PartManagementService.fill_customer_part_ids(db_catalog_part, result)
+
+            return result
 
     def create_batch(self, batch_create: BatchCreate) -> BatchRead:
         """
@@ -303,14 +319,8 @@ class PartManagementService():
                 ),
                 van=serialized_part_create.van,
                 name=db_catalog_part.name,
-                description=db_catalog_part.description,
                 category=db_catalog_part.category,
                 bpns=db_catalog_part.bpns,
-                materials=db_catalog_part.materials,
-                width=db_catalog_part.width,
-                height=db_catalog_part.height,
-                length=db_catalog_part.length,
-                weight=db_catalog_part.weight,
             )
 
 
@@ -322,7 +332,7 @@ class PartManagementService():
         # Logic to delete a serialized part
         pass
 
-    def get_serialized_part(self, manufacturer_id: str, manufacturer_part_id: str, part_instance_id: str) -> SerializedPartRead:
+    def get_serialized_part_details(self, manufacturer_id: str, manufacturer_part_id: str, part_instance_id: str) -> SerializedPartDetailsRead:
         """
         Retrieve a serialized part from the system.
         """
@@ -330,7 +340,7 @@ class PartManagementService():
         # Logic to retrieve a serialized part
         pass
 
-    def get_simple_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SimpleSerializedPartRead]:
+    def get_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SerializedPartRead]:
         """
         Retrieves serialized parts from the system according to given parameters.
         """
@@ -347,7 +357,7 @@ class PartManagementService():
             result = []
             for db_serialized_part in db_serialized_parts:
                 result.append(
-                    SimpleSerializedPartRead(
+                    SerializedPartRead(
                         manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
                         manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
                         name=db_serialized_part.partner_catalog_part.catalog_part.name,
@@ -396,7 +406,7 @@ class PartManagementService():
         # Logic to retrieve all JIS parts
         pass
 
-    def create_partner_catalog_part_mapping(self, partner_catalog_part_create: PartnerCatalogPartCreate) -> CatalogPartRead:
+    def create_partner_catalog_part_mapping(self, partner_catalog_part_create: PartnerCatalogPartCreate) -> CatalogPartDetailsRead:
         """
         Create a new partner catalog part in the system.
         """
@@ -404,10 +414,26 @@ class PartManagementService():
         # Logic to create a partner catalog part
         pass
 
-    def delete_partner_catalog_part_mapping(self, partner_catalog_part: PartnerCatalogPartDelete) -> CatalogPartRead:
+    def delete_partner_catalog_part_mapping(self, partner_catalog_part: PartnerCatalogPartDelete) -> CatalogPartDetailsRead:
         """
         Delete a partner catalog part from the system.
         """
         
         # Logic to delete a partner catalog part
         pass
+
+    @staticmethod
+    def fill_customer_part_ids(
+        db_catalog_part: CatalogPart, 
+        catalog_part: CatalogPartDetailsRead
+    ):
+        """
+        Helper method to fill the customer part IDs for a catalog part.
+        """
+        customer_part_ids = {}
+        for partner_catalog_part in db_catalog_part.partner_catalog_parts:
+            customer_part_ids[partner_catalog_part.customer_part_id] = BusinessPartnerRead(
+                name=partner_catalog_part.business_partner.name,
+                bpnl=partner_catalog_part.business_partner.bpnl
+            )
+        catalog_part.customer_part_ids = customer_part_ids

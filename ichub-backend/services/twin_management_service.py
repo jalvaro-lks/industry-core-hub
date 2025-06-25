@@ -52,11 +52,12 @@ from models.services.twin_management import (
 )
 from models.metadata_database.models import (
     EnablementServiceStack,
-    SerializedPart,
     Twin,
 )
 
 from managers.config.log_manager import LoggingManager
+
+from services.part_management_service import PartManagementService
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -377,7 +378,8 @@ class TwinManagementService:
                 global_id=global_id,
                 include_data_exchange_agreements=True,
                 include_aspects=True,
-                include_registrations=True
+                include_registrations=True,
+                include_all_partner_catalog_parts=True
             )
             if not db_twins:
                 return None
@@ -386,6 +388,7 @@ class TwinManagementService:
             
             twin_result: SerializedPartTwinDetailsRead = TwinManagementService._build_serialized_part_twin(db_twin, details=True) # type: ignore
 
+            PartManagementService.fill_customer_part_ids(db_twin.serialized_part.partner_catalog_part.catalog_part, twin_result)
             self._fill_shares(db_twin, twin_result)
             self._fill_registrations(db_twin, twin_result)
             self._fill_aspects(db_twin, twin_result)
@@ -600,14 +603,8 @@ class TwinManagementService:
             manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
             manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
             name=db_serialized_part.partner_catalog_part.catalog_part.name,
-            description=db_serialized_part.partner_catalog_part.catalog_part.description,
             category=db_serialized_part.partner_catalog_part.catalog_part.category,
             bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
-            materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
-            width=db_serialized_part.partner_catalog_part.catalog_part.width,
-            height=db_serialized_part.partner_catalog_part.catalog_part.height,
-            length=db_serialized_part.partner_catalog_part.catalog_part.length,
-            weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
             customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
             businessPartner=BusinessPartnerRead(
                 name=db_serialized_part.partner_catalog_part.business_partner.name,
@@ -617,7 +614,16 @@ class TwinManagementService:
             van=db_serialized_part.van,
         )
         if details:
-            base_kwargs["additionalContext"] = db_twin.additional_context
+            details_kwargs = dict(
+                description=db_serialized_part.partner_catalog_part.catalog_part.description,
+                materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
+                width=db_serialized_part.partner_catalog_part.catalog_part.width,
+                height=db_serialized_part.partner_catalog_part.catalog_part.height,
+                length=db_serialized_part.partner_catalog_part.catalog_part.length,
+                weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
+                additionalContext=db_twin.additional_context,
+            )
+            base_kwargs.update(details_kwargs)
             return SerializedPartTwinDetailsRead(**base_kwargs)
         else:
             return SerializedPartTwinRead(**base_kwargs)
