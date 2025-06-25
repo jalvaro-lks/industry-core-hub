@@ -64,7 +64,7 @@ async def twin_management_share_catalog_part_twin(catalog_part_twin_share: Catal
         return JSONResponse(status_code=204, content={"description":"Catalog part twin already shared"})
 
 @router.get("/serialized-part-twin", response_model=List[SerializedPartTwinRead])
-async def twin_management_get_serialized_part_twins(include_data_exchange_agreements: bool = False) -> List[SerializedPartTwinRead]:
+async def twin_management_get_all_serialized_part_twins(include_data_exchange_agreements: bool = False) -> List[SerializedPartTwinRead]:
     return twin_management_service.get_serialized_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
 
 @router.get("/serialized-part-twin/{global_id}", response_model=Optional[SerializedPartTwinDetailsRead])
