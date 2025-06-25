@@ -364,34 +364,9 @@ class TwinManagementService:
             
             result = []
             for db_twin in db_twins:
-                db_serialized_part = db_twin.serialized_part
-                twin_result = SerializedPartTwinRead(
-                    globalId=db_twin.global_id,
-                    dtrAasId=db_twin.aas_id,
-                    createdDate=db_twin.created_date,
-                    modifiedDate=db_twin.modified_date,
-                    manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
-                    manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
-                    name=db_serialized_part.partner_catalog_part.catalog_part.name,
-                    description=db_serialized_part.partner_catalog_part.catalog_part.description,                  
-                    category=db_serialized_part.partner_catalog_part.catalog_part.category,
-                    bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
-                    materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
-                    width=db_serialized_part.partner_catalog_part.catalog_part.width,
-                    height=db_serialized_part.partner_catalog_part.catalog_part.height,
-                    length=db_serialized_part.partner_catalog_part.catalog_part.length,
-                    weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
-                    customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
-                    businessPartner=BusinessPartnerRead(
-                        name=db_serialized_part.partner_catalog_part.business_partner.name,
-                        bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
-                    ),
-                    partInstanceId=db_serialized_part.part_instance_id,
-                    van=db_serialized_part.van,
-                )
+                twin_result = TwinManagementService._build_serialized_part_twin(db_twin)
                 if include_data_exchange_agreements:
                     self._fill_shares(db_twin, twin_result)
-
                 result.append(twin_result)
             
             return result
@@ -409,32 +384,7 @@ class TwinManagementService:
             
             db_twin = db_twins[0]
             
-            db_serialized_part = db_twin.serialized_part
-            twin_result = SerializedPartTwinDetailsRead(
-                globalId=db_twin.global_id,
-                dtrAasId=db_twin.aas_id,
-                createdDate=db_twin.created_date,
-                modifiedDate=db_twin.modified_date,
-                manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
-                manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
-                name=db_serialized_part.partner_catalog_part.catalog_part.name,
-                description=db_serialized_part.partner_catalog_part.catalog_part.description,            
-                category=db_serialized_part.partner_catalog_part.catalog_part.category,
-                bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
-                materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
-                width=db_serialized_part.partner_catalog_part.catalog_part.width,
-                height=db_serialized_part.partner_catalog_part.catalog_part.height,
-                length=db_serialized_part.partner_catalog_part.catalog_part.length,
-                weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
-                businessPartner=BusinessPartnerRead(
-                    name=db_serialized_part.partner_catalog_part.business_partner.name,
-                    bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
-                ),
-                customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
-                partInstanceId=db_serialized_part.part_instance_id,
-                van=db_serialized_part.van,
-                additionalContext=db_twin.additional_context,
-            )
+            twin_result: SerializedPartTwinDetailsRead = TwinManagementService._build_serialized_part_twin(db_twin, details=True) # type: ignore
 
             self._fill_shares(db_twin, twin_result)
             self._fill_registrations(db_twin, twin_result)
@@ -640,25 +590,37 @@ class TwinManagementService:
             return twin_result
 
     @staticmethod
-    def _fill_serialized_part_twin_data(db_serialized_part: SerializedPart, twin: SerializedPartTwinRead):
-        twin.manufacturer_id=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl
-        twin.manufacturer_part_id=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id
-        twin.name=db_serialized_part.partner_catalog_part.catalog_part.name
-        twin.description=db_serialized_part.partner_catalog_part.catalog_part.description
-        twin.category=db_serialized_part.partner_catalog_part.catalog_part.category
-        twin.bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns
-        twin.materials=db_serialized_part.partner_catalog_part.catalog_part.materials
-        twin.width=db_serialized_part.partner_catalog_part.catalog_part.width
-        twin.height=db_serialized_part.partner_catalog_part.catalog_part.height
-        twin.length=db_serialized_part.partner_catalog_part.catalog_part.length
-        twin.weight=db_serialized_part.partner_catalog_part.catalog_part.weight
-        twin.customer_part_id=db_serialized_part.partner_catalog_part.customer_part_id
-        twin.business_partner=BusinessPartnerRead(
+    def _build_serialized_part_twin(db_twin: Twin, details: bool = False) -> SerializedPartTwinRead | SerializedPartTwinDetailsRead:
+        db_serialized_part = db_twin.serialized_part
+        base_kwargs = dict(
+            globalId=db_twin.global_id,
+            dtrAasId=db_twin.aas_id,
+            createdDate=db_twin.created_date,
+            modifiedDate=db_twin.modified_date,
+            manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
+            manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
+            name=db_serialized_part.partner_catalog_part.catalog_part.name,
+            description=db_serialized_part.partner_catalog_part.catalog_part.description,
+            category=db_serialized_part.partner_catalog_part.catalog_part.category,
+            bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
+            materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
+            width=db_serialized_part.partner_catalog_part.catalog_part.width,
+            height=db_serialized_part.partner_catalog_part.catalog_part.height,
+            length=db_serialized_part.partner_catalog_part.catalog_part.length,
+            weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
+            customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
+            businessPartner=BusinessPartnerRead(
                 name=db_serialized_part.partner_catalog_part.business_partner.name,
                 bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
-            )
-        twin.part_instance_id=db_serialized_part.part_instance_id
-        twin.van=db_serialized_part.van
+            ),
+            partInstanceId=db_serialized_part.part_instance_id,
+            van=db_serialized_part.van,
+        )
+        if details:
+            base_kwargs["additionalContext"] = db_twin.additional_context
+            return SerializedPartTwinDetailsRead(**base_kwargs)
+        else:
+            return SerializedPartTwinRead(**base_kwargs)
 
     @staticmethod
     def _fill_shares(db_twin: Twin, twin_result: TwinRead):
