@@ -24,7 +24,8 @@
 
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
-import json
+
+
 from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
@@ -49,8 +50,11 @@ from models.services.twin_management import (
     TwinsAspectRegistrationMode,
     TwinDetailsReadBase,
 )
-from models.metadata_database.models import Twin, EnablementServiceStack
-from models.metadata_database.models import Twin
+from models.metadata_database.models import (
+    EnablementServiceStack,
+    SerializedPart,
+    Twin,
+)
 
 from managers.config.log_manager import LoggingManager
 
@@ -437,8 +441,6 @@ class TwinManagementService:
             self._fill_aspects(db_twin, twin_result)
 
             return twin_result
-
-
     
     def create_twin_aspect_and_submodel(self, global_id: str, manufacturer_part_id: str, name: str, bpns: str, manufacturer_id: str) -> TwinAspectRead:
         """
@@ -593,7 +595,7 @@ class TwinManagementService:
                 return None
             
             db_twin = db_twins[0]
-            return self.build_catalog_part_twin_details(db_twin=db_twin)
+            return TwinManagementService._build_catalog_part_twin_details(db_twin=db_twin)
     
     def get_catalog_part_twin_details(self, manufacturerId:str, manufacturerPartId:str) -> Optional[CatalogPartTwinDetailsRead]:
         with RepositoryManagerFactory.create() as repo:
@@ -608,10 +610,10 @@ class TwinManagementService:
                 return None
             
             db_twin = db_twins[0]
-            return self.build_catalog_part_twin_details(db_twin=db_twin)
-        
-    
-    def build_catalog_part_twin_details(self, db_twin: Twin) -> Optional[CatalogPartTwinDetailsRead]:
+            return TwinManagementService._build_catalog_part_twin_details(db_twin=db_twin)
+
+    @staticmethod
+    def _build_catalog_part_twin_details(db_twin: Twin) -> Optional[CatalogPartTwinDetailsRead]:
             
             db_catalog_part = db_twin.catalog_part
             twin_result = CatalogPartTwinDetailsRead(
@@ -631,11 +633,32 @@ class TwinManagementService:
                 ) for partner_catalog_part in db_catalog_part.partner_catalog_parts}
             )
 
-            self._fill_shares(db_twin, twin_result)
-            self._fill_registrations(db_twin, twin_result)
-            self._fill_aspects(db_twin, twin_result)
+            TwinManagementService._fill_shares(db_twin, twin_result)
+            TwinManagementService._fill_registrations(db_twin, twin_result)
+            TwinManagementService._fill_aspects(db_twin, twin_result)
 
             return twin_result
+
+    @staticmethod
+    def _fill_serialized_part_twin_data(db_serialized_part: SerializedPart, twin: SerializedPartTwinRead):
+        twin.manufacturer_id=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl
+        twin.manufacturer_part_id=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id
+        twin.name=db_serialized_part.partner_catalog_part.catalog_part.name
+        twin.description=db_serialized_part.partner_catalog_part.catalog_part.description
+        twin.category=db_serialized_part.partner_catalog_part.catalog_part.category
+        twin.bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns
+        twin.materials=db_serialized_part.partner_catalog_part.catalog_part.materials
+        twin.width=db_serialized_part.partner_catalog_part.catalog_part.width
+        twin.height=db_serialized_part.partner_catalog_part.catalog_part.height
+        twin.length=db_serialized_part.partner_catalog_part.catalog_part.length
+        twin.weight=db_serialized_part.partner_catalog_part.catalog_part.weight
+        twin.customer_part_id=db_serialized_part.partner_catalog_part.customer_part_id
+        twin.business_partner=BusinessPartnerRead(
+                name=db_serialized_part.partner_catalog_part.business_partner.name,
+                bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
+            )
+        twin.part_instance_id=db_serialized_part.part_instance_id
+        twin.van=db_serialized_part.van
 
     @staticmethod
     def _fill_shares(db_twin: Twin, twin_result: TwinRead):
