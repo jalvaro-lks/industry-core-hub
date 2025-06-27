@@ -54,6 +54,7 @@ from models.metadata_database.models import (
     EnablementServiceStack,
     Twin,
 )
+from tools.exceptions import NotFoundError, NotAvailableError
 
 from managers.config.log_manager import LoggingManager
 
@@ -96,7 +97,7 @@ class TwinManagementService:
                 join_partner_catalog_parts=True
             )
             if not db_catalog_parts:
-                raise ValueError("Catalog part not found.")
+                raise NotFoundError("Catalog part not found.")
             else:
                 db_catalog_part, _ = db_catalog_parts[0]
 
@@ -108,7 +109,7 @@ class TwinManagementService:
             if db_catalog_part.twin_id:
                 db_twin = repo.twin_repository.find_by_id(db_catalog_part.twin_id)
                 if not db_twin:
-                    raise ValueError("Twin not found.")
+                    raise NotFoundError("Twin not found.")
             # Step 3b: If no twin was there, create it now in the DB (generating on demand a new global_id and dtr_aas_id)
             else:
                 db_twin = repo.twin_repository.create_new(
@@ -218,26 +219,26 @@ class TwinManagementService:
                 join_partner_catalog_parts=True
             )
             if not db_catalog_parts:
-                raise ValueError("Catalog part not found.")
+                raise NotFoundError("Catalog part not found.")
             db_catalog_part, _ = db_catalog_parts[0]
 
             # Step 2: Retrieve the business partner entity according to the business_partner_name
             # (if not there => raise error)
             db_business_partner = repo.business_partner_repository.get_by_bpnl(catalog_part_share_input.business_partner_number)
             if not db_business_partner:
-                raise ValueError(f"Business partner with number '{catalog_part_share_input.business_partner_number}' not found.")
+                raise NotFoundError(f"Business partner with number '{catalog_part_share_input.business_partner_number}' not found.")
 
             # Step 3a: Consistency check if there is a twin associated with the catalog part
             if not db_catalog_part.twin_id:
-                raise ValueError("Catalog part has not yet a twin associated.")
+                raise NotFoundError("Catalog part has not yet a twin associated.")
             # Step 3b: Consistency check if there exists a partner catalog part entity for the given catalog part and business partner
             if not db_catalog_part.find_partner_catalog_part_by_bpnl(catalog_part_share_input.business_partner_number):
-                raise ValueError(f"Not customer part ID existing for given business partner '{catalog_part_share_input.business_partner_number}'.")
+                raise NotFoundError(f"Not customer part ID existing for given business partner '{catalog_part_share_input.business_partner_number}'.")
 
             # Step 4: Retrieve the twin entity for the catalog part entity
             db_twin = repo.twin_repository.find_by_id(db_catalog_part.twin_id)
             if not db_twin:
-                raise ValueError("Twin not found.")
+                raise NotFoundError("Twin not found.")
 
             # Step 5: Retrieve the first data exchange agreement entity for the business partner
             # (this will will later be replaced with an explicit mechanism choose a specific data exchange agreement)
@@ -245,7 +246,7 @@ class TwinManagementService:
                 db_business_partner.id
             )
             if not db_data_exchange_agreements:
-                raise ValueError(f"No data exchange agreement found for business partner '{db_business_partner.name}'.")
+                raise NotFoundError(f"No data exchange agreement found for business partner '{db_business_partner.name}'.")
             db_data_exchange_agreement = db_data_exchange_agreements[0] # Get the first one for now
             
             # Step 6: Check if there is already a twin exchange entity for the twin and data exchange agreement and create it if not
@@ -421,7 +422,7 @@ class TwinManagementService:
             # Step 1: Retrieve the twin entity according to the global_id
             db_twin = repo.twin_repository.find_by_global_id(twin_aspect_create.global_id)
             if not db_twin:
-                raise ValueError(f"Twin for global ID '{twin_aspect_create.global_id}' not found.")
+                raise NotFoundError(f"Twin for global ID '{twin_aspect_create.global_id}' not found.")
 
             # Step 2: Retrieve the enablement service stack entity from the DB according to the given name
             # (if not there => raise error)
@@ -473,7 +474,7 @@ class TwinManagementService:
                 existing_asset_id=asset_config.get("existing_asset_id", None)
             )
             if(not dtr_asset_id):
-                raise Exception("The Digital Twin Registry was not able to be registered, or was not found in the Connector!")
+                raise NotAvailableError("The Digital Twin Registry was not able to be registered, or was not found in the Connector!")
 
             # Step 5: Handle the submodel service
             if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.STORED.value:
