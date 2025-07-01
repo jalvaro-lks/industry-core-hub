@@ -295,7 +295,7 @@ class PartManagementService():
                 db_catalog_part.id, db_business_partner.id
             )
             if not db_partner_catalog_part:
-                raise ValueError("No partner catalog part found for the given catalog part and business partner.")
+                raise NotFoundError("No partner catalog part found for the given catalog part and business partner.")
 
             # Check if the serialized part already exists
             db_serialized_part = repos.serialized_part_repository.get_by_partner_catalog_part_id_part_instance_id(
