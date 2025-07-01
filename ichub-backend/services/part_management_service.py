@@ -281,7 +281,7 @@ class PartManagementService():
             # Check if the legal entity exists for the given manufacturer ID
             db_legal_entity = repos.legal_entity_repository.get_by_bpnl(serialized_part_create.manufacturer_id)
             if not db_legal_entity:
-                raise ValueError(f"Legal Entity with manufacturer BPNL '{serialized_part_create.manufacturer_id}' does not exist. Please create it first.")
+                raise NotFoundError(f"Legal Entity with manufacturer BPNL '{serialized_part_create.manufacturer_id}' does not exist. Please create it first.")
 
             # Check if the corresponding catalog part already exists
             db_catalog_part = repos.catalog_part_repository.get_by_legal_entity_id_manufacturer_part_id(
