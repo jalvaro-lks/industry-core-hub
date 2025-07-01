@@ -63,6 +63,8 @@ from .twin_management import (
     CatalogPartTwinDetailsRead,
     BatchTwinCreate,
     JISPartTwinCreate,
-    SerializedPartTwinCreate
+    SerializedPartTwinCreate,
+    SerializedPartTwinRead,
+    SerializedPartTwinDetailsRead,
 )
 
