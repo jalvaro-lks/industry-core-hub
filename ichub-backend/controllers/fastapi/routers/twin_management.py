@@ -56,7 +56,8 @@ async def twin_management_create_catalog_part_twin(catalog_part_twin_create: Cat
 
 @router.post("/catalog-part-twin/share", responses={
     201: {"description": "Catalog part twin shared successfully"},
-    204: {"description": "Catalog part twin already shared"}
+    204: {"description": "Catalog part twin already shared"},
+    **exception_responses
 })
 async def twin_management_share_catalog_part_twin(catalog_part_twin_share: CatalogPartTwinShare):
     if twin_management_service.create_catalog_part_twin_share(catalog_part_twin_share):
