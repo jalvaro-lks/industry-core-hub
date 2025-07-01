@@ -69,7 +69,7 @@ async def twin_management_share_catalog_part_twin(catalog_part_twin_share: Catal
 async def twin_management_get_all_serialized_part_twins(include_data_exchange_agreements: bool = False) -> List[SerializedPartTwinRead]:
     return twin_management_service.get_serialized_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
 
-@router.get("/serialized-part-twin/{global_id}", response_model=Optional[SerializedPartTwinDetailsRead])
+@router.get("/serialized-part-twin/{global_id}", response_model=Optional[SerializedPartTwinDetailsRead], responses=exception_responses)
 async def twin_management_get_serialized_part_twin(global_id: UUID) -> Optional[SerializedPartTwinDetailsRead]:
     return twin_management_service.get_serialized_part_twin_details(global_id)
 
