@@ -288,7 +288,7 @@ class PartManagementService():
                 db_legal_entity.id, serialized_part_create.manufacturer_part_id
             )
             if not db_catalog_part:
-                raise ValueError("Corresponding catalog part not existing.")
+                raise NotFoundError("Corresponding catalog part not existing.")
 
             # Get the partner catalog part for the given catalog part and business partner
             db_partner_catalog_part = repos.partner_catalog_part_repository.get_by_catalog_part_id_business_partner_id(
