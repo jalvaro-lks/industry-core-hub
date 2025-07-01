@@ -73,7 +73,7 @@ async def twin_management_get_all_serialized_part_twins(include_data_exchange_ag
 async def twin_management_get_serialized_part_twin(global_id: UUID) -> Optional[SerializedPartTwinDetailsRead]:
     return twin_management_service.get_serialized_part_twin_details(global_id)
 
-@router.post("/serialized-part-twin", response_model=TwinRead)
+@router.post("/serialized-part-twin", response_model=TwinRead, responses=exception_responses)
 async def twin_management_create_serialized_part_twin(serialized_part_twin_create: SerializedPartTwinCreate) -> TwinRead:
     return twin_management_service.create_serialized_part_twin(serialized_part_twin_create)
 
