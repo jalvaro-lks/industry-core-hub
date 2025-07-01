@@ -276,7 +276,7 @@ class PartManagementService():
             # Get the business partner by BPNL from the metadata database
             db_business_partner = repos.business_partner_repository.get_by_bpnl(serialized_part_create.business_partner_number)
             if not db_business_partner:
-                raise ValueError(f"Business partner with BPNL '{serialized_part_create.business_partner_number}' does not exist. Please create it first.")
+                raise NotFoundError(f"Business partner with BPNL '{serialized_part_create.business_partner_number}' does not exist. Please create it first.")
 
             # Check if the legal entity exists for the given manufacturer ID
             db_legal_entity = repos.legal_entity_repository.get_by_bpnl(serialized_part_create.manufacturer_id)
