@@ -294,7 +294,7 @@ class TwinManagementService:
             if db_serialized_part.twin_id:
                 db_twin = repo.twin_repository.find_by_id(db_serialized_part.twin_id)
                 if not db_twin:
-                    raise ValueError("Twin not found.")
+                    raise NotFoundError("Twin not found.")
             # Step 3b: If no twin was there, create it now in the DB (generating on demand a new global_id and dtr_aas_id)
             else:
                 db_twin = repo.twin_repository.create_new(
