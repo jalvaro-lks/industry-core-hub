@@ -284,7 +284,7 @@ class TwinManagementService:
                 join_legal_entity=True
             )
             if not db_enablement_service_stack:
-                raise ValueError(f"Enablement service stack '{enablement_service_stack_name}' not found.")
+                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' not found.")
 
             # Step 2a: Enablement service stack consistency check
             if db_enablement_service_stack.legal_entity.bpnl != create_input.manufacturer_id:
