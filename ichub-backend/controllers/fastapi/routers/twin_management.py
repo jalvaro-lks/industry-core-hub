@@ -77,6 +77,6 @@ async def twin_management_get_serialized_part_twin(global_id: UUID) -> Optional[
 async def twin_management_create_serialized_part_twin(serialized_part_twin_create: SerializedPartTwinCreate) -> TwinRead:
     return twin_management_service.create_serialized_part_twin(serialized_part_twin_create)
 
-@router.post("/twin-aspect", response_model=TwinAspectRead)
+@router.post("/twin-aspect", response_model=TwinAspectRead, responses=exception_responses)
 async def twin_management_create_twin_aspect(twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
     return twin_management_service.create_twin_aspect(twin_aspect_create)
