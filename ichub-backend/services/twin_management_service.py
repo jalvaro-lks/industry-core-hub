@@ -273,7 +273,7 @@ class TwinManagementService:
                 part_instance_id=create_input.part_instance_id,
             )
             if not db_serialized_parts:
-                raise ValueError("Catalog part not found.")
+                raise NotFoundError("Catalog part not found.")
             else:
                 db_serialized_part = db_serialized_parts[0]
 
