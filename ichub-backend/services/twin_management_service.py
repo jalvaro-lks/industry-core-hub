@@ -288,7 +288,7 @@ class TwinManagementService:
 
             # Step 2a: Enablement service stack consistency check
             if db_enablement_service_stack.legal_entity.bpnl != create_input.manufacturer_id:
-                raise ValueError(f"Enablement service stack '{enablement_service_stack_name}' does not belong to the legal entity '{create_input.manufacturer_id}'.")
+                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' does not belong to the legal entity '{create_input.manufacturer_id}'.")
 
             # Step 3a: Load existing twin metadata from the DB (if there)
             if db_serialized_part.twin_id:
