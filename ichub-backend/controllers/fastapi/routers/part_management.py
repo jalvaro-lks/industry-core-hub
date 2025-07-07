@@ -30,7 +30,7 @@ from models.services.part_management import (
     CatalogPartReadWithStatus,
     SerializedPartCreate,
     SerializedPartQuery,
-    SerializedPartRead
+    SerializedPartRead,
 )
 from tools.exceptions import exception_responses
 
