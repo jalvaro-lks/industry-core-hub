@@ -26,6 +26,7 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
 
 
+from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
 from managers.enablement_services.dtr_manager import DTRManager
@@ -68,6 +69,9 @@ class TwinManagementService:
     Service class for managing twin-related operations (CRUD and Twin sharing).
     """
     
+    def __init__(self):
+        self.submodel_document_generator = SubmodelDocumentGenerator()
+
     def get_or_create_enablement_stack(self, repo: RepositoryManager, manufacturer_id: str) -> EnablementServiceStack:
         """
         Retrieve or create an EnablementServiceStack for the given manufacturer ID.
@@ -84,7 +88,7 @@ class TwinManagementService:
             db_enablement_service_stack = db_enablement_service_stacks[0]
         return db_enablement_service_stack
     
-    def create_catalog_part_twin(self, create_input: CatalogPartTwinCreate) -> TwinRead:
+    def create_catalog_part_twin(self, create_input: CatalogPartTwinCreate, auto_create_part_type_information: bool = False) -> TwinRead:
         with RepositoryManagerFactory.create() as repo:
             # Step 1: Retrieve the catalog part entity according to the catalog part data (manufacturer_id, manufacturer_part_id)
             db_catalog_parts = repo.catalog_part_repository.find_by_manufacturer_id_manufacturer_part_id(
@@ -152,14 +156,23 @@ class TwinManagementService:
 
             db_twin_registration.dtr_registered = True
             
-            ## Create submodel when registering
-            self.create_twin_aspect_and_submodel(
-                global_id=db_twin.global_id,
-                manufacturer_part_id=create_input.manufacturer_part_id,
-                name=db_catalog_part.name,
-                bpns=db_catalog_part.bpns,
-                manufacturer_id=create_input.manufacturer_id
-            )
+            ## Create part type information submodel when registering, if configured
+            # TODO: This makes our API unclean - aspect creation should not be part of twin creation - should be moved to the frontend in future
+            if auto_create_part_type_information:
+                part_type_info_doc = self.submodel_document_generator.generate_part_type_information_v1(
+                    global_id=db_twin.global_id,
+                    manufacturer_part_id=create_input.manufacturer_part_id,
+                    name=db_catalog_part.name,
+                    bpns=db_catalog_part.bpns
+                )
+
+                self.create_twin_aspect(
+                    TwinAspectCreate(
+                        globalId= db_twin.global_id,
+                        semanticId= SEM_ID_PART_TYPE_INFORMATION_V1,
+                        payload= part_type_info_doc
+                    )                    
+                )
             
             return TwinRead(
                 globalId=db_twin.global_id,
