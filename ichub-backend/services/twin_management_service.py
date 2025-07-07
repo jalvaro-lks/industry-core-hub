@@ -26,7 +26,6 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
 
 
-from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
 from managers.enablement_services.dtr_manager import DTRManager
@@ -69,9 +68,6 @@ class TwinManagementService:
     Service class for managing twin-related operations (CRUD and Twin sharing).
     """
     
-    def __init__(self):
-        self.submodel_document_generator = SubmodelDocumentGenerator()
-
     def get_or_create_enablement_stack(self, repo: RepositoryManager, manufacturer_id: str) -> EnablementServiceStack:
         """
         Retrieve or create an EnablementServiceStack for the given manufacturer ID.
@@ -396,23 +392,7 @@ class TwinManagementService:
 
             return twin_result
     
-    def create_twin_aspect_and_submodel(self, global_id: str, manufacturer_part_id: str, name: str, bpns: str, manufacturer_id: str) -> TwinAspectRead:
-        """
-        Create a twin aspect representing part type information for the catalog part twin.
-        """
-        payload = self.submodel_document_generator.generate_part_type_information_v1(
-            global_id=global_id,
-            manufacturer_part_id=manufacturer_part_id,
-            name=name,
-            bpns=bpns
-        )
-        return self.create_twin_aspect(TwinAspectCreate(
-            globalId=global_id,
-            semanticId=SEM_ID_PART_TYPE_INFORMATION_V1,
-            payload=payload
-        ), manufacturer_id=manufacturer_id)
-        
-    def create_twin_aspect(self, twin_aspect_create: TwinAspectCreate, manufacturer_id:str) -> TwinAspectRead:
+    def create_twin_aspect(self, twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
         """
         Create a new twin aspect for a give twin.
         """
@@ -424,10 +404,12 @@ class TwinManagementService:
             if not db_twin:
                 raise NotFoundError(f"Twin for global ID '{twin_aspect_create.global_id}' not found.")
 
-            # Step 2: Retrieve the enablement service stack entity from the DB according to the given name
+            # Step 2: Get associated manufacturer id
+            manufacturer_id = self._get_manufacturer_id_from_twin(db_twin)
+
+            # Step 3: Retrieve the enablement service stack entity from the DB according to the given manufacturer ID
             # (if not there => raise error)
-            # Step 2: Retrieve the enablement service stack entity from the DB according to the given name
-            # (if not there => raise error)
+            # TODO: later the stack needs to be passed as an argument
             db_enablement_service_stack = self.get_or_create_enablement_stack(repo=repo, manufacturer_id=manufacturer_id)
             
             # Step 3: Retrieve a potentially existing twin aspect entity for the given twin_id and semantic_id
@@ -666,6 +648,18 @@ class TwinManagementService:
                 ) for db_twin_aspect in db_twin.twin_aspects
             }
 
+    @staticmethod
+    def _get_manufacturer_id_from_twin(db_twin: Twin) -> str:
+        """
+        Helper method to retrieve the manufacturer ID from a Twin object.
+        """
+        if db_twin.catalog_part:
+            return db_twin.catalog_part.legal_entity.bpnl
+        elif db_twin.serialized_part:
+            return db_twin.serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl
+        else:
+            raise ValueError("Twin does not have a catalog part or serialized part associated.")
+    
 def _create_dtr_manager(connection_settings: Optional[Dict[str, Any]]) -> DTRManager:
     """
     Create a new instance of the DTRManager class.
