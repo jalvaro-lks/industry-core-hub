@@ -28,6 +28,7 @@ from tractusx_sdk.dataspace.models.connector.model_factory import ModelFactory
 from managers.config.config_manager import ConfigManager
 from managers.config.log_manager import LoggingManager
 from tools.exceptions import NotFoundError, ExternalAPIError
+from tools.constants import ODRL_CONTEXT, CX_POLICY_CONTEXT, TYPE
 import json
 
 from .dtr_manager import DTRManager
@@ -100,8 +101,8 @@ class ConnectorManager:
         """Returns an empty policy template."""
         return {
             "context": {
-                "odrl": "http://www.w3.org/ns/odrl/2/",
-                "cx-policy": "https://w3id.org/catenax/policy/"
+                "odrl": ODRL_CONTEXT,
+                "cx-policy": CX_POLICY_CONTEXT
             },
             "permission": [],
             "prohibition": [],
@@ -132,7 +133,7 @@ class ConnectorManager:
             if logical_operator == "" and len(constraints) == 1:
                 # Single constraint, wrap as a Constraint type
                 wrapped_constraints = {
-                    "@type": "Constraint",
+                    TYPE: "Constraint",
                     # Format the leftOperand as an ODRL field with @id
                     "odrl:leftOperand": {"@id": constraints[0]["leftOperand"]},
                     # Format the operator as an ODRL field with @id
@@ -147,10 +148,10 @@ class ConnectorManager:
                     logical_operator = "and" if len(constraints) > 1 else ""
                 # Wrap constraints as a LogicalConstraint with the specified logical operator
                 wrapped_constraints = {
-                    "@type": "LogicalConstraint",
+                    TYPE: "LogicalConstraint",
                     f"odrl:{logical_operator}": [
                         {
-                            "@type": "Constraint",
+                            TYPE: "Constraint",
                             # Format the leftOperand as an ODRL field with @id
                             "odrl:leftOperand": {"@id": c["leftOperand"]},
                             # Format the operator as an ODRL field with @id
@@ -173,12 +174,12 @@ class ConnectorManager:
         """Parses a policy entry from configuration into ODRL-style format."""
         return {
             "@context": entry.get("context", {
-                "odrl": "http://www.w3.org/ns/odrl/2/",
-                "cx-policy": "https://w3id.org/catenax/policy/"
+                "odrl": ODRL_CONTEXT,
+                "cx-policy": CX_POLICY_CONTEXT
             }),
-            "@type": "PolicyDefinitionRequestDto",
+            TYPE: "PolicyDefinitionRequestDto",
             "policy": {
-                "@type": "odrl:Set",
+                TYPE: "odrl:Set",
                 "odrl:permission": self.build_rules(entry.get("permission", [])),
                 "odrl:prohibition": self.build_rules(entry.get("prohibition", [])),
                 "odrl:obligation": self.build_rules(entry.get("obligation", []))
@@ -222,8 +223,8 @@ class ConnectorManager:
         
         usage_policy_id=self.get_or_create_policy(
             usage_policy.get("context", {
-                "odrl": "http://www.w3.org/ns/odrl/2/",
-                "cx-policy": "https://w3id.org/catenax/policy/"
+                "odrl": ODRL_CONTEXT,
+                "cx-policy": CX_POLICY_CONTEXT
             }), 
             permissions=self.build_rules(usage_policy.get("permission", [])),
             obligations=self.build_rules(usage_policy.get("obligations", [])),
@@ -232,8 +233,8 @@ class ConnectorManager:
         
         access_policy_id = self.get_or_create_policy(
             access_policy.get("context", {
-                "odrl": "http://www.w3.org/ns/odrl/2/",
-                "cx-policy": "https://w3id.org/catenax/policy/"
+                "odrl": ODRL_CONTEXT,
+                "cx-policy": CX_POLICY_CONTEXT
             }), 
             permissions=self.build_rules(access_policy.get("permission", [])),
             obligations=self.build_rules(access_policy.get("obligations", [])),
@@ -451,7 +452,7 @@ class ConnectorManager:
             dct_type=dct_type,
             version=version,
             headers=headers,
-            proxyParams={ 
+            proxy_params={ 
                 "proxyQueryParams": "true",
                 "proxyPath": "true",
                 "proxyMethod": "true",
@@ -465,7 +466,7 @@ class ConnectorManager:
                      dct_type:str, 
                      version:str="3.0", 
                      semantic_id:str=None, 
-                     proxyParams:dict={ 
+                     proxy_params:dict={ 
                                   "proxyQueryParams": "false",
                                   "proxyPath": "true",
                                   "proxyMethod": "true",
@@ -483,13 +484,13 @@ class ConnectorManager:
         }
 
         data_address = { 
-                "@type": "DataAddress",
+                TYPE: "DataAddress",
                 "type": "HttpData",
                 "baseUrl": base_url
             }
         
-        if(proxyParams is not None):
-            data_address.update(proxyParams)
+        if(proxy_params is not None):
+            data_address.update(proxy_params)
         
         if headers is not None:
             for key, value in headers.items():

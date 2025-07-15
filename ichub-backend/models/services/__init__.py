@@ -23,7 +23,7 @@
 #################################################################################
 
 from .part_management import (
-    CatalogPartRead,
+    CatalogPartDetailsRead,
     CatalogPartCreate,
     CatalogPartDelete,
     CatalogPartQuery,
@@ -33,7 +33,7 @@ from .part_management import (
     BatchCreate,
     BatchDelete,
     BatchQuery,
-    SerializedPartRead,
+    SerializedPartDetailsRead,
     SerializedPartCreate,
     SerializedPartDelete,
     SerializedPartQuery,
@@ -63,6 +63,8 @@ from .twin_management import (
     CatalogPartTwinDetailsRead,
     BatchTwinCreate,
     JISPartTwinCreate,
-    SerializedPartTwinCreate
+    SerializedPartTwinCreate,
+    SerializedPartTwinRead,
+    SerializedPartTwinDetailsRead,
 )
 
