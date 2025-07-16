@@ -20,7 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-participantId: "BPNL00000003CRHK"
+participantId: "BPNL000000000000"
 hostname: "https://ichub-backend.url"
 authorization:
   enabled: true
@@ -61,18 +61,18 @@ agreements:
       prohibition: []
       obligation: []
 database:
-  connectionString: "postgresql://user:password@localhost:5432/ichub"
-  echo: false
+  connectionString: "postgresql://user:password@localhost:5432/mydatabase"
+  echo: true
 edc:
   controlplane:
-    hostname: https://edc-consumer-ichub-control.int.catena-x.net
+    hostname: https://connector.control.plane
     apikeyheader: X-Api-Key
-    apikey: ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC
+    apikey: <<example>>
     managementpath: /management
     protocolPath: /api/v1/dsp
     catalogPath: /catalog
   dataplane:
-    hostname: https://edc-provider-ichub-dataplane.int.catena-x.net
+    hostname: "https://connector.data.plane"
     publicPath: "/api/public"
 digitalTwinRegistry:
   hostname: https://dtr-ichub.int.catena-x.net
