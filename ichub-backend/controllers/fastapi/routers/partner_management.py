@@ -26,8 +26,9 @@ from typing import Optional, List
 from services.partner_management_service import PartnerManagementService
 from models.services.partner_management import BusinessPartnerRead, BusinessPartnerCreate, DataExchangeAgreementRead
 from tools.exceptions import exception_responses
+from tools.constants import API_VERSION_1
 
-router = APIRouter(prefix="/partner-management", tags=["Partner Management"])
+router = APIRouter(prefix="/" + API_VERSION_1 + "/partner-management", tags=["Partner Management"])
 partner_management_service = PartnerManagementService()
 
 @router.get("/business-partner", response_model=List[BusinessPartnerRead], responses=exception_responses)

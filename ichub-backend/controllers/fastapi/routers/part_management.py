@@ -35,8 +35,9 @@ from models.services.part_management import (
     SerializedPartRead,
 )
 from tools.exceptions import exception_responses
+from tools.constants import API_VERSION_1
 
-router = APIRouter(prefix="/part-management", tags=["Part Management"])
+router = APIRouter(prefix="/" + API_VERSION_1 + "/part-management", tags=["Part Management"])
 part_management_service = PartManagementService()
 
 
