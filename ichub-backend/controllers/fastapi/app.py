@@ -68,11 +68,11 @@ app = FastAPI(title="Industry Core Hub Backend API", version="0.0.1", openapi_ta
 
 # API Version 1
 v1_router = APIRouter(prefix=f"/{API_VERSION_1}")
-v1_router.include_router(part_management.router, tags=["Part Management"])
-v1_router.include_router(partner_management.router, tags=["Partner Management"])
-v1_router.include_router(twin_management.router, tags=["Twin Management"])
-v1_router.include_router(submodel_dispatcher.router, tags=["Submodel Dispatcher"])
-v1_router.include_router(sharing_handler.router, tags=["Sharing Functionality"])
+v1_router.include_router(part_management.router)
+v1_router.include_router(partner_management.router)
+v1_router.include_router(twin_management.router)
+v1_router.include_router(submodel_dispatcher.router)
+v1_router.include_router(sharing_handler.router)
 
 # Include the API version 1 router into the main app
 app.include_router(v1_router)
