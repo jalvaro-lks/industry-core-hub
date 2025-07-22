@@ -22,11 +22,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import FastAPI, Request, Header, Body
+from fastapi import FastAPI, Request, APIRouter, Header, Body
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from tools.exceptions import BaseError, ValidationError
+from tools.constants import API_VERSION_1
 
 from tractusx_sdk.dataspace.tools import op
 
@@ -64,11 +65,17 @@ tags_metadata = [
 app = FastAPI(title="Industry Core Hub Backend API", version="0.0.1", openapi_tags=tags_metadata)
 
 ## Include here all the routers for the application.
-app.include_router(part_management.router)
-app.include_router(partner_management.router)
-app.include_router(twin_management.router)
-app.include_router(submodel_dispatcher.router)
-app.include_router(sharing_handler.router)
+
+# API Version 1
+v1_router = APIRouter(prefix=f"/{API_VERSION_1}")
+v1_router.include_router(part_management.router, tags=["Part Management"])
+v1_router.include_router(partner_management.router, tags=["Partner Management"])
+v1_router.include_router(twin_management.router, tags=["Twin Management"])
+v1_router.include_router(submodel_dispatcher.router, tags=["Submodel Dispatcher"])
+v1_router.include_router(sharing_handler.router, tags=["Sharing Functionality"])
+
+# Include the API version 1 router into the main app
+app.include_router(v1_router)
 
 @app.exception_handler(BaseError)
 async def base_error_exception_handler(

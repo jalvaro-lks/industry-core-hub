@@ -30,9 +30,8 @@ from models.services.sharing_management import (
 )
 from typing import Optional, List
 from tools.exceptions import exception_responses
-from tools.constants import API_VERSION_1
 
-router = APIRouter(prefix="/" + API_VERSION_1 + "/share", tags=["Sharing Functionality"])
+router = APIRouter(prefix="/share", tags=["Sharing Functionality"])
 part_sharing_service = SharingService()
 
 @router.post("/catalog-part", response_model=SharedPartBase, responses=exception_responses)

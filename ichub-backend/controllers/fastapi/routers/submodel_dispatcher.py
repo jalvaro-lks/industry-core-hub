@@ -28,10 +28,9 @@ from uuid import UUID
 from services.submodel_dispatcher_service import SubmodelDispatcherService
 from managers.config.config_manager import ConfigManager
 from tools.exceptions import exception_responses
-from tools.constants import API_VERSION_1
 
 path_submodel_dispatcher = ConfigManager.get_config("submodel_dispatcher.apiPath", default="/submodel-dispatcher")
-router = APIRouter(prefix="/" + API_VERSION_1 + path_submodel_dispatcher, tags=["Submodel Dispatcher"])
+router = APIRouter(prefix=path_submodel_dispatcher, tags=["Submodel Dispatcher"])
 submodel_dispatcher_service = SubmodelDispatcherService()
 
 @router.get("/{semantic_id}/{global_id}/submodel/$value", response_model=Dict[str, Any], responses=exception_responses)

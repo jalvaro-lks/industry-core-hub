@@ -34,9 +34,8 @@ from models.services.twin_management import (
     SerializedPartTwinCreate, SerializedPartTwinShareCreate
 )
 from tools.exceptions import exception_responses
-from tools.constants import API_VERSION_1
 
-router = APIRouter(prefix="/" + API_VERSION_1 + "/twin-management", tags=["Twin Management"])
+router = APIRouter(prefix="/twin-management", tags=["Twin Management"])
 twin_management_service = TwinManagementService()
 
 @router.get("/catalog-part-twin", response_model=List[CatalogPartTwinRead], responses=exception_responses)
