@@ -519,13 +519,13 @@ class PartManagementService():
                 db_catalog_part = CatalogPart(
                     legal_entity_id=db_legal_entity.id,
                     manufacturer_part_id=manufacturer_part_id,
-                    name=f"Auto-generated part {manufacturer_part_id}",
+                    name=f"Auto-generated part manufacturerPartId",
                     category=None,  # Default category can be set later
                     bpns=None,  # Default BPNS can be set later
                 )
                 repos.catalog_part_repository.create(db_catalog_part)
                 repos.catalog_part_repository.commit()
             else:
-                raise NotFoundError(f"Catalog part {manufacturer_id}/{manufacturer_part_id} not found.")
+                raise NotFoundError(f"Catalog part {manufacturer_id}/manufacturerPartId not found.")
 
         return (db_legal_entity, db_catalog_part)

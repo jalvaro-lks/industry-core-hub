@@ -23,7 +23,7 @@ info:
   title: Industry Core Hub Backend API
   version: 0.0.1
 paths:
-  '/part-management/catalog-part/{manufacturer_id}/{manufacturer_part_id}':
+  '/part-management/catalog-part/{manufacturer_id}/manufacturerPartId':
     get:
       tags:
         - Part Management
