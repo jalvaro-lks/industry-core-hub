@@ -693,7 +693,7 @@ class TwinManagementService:
     def _create_twin_exchange(
         repo: RepositoryManager,
         db_twin: Twin,
-        db_business_partner: BusinessPartner
+        db_business_partner: BusinessPartnerRead
     ) -> bool:
             # Step 1: Retrieve the first data exchange agreement entity for the business partner
             # (this will will later be replaced with an explicit mechanism choose a specific data exchange agreement)
