@@ -10,7 +10,7 @@
 # terms of the Apache License, Version 2.0 which is available at
 # https://www.apache.org/licenses/LICENSE-2.0.
 #
-# Unless required by routerlicable law or agreed to in writing, software
+# Unless required by routerlicable law or agreed in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
@@ -21,15 +21,25 @@
 #################################################################################
 
 from fastapi import APIRouter, Body, Header
+from fastapi import Depends
+from connector import connector_manager
 
+from requests import Session
+
+from fastapi.responses import Response
+from tractusx_sdk.dataspace.tools.http_tools import HttpTools
 from services.provider.sharing_service import SharingService
 from models.services.consumer.connection_management import (
     ConnectionDetails,
     StartConnection,
     ForgetConnection,
     PossibleConnections,
-    ConnectionDescription
+    ConnectionDescription,
+    DoGetParams,
+    DoPostParams,
+    DoDspParams
 )
+
 
 from typing import Optional, List
 from tools.exceptions import exception_responses
@@ -68,3 +78,20 @@ async def connect_to_service(
     connection_details: ForgetConnection
 ) -> None:
     return connection_service.forget_connection(connection_details=connection_details)
+
+
+@router.post("/data/get")
+async def data_get(get_request: DoGetParams) -> Response:
+    ## Check if the api key is present and if it is authenticated
+    return HttpTools.proxy(connector_manager.connector_service.consumer.do_get(
+        counter_party_id=get_request.counter_party_id,
+        counter_party_address=get_request.counter_party_address,
+        filter_expression=get_request.filter_expression,
+        path=get_request.path,
+        policies=get_request.policies,
+        params=get_request.params,
+        verify=get_request.verify,
+        timeout=get_request.timeout,
+        allow_redirects=get_request.allow_redirects,
+        headers=get_request.headers
+    ))

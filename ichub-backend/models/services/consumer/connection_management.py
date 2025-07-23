@@ -22,8 +22,7 @@
 
 from pydantic import BaseModel, Field
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 
 
 class ConnectionDetails(BaseModel):
@@ -53,3 +52,33 @@ class StartConnection(BaseModel):
 
 class ForgetConnection(BaseModel):
     connection_id: str = Field(..., description="ID of the connection to forget")
+class DoGetParams(BaseModel):
+    counter_party_id: str
+    counter_party_address: str
+    filter_expression: List[Dict[str, Any]]
+    path: str = "/"
+    policies: List[Any] = None
+    verify: Optional[bool] = False
+    headers: Optional[Dict[str, Any]] = {}
+    timeout: Optional[int] = None
+    params: Optional[Dict[str, Any]] = None
+    allow_redirects: Optional[bool] = False
+
+class DoPostParams(BaseModel):
+    counter_party_id: str
+    counter_party_address: str
+    body: Any  # Accepts dict, list, etc.
+    filter_expression: List[Dict[str, Any]]
+    path: str = "/"
+    content_type: str = "application/json"
+    policies: Optional[List[Any]] = None
+    verify: bool = False
+    headers: Optional[Dict[str, Any]] = None
+    timeout: Optional[int] = None
+    allow_redirects: bool = False
+    
+class DoDspParams(BaseModel):
+    counter_party_id: str
+    counter_party_address: str
+    filter_expression: List[Dict[str, Any]]
+    policies: List[Any] = []

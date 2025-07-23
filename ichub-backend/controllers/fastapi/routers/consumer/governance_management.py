@@ -1,8 +1,6 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 DRÄXLMAIER Group
-# (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -12,7 +10,7 @@
 # terms of the Apache License, Version 2.0 which is available at
 # https://www.apache.org/licenses/LICENSE-2.0.
 #
-# Unless required by applicable law or agreed to in writing, software
+# Unless required by routerlicable law or agreed in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
@@ -22,8 +20,20 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .provider.partner_management import LegalEntity, BusinessPartner, EnablementServiceStack
-from .provider.twin_management import Twin, TwinAspect, TwinAspectRegistration, TwinExchange, TwinRegistration
-from .provider.part_management import CatalogPart, PartnerCatalogPart, SerializedPart, JISPart, Batch, BatchBusinessPartner
-from .provider.sharing_management import DataExchangeAgreement, DataExchangeContract
+from fastapi import APIRouter, Body, Header
+from fastapi import Depends
 
+from sqlmodel import Session, select
+
+from tractusx_sdk.dataspace.tools.http_tools import HttpTools
+from services.consumer.governance_management_service import GovernanceService
+
+from typing import Optional, List
+from tools.exceptions import exception_responses
+router = APIRouter(prefix="/governance", tags=["Governance Management"])
+governance_service = GovernanceService()
+
+
+@router.post("/validate-policy")
+def validate_policy(payload: dict):
+    return governance_service.validate_policy(payload)

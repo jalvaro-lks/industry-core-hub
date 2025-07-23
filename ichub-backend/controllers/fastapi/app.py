@@ -76,6 +76,7 @@ app.include_router(partner_management.router)
 app.include_router(twin_management.router)
 app.include_router(submodel_dispatcher.router)
 app.include_router(sharing_handler.router)
+app.include_router(connection_management.router)
 
 @app.exception_handler(BaseError)
 async def base_error_exception_handler(

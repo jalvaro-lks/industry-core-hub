@@ -1,8 +1,6 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 DRÄXLMAIER Group
-# (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -22,8 +20,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .provider.partner_management import LegalEntity, BusinessPartner, EnablementServiceStack
-from .provider.twin_management import Twin, TwinAspect, TwinAspectRegistration, TwinExchange, TwinRegistration
-from .provider.part_management import CatalogPart, PartnerCatalogPart, SerializedPart, JISPart, Batch, BatchBusinessPartner
-from .provider.sharing_management import DataExchangeAgreement, DataExchangeContract
+from tractusx_sdk.dataspace.managers.connection import PostgresMemoryRefreshConnectionManager
+from database import engine
+from managers.enablement_services import ConnectorManager
+import logging
 
+logger = logging.getLogger("connector")
+logger.setLevel(logging.INFO)
+
+#connector_manager = ConnectorManager(connection_manager=PostgresConnectionManager(engine=engine)) 320ms
+#connector_manager = ConnectorManager(connection_manager=MemoryConnectionManager()) 150ms
+#connector_manager = ConnectorManager(connection_manager=FileSystemConnectionManager(path="./data/connections.json")) #188 ms
+connector_manager = ConnectorManager(connection_manager=PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)) #168 ms

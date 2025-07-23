@@ -29,19 +29,29 @@ from typing import TypeVar, Type, List, Optional, Generic
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
-from models.metadata_database.models import (
+from models.metadata_database.provider.partner_management import (
     BusinessPartner,
-    CatalogPart,
-    DataExchangeAgreement,
     EnablementServiceStack,
-    LegalEntity,
-    PartnerCatalogPart,
+    LegalEntity
+)
+from models.metadata_database.provider.part_management import (
+    CatalogPart,
     SerializedPart,
+    PartnerCatalogPart
+)
+from models.metadata_database.provider.sharing_management import DataExchangeAgreement
+from models.metadata_database.provider.twin_management import (
     Twin,
     TwinAspect,
     TwinAspectRegistration,
     TwinExchange,
-    TwinRegistration,
+    TwinRegistration
+)
+from models.metadata_database.consumer.governance_management import (
+    Policy,
+    Rule,
+    RuleType,
+    AtomicConstraint
 )
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
@@ -581,3 +591,64 @@ class TwinRegistrationRepository(BaseRepository[TwinRegistration]):
         )
         self.create(twin_registration)
         return twin_registration
+
+class GovernanceManagementRepository(BaseRepository[Policy]):
+    """
+    Repository for the Policy aggregate root.
+    This manages Policies and their associated Rules and AtomicConstraints.
+    Actions are not the root entity here; Policy is.
+    """
+    def find_action_by_id_and_constraints_hash(self, action_id: str, constraints_hash: str) -> Optional[Rule]:
+        stmt = select(Rule).where(
+            Rule.action == action_id,
+            Rule.constraint_hash == constraints_hash
+        )
+        return self._session.scalars(stmt).first()
+
+    """     
+    def store_allowed_policy(self, use_case_name: str, policies: list, policy_type: PolicyType = PolicyType.offer) -> Policy:
+        policy = Policy(uid=use_case_name, type=policy_type)
+        self._session.add(policy)
+        self._session.commit()
+        self._session.refresh(policy)
+
+        for policy_obj in policies:
+            for rule_type in ["odrl:permission", "odrl:prohibition", "odrl:obligation"]:
+                rule_section = policy_obj.get(rule_type)
+                if not rule_section:
+                    continue
+                if isinstance(rule_section, list):
+                    rule_section = rule_section[0]
+
+                action_id = rule_section.get("odrl:action", {}).get("@id")
+                constraints = rule_section.get("odrl:constraint", {})
+
+                if action_id:
+                    constraints_hash = hash_constraints(constraints)
+                    rule = Rule(
+                        type=RuleType(rule_type.split(":")[-1]),
+                        policy_id=policy.id,
+                        constraint_hash=constraints_hash,
+                        action=action_id,
+                    )
+                    self._session.add(rule)
+                    self._session.commit()
+                    self._session.refresh(rule)
+
+                    atomic_constraints = extract_constraints(constraints)
+                    for left_operand, operator, right_operand in atomic_constraints:
+                        constraint = AtomicConstraint(
+                            rule_id=rule.id,
+                            left_operand=left_operand,
+                            operator=operator.split(":")[-1],
+                            right_operand=right_operand
+                        )
+                        self._session.add(constraint)
+                    self._session.commit()
+
+        return policy 
+        """
+
+    def get_policy_by_uid(self, uid: str) -> Optional[Policy]:
+        stmt = select(Policy).where(Policy.uid == uid)
+        return self._session.scalars(stmt).first()

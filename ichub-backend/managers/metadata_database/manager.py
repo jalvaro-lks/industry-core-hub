@@ -42,6 +42,7 @@ class RepositoryManager:
         self._twin_aspect_registration_repository = None
         self._twin_exchange_repository = None
         self._twin_registration_repository = None
+        self._governance_management_repository = None
 
     # Context Manager Methods
     def __enter__(self):
@@ -171,6 +172,14 @@ class RepositoryManager:
             from managers.metadata_database.repositories import TwinRegistrationRepository
             self._twin_registration_repository = TwinRegistrationRepository(self._session)
         return self._twin_registration_repository
+
+    @property
+    def governance_management_repository(self):
+        """Lazy initialization of the governance management repository."""
+        if self._governance_management_repository is None:
+            from managers.metadata_database.repositories import GovernanceManagementRepository
+            self._governance_management_repository = GovernanceManagementRepository(self._session)
+        return self._governance_management_repository
 
 class RepositoryManagerFactory:
     """Factory class for creating repository managers."""
