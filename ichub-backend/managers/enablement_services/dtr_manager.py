@@ -311,10 +311,10 @@ class DTRManager:
         if not modified:
             filter_msg = f" (filtered to {asset_id_names_filter})" if asset_id_names_filter else ""
             logger.warning(f"No BPN references were found to remove for shell {aas_id.urn}{filter_msg}")
-            return existing_shell
+            return existing_shell, modified
         
         # Update shell descriptor
-        return self._update_shell_after_bpn_removal(existing_shell, specific_asset_ids, aas_id, manufacturer_id)
+        return self._update_shell_after_bpn_removal(existing_shell, specific_asset_ids, aas_id, manufacturer_id), modified
 
     def _get_existing_shell(self, aas_id: UUID, manufacturer_id: str) -> ShellDescriptor:
         """Get and validate existing shell descriptor for BPN removal operation."""
