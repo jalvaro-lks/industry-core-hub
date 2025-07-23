@@ -28,7 +28,7 @@ from requests import Session
 
 from fastapi.responses import Response
 from tractusx_sdk.dataspace.tools.http_tools import HttpTools
-from services.provider.sharing_service import SharingService
+#from services.consumer import ConnectionService
 from models.services.consumer.connection_management import (
     ConnectionDetails,
     StartConnection,
@@ -44,12 +44,23 @@ from models.services.consumer.connection_management import (
 from typing import Optional, List
 from tools.exceptions import exception_responses
 router = APIRouter(prefix="/connection", tags=["Open Connection Management"])
-connection_service = SharingService()
+#connection_service = ConnectionService()
 
+"""
+# TODO: The following endpoints are not yet implemented but are planned for future development
+# Uncomment and implement when connection service is ready
+
+# Search for available DTRS (Digital Twin Registry Service) connections
 @router.post("/search/dtrs", response_model=PossibleConnections, responses=exception_responses)
 async def search_connections(connection_details: ConnectionDetails) -> PossibleConnections:
+    '''
+    Search for possible connections to Digital Twin Registry Services based on connection details.
+    Returns a list of available connections that match the search criteria.
+    '''
+    # Delegate to the connection service to perform the actual search
     return connection_service.search_connections(connection_details=connection_details)
 
+# Establish a new connection to a service
 @router.post("/connect", responses={
     201: {"description": "Connection established successfully"},
     400: {"description": "Bad request, connection could not be established"},
@@ -59,25 +70,43 @@ async def search_connections(connection_details: ConnectionDetails) -> PossibleC
 async def connect_to_service(
     connection_details: StartConnection
 ) -> None:
+    '''
+    Establish a connection to a specified service using the provided connection details.
+    This creates an active connection that can be used for data exchange.
+    '''
+    # Create a new connection using the provided connection details
     return connection_service.connect_to_service(connection_details=connection_details)
 
 
+# Retrieve all active connections with optional filtering by service type
 @router.get("/connections", response_model=List[ConnectionDescription], responses=exception_responses)
 async def get_connections(
     service_type: Optional[str] = Header(None, description="Filter by service type")
 ) -> List[ConnectionDescription]:
+    '''
+    Get a list of all active connections. Can be filtered by service type using the header parameter.
+    Returns connection descriptions including metadata about each active connection.
+    '''
+    # Fetch all connections, optionally filtered by service type from header
     return connection_service.get_connections(service_type=service_type)
 
+# Remove/forget an existing connection
 @router.post("/forget", responses={
-    201: {"description": "Connection established successfully"},
-    400: {"description": "Bad request, connection could not be established"},
+    201: {"description": "Connection forgotten successfully"},
+    400: {"description": "Bad request, connection could not be forgotten"},
     404: {"description": "Connection not found"},
     **exception_responses
 })
-async def connect_to_service(
+async def forget_connection(
     connection_details: ForgetConnection
 ) -> None:
+    '''
+    Remove/forget an existing connection to a service. This will terminate the connection
+    and remove it from the active connections list.
+    '''
+    # Remove the specified connection from active connections
     return connection_service.forget_connection(connection_details=connection_details)
+"""
 
 
 @router.post("/data/get")
