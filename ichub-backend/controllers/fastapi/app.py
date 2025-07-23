@@ -27,11 +27,11 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from tools.exceptions import BaseError, ValidationError
-from tools.constants import API_VERSION_1
+from tools.constants import API_V1
 
 from tractusx_sdk.dataspace.tools import op
 
-from .routers import (
+from .routers.api_v1 import (
     part_management,
     partner_management,
     twin_management,
@@ -67,7 +67,7 @@ app = FastAPI(title="Industry Core Hub Backend API", version="0.0.1", openapi_ta
 ## Include here all the routers for the application.
 
 # API Version 1
-v1_router = APIRouter(prefix=f"/{API_VERSION_1}")
+v1_router = APIRouter(prefix=f"/{API_V1}")
 v1_router.include_router(part_management.router)
 v1_router.include_router(partner_management.router)
 v1_router.include_router(twin_management.router)

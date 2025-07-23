@@ -34,4 +34,4 @@ PARENT_ORDER_NUMBER_DESCRIPTION = "The parent order number of the JIS part."
 VAN_DESCRIPTION = "The optional VAN (Vehicle Assembly Number) of the serialized part."
 
 # ==================== API VERSIONS =========================
-API_VERSION_1 = "v1"
+API_V1 = "v1"
