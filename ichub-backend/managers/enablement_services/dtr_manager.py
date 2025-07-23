@@ -187,6 +187,19 @@ class DTRManager:
                     ReferenceKey(type=ReferenceKeyTypes.GLOBAL_REFERENCE, value=bpn)
                 )
 
+    def _update_shell_descriptor_with_error_handling(self, existing_shell: ShellDescriptor, 
+                                                   aas_id: UUID, manufacturer_id: str) -> ShellDescriptor:
+        """Update shell descriptor with proper error handling and logging."""
+        try:
+            res = self.aas_service.update_asset_administration_shell_descriptor(
+                shell_descriptor=existing_shell, aas_identifier=aas_id.urn, bpn=manufacturer_id
+            )
+            logger.info(f"Successfully updated the AAS with id {aas_id.urn}!")
+            return res
+        except Exception as e:
+            logger.error(f"Failed to update AAS {aas_id.urn}: {str(e)}")
+            raise ExternalAPIError("Failed to update shell descriptor", str(e))
+
     def create_or_update_shell_descriptor(self,
         aas_id: UUID,
         global_id: UUID,
@@ -244,13 +257,7 @@ class DTRManager:
             # If shell existed, update it in the DTR with new asset IDs and BPNs
             existing_shell.specific_asset_ids = specific_asset_ids
             logger.info(f"Sharing Asset Administration Shell [{aas_id.urn}] with {bpn_list}")
-            try:
-                res = self.aas_service.update_asset_administration_shell_descriptor(
-                    shell_descriptor=existing_shell, aas_identifier=aas_id.urn, bpn=manufacturer_id
-                )
-                logger.info(f"Successfully updated the AAS with id {aas_id.urn}!")
-            except:
-                logger.error(f"Failed to update AAS {aas_id.urn}")
+            res = self._update_shell_descriptor_with_error_handling(existing_shell, aas_id, manufacturer_id)
         else:
             # If shell did not exist, create a new one with the constructed asset IDs
             shell = ShellDescriptor(
