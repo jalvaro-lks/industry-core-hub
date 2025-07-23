@@ -95,3 +95,20 @@ async def data_get(get_request: DoGetParams) -> Response:
         allow_redirects=get_request.allow_redirects,
         headers=get_request.headers
     ))
+
+@router.post("/data/post")
+async def data_post(post_request: DoPostParams) -> Response:
+    ## Check if the api key is present and if it is authenticated
+    return HttpTools.proxy(connector_manager.connector_service.consumer.do_post(
+        counter_party_id=post_request.counter_party_id,
+        counter_party_address=post_request.counter_party_address,
+        filter_expression=post_request.filter_expression,
+        path=post_request.path,
+        policies=post_request.policies,
+        verify=post_request.verify,
+        timeout=post_request.timeout,
+        allow_redirects=post_request.allow_redirects,
+        headers=post_request.headers,
+        body=post_request.body,
+        content_type=post_request.content_type
+    ))
