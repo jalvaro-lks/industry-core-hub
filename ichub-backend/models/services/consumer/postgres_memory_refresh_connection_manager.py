@@ -70,7 +70,7 @@ class PostgresMemoryRefreshConnectionManager(PostgresMemoryConnectionManager):
         """
         Stop the background thread and perform a final save to the DB.
         """
-        if self._save_thread:
-            self._save_thread.join()
         self._stop_event.set()
+        if hasattr(self, '_save_thread') and self._save_thread:
+            self._save_thread.join()
         self._save_to_db()
