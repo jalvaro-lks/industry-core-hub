@@ -47,12 +47,6 @@ from models.metadata_database.provider.twin_management import (
     TwinExchange,
     TwinRegistration
 )
-from models.metadata_database.consumer.governance_management import (
-    Policy,
-    Rule,
-    RuleType,
-    AtomicConstraint
-)
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 
