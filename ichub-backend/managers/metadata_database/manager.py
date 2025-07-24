@@ -42,7 +42,6 @@ class RepositoryManager:
         self._twin_aspect_registration_repository = None
         self._twin_exchange_repository = None
         self._twin_registration_repository = None
-        self._governance_management_repository = None
 
     # Context Manager Methods
     def __enter__(self):
