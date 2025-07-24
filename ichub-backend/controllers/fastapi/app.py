@@ -30,12 +30,15 @@ from tools.exceptions import BaseError, ValidationError
 
 from tractusx_sdk.dataspace.tools import op
 
-from .routers import (
+from .routers.provider import (
     part_management,
     partner_management,
     twin_management,
     submodel_dispatcher,
     sharing_handler
+)
+from .routers.consumer import (
+    connection_management
 )
 
 tags_metadata = [
@@ -58,6 +61,10 @@ tags_metadata = [
     {
         "name": "Submodel Dispatcher",
         "description": "Internal API called by EDC Data Planes or Admins in order the deliver data of of the internal used Submodel Service"
+    },
+    {
+        "name": "Open Connection Management",
+        "description": "Handles the connections from the consumer modules, for specific services like digital twin registry and data endpoints"
     }
 ]
 
@@ -69,6 +76,7 @@ app.include_router(partner_management.router)
 app.include_router(twin_management.router)
 app.include_router(submodel_dispatcher.router)
 app.include_router(sharing_handler.router)
+app.include_router(connection_management.router)
 
 @app.exception_handler(BaseError)
 async def base_error_exception_handler(

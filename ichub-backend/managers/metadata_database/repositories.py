@@ -29,19 +29,23 @@ from typing import TypeVar, Type, List, Optional, Generic
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
-from models.metadata_database.models import (
+from models.metadata_database.provider.partner_management import (
     BusinessPartner,
-    CatalogPart,
-    DataExchangeAgreement,
     EnablementServiceStack,
-    LegalEntity,
-    PartnerCatalogPart,
+    LegalEntity
+)
+from models.metadata_database.provider.part_management import (
+    CatalogPart,
     SerializedPart,
+    PartnerCatalogPart
+)
+from models.metadata_database.provider.sharing_management import DataExchangeAgreement
+from models.metadata_database.provider.twin_management import (
     Twin,
     TwinAspect,
     TwinAspectRegistration,
     TwinExchange,
-    TwinRegistration,
+    TwinRegistration
 )
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
