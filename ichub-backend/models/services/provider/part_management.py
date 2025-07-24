@@ -29,8 +29,8 @@ import enum
 
 from pydantic import BaseModel, Field
 
-from models.metadata_database.models import Material, Measurement
-from models.services.partner_management import BusinessPartnerRead
+from models.metadata_database.provider.part_management import Material, Measurement
+from models.services.provider.partner_management import BusinessPartnerRead
 from tools.constants import PARENT_ORDER_NUMBER_DESCRIPTION, VAN_DESCRIPTION
 
 class SharingStatus(enum.IntEnum):

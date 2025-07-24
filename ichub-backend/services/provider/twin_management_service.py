@@ -32,9 +32,9 @@ from managers.metadata_database.manager import RepositoryManagerFactory, Reposit
 from managers.enablement_services.dtr_manager import DTRManager
 from managers.enablement_services.connector_manager import ConnectorManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
-from models.services.part_management import SerializedPartQuery
-from models.services.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
-from models.services.twin_management import (
+from models.services.provider.part_management import SerializedPartQuery
+from models.services.provider.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
+from models.services.provider.twin_management import (
     CatalogPartTwinRead,
     CatalogPartTwinCreate,
     CatalogPartTwinShareCreate,
@@ -51,16 +51,14 @@ from models.services.twin_management import (
     TwinsAspectRegistrationMode,
     TwinDetailsReadBase,
 )
-from models.metadata_database.models import (
-    BusinessPartner,
-    EnablementServiceStack,
-    Twin,
-)
+from models.metadata_database.provider.partner_management import EnablementServiceStack
+from models.metadata_database.provider.twin_management import Twin
+from models.metadata_database.provider.sharing_management import DataExchangeAgreement
 from tools.exceptions import NotFoundError, NotAvailableError
 
 from managers.config.log_manager import LoggingManager
 
-from services.part_management_service import PartManagementService
+from services.provider.part_management_service import PartManagementService
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -695,7 +693,7 @@ class TwinManagementService:
     def _create_twin_exchange(
         repo: RepositoryManager,
         db_twin: Twin,
-        db_business_partner: BusinessPartner
+        db_business_partner: BusinessPartnerRead
     ) -> bool:
             # Step 1: Retrieve the first data exchange agreement entity for the business partner
             # (this will will later be replaced with an explicit mechanism choose a specific data exchange agreement)
