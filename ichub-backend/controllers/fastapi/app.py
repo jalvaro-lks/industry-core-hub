@@ -38,7 +38,7 @@ from .routers.provider.api_v1 import (
     submodel_dispatcher,
     sharing_handler
 )
-from .routers.consumer import (
+from .routers.consumer.api_v1 import (
     connection_management
 )
 
