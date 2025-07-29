@@ -28,10 +28,7 @@ from uuid import UUID
 from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
 from models.services.provider.twin_management import CatalogPartTwinCreate, TwinAspectCreate
-from models.metadata_database.provider.models import BusinessPartner
-from models.metadata_database.provider.models import Twin
-from models.metadata_database.provider.models import DataExchangeAgreement
-from models.metadata_database.provider.models import CatalogPart, PartnerCatalogPart
+from models.metadata_database.provider.models import BusinessPartner, Twin, DataExchangeAgreement, CatalogPart, PartnerCatalogPart
 from models.services.provider.sharing_management import SharedPartBase, ShareCatalogPart, SharedPartner
 from models.services.provider.partner_management import BusinessPartnerRead
 from typing import Dict, Optional, List, Any, Tuple
