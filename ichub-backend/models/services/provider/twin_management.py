@@ -30,7 +30,6 @@ from pydantic import BaseModel, Field
 
 from models.services.provider.part_management import (
     BatchCreate,
-    BusinessPartnerRead,
     CatalogPartBase,
     CatalogPartDetailsRead,
     JISPartCreate,
