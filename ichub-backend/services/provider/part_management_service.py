@@ -258,7 +258,7 @@ class PartManagementService():
 
             # Prepare the result object
             result = CatalogPartDetailsReadWithStatus(
-                manufacturerId=db_legal_entity.bpnl,
+                manufacturerId=db_catalog_part.legal_entity.bpnl,
                 manufacturerPartId=db_catalog_part.manufacturer_part_id,
                 name=db_catalog_part.name,
                 category=db_catalog_part.category,
