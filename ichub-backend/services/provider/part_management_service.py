@@ -47,8 +47,7 @@ from models.services.provider.part_management import (
 )
 from models.services.provider.partner_management import BusinessPartnerRead
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
-from models.metadata_database.provider.part_management import CatalogPart, SerializedPart, PartnerCatalogPart
-from models.metadata_database.provider.partner_management import LegalEntity
+from models.metadata_database.provider.models import CatalogPart, SerializedPart, PartnerCatalogPart, LegalEntity
 from managers.config.log_manager import LoggingManager
 from tools.exceptions import InvalidError, NotFoundError, AlreadyExistsError
 
