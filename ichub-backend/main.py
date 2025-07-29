@@ -23,8 +23,6 @@
 # Import custom logging and configuration modules, and database utility
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
-from managers.enablement_services import ConnectorManager
-from database import connect_and_test
 from managers.enablement_services.dtr_manager import DTRManager
 from uuid import uuid4
 
@@ -52,6 +50,7 @@ LoggingManager.init_logging()
 
 # Load application-specific configuration settings
 ConfigManager.load_config()
+
 
 # Test database connection
 # If uncommented, it will test the database connection at startup

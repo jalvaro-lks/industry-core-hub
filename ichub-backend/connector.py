@@ -10,7 +10,7 @@
 # terms of the Apache License, Version 2.0 which is available at
 # https://www.apache.org/licenses/LICENSE-2.0.
 #
-# Unless required by routerlicable law or agreed to in writing, software
+# Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the
@@ -20,21 +20,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import APIRouter, Body, Header
+from tractusx_sdk.dataspace.managers.connection import PostgresMemoryRefreshConnectionManager
+from database import engine
+from managers.enablement_services import ConnectorManager
+import logging
 
-from services.sharing_service import SharingService
-from models.services.sharing_management import (
-    SharedPartBase,
-    ShareCatalogPart,
-    SharedPartner
-)
-from typing import Optional, List
-from tools.exceptions import exception_responses
-router = APIRouter(prefix="/share", tags=["Sharing Functionality"])
-part_sharing_service = SharingService()
+logger = logging.getLogger("connector")
+logger.setLevel(logging.INFO)
 
-@router.post("/catalog-part", response_model=SharedPartBase, responses=exception_responses)
-async def share_catalog_part(catalog_part_to_share: ShareCatalogPart) -> SharedPartBase:
-    return part_sharing_service.share_catalog_part(
-        catalog_part_to_share=catalog_part_to_share
-    )
+#connector_manager = ConnectorManager(connection_manager=PostgresConnectionManager(engine=engine)) 320ms
+#connector_manager = ConnectorManager(connection_manager=MemoryConnectionManager()) 150ms
+#connector_manager = ConnectorManager(connection_manager=FileSystemConnectionManager(path="./data/connections.json")) #188 ms
+connector_manager = ConnectorManager(connection_manager=PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)) #168 ms

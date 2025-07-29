@@ -22,20 +22,24 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import FastAPI, Request, Header, Body
+from fastapi import FastAPI, Request, APIRouter, Header, Body
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from tools.exceptions import BaseError, ValidationError
+from tools.constants import API_V1
 
 from tractusx_sdk.dataspace.tools import op
 
-from .routers import (
+from .routers.provider.api_v1 import (
     part_management,
     partner_management,
     twin_management,
     submodel_dispatcher,
     sharing_handler
+)
+from .routers.consumer.api_v1 import (
+    connection_management
 )
 
 tags_metadata = [
@@ -58,17 +62,27 @@ tags_metadata = [
     {
         "name": "Submodel Dispatcher",
         "description": "Internal API called by EDC Data Planes or Admins in order the deliver data of of the internal used Submodel Service"
+    },
+    {
+        "name": "Open Connection Management",
+        "description": "Handles the connections from the consumer modules, for specific services like digital twin registry and data endpoints"
     }
 ]
 
 app = FastAPI(title="Industry Core Hub Backend API", version="0.0.1", openapi_tags=tags_metadata)
 
 ## Include here all the routers for the application.
-app.include_router(part_management.router)
-app.include_router(partner_management.router)
-app.include_router(twin_management.router)
-app.include_router(submodel_dispatcher.router)
-app.include_router(sharing_handler.router)
+# API Version 1
+v1_router = APIRouter(prefix=f"/{API_V1}")
+v1_router.include_router(part_management.router)
+v1_router.include_router(partner_management.router)
+v1_router.include_router(twin_management.router)
+v1_router.include_router(submodel_dispatcher.router)
+v1_router.include_router(sharing_handler.router)
+v1_router.include_router(connection_management.router)
+
+# Include the API version 1 router into the main app
+app.include_router(v1_router)
 
 @app.exception_handler(BaseError)
 async def base_error_exception_handler(
