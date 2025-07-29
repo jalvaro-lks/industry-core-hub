@@ -51,9 +51,8 @@ from models.services.provider.twin_management import (
     TwinsAspectRegistrationMode,
     TwinDetailsReadBase,
 )
-from models.metadata_database.provider.partner_management import EnablementServiceStack
-from models.metadata_database.provider.twin_management import Twin
-from models.metadata_database.provider.sharing_management import DataExchangeAgreement
+from models.metadata_database.provider.models import EnablementServiceStack
+from models.metadata_database.provider.models import Twin
 from tools.exceptions import NotFoundError, NotAvailableError
 
 from managers.config.log_manager import LoggingManager
