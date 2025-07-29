@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 DRÄXLMAIER Group
 # (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
@@ -455,6 +456,34 @@ class TwinManagementService:
                 aas_id=serialized_part_unshare_input.aas_id,
                 manufacturer_id=serialized_part_unshare_input.manufacturer_id
             )
+
+            # Mark the twin exchange as cancelled
+            db_twin = repo.twin_repository.find_by_aas_id(serialized_part_unshare_input.aas_id)
+            if db_twin:
+                db_business_partner = repo.business_partner_repository.get_by_bpnl(serialized_part_unshare_input.business_partner_number_to_unshare)
+                if db_business_partner:
+                    db_data_exchange_agreements = repo.data_exchange_agreement_repository.get_by_business_partner_id(db_business_partner.id)
+                    if db_data_exchange_agreements:
+                        db_data_exchange_agreement = db_data_exchange_agreements[0]
+                        db_twin_exchange = repo.twin_exchange_repository.get_by_twin_id_data_exchange_agreement_id(
+                            db_twin.id,
+                            db_data_exchange_agreement.id
+                        )
+                        if db_twin_exchange:
+                            db_twin_exchange.is_cancelled = True
+                            repo.commit()
+                        else:
+                            logger.warning(f"Twin exchange not found for twin {db_twin.id} and data exchange agreement {db_data_exchange_agreement.id}")
+                            raise NotFoundError(f"Twin exchange not found for twin {db_twin.id} and data exchange agreement {db_data_exchange_agreement.id}")
+                    else:
+                        logger.warning(f"No data exchange agreements found for business partner {serialized_part_unshare_input.business_partner_number_to_unshare}")
+                        raise NotFoundError(f"No data exchange agreements found for business partner {serialized_part_unshare_input.business_partner_number_to_unshare}")
+                else:
+                    logger.warning(f"Business partner not found: {serialized_part_unshare_input.business_partner_number_to_unshare}")
+                    raise NotFoundError(f"Business partner not found: {serialized_part_unshare_input.business_partner_number_to_unshare}")
+            else:
+                logger.warning(f"Twin not found for AAS ID: {serialized_part_unshare_input.aas_id}")
+                raise NotFoundError(f"Twin not found for AAS ID: {serialized_part_unshare_input.aas_id}")
 
             return True
 

@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 DRÄXLMAIER Group
 # (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
@@ -72,6 +73,7 @@ class TwinAspectRegistration(SQLModel, table=True):
 class TwinExchange(SQLModel, table=True):
     twin_id: int = Field(foreign_key="twin.id", primary_key=True)
     data_exchange_agreement_id: int = Field(index=True, foreign_key="data_exchange_agreement.id", primary_key=True)
+    is_cancelled: bool = Field(index=True, default=False)
     twin: Twin = Relationship(back_populates="twin_exchanges")
     data_exchange_agreement: "DataExchangeAgreement" = Relationship(back_populates="twin_exchanges")
     __tablename__ = "twin_exchange"
