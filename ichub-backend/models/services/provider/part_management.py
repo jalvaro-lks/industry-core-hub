@@ -29,7 +29,7 @@ import enum
 
 from pydantic import BaseModel, Field
 
-from models.metadata_database.provider.part_management import Material, Measurement
+from models.metadata_database.provider.models import Material, Measurement
 from models.services.provider.partner_management import BusinessPartnerRead
 from tools.constants import PARENT_ORDER_NUMBER_DESCRIPTION, VAN_DESCRIPTION
 
