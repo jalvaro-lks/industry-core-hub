@@ -20,18 +20,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .consumer import ConnectorConsumerManager
-from .provider import ConnectorProviderManager
-class ConnectorManager:
-    consumer: ConnectorConsumerManager
-    provider: ConnectorProviderManager
-    
-    def __init__(self, connector_consumer_manager: ConnectorConsumerManager, connector_provider_manager: ConnectorProviderManager):
-        """
-        Initialize the ConnectorManager with consumer and provider managers.
-        
-        :param connector_consumer_manager: Instance of ConnectorConsumerManager
-        :param connector_provider_manager: Instance of ConnectorProviderManager
-        """
-        self.consumer = connector_consumer_manager
-        self.provider = connector_provider_manager
+
+# Package-level variables
+__author__ = 'Eclipse Tractus-X Contributors'
+__license__ = "Apache License, Version 2.0"
+
+from .connector_consumer_manager import ConnectorConsumerManager
+from .dtr_consumer_manager import DtrConsumerManager
