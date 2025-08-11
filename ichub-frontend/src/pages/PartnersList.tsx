@@ -32,7 +32,6 @@ import CreatePartnerDialog from "../features/partner-management/components/gener
 import { fetchPartners } from '../features/partner-management/api';
 import {ErrorNotFound} from "../components/general/ErrorNotFound";
 import LoadingSpinner from "../components/general/LoadingSpinner";
-import PageNotification from "../components/general/PageNotification";
 
 const PartnersList = () => {
   const [partnerList, setPartnerList] = useState<PartnerInstance[]>([]);
@@ -40,7 +39,7 @@ const PartnersList = () => {
   const [initialPartnerList, setInitialPartnerList] = useState<PartnerInstance[]>([]);
   const [createPartnerDialogOpen, setCreatePartnerDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [notification, setNotification] = useState<{ open: boolean; severity: "success" | "error"; title: string } | null>(null);
+  const [setNotification] = useState<{ open: boolean; severity: "success" | "error"; title: string } | null>(null);
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
   //const navigate = useNavigate();
