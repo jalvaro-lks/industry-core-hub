@@ -39,7 +39,7 @@ export default function AppRoutes() {
           {/* Here we must change the elements as we go along as we develop */}
           <Route path="/catalog" element={<ProductsList />} />
           <Route path="/discover-parts" element={<PartsDiscovery />} />
-          <Route path="/shared" element={<PartnersList />} />
+          <Route path="/partners" element={<PartnersList />} />
           <Route path="/status" element={<ProductsList />} />
         </Route>
       </Routes>
