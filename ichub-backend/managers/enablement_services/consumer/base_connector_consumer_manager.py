@@ -36,16 +36,14 @@ class BaseConnectorConsumerManager(ABC):
     and cache management strategies.
     """
     
-    def __init__(self, dct_type: str, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
+    def __init__(self, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
         """
         Initialize the connector consumer manager.
         
         Args:
-            dct_type (str): The data consumption type identifier
             connector_discovery (ConnectorDiscoveryService): Service for discovering connectors
             expiration_time (int, optional): Cache expiration time in minutes. Defaults to 60.
         """
-        self.dct_type = dct_type
         self.connector_discovery = connector_discovery
         self.expiration_time = expiration_time
         self.REFRESH_INTERVAL_KEY = "refresh_interval"

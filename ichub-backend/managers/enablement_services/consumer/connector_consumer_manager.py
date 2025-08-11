@@ -47,7 +47,7 @@ class ConnectorConsumerManager(BaseConnectorConsumerManager):
     known_connectors: Dict
     catalog_timeout: int
 
-    def __init__(self, dct_type: str, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
+    def __init__(self, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
         """
         Initialize the memory-based connector consumer manager.
         
@@ -56,7 +56,7 @@ class ConnectorConsumerManager(BaseConnectorConsumerManager):
             connector_discovery (ConnectorDiscoveryService): Service for discovering connectors
             expiration_time (int, optional): Cache expiration time in minutes. Defaults to 60.
         """
-        super().__init__(dct_type, connector_discovery, expiration_time)
+        super().__init__(connector_discovery, expiration_time)
         self.known_connectors = {}
         
     def add_connectors(self, bpn: str, connectors: List[str]) -> None:

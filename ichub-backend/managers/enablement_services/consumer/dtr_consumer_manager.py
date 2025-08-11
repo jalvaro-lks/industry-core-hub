@@ -20,20 +20,32 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from ..connector_manager import ConnectorManager
+from typing import TYPE_CHECKING, Dict, List
+
+if TYPE_CHECKING:
+    from ..connector_manager import ConnectorManager
 
 class DtrConsumerManager:
-    def __init__(self, connector_manager: ConnectorManager):
+    def __init__(self, connector_manager: 'ConnectorManager'):
         self.connector_manager = connector_manager
-        self.known_dtr_registries:dict = dict()
+        self.known_dtr_registries: Dict = dict()
         
-        
-    def search_digital_twin_registries(self, bpn: str):
+    def search_digital_twin_registries(self, bpn: str) -> List[str]:
         """
         Search for digital twin registries based on BPN and/or name.
-        """
-            
-        connectors:list = self.connector_manager.get_known_connectors(bpn)
         
-        if(connectors is None or len(connectors) == 0):
+        Args:
+            bpn (str): Business Partner Number to search for
+            
+        Returns:
+            List[str]: List of connector URLs for the BPN
+            
+        Raises:
+            ValueError: If no digital twin registries found for the BPN
+        """
+        connectors: List[str] = self.connector_manager.consumer.get_connectors(bpn)
+        
+        if connectors is None or len(connectors) == 0:
             raise ValueError(f"No digital twin registries found for BPN: {bpn}")
+        
+        return connectors
