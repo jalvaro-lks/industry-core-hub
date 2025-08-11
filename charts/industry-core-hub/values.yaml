@@ -46,7 +46,8 @@ backend:
     type: ClusterIP
     portService: 8000
     portContainer: 8000
-
+  cors:
+    enabled: false
   # -- Backend configuration, changes to these values will be reflected in the configuration.yml file.
   configuration:
     agreements:

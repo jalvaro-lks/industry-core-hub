@@ -75,7 +75,7 @@ frontend:
         #   hosts:
         #     - ""
       hosts:
-        - host: "frontend-ichub.int.catena-x.net"
+        - host: &frontendUrl "frontend-ichub.int.catena-x.net"
           paths:
             - path: /(.*)
               pathType: ImplementationSpecific
@@ -105,7 +105,20 @@ backend:
       accessMode: ReadWriteOnce
       # -- Storage class for logs volume
       storageClass: "default"
-
+  cors:
+    enabled: true
+    allow_origins:
+      - *frontendUrl
+    allow_credentials: true
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+      - "PATCH"
+    allow_headers:
+      - "*"
   configuration:
     authorization:
       enabled: true
