@@ -24,7 +24,7 @@
 from sqlalchemy import Column, String, DateTime, Text, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 Base = declarative_base()
@@ -72,7 +72,7 @@ class ConnectorCache(Base):
         Returns:
             bool: True if the cache entry is expired, False otherwise
         """
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
     
     def to_dict(self) -> dict:
         """

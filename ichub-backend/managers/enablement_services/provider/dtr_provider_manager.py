@@ -54,6 +54,10 @@ class DtrProviderManager:
         dtr_url: str,
         dtr_lookup_url: str,
         api_path: str,
+        edc_controlplane_hostname: str,
+        edc_controlplane_catalog_path: str,
+        edc_dataplane_hostname: str,
+        edc_dataplane_public_path: str,
     ):
         self.dtr_url = dtr_url
         self.dtr_lookup_url = dtr_lookup_url
@@ -62,16 +66,10 @@ class DtrProviderManager:
             base_lookup_url=dtr_lookup_url,
             api_path=api_path,
         )
-        self.edc_controlplane_hostname = ConfigManager.get_config(
-             "edc.controlplane.hostname"
-         )
-        self.edc_controlplane_catalog_path = ConfigManager.get_config(
-            "edc.controlplane.protocolPath"
-        )
-        self.edc_dataplane_hostname = ConfigManager.get_config("edc.dataplane.hostname")
-        self.edc_dataplane_public_path = ConfigManager.get_config(
-            "edc.dataplane.publicPath"
-        )
+        self.edc_controlplane_hostname = edc_controlplane_hostname
+        self.edc_controlplane_catalog_path = edc_controlplane_catalog_path
+        self.edc_dataplane_hostname = edc_dataplane_hostname
+        self.edc_dataplane_public_path = edc_dataplane_public_path
         
     @staticmethod
     def get_dtr_url(base_dtr_url: str = '', uri: str = '', api_path: str = '') -> str:

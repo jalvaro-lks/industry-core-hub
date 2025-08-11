@@ -29,7 +29,7 @@ from .models import ConnectorCache, ConnectorDiscoveryLog, Base
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, and_, or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 import hashlib
 
@@ -124,7 +124,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
                 log_entry = ConnectorDiscoveryLog(
                     id=str(uuid.uuid4()),
                     bpn=bpn,
-                    discovery_timestamp=datetime.utcnow(),
+                    discovery_timestamp=datetime.now(timezone.utc),
                     connectors_found=str(connectors_found),
                     success=str(success).lower(),
                     error_message=error_message,
@@ -149,7 +149,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
         if not connectors:
             return
 
-        expires_at = datetime.utcnow() + timedelta(minutes=self.expiration_time)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=self.expiration_time)
         
         try:
             with self._get_session() as session:
@@ -215,7 +215,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
                     and_(
                         ConnectorCache.bpn == bpn,
                         ConnectorCache.connector_id == connector_id,
-                        ConnectorCache.expires_at > datetime.utcnow()
+                        ConnectorCache.expires_at > datetime.now(timezone.utc)
                     )
                 ).first() is not None
                 
@@ -242,7 +242,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
                     and_(
                         ConnectorCache.bpn == bpn,
                         ConnectorCache.connector_id == connector_id,
-                        ConnectorCache.expires_at > datetime.utcnow()
+                        ConnectorCache.expires_at > datetime.now(timezone.utc)
                     )
                 ).first()
                 
@@ -268,7 +268,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
         try:
             with self._get_session() as session:
                 cache_entries = session.query(ConnectorCache).filter(
-                    ConnectorCache.expires_at > datetime.utcnow()
+                    ConnectorCache.expires_at > datetime.now(timezone.utc)
                 ).all()
                 
                 for entry in cache_entries:
@@ -394,7 +394,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
                 cache_entries = session.query(ConnectorCache).filter(
                     and_(
                         ConnectorCache.bpn == bpn,
-                        ConnectorCache.expires_at > datetime.utcnow()
+                        ConnectorCache.expires_at > datetime.now(timezone.utc)
                     )
                 ).all()
                 
@@ -459,7 +459,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
                 cache_entry = session.query(ConnectorCache).filter(
                     and_(
                         ConnectorCache.bpn == bpn,
-                        ConnectorCache.expires_at > datetime.utcnow()
+                        ConnectorCache.expires_at > datetime.now(timezone.utc)
                     )
                 ).first()
                 
@@ -481,7 +481,7 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
         try:
             with self._get_session() as session:
                 deleted_count = session.query(ConnectorCache).filter(
-                    ConnectorCache.expires_at <= datetime.utcnow()
+                    ConnectorCache.expires_at <= datetime.now(timezone.utc)
                 ).delete()
                 session.commit()
                 
@@ -514,12 +514,12 @@ class ConnectorConsumerDatabaseManager(BaseConnectorConsumerManager):
                 
                 # Active entries (not expired)
                 stats['database_active_entries'] = session.query(ConnectorCache).filter(
-                    ConnectorCache.expires_at > datetime.utcnow()
+                    ConnectorCache.expires_at > datetime.now(timezone.utc)
                 ).count()
                 
                 # Expired entries
                 stats['database_expired_entries'] = session.query(ConnectorCache).filter(
-                    ConnectorCache.expires_at <= datetime.utcnow()
+                    ConnectorCache.expires_at <= datetime.now(timezone.utc)
                 ).count()
                 
         except Exception as e:

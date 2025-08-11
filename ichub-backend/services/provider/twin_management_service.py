@@ -25,12 +25,13 @@
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
 
+from connector import connector_manager
+
 
 from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
-from managers.enablement_services.dtr_manager import DTRManager
-from managers.enablement_services.connector_manager import ConnectorManager
+from managers.enablement_services.dtr_manager import DtrProviderManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from models.services.provider.part_management import SerializedPartQuery
 from models.services.provider.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
@@ -137,7 +138,7 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             
-            dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
+            dtr_manager = _create_dtr_provider_manager(db_enablement_service_stack.connection_settings)
             
             customer_part_ids = {partner_catalog_part.customer_part_id: partner_catalog_part.business_partner.bpnl 
                                     for partner_catalog_part in db_catalog_part.partner_catalog_parts}
@@ -314,7 +315,7 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             if not db_twin_registration.dtr_registered:
-                dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
+                dtr_manager = _create_dtr_provider_manager(db_enablement_service_stack.connection_settings)
                 
                 dtr_manager.create_or_update_shell_descriptor_serialized_part(
                     global_id=db_twin.global_id,
@@ -471,10 +472,9 @@ class TwinManagementService:
 
             ## Step 4b: Check if there is created a asset for the digital twin registry.
             
-            edc_manager = _create_connector_manager(db_enablement_service_stack.connection_settings)
             dtr_config = ConfigManager.get_config("digitalTwinRegistry")
             asset_config = dtr_config.get("asset_config")
-            dtr_asset_id, _, _, _ = edc_manager.register_dtr_offer(
+            dtr_asset_id, _, _, _ = connector_manager.provider.register_dtr_offer(
                 base_dtr_url=dtr_config.get("hostname"),
                 uri=dtr_config.get("uri"),
                 api_path=dtr_config.get("apiPath"),
@@ -504,7 +504,7 @@ class TwinManagementService:
             if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.EDC_REGISTERED.value:
                 
                 # Step 6a: Register the aspect as asset in the EDC (if necessary) only submodel bundle allowed
-                asset_id, usage_policy_id, access_policy_id, contract_id = edc_manager.register_submodel_bundle_circular_offer(
+                asset_id, usage_policy_id, access_policy_id, contract_id = connector_manager.provider.register_submodel_bundle_circular_offer(
                     semantic_id=db_twin_aspect.semantic_id
                 )
 
@@ -514,7 +514,7 @@ class TwinManagementService:
 
             # Step 7: Handle the DTR registration
             if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:
-                dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
+                dtr_manager = _create_dtr_provider_manager(db_enablement_service_stack.connection_settings)
                 
                 # Step 7a: Register the submodel in the DTR (if necessary)
                 try:
@@ -718,12 +718,10 @@ class TwinManagementService:
                 return False
 
 
-def _create_dtr_manager(connection_settings: Optional[Dict[str, Any]]) -> DTRManager:
+def _create_dtr_provider_manager(connection_settings: Optional[Dict[str, Any]]) -> DtrProviderManager:
     """
-    Create a new instance of the DTRManager class.
+    Create a new instance of the DtrProviderManager class.
     """
-    # TODO: later we can configure the manager via the connection settings from the DB here
-    # For now we take the values from the config file
     dtr_hostname = ConfigManager.get_config('digitalTwinRegistry.hostname')
     dtr_uri = ConfigManager.get_config('digitalTwinRegistry.uri')
     dtr_lookup_uri = ConfigManager.get_config('digitalTwinRegistry.lookupUri')
@@ -731,16 +729,14 @@ def _create_dtr_manager(connection_settings: Optional[Dict[str, Any]]) -> DTRMan
     dtr_url = f"{dtr_hostname}{dtr_uri}"
     dtr_lookup_url = f"{dtr_hostname}{dtr_lookup_uri}"
 
-    return DTRManager(
+    return DtrProviderManager(
         dtr_url=dtr_url, dtr_lookup_url=dtr_lookup_url,
-        api_path=str(dtr_api_path))
-
-def _create_connector_manager(connection_settings: Optional[Dict[str, Any]]) -> ConnectorManager:
-    """
-    Create a new instance of the EDCManager class.
-    """
-    # TODO: later we can configure the manager via the connection settings from the DB here
-    return ConnectorManager()
+        api_path=str(dtr_api_path),
+        edc_controlplane_hostname=ConfigManager.get_config("edc.controlplane.hostname"),
+        edc_controlplane_catalog_path=ConfigManager.get_config("edc.controlplane.protocolPath"),
+        edc_dataplane_hostname=ConfigManager.get_config("edc.dataplane.hostname"),
+        edc_dataplane_public_path=ConfigManager.get_config("edc.dataplane.publicPath")
+    )
 
 def _create_submodel_service_manager(connection_settings: Optional[Dict[str, Any]]) -> SubmodelServiceManager:
     """
