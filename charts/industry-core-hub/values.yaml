@@ -33,6 +33,16 @@ participantId: ""
 backend:
   enabled: true
   name: "industry-core-hub-backend"
+  discovery:
+    discovery_finder:
+      url: "https://<discovery-finder-url>/api/v1.0/administration/connectors/discovery/search"
+    connector_discovery:
+      key: "bpn"
+    oauth:
+      url: "https://<central-idp-url>/auth/"
+      realm: "<realm>"
+      client_id: "<client-id>"
+      client_secret: "<client-secret>"
   image:
     repository: "tractusx/industry-core-hub-backend"
     pullPolicy: IfNotPresent

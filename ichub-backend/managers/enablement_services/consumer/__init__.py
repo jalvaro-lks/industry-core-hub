@@ -25,5 +25,6 @@
 __author__ = 'Eclipse Tractus-X Contributors'
 __license__ = "Apache License, Version 2.0"
 
-from .connector_consumer_manager import ConnectorConsumerManager
 from .dtr_consumer_manager import DtrConsumerManager
+from .connector.memory.connector_consumer_memory_manager import ConnectorConsumerMemoryManager
+from .base_connector_consumer_manager import BaseConnectorConsumerManager

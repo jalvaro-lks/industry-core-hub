@@ -20,13 +20,11 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-declare const ENV: Record<string, string>
-
 export const isRequireHttpsUrlPattern = () =>
-  ENV.REQUIRE_HTTPS_URL_PATTERN !== 'false';
+  import.meta.env.VITE_REQUIRE_HTTPS_URL_PATTERN !== 'false';
 
-export const getIchubBackendUrl = () => ENV.ICHUB_BACKEND_URL ?? '';
-export const getParticipantId = () => ENV.PARTICIPANT_ID ?? 'BPNL000000000000';
+export const getIchubBackendUrl = () => import.meta.env.VITE_ICHUB_BACKEND_URL ?? '';
+export const getParticipantId = () => import.meta.env.VITE_PARTICIPANT_ID ?? 'BPNL000000000000';
 
 const EnvironmentService = {
   isRequireHttpsUrlPattern,

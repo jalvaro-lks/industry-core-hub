@@ -25,11 +25,12 @@ from typing import TYPE_CHECKING, Dict, List
 if TYPE_CHECKING:
     from ..connector_manager import ConnectorManager
 
-class DtrConsumerManager:
+class DtrConsumerMemoryManager:
     def __init__(self, connector_manager: 'ConnectorManager'):
         self.connector_manager = connector_manager
         self.known_dtr_registries: Dict = dict()
-        
+        self.dtrs_key= "dtrs"
+
     def search_digital_twin_registries(self, bpn: str) -> List[str]:
         """
         Search for digital twin registries based on BPN and/or name.
@@ -43,6 +44,10 @@ class DtrConsumerManager:
         Raises:
             ValueError: If no digital twin registries found for the BPN
         """
+        
+        if(bpn in self.known_dtr_registries):
+            return self.known_dtr_registries[bpn]
+        
         connectors: List[str] = self.connector_manager.consumer.get_connectors(bpn)
         
         if connectors is None or len(connectors) == 0:

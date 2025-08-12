@@ -39,7 +39,6 @@ const PartnersList = () => {
   const [initialPartnerList, setInitialPartnerList] = useState<PartnerInstance[]>([]);
   const [createPartnerDialogOpen, setCreatePartnerDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [setNotification] = useState<{ open: boolean; severity: "success" | "error"; title: string } | null>(null);
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
   //const navigate = useNavigate();
@@ -64,21 +63,10 @@ const PartnersList = () => {
       setInitialPartnerList(prev =>
         prev.map(p => (p.bpnl === newPartner.bpnl ? newPartner : p))
       );
-      setNotification({
-        open: true,
-        severity: "success",
-        title: `Partner "${newPartner.name}" updated successfully`,
-      });
     } else {
       setPartnerList(prev => [...prev, newPartner]);
       setInitialPartnerList(prev => [...prev, newPartner]);
-      setNotification({
-        open: true,
-        severity: "success",
-        title: `Partner "${newPartner.name}" created successfully`,
-      });
     }
-    setTimeout(() => setNotification(null), 3000);
   };
 
   const handleChangePage = (

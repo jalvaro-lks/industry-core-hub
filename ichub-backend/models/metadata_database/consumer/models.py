@@ -1,7 +1,6 @@
 #################################################################################
-# Eclipse Tractus-X - Industry Core Hub Backend
+# Eclipse Tractus-X - Software Development KIT
 #
-# Copyright (c) 2025 CGI Deutschland B.V. & Co. KG
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -21,16 +20,21 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-"""
-Hybrid package for combined memory and database connector consumer management.
+from sqlmodel import SQLModel, Field
+from sqlalchemy import JSON
+from sqlmodel import Column
+from datetime import datetime
+from typing import List
 
-This package provides the best of both worlds by combining in-memory caching
-for speed with database persistence for durability, including background
-synchronization between the two storage layers.
-"""
+class KnownConnectors(SQLModel):
+    """
+    Represents cached connector information for a specific Business Partner Number Legal Entity (BPNL).
+    
+    This table stores the discovered connectors for each BPNL along with timestamps
+    for cache management and expiration.
+    """
 
-from .connector_consumer_hybrid_manager import ConnectorConsumerHybridManager
+    bpnl: str = Field(primary_key=True, index=True, description="Business Partner Number Legal Entity")
+    connectors: List[str] = Field(sa_column=Column(JSON), description="List of connector URLs for this BPNL")
+    expires_at: datetime = Field(index=True, description="When this cache entry expires")
 
-__all__ = [
-    'ConnectorConsumerHybridManager'
-]

@@ -83,6 +83,16 @@ frontend:
                 service: "frontend"
                 port: 8080
 backend:
+  discovery:
+    discovery_finder:
+      url: "https://<discovery-finder-url>/api/v1.0/administration/connectors/discovery/search"
+    connector_discovery:
+      key: "bpn"
+    oauth:
+      url: "https://<central-idp-url>/auth/"
+      realm: "<realm>"
+      client_id: "<client-id>"
+      client_secret: "<client-secret>"
   # -- Persistance configuration for the backend
   persistence:
     # -- Create a PVC to persist storage (if disabled, data and logs will not be persisted)

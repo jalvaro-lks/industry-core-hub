@@ -1,7 +1,6 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 CGI Deutschland B.V. & Co. KG
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -20,20 +19,3 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-
-"""
-Database package for PostgreSQL-based connector consumer management.
-
-This package provides persistent storage capabilities for connector caching
-with database models and managers for connector discovery information.
-"""
-
-from .models import ConnectorCache, ConnectorDiscoveryLog, Base
-from .connector_consumer_database_manager import ConnectorConsumerDatabaseManager
-
-__all__ = [
-    'ConnectorCache',
-    'ConnectorDiscoveryLog', 
-    'Base',
-    'ConnectorConsumerDatabaseManager'
-]

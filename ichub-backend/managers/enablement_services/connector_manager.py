@@ -20,17 +20,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .consumer import ConnectorConsumerManager
+from .consumer import BaseConnectorConsumerManager
 from .provider import ConnectorProviderManager
 class ConnectorManager:
-    consumer: ConnectorConsumerManager
+    consumer: BaseConnectorConsumerManager
     provider: ConnectorProviderManager
-    
-    def __init__(self, connector_consumer_manager: ConnectorConsumerManager, connector_provider_manager: ConnectorProviderManager):
+
+    def __init__(self, connector_consumer_manager: BaseConnectorConsumerManager, connector_provider_manager: ConnectorProviderManager):
         """
         Initialize the ConnectorManager with consumer and provider managers.
-        
-        :param connector_consumer_manager: Instance of ConnectorConsumerManager
+
+        :param connector_consumer_manager: Instance of BaseConnectorConsumerManager
         :param connector_provider_manager: Instance of ConnectorProviderManager
         """
         self.consumer = connector_consumer_manager

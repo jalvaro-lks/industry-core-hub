@@ -110,17 +110,9 @@ const ProductsDetails = () => {
         }}>
           <ErrorNotFound icon={HelpOutlineIcon} message="404 PART NOT FOUND "/>
           <Button 
-            variant="contained" 
-            size="small" 
+            className="back-button" variant="outlined" size="small"
             onClick={() => navigate('/catalog')}
             startIcon={<ArrowBackIcon />}
-            sx={{ 
-              backgroundColor: '#FFA726', 
-              color: '#000',
-              '&:hover': {
-                backgroundColor: '#FF9800'
-              }
-            }}
           >
             BACK TO CATALOG
           </Button>

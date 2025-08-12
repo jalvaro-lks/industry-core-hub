@@ -26,15 +26,14 @@
 ## Source Code: https://github.com/eclipse-tractusx/tractusx-sdk-services/blob/feature/industry-flag-service/industry-flag-service/backend/managers/edcManager.py
 ## Renamed as ConnectorConsumerManager
 
+import threading
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService
 from tractusx_sdk.dataspace.tools import op
 from managers.config.log_manager import LoggingManager
 from managers.enablement_services.consumer.base_connector_consumer_manager import BaseConnectorConsumerManager
 from typing import List, Dict, Optional
-logger = LoggingManager.get_logger(__name__)
 import copy
-
-import hashlib
+import logging
 
 class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
     """
@@ -48,18 +47,22 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
     ## Declare variables
     known_connectors: Dict
     catalog_timeout: int
+    logger: logging.Logger
+    verbose: bool
 
-    def __init__(self, dct_type: str, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
+    def __init__(self, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60, logger:logging.Logger=None, verbose:bool=False):
         """
         Initialize the memory-based connector consumer manager.
         
         Args:
-            dct_type (str): The data consumption type identifier
             connector_discovery (ConnectorDiscoveryService): Service for discovering connectors
             expiration_time (int, optional): Cache expiration time in minutes. Defaults to 60.
         """
-        super().__init__(dct_type, connector_discovery, expiration_time)
+        super().__init__(connector_discovery, expiration_time)
         self.known_connectors = {}
+        self.logger = logger if logger else None
+        self.verbose = verbose
+        self._lock = threading.RLock()
         
     def add_connectors(self, bpn: str, connectors: List[str]) -> None:
         """
@@ -72,26 +75,30 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
             bpn (str): The Business Partner Number to associate connectors with
             connectors (List[str]): List of connector URLs/endpoints to cache
         """
-        if bpn not in self.known_connectors:
-            self.known_connectors[bpn] = {self.REFRESH_INTERVAL_KEY: op.get_future_timestamp(minutes=self.expiration_time)}
+        with self._lock:
+            if bpn not in self.known_connectors:
+                self.known_connectors[bpn] = {}
 
-        if(self.REFRESH_INTERVAL_KEY not in self.known_connectors[bpn]):
+            # Always update the refresh interval timestamp
             self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY] = op.get_future_timestamp(minutes=self.expiration_time)
+            
+            # Check if we already have valid connectors and the cache hasn't expired
+            if(self.CONNECTOR_LIST_KEY in self.known_connectors[bpn]) and (len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY]) > 0):
+                if(self.logger and self.verbose):
+                    self.logger.debug(f"[CONNECTOR Manager] [{bpn}] CONNECTORs already cached, skipping update")
+                return
+            
+            # Store the connectors under the specific key
+            self.known_connectors[bpn][self.CONNECTOR_LIST_KEY] = connectors
+            
+            if(self.logger and self.verbose):
+                self.logger.info(f"[CONNECTOR Manager] [{bpn}] Added [{len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY])}] CONNECTORs to the cache! Next refresh at [{op.timestamp_to_datetime(self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+            
+        return 
         
-        if(self.CONNECTOR_LIST_KEY in self.known_connectors[bpn]) and (len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY]) > 0) and (not op.is_interval_reached(self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY])):
-            return
-        
-        self.known_connectors[bpn][self.CONNECTOR_LIST_KEY] = op.get_future_timestamp(minutes=self.expiration_time)
-        self.known_connectors[bpn][self.CONNECTOR_LIST_KEY] = connectors
-        
-        logger.info(f"[CONNECTOR Manager] [{bpn}] Added [{len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY])}] CONNECTORs to the cache! Next refresh at [{op.timestamp_to_datetime(self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
-        
-    
     def is_connector_known(self, bpn: str, connector: str) -> bool:
         """
         Check if a specific connector is known/cached for the given BPN.
-        
-        Uses SHA3-256 hashing to generate connector IDs for comparison.
         
         Args:
             bpn (str): The Business Partner Number to check
@@ -100,27 +107,39 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         Returns:
             bool: True if the connector is known for the BPN, False otherwise
         """
-        if bpn not in self.known_connectors:
-            return False
+        with self._lock:
+            if bpn not in self.known_connectors:
+                return False
 
-        connector_id = self._generate_connector_id(connector)
-        return connector_id in self.known_connectors[bpn]
+            if self.CONNECTOR_LIST_KEY not in self.known_connectors[bpn]:
+                return False
+                
+            return connector in self.known_connectors[bpn][self.CONNECTOR_LIST_KEY]
     
     def get_connector_by_id(self, bpn: str, connector_id: str) -> Optional[str]:
         """
         Retrieve a specific connector by its ID for the given BPN.
         
+        Note: Since we're using list-based storage, this method uses the connector URL as the ID.
+        
         Args:
             bpn (str): The Business Partner Number
-            connector_id (str): The unique identifier of the connector
+            connector_id (str): The connector URL (used as ID)
             
         Returns:
             Optional[str]: The connector URL/endpoint if found, None otherwise
         """
-        if bpn not in self.known_connectors or connector_id not in self.known_connectors[bpn]:
-            return None
-        
-        return self.known_connectors[bpn][connector_id]
+        with self._lock:
+            if bpn not in self.known_connectors:
+                return None
+
+            if self.CONNECTOR_LIST_KEY not in self.known_connectors[bpn]:
+                return None
+            
+        if connector_id in self.known_connectors[bpn][self.CONNECTOR_LIST_KEY]:
+            return connector_id
+            
+        return None
 
     
     def get_known_connectors(self) -> Dict:
@@ -130,7 +149,8 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         Returns:
             Dict: Complete cache dictionary containing all BPNs and their associated connectors
         """
-        return self.known_connectors
+        with self._lock:
+            return self.known_connectors
 
     def delete_connector(self, bpn: str, connector_id: str) -> Dict:
         """
@@ -138,12 +158,17 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         
         Args:
             bpn (str): The Business Partner Number
-            connector_id (str): The unique identifier of the connector to remove
+            connector_id (str): The connector URL (used as ID) to remove
             
         Returns:
             Dict: Updated cache state after deletion
         """
-        del self.known_connectors[bpn][connector_id]
+        with self._lock:
+            if bpn in self.known_connectors and self.CONNECTOR_LIST_KEY in self.known_connectors[bpn]:
+                if connector_id in self.known_connectors[bpn][self.CONNECTOR_LIST_KEY]:
+                    self.known_connectors[bpn][self.CONNECTOR_LIST_KEY].remove(connector_id)
+                    if(self.logger and self.verbose):
+                        self.logger.debug(f"[CONNECTOR Manager] [{bpn}] Removed connector [{connector_id}] from cache")
         return self.known_connectors
         
     def purge_bpn(self, bpn: str) -> None:
@@ -153,7 +178,8 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         Args:
             bpn (str): The Business Partner Number to purge from cache
         """
-        del self.known_connectors[bpn]
+        with self._lock:
+            del self.known_connectors[bpn]
             
     def purge_cache(self) -> None:
         """
@@ -162,9 +188,10 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         Resets the cache to an empty state, removing all cached connectors
         for all BPNs.
         """
-        self.known_connectors = {}
-    
-    
+        with self._lock:
+            self.known_connectors = {}
+
+
     def get_connectors(self, bpn: str) -> List[str]:
         """
         Retrieve connectors for a specific BPN, with automatic discovery if not cached.
@@ -179,23 +206,27 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         Returns:
             List[str]: List of connector URLs/endpoints for the BPN
         """
-        known_connectors: Dict = {}
-        
-        ## If the connectors are known then the cache is loaded
-        if(bpn in self.known_connectors):
-            known_connectors = copy.deepcopy(self.known_connectors[bpn])
-        
-        ## In case there is connectors, and the interval has not yet been reached
-        if(known_connectors != {}) and (self.REFRESH_INTERVAL_KEY in known_connectors) and (not op.is_interval_reached(end_timestamp=known_connectors[self.REFRESH_INTERVAL_KEY])):
-            return [connector_url for connector_id, connector_url in self.known_connectors[bpn].items()] ## Return the urls from the connectors
-        
-        logger.info(f"[CONNECTOR Manager] No cached CONNECTOR were found, discoverying CONNECTORs for bpn [{bpn}]...")
-        
-        connectors: Optional[List[str]] = self.connector_discovery.find_connector_by_bpn(bpn=bpn)
-        if(connectors is None or len(connectors) == 0):
-            return []
-        
-        self.add_connectors(bpn=bpn, connectors=connectors)
+        with self._lock:
+            known_connectors: Dict = {}
+            
+            ## If the connectors are known then the cache is loaded
+            if(bpn in self.known_connectors):
+                known_connectors = copy.deepcopy(self.known_connectors[bpn])
+            
+            ## In case there is connectors, and the interval has not yet been reached
+            if(known_connectors != {}) and (self.REFRESH_INTERVAL_KEY in known_connectors) and (self.CONNECTOR_LIST_KEY in known_connectors) and (not op.is_interval_reached(end_timestamp=known_connectors[self.REFRESH_INTERVAL_KEY])):
+                if(self.logger and self.verbose):
+                    self.logger.debug(f"[CONNECTOR Manager] [{bpn}] Returning [{len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY])}] CONNECTORs from cache. Next refresh at [{op.timestamp_to_datetime(self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+                return self.known_connectors[bpn][self.CONNECTOR_LIST_KEY] ## Return the urls from the connectors
+            
+            if(self.logger and self.verbose):
+                self.logger.info(f"[CONNECTOR Manager] No cached CONNECTOR were found, discoverying CONNECTORs for bpn [{bpn}]...")
+
+            connectors: Optional[List[str]] = self.connector_discovery.find_connector_by_bpn(bpn=bpn)
+            if(connectors is None or len(connectors) == 0):
+                return []
+            
+            self.add_connectors(bpn=bpn, connectors=connectors)
         
         return connectors
 

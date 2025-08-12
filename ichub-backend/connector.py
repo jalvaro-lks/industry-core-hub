@@ -24,20 +24,26 @@ from tractusx_sdk.dataspace.managers.connection import PostgresMemoryRefreshConn
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService, DiscoveryFinderService
 from database import engine
 from managers.enablement_services import ConnectorManager
-from managers.enablement_services.consumer import ConnectorConsumerManager
 from managers.enablement_services.provider import ConnectorProviderManager
 from managers.config.config_manager import ConfigManager
 from tractusx_sdk.dataspace.managers import OAuth2Manager
+
+from managers.enablement_services.consumer import ConnectorConsumerMemoryManager
 import logging
 
 logger = logging.getLogger("connector")
 logger.setLevel(logging.INFO)
+
+"""
+Currently only one connector is supported from consumer/provider side.
+"""
 
 # Create the connection manager for the provider
 connection_manager = PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)
 
 # Create the provider manager
 connector_provider_manager = ConnectorProviderManager(connection_manager=connection_manager)
+
 
 discovery_oauth = OAuth2Manager(
     auth_url=ConfigManager.get_config("discovery.oauth.url"),
@@ -58,7 +64,7 @@ connector_discovery_service = ConnectorDiscoveryService(
 )
 
 # Create the consumer manager
-connector_consumer_manager = ConnectorConsumerManager(
+connector_consumer_manager = ConnectorConsumerMemoryManager(
     connector_discovery=connector_discovery_service,
     expiration_time=60  # 60 minutes cache expiration
 )

@@ -26,7 +26,7 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
 
 from connector import connector_manager
-
+from dtr import dtr_manager
 
 from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
@@ -138,12 +138,10 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             
-            dtr_manager = _create_dtr_provider_manager(db_enablement_service_stack.connection_settings)
-            
             customer_part_ids = {partner_catalog_part.customer_part_id: partner_catalog_part.business_partner.bpnl 
                                     for partner_catalog_part in db_catalog_part.partner_catalog_parts}
             
-            dtr_manager.create_or_update_shell_descriptor(
+            dtr_manager.provider.create_or_update_shell_descriptor(
                 global_id=db_twin.global_id,
                 aas_id=db_twin.aas_id,
                 manufacturer_id=create_input.manufacturer_id,
@@ -315,9 +313,7 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             if not db_twin_registration.dtr_registered:
-                dtr_manager = _create_dtr_provider_manager(db_enablement_service_stack.connection_settings)
-                
-                dtr_manager.create_or_update_shell_descriptor_serialized_part(
+                dtr_manager.provider.create_or_update_shell_descriptor_serialized_part(
                     global_id=db_twin.global_id,
                     aas_id=db_twin.aas_id,
                     manufacturer_id=create_input.manufacturer_id,
@@ -513,12 +509,10 @@ class TwinManagementService:
                 repo.commit()
 
             # Step 7: Handle the DTR registration
-            if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:
-                dtr_manager = _create_dtr_provider_manager(db_enablement_service_stack.connection_settings)
-                
+            if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:               
                 # Step 7a: Register the submodel in the DTR (if necessary)
                 try:
-                    dtr_manager.create_submodel_descriptor(
+                    dtr_manager.provider.create_submodel_descriptor(
                         aas_id=db_twin.aas_id,
                         submodel_id=db_twin_aspect.submodel_id,
                         semantic_id=db_twin_aspect.semantic_id,
@@ -717,26 +711,6 @@ class TwinManagementService:
             else:
                 return False
 
-
-def _create_dtr_provider_manager(connection_settings: Optional[Dict[str, Any]]) -> DtrProviderManager:
-    """
-    Create a new instance of the DtrProviderManager class.
-    """
-    dtr_hostname = ConfigManager.get_config('digitalTwinRegistry.hostname')
-    dtr_uri = ConfigManager.get_config('digitalTwinRegistry.uri')
-    dtr_lookup_uri = ConfigManager.get_config('digitalTwinRegistry.lookupUri')
-    dtr_api_path = ConfigManager.get_config('digitalTwinRegistry.apiPath')
-    dtr_url = f"{dtr_hostname}{dtr_uri}"
-    dtr_lookup_url = f"{dtr_hostname}{dtr_lookup_uri}"
-
-    return DtrProviderManager(
-        dtr_url=dtr_url, dtr_lookup_url=dtr_lookup_url,
-        api_path=str(dtr_api_path),
-        edc_controlplane_hostname=ConfigManager.get_config("edc.controlplane.hostname"),
-        edc_controlplane_catalog_path=ConfigManager.get_config("edc.controlplane.protocolPath"),
-        edc_dataplane_hostname=ConfigManager.get_config("edc.dataplane.hostname"),
-        edc_dataplane_public_path=ConfigManager.get_config("edc.dataplane.publicPath")
-    )
 
 def _create_submodel_service_manager(connection_settings: Optional[Dict[str, Any]]) -> SubmodelServiceManager:
     """
