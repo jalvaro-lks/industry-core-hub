@@ -32,6 +32,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 from ..memory import ConnectorConsumerMemoryManager
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService
+from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
 from tractusx_sdk.dataspace.tools import op
 from sqlalchemy.engine import Engine as E
 from sqlalchemy.orm import Session as S
@@ -43,12 +44,23 @@ class ConsumerConnectorPostgresMemoryManager(ConnectorConsumerMemoryManager):
     Inherits from MemoryConnectionManager to maintain an in-memory cache and extends it with persistent storage functionality.
     """
 
-    def __init__(self, engine: E | S, connector_discovery: ConnectorDiscoveryService, expiration_time:int=3600, table_name="known_connectors", connectors_key="connectors", logger:logging.Logger=None, verbose:bool=False):
+    def __init__(self, 
+                 connector_consumer_service: BaseConnectorConsumerService,
+                 engine: E | S, 
+                 connector_discovery: ConnectorDiscoveryService, 
+                 expiration_time: int = 3600, 
+                 table_name: str = "known_connectors", 
+                 connectors_key: str = "connectors", 
+                 logger: logging.Logger = None, 
+                 verbose: bool = False):
         """
         Initialize the Postgres memory-backed connection manager.
 
         Args:
+            connector_consumer_service (BaseConnectorConsumerService): The connector consumer service instance.
             engine: SQLAlchemy engine or session for database operations.
+            connector_discovery (ConnectorDiscoveryService): Service for discovering connectors
+            expiration_time (int, optional): Cache expiration time in minutes. Defaults to 3600.
             table_name: Name of the database table for storing EDR connections.
             connectors_key: Key used to store EDR counts within open_connections.
             logger: Optional logger instance for debug output.
@@ -57,7 +69,13 @@ class ConsumerConnectorPostgresMemoryManager(ConnectorConsumerMemoryManager):
         # Initialize base memory connection manager and configure database.
         # Dynamically define the SQLModel table for EDR connections.
         # Load existing data from the database into memory.
-        super().__init__(connector_discovery=connector_discovery, expiration_time=expiration_time, logger=logger, verbose=verbose)
+        super().__init__(
+            connector_consumer_service=connector_consumer_service,
+            connector_discovery=connector_discovery, 
+            expiration_time=expiration_time, 
+            logger=logger, 
+            verbose=verbose
+        )
         self.engine = engine
         self.table_name = table_name
         self.open_connections = {}

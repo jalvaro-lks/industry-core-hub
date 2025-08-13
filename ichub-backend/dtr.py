@@ -22,7 +22,7 @@
 
 from managers.enablement_services import DtrManager
 
-from managers.enablement_services.consumer import DtrConsumerManager
+from managers.enablement_services.consumer import DtrConsumerSyncPostgresMemoryManager
 from managers.enablement_services.provider import DtrProviderManager
 
 import logging
@@ -31,10 +31,24 @@ logger = logging.getLogger("connector")
 logger.setLevel(logging.INFO)
 
 from connector import connector_manager
+from database import engine
 from managers.config.config_manager import ConfigManager
 
-dtr_consumer_manager = DtrConsumerManager(
-    connector_manager=connector_manager
+# Get DTR discovery configuration parameters
+dtr_dct_type_id = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_key')
+dtr_filter_operand_left = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_filter.operandLeft')
+dtr_filter_operator = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_filter.operator')
+dtr_dct_type = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_filter.operandRight')
+
+dtr_consumer_manager = DtrConsumerSyncPostgresMemoryManager(
+    engine=engine,
+    connector_consumer_manager=connector_manager.consumer,
+    logger=logger,
+    verbose=True,
+    dct_type_id=dtr_dct_type_id,
+    dct_type_key=dtr_filter_operand_left,
+    operator=dtr_filter_operator,
+    dct_type=dtr_dct_type
 )
 
 """

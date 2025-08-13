@@ -28,6 +28,7 @@
 
 import threading
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService
+from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
 from tractusx_sdk.dataspace.tools import op
 from managers.config.log_manager import LoggingManager
 from managers.enablement_services.consumer.base_connector_consumer_manager import BaseConnectorConsumerManager
@@ -50,15 +51,23 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
     logger: logging.Logger
     verbose: bool
 
-    def __init__(self, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60, logger:logging.Logger=None, verbose:bool=False):
+    def __init__(self, 
+                 connector_consumer_service: BaseConnectorConsumerService,
+                 connector_discovery: ConnectorDiscoveryService, 
+                 expiration_time: int = 60, 
+                 logger: logging.Logger = None, 
+                 verbose: bool = False):
         """
         Initialize the memory-based connector consumer manager.
         
         Args:
+            connector_consumer_service (BaseConnectorConsumerService): The connector consumer service instance.
             connector_discovery (ConnectorDiscoveryService): Service for discovering connectors
             expiration_time (int, optional): Cache expiration time in minutes. Defaults to 60.
+            logger (logging.Logger, optional): Logger instance
+            verbose (bool, optional): Verbose flag
         """
-        super().__init__(connector_discovery, expiration_time)
+        super().__init__(connector_consumer_service, connector_discovery, expiration_time)
         self.known_connectors = {}
         self.logger = logger if logger else None
         self.verbose = verbose

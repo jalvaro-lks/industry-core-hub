@@ -23,7 +23,7 @@
 from uuid import UUID
 from urllib.parse import quote
 from hashlib import sha256
-from tractusx_sdk.dataspace.services.connector import ServiceFactory
+from tractusx_sdk.dataspace.services.connector import BaseConnectorProviderService
 from tractusx_sdk.dataspace.services import BaseConnectorService
 from tractusx_sdk.dataspace.managers.connection import PostgresConnectionManager
 from managers.config.config_manager import ConfigManager
@@ -39,68 +39,21 @@ from tools.crypt_tools import blake2b_128bit
 class ConnectorProviderManager:
     """Manager for handling EDC (Eclipse Data Space Components Connector) related operations."""
 
-    connector_version: str
-    edc_controlplane_hostname: str
-    edc_controlplane_management_api: str
-    connector_service: BaseConnectorService
-    api_key_header: str
-    api_key: str
-    backend_url: str
-    backend_api_key: str
-    backend_api_key_value: str
-    authorization: bool
-    agreements:list[dict]
-    dtr_dct_type:str
-    
-    def __init__(self, connection_manager: PostgresConnectionManager):
+    connector_provider_service: BaseConnectorProviderService
 
-        self.edc_controlplane_hostname = ConfigManager.get_config(
-            "edc.controlplane.hostname"
-        )
-        self.edc_controlplane_management_api = ConfigManager.get_config(
-            "edc.controlplane.managementpath"
-        )
-        self.api_key_header = ConfigManager.get_config(
-            "edc.controlplane.apikeyheader"
-        )
-        self.api_key = ConfigManager.get_config(
-            "edc.controlplane.apikey"
-        )
-        self.backend_url = ConfigManager.get_config(
-            "hostname"
-        )
-        self.backend_api_key = ConfigManager.get_config(
-            "authorization.apiKey.key"
-        )
-        self.backend_api_key_value = ConfigManager.get_config(
-            "authorization.apiKey.value"
-        )
-        self.authorization = ConfigManager.get_config(
-            "authorization.enabled"
-        )
-        self.agreements = ConfigManager.get_config(
-            "agreements"
-        )
-        
-        self.path_submodel_dispatcher = ConfigManager.get_config("submodel_dispatcher.apiPath", default="/submodel-dispatcher")
-        
-        self.backend_submodel_dispatcher = self.backend_url + self.path_submodel_dispatcher 
-        edc_headers = {
-                        self.api_key_header: self.api_key,
-                        "Content-Type": "application/json"
-        }
+    def __init__(self, 
+                 connector_provider_service: BaseConnectorProviderService,
+                 ichub_url: str,
+                 agreements: list,
+                 path_submodel_dispatcher: str = "/submodel-dispatcher"):
+
+        self.ichub_url = ichub_url  # for the circular submodel bundles.
+        self.path_submodel_dispatcher = path_submodel_dispatcher
+        self.agreements = agreements
+        self.backend_submodel_dispatcher = self.ichub_url + self.path_submodel_dispatcher
 
         self.empty_policy = self.get_empty_policy_config()
-        self.connector_service = ServiceFactory.get_connector_service(
-            dataspace_version="jupiter",
-            base_url=self.edc_controlplane_hostname,
-            dma_path=self.edc_controlplane_management_api,
-            headers=edc_headers,
-            connection_manager=connection_manager,
-            logger=logger,
-            verbose=True
-        )
-        self.known_connectors:dict = dict()
+        self.connector_service = connector_provider_service
 
     def get_empty_policy_config(self) -> dict:
         """Returns an empty policy template."""
@@ -272,12 +225,12 @@ class ConnectorProviderManager:
 
     def get_or_create_contract(self, asset_id:str, usage_policy_id:str, access_policy_id:str) -> str:
         contract_id:str = self.generate_contract_id(asset_id=asset_id, usage_policy_id=usage_policy_id, access_policy_id=access_policy_id)
-        existing_contract = self.connector_service.provider.contract_definitions.get_by_id(oid=contract_id)
+        existing_contract = self.connector_service.contract_definitions.get_by_id(oid=contract_id)
         if existing_contract.status_code == 200:
             logger.debug(f"Contract with ID {contract_id} already exists.")
             return contract_id
 
-        contract_response = self.connector_service.provider.create_contract(
+        contract_response = self.connector_service.create_contract(
             contract_id=contract_id,
             usage_policy_id=usage_policy_id,
             access_policy_id=access_policy_id,
@@ -310,12 +263,12 @@ class ConnectorProviderManager:
         
         """Get or create a policy in the EDC, returning the policy ID."""
         # Check if the policy already exists
-        existing_policy = self.connector_service.provider.policies.get_by_id(oid=policy_id)
+        existing_policy = self.connector_service.policies.get_by_id(oid=policy_id)
         if existing_policy.status_code == 200:
             logger.debug(f"Policy with ID {policy_id} already exists.")
             return policy_id
 
-        policy_response = self.connector_service.provider.create_policy(
+        policy_response = self.connector_service.create_policy(
             policy_id=policy_id,
             context=context,
             permissions=permissions,
@@ -331,7 +284,7 @@ class ConnectorProviderManager:
             existing_asset_id = self.generate_dtr_asset_id(dtr_url=dtr_url)
         """Get or create a circular submodel asset."""
         # Check if the asset already exists
-        existing_asset = self.connector_service.provider.assets.get_by_id(oid=existing_asset_id)
+        existing_asset = self.connector_service.assets.get_by_id(oid=existing_asset_id)
         
         if existing_asset.status_code == 200:
             logger.debug(f"[DTR] Asset with ID {existing_asset_id} already exists.")
@@ -347,7 +300,7 @@ class ConnectorProviderManager:
         standard_asset_id = self.generate_asset_id(semantic_id=semantic_id)
         """Get or create a circular submodel asset."""
         # Check if the asset already exists
-        existing_asset = self.connector_service.provider.assets.get_by_id(oid=standard_asset_id)
+        existing_asset = self.connector_service.assets.get_by_id(oid=standard_asset_id)
         
         if existing_asset.status_code == 200:
             logger.debug(f"Asset with ID {standard_asset_id} already exists.")
@@ -388,7 +341,7 @@ class ConnectorProviderManager:
         
     def create_submodel_bundle_asset(self, asset_id: str, base_url: str, semantic_id: str, headers: dict = None):           
         # Create the submodel bundle asset
-        return self.connector_service.provider.create_asset(
+        return self.connector_service.create_asset(
             asset_id=asset_id,
             base_url=base_url,
             dct_type="cx-taxo:SubmodelBundle",
@@ -399,7 +352,7 @@ class ConnectorProviderManager:
     
     def create_dtr_asset(self, asset_id: str, dtr_url: str, dct_type:str, version:str="3.0", headers: dict = None):           
         # Create the submodel bundle asset
-        return self.connector_service.provider.create_asset(
+        return self.connector_service.create_asset(
             asset_id=asset_id,
             base_url=dtr_url,
             dct_type=dct_type,

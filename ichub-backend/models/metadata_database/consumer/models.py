@@ -38,3 +38,18 @@ class KnownConnectors(SQLModel):
     connectors: List[str] = Field(sa_column=Column(JSON), description="List of connector URLs for this BPNL")
     expires_at: datetime = Field(index=True, description="When this cache entry expires")
 
+
+class KnownDtrs(SQLModel):
+    """
+    Represents cached DTR information for a specific Business Partner Number Legal Entity (BPNL).
+    
+    This table stores the discovered DTRs for each BPNL along with timestamps
+    for cache management and expiration, including the EDC URL, asset ID, and policies.
+    """
+
+    bpnl: str = Field(primary_key=True, index=True, description="Business Partner Number Legal Entity")
+    edc_url: str = Field(description="URL of the EDC where the DTR is stored")
+    asset_id: str = Field(description="Asset ID of the DTR")
+    policies: List[str] = Field(sa_column=Column(JSON), description="List of policies for this DTR")
+    expires_at: datetime = Field(index=True, description="When this cache entry expires")
+

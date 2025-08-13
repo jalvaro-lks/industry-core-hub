@@ -26,12 +26,11 @@ from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
 
 from connector import connector_manager
-from dtr import dtr_manager
+from dtr import dtr_provider_manager
 
 from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
-from managers.enablement_services.dtr_manager import DtrProviderManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from models.services.provider.part_management import SerializedPartQuery
 from models.services.provider.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
@@ -140,8 +139,8 @@ class TwinManagementService:
             
             customer_part_ids = {partner_catalog_part.customer_part_id: partner_catalog_part.business_partner.bpnl 
                                     for partner_catalog_part in db_catalog_part.partner_catalog_parts}
-            
-            dtr_manager.provider.create_or_update_shell_descriptor(
+
+            dtr_provider_manager.create_or_update_shell_descriptor(
                 global_id=db_twin.global_id,
                 aas_id=db_twin.aas_id,
                 manufacturer_id=create_input.manufacturer_id,
@@ -313,7 +312,7 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             if not db_twin_registration.dtr_registered:
-                dtr_manager.provider.create_or_update_shell_descriptor_serialized_part(
+                dtr_provider_managercreate_or_update_shell_descriptor_serialized_part(
                     global_id=db_twin.global_id,
                     aas_id=db_twin.aas_id,
                     manufacturer_id=create_input.manufacturer_id,
@@ -512,7 +511,7 @@ class TwinManagementService:
             if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:               
                 # Step 7a: Register the submodel in the DTR (if necessary)
                 try:
-                    dtr_manager.provider.create_submodel_descriptor(
+                    dtr_provider_managercreate_submodel_descriptor(
                         aas_id=db_twin.aas_id,
                         submodel_id=db_twin_aspect.submodel_id,
                         semantic_id=db_twin_aspect.semantic_id,

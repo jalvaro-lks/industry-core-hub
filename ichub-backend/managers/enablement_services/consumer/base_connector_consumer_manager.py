@@ -22,8 +22,11 @@
 #################################################################################
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional
+from typing import TYPE_CHECKING, List, Dict, Optional
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService
+if TYPE_CHECKING:
+    from managers.enablement_services.connector_manager import BaseConnectorConsumerManager
+
 import hashlib
 
 class BaseConnectorConsumerManager(ABC):
@@ -35,19 +38,27 @@ class BaseConnectorConsumerManager(ABC):
     Implementations should provide concrete behavior for connector storage
     and cache management strategies.
     """
-    
-    def __init__(self, connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
+    connector_discovery: ConnectorDiscoveryService
+    expiration_time: int
+    connector_service: "BaseConnectorConsumerManager"
+    REFRESH_INTERVAL_KEY: str
+    CONNECTOR_LIST_KEY: str
+
+    def __init__(self, connector_consumer_service: "BaseConnectorConsumerManager", connector_discovery: ConnectorDiscoveryService, expiration_time: int = 60):
         """
         Initialize the connector consumer manager.
         
         Args:
+            connector_consumer_service (BaseConnectorConsumerService): The connector consumer service instance.
             connector_discovery (ConnectorDiscoveryService): Service for discovering connectors
+            connection_manager (BaseConnectionManager): Connection manager for handling database connections
             expiration_time (int, optional): Cache expiration time in minutes. Defaults to 60.
         """
         self.connector_discovery = connector_discovery
         self.expiration_time = expiration_time
         self.REFRESH_INTERVAL_KEY = "refresh_interval"
         self.CONNECTOR_LIST_KEY = "connectors"
+        self.connector_service = connector_consumer_service
 
     @abstractmethod
     def add_connectors(self, bpn: str, connectors: List[str]) -> None:

@@ -20,17 +20,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .consumer import DtrConsumerManager
+from .consumer import BaseDtrConsumerManager
 from .provider import DtrProviderManager
 class DtrManager:
-    consumer: DtrConsumerManager
+    consumer: BaseDtrConsumerManager
     provider: DtrProviderManager
-    
-    def __init__(self, dtr_consumer_manager: DtrConsumerManager, dtr_provider_manager: DtrProviderManager):
+
+    def __init__(self, dtr_consumer_manager: BaseDtrConsumerManager, dtr_provider_manager: DtrProviderManager):
         """
         Initialize the DtrManager with consumer and provider managers.
-        
-        :param dtr_consumer_manager: Instance of DtrConsumerManager
+        :param dtr_consumer_manager: Instance of BaseDtrConsumerManager
         :param dtr_provider_manager: Instance of DtrProviderManager
         """
         self.consumer = dtr_consumer_manager

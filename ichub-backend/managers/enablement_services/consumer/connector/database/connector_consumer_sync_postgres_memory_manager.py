@@ -28,15 +28,34 @@ import threading
 import time
 import logging
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService
+from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
 
 class ConsumerConnectorSyncPostgresMemoryManager(ConsumerConnectorPostgresMemoryManager):
     """
     Manages EDR connections using an in-memory cache synchronized with a Postgres database.
     Periodically persists changes and reloads updates from the database to ensure consistency.
     """
-    def __init__(self, engine: E | S, connector_discovery: ConnectorDiscoveryService, persist_interval:int = 5, expiration_time:int=3600, table_name="known_connectors", connectors_key="connectors", logger:logging.Logger=None, verbose:bool=False):
+    def __init__(self, 
+                 connector_consumer_service: BaseConnectorConsumerService,
+                 engine: E | S, 
+                 connector_discovery: ConnectorDiscoveryService, 
+                 persist_interval: int = 5, 
+                 expiration_time: int = 3600, 
+                 table_name: str = "known_connectors", 
+                 connectors_key: str = "connectors", 
+                 logger: logging.Logger = None, 
+                 verbose: bool = False):
 
-        super().__init__(connector_discovery=connector_discovery, expiration_time=expiration_time, logger=logger, verbose=verbose, table_name=table_name, connectors_key=connectors_key, engine=engine)
+        super().__init__(
+            connector_consumer_service=connector_consumer_service,
+            connector_discovery=connector_discovery, 
+            expiration_time=expiration_time, 
+            logger=logger, 
+            verbose=verbose, 
+            table_name=table_name, 
+            connectors_key=connectors_key, 
+            engine=engine
+        )
         self.persist_interval = persist_interval
         self._stop_event = threading.Event()
         self._start_background_tasks()

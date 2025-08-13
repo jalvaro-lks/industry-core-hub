@@ -1,0 +1,470 @@
+#################################################################################
+# Eclipse Tractus-X - Industry Core Hub Backend
+#
+# Copyright (c) 2025 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License, Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the
+# License for the specific language govern in permissions and limitations
+# under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+#################################################################################
+
+import copy
+import logging
+import threading
+import json
+from typing import TYPE_CHECKING, Dict, List, Optional
+from tractusx_sdk.dataspace.tools import op
+from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
+from managers.config.config_manager import ConfigManager
+from managers.enablement_services.consumer.base_dtr_consumer_manager import BaseDtrConsumerManager
+if TYPE_CHECKING:
+    from managers.enablement_services.connector_manager import BaseConnectorConsumerManager
+from requests import Response
+from tractusx_sdk.dataspace.models.connector.base_catalog_model import BaseCatalogModel
+
+class DtrConsumerMemoryManager(BaseDtrConsumerManager):
+    """
+    Memory-based implementation of DTR consumer management.
+    
+    This class provides in-memory caching of DTR information with
+    time-based expiration for Business Partner Numbers (BPNs). Extends
+    the base DTR consumer manager interface.
+    """ 
+    
+    ## Declare variables
+    known_dtrs: Dict
+    logger: logging.Logger
+    verbose: bool
+
+    def __init__(self, connector_consumer_manager: 'BaseConnectorConsumerManager', expiration_time: int = 60, logger:logging.Logger=None, verbose:bool=False, dct_type_id="dct:type", dct_type_key:str="'http://purl.org/dc/terms/type'.'@id'", operator:str="=", dct_type:str="https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"):
+        """
+        Initialize the memory-based DTR consumer manager.
+        
+        Args:
+            connector_consumer_manager (BaseConnectorConsumerManager): Connector manager with consumer capabilities
+            expiration_time (int, optional): Cache expiration time in minutes. Defaults to 60.
+        """
+        super().__init__(connector_consumer_manager, expiration_time, dct_type_id=dct_type_id, dct_type_key=dct_type_key, operator=operator, dct_type=dct_type)
+        self.known_dtrs = {}
+        self.logger = logger if logger else None
+        self.verbose = verbose
+        self._lock = threading.RLock()
+        
+    def add_dtr(self, bpn: str, connector_url: str, asset_id: str, policies: List[str]) -> None:
+        """
+        Add DTR to the in-memory cache for a specific BPN.
+        
+        Implements time-based caching with automatic expiration. If DTR
+        for the BPN already exists and hasn't expired, no update is performed.
+        
+        Args:
+            bpn (str): The Business Partner Number to associate DTR with
+            connector_url (str): URL of the EDC where the DTR is stored
+            asset_id (str): Asset ID of the DTR
+            policies (List[str]): List of policies for this DTR
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs:
+                self.known_dtrs[bpn] = {}
+
+            # Always update the refresh interval timestamp
+            self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY] = op.get_future_timestamp(minutes=self.expiration_time)
+            
+            # Check if we already have valid DTR and the cache hasn't expired
+            if(self.DTR_DATA_KEY in self.known_dtrs[bpn]) and (self.known_dtrs[bpn][self.DTR_DATA_KEY] is not None):
+                if(self.logger and self.verbose):
+                    self.logger.debug(f"[DTR Manager] [{bpn}] DTR already cached, skipping update")
+                return
+            
+            # Store the DTR data under the specific key
+            self.known_dtrs[bpn][self.DTR_DATA_KEY] = self._create_dtr_cache_entry(connector_url=connector_url, asset_id=asset_id, policies=policies)
+
+            if(self.logger and self.verbose):
+                self.logger.info(f"[DTR Manager] [{bpn}] Added DTR to the cache! Asset ID: [{asset_id}] Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+            
+        return
+
+    def _create_dtr_cache_entry(self, connector_url: str, asset_id: str, policies: List[str]) -> dict:
+        """
+        Create a new DTR cache entry for a specific BPN.
+        
+        Args:
+            bpn (str): The Business Partner Number to associate DTR with
+            connector_url (str): URL of the EDC where the DTR is stored
+            asset_id (str): Asset ID of the DTR
+            policies (List[str]): List of policies for this DTR
+        """
+
+        return {
+                    self.DTR_CONNECTOR_URL_KEY: connector_url,
+                    self.DTR_ASSET_ID_KEY: asset_id,
+                    self.DTR_POLICIES_KEY: policies
+                }
+
+    def is_dtr_known(self, bpn: str, asset_id: str) -> bool:
+        """
+        Check if a specific DTR is known/cached for the given BPN.
+        
+        Args:
+            bpn (str): The Business Partner Number to check
+            asset_id (str): The asset ID to verify
+            
+        Returns:
+            bool: True if the DTR is known for the BPN, False otherwise
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs:
+                return False
+            
+            if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                return False
+                
+            dtr_data = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            return dtr_data is not None and dtr_data.get(self.DTR_ASSET_ID_KEY) == asset_id
+
+    def get_dtr_by_asset_id(self, bpn: str, asset_id: str) -> Optional[Dict]:
+        """
+        Retrieve a specific DTR by its asset ID for the given BPN.
+        
+        Args:
+            bpn (str): The Business Partner Number
+            asset_id (str): The asset ID of the DTR
+            
+        Returns:
+            Optional[Dict]: The DTR data if found, None otherwise
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs:
+                return None
+            
+            if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                return None
+                
+            dtr_data = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if dtr_data is not None and dtr_data.get(self.DTR_ASSET_ID_KEY) == asset_id:
+                return copy.deepcopy(dtr_data)
+            
+            return None
+
+    def get_known_dtrs(self) -> Dict:
+        """
+        Retrieve all known DTRs from the cache.
+        
+        Returns:
+            Dict: Complete cache dictionary containing all BPNs and their associated DTRs
+        """
+        with self._lock:
+            return copy.deepcopy(self.known_dtrs)
+
+    def delete_dtr(self, bpn: str, asset_id: str) -> Dict:
+        """
+        Remove a specific DTR from the cache.
+        
+        Args:
+            bpn (str): The Business Partner Number
+            asset_id (str): The asset ID of the DTR to remove
+            
+        Returns:
+            Dict: Updated cache state after deletion
+        """
+        with self._lock:
+            if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
+                dtr_data = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                if dtr_data is not None and dtr_data.get(self.DTR_ASSET_ID_KEY) == asset_id:
+                    self.known_dtrs[bpn][self.DTR_DATA_KEY] = None
+                    if(self.logger and self.verbose):
+                        self.logger.info(f"[DTR Manager] [{bpn}] Deleted DTR with asset ID [{asset_id}] from cache")
+            
+            return self.get_known_dtrs()
+
+    def purge_bpn(self, bpn: str) -> None:
+        """
+        Remove all DTRs associated with a specific BPN from the cache.
+        
+        Args:
+            bpn (str): The Business Partner Number to purge from cache
+        """
+        with self._lock:
+            if bpn in self.known_dtrs:
+                del self.known_dtrs[bpn]
+                if(self.logger and self.verbose):
+                    self.logger.info(f"[DTR Manager] [{bpn}] Purged all DTRs from cache")
+
+    def purge_cache(self) -> None:
+        """
+        Clear the entire DTR cache.
+        
+        This method removes all cached DTRs for all BPNs,
+        effectively resetting the cache to an empty state.
+        """
+        with self._lock:
+            self.known_dtrs.clear()
+            if(self.logger and self.verbose):
+                self.logger.info("[DTR Manager] Purged entire DTR cache")
+
+    
+    def get_catalog(self,  connector_service:BaseConnectorConsumerService, counter_party_id: str = None, counter_party_address: str = None,
+                    request: BaseCatalogModel = None, timeout=60) -> dict | None:
+        """
+        Retrieves the EDC DCAT catalog. Allows to get the catalog without specifying the request, which can be overridden
+        
+        Parameters:
+        counter_party_address (str): The URL of the EDC provider.
+        request (BaseCatalogModel, optional): The request payload for the catalog API. If not provided, a default request will be used.
+
+        Returns:
+        dict | None: The EDC catalog as a dictionary, or None if the request fails.
+        """
+        ## Get EDC DCAT catalog
+
+        ## Get catalog with configurable timeout
+        response: Response = connector_service.catalogs.get_catalog(obj=request, timeout=timeout)
+    
+        ## In case the response code is not successfull or the response is null
+        if response is None or response.status_code != 200:
+            raise ConnectionError(
+                f"[EDC Service] It was not possible to get the catalog from the EDC provider! Response code: [{response.status_code}]")
+        return response.json()
+    
+        ## Get catalog request with filter
+    def get_catalog_with_filter(self,  connector_service:BaseConnectorConsumerService, counter_party_id: str, counter_party_address: str, filter_expression: list[dict],
+                                timeout: int = None) -> dict:
+        """
+        Retrieves a catalog from the EDC provider based on a specified filter.
+
+        Parameters:
+        counter_party_id (str): The identifier of the counterparty (Business Partner Number [BPN]).
+        counter_party_address (str): The URL of the EDC provider.
+        key (str): The key to filter the catalog entries by.
+        value (str): The value to filter the catalog entries by.
+        operator (str, optional): The comparison operator to use for filtering. Defaults to "=".
+
+        Returns:
+        dict: The catalog entries that match the specified filter.
+        """
+        return self.get_catalog(connector_service=connector_service, request=connector_service.get_catalog_request_with_filter(counter_party_id=counter_party_id,
+                                                                             counter_party_address=counter_party_address,
+                                                                             filter_expression=filter_expression),
+                                timeout=timeout)
+    
+    def get_catalog_with_filter_parallel(self, connector_service:BaseConnectorConsumerService, counter_party_id: str, counter_party_address: str,
+                                        filter_expression: list[dict], catalogs: dict = None,
+                                        timeout: int = None) -> None:
+        catalog = self.get_catalog_with_filter(connector_service=connector_service, counter_party_id=counter_party_id,
+                                                                    counter_party_address=counter_party_address,
+                                                                    filter_expression=filter_expression,
+                                                                    timeout=timeout)
+        catalogs[counter_party_address] = catalog
+        
+    def get_catalogs_by_filter_expression(self, connector_service:BaseConnectorConsumerService, counter_party_id: str, edcs: list, filter_expression: List[dict],
+                                 timeout: int = None):
+
+        ## Where the catalogs get stored
+        catalogs: dict = {}
+        threads: list[threading.Thread] = []
+        for connector_url in edcs:
+            thread = threading.Thread(target=self.get_catalog_with_filter_parallel, kwargs=
+            {
+                'connector_service': connector_service,
+                'counter_party_id': counter_party_id,
+                'counter_party_address': connector_url,
+                'filter_expression': filter_expression,
+                'timeout': timeout,
+                'catalogs': catalogs
+            }
+                                      )
+            thread.start()  ## Start thread
+            threads.append(thread)
+
+        ## Allow the threads to process
+        for thread in threads:
+            thread.join()  ## Waiting until they process
+
+        
+        return catalogs
+    
+    def get_dtrs(self, bpn: str, timeout:int=30) -> Dict:
+        """
+        Retrieve DTRs for a specific BPN, with automatic discovery if not cached.
+        
+        This method first checks the cache for existing DTRs. If cache is empty
+        or expired, it uses the connector manager to get connectors for the BPN,
+        then queries each connector's catalog to find DTR assets.
+        
+        Args:
+            bpn (str): The Business Partner Number to get DTRs for
+            
+        Returns:
+            Dict: DTR data for the BPN including connector_url, asset_id, and policies
+        """
+        with self._lock:
+            # Check if we have cached data that hasn't expired
+            if bpn in self.known_dtrs and not self._is_cache_expired(bpn):
+                if self.DTR_DATA_KEY in self.known_dtrs[bpn] and self.known_dtrs[bpn][self.DTR_DATA_KEY] is not None:
+                    if(self.logger and self.verbose):
+                        self.logger.debug(f"[DTR Manager] [{bpn}] Returning DTR from cache. Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+                    return copy.deepcopy(self.known_dtrs[bpn][self.DTR_DATA_KEY])
+            
+            # Cache is expired or doesn't exist, discover DTRs
+            if(self.logger and self.verbose):
+                self.logger.info(f"[DTR Manager] No cached DTR were found, discovering DTRs for bpn [{bpn}]...")
+            
+            # Get connectors from the connector manager
+            try:
+                connectors = self.connector_consumer_manager.get_connectors(bpn)
+                if not connectors or len(connectors) == 0:
+                    if(self.logger and self.verbose):
+                        self.logger.warning(f"[DTR Manager] [{bpn}] No connectors found for DTR discovery")
+                    return {}
+                
+                if(self.logger and self.verbose):
+                    self.logger.debug(f"[DTR Manager] [{bpn}] Found {len(connectors)} connectors, searching for DTR assets")
+                
+                # Search for DTR assets in each connector's catalog
+                connector_service:BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
+                
+                # Get catalogs in parallel from all the connectors 
+                catalogs:dict = self.get_catalogs_by_filter_expression(
+                                        connector_service=connector_service,
+                                        edcs=connectors,
+                                        counter_party_id=bpn,
+                                        filter_expression=connector_service.get_filter_expression(
+                                            key=self.dct_type_key,
+                                            operator=self.operator,
+                                            value=self.dct_type
+                                        ),
+                                        timeout=timeout
+                                        ) 
+            
+                # Iterate over catalogs and extract DTR information
+                for connector_url, catalog in catalogs.items():
+                    if catalog and not catalog.get("error"):
+                        # Get datasets from the catalog - using DCAT dataset key
+                        datasets = catalog.get(self.DCAT_DATASET_KEY, [])
+                        if not isinstance(datasets, list):
+                            datasets = [datasets] if datasets else []
+                        
+                        for dataset in datasets:
+                            if self._is_dtr_asset(dataset):
+                                # Extract asset ID
+                                asset_id = dataset.get(self.ID_KEY, "")
+                                if not asset_id:
+                                    continue
+                                
+                                # Extract policies
+                                policies = self._extract_policies(dataset)
+                                
+                                # Create DTR data structure
+                                self.add_dtr(bpn=bpn, connector_url=connector_url, asset_id=asset_id, policies=policies)
+
+                                if(self.logger and self.verbose):
+                                    self.logger.info(f"[DTR Manager] [{bpn}] Found DTR asset [{asset_id}] in connector [{connector_url}] added to cache")
+                
+                # Return the cached DTRs for this BPN
+                if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
+                    return copy.deepcopy(self.known_dtrs[bpn][self.DTR_DATA_KEY])
+                else:
+                    if(self.logger and self.verbose):
+                        self.logger.info(f"[DTR Manager] [{bpn}] No DTR assets found in any connector catalogs")
+                    return {}
+        
+            except Exception as e:
+                if(self.logger and self.verbose):
+                    self.logger.error(f"[DTR Manager] [{bpn}] Error discovering DTRs: {e}")
+                return {}
+
+    def _is_dtr_asset(self, dataset: Dict) -> bool:
+        """
+        Check if a dataset from a catalog is a DTR asset.
+        
+        Args:
+            dataset (Dict): Dataset from the catalog
+            
+        Returns:
+            bool: True if this is a DTR asset, False otherwise
+        """
+        # Look for DTR-specific properties in the dataset
+        # This can be customized based on your DTR asset identification logic
+        dct_type_property = dataset.get(self.dct_type_id, {})
+        
+        # Remove .'@id' from dct_type_key if it exists to get the base property name
+        dct_type_key_base = self.dct_type_key.replace(f".'{self.ID_KEY}'", "") if f".'{self.ID_KEY}'" in self.dct_type_key else self.dct_type_key
+        dct_type_expanded_property = dataset.get(dct_type_key_base, {})
+    
+        # Format 1: "dct:type": {"@id": "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"}
+        if isinstance(dct_type_property, dict):
+            type_id = dct_type_property.get(self.ID_KEY, "")
+            if type_id == self.dct_type:
+                return True
+        elif isinstance(dct_type_property, str):
+            if dct_type_property == self.dct_type:
+                return True
+            
+        # Format 2: "http://purl.org/dc/terms/type": {"@id": "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"}
+        if isinstance(dct_type_expanded_property, dict):
+            type_id = dct_type_expanded_property.get(self.ID_KEY, "")
+            if type_id == self.dct_type:
+                return True
+        elif isinstance(dct_type_expanded_property, str):
+            if dct_type_expanded_property == self.dct_type:
+                return True
+        
+        return False
+
+    def _extract_policies(self, dataset: Dict) -> List[str]:
+        """
+        Extract policies from a dataset.
+        
+        Args:
+            dataset (Dict): Dataset from the catalog
+            
+        Returns:
+            List[str]: List of policy identifiers
+        """
+        policies = []
+        
+        # Extract policies from odrl:hasPolicy
+        has_policy = dataset.get(self.ODRL_HAS_POLICY_KEY, [])
+
+        if not isinstance(has_policy, list):
+            has_policy = [has_policy]
+
+        policies.extend(has_policy)
+
+        return policies
+
+    def _is_cache_expired(self, bpn: str) -> bool:
+        """
+        Check if cache for a specific BPN has expired.
+        
+        Implements the cache expiration logic by checking if the BPN exists
+        in the cache and whether the refresh interval timestamp has been reached.
+        
+        Args:
+            bpn (str): The Business Partner Number to check
+            
+        Returns:
+            bool: True if cache is expired or doesn't exist, False otherwise
+        """
+        # If BPN is not in cache, consider it expired
+        if bpn not in self.known_dtrs:
+            return True
+        
+        # If no refresh interval is set, consider it expired
+        if self.REFRESH_INTERVAL_KEY not in self.known_dtrs[bpn]:
+            return True
+        
+        # Check if the refresh interval has been reached
+        return op.is_interval_reached(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])

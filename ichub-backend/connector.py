@@ -22,10 +22,12 @@
 
 from tractusx_sdk.dataspace.managers.connection import PostgresMemoryRefreshConnectionManager
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService, DiscoveryFinderService
+from tractusx_sdk.dataspace.services.connector import ServiceFactory, BaseConnectorService
 from database import engine
 from managers.enablement_services import ConnectorManager
 from managers.enablement_services.provider import ConnectorProviderManager
 from managers.config.config_manager import ConfigManager
+from managers.config.log_manager import LoggingManager
 from tractusx_sdk.dataspace.managers import OAuth2Manager
 
 from managers.enablement_services.consumer import ConsumerConnectorSyncPostgresMemoryManager
@@ -41,8 +43,40 @@ Currently only one connector is supported from consumer/provider side.
 # Create the connection manager for the provider
 connection_manager = PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)
 
+# Get configuration values
+edc_controlplane_hostname = ConfigManager.get_config("edc.controlplane.hostname")
+edc_controlplane_management_api = ConfigManager.get_config("edc.controlplane.managementpath")
+api_key_header = ConfigManager.get_config("edc.controlplane.apikeyheader")
+api_key = ConfigManager.get_config("edc.controlplane.apikey")
+dataspace_version = ConfigManager.get_config("edc.dataspace.version", default="jupiter")
+ichub_url = ConfigManager.get_config("hostname")
+agreements = ConfigManager.get_config("agreements")
+path_submodel_dispatcher = ConfigManager.get_config("submodel_dispatcher.apiPath", default="/submodel-dispatcher")
+
+# Create EDC headers
+edc_headers = {
+    api_key_header: api_key,
+    "Content-Type": "application/json"
+}
+
+# Create the connector provider service
+connector_service:BaseConnectorService = ServiceFactory.get_connector_service(
+    dataspace_version=dataspace_version,
+    base_url=edc_controlplane_hostname,
+    dma_path=edc_controlplane_management_api,
+    headers=edc_headers,
+    connection_manager=connection_manager,
+    logger=logger,
+    verbose=True
+)
+
 # Create the provider manager
-connector_provider_manager = ConnectorProviderManager(connection_manager=connection_manager)
+connector_provider_manager = ConnectorProviderManager(
+    connector_provider_service=connector_service.provider,
+    ichub_url=ichub_url,
+    agreements=agreements,
+    path_submodel_dispatcher=path_submodel_dispatcher
+)
 
 
 discovery_oauth = OAuth2Manager(
@@ -65,6 +99,7 @@ connector_discovery_service = ConnectorDiscoveryService(
 
 # Create the consumer manager
 connector_consumer_manager = ConsumerConnectorSyncPostgresMemoryManager(
+    connector_consumer_service=connector_service.consumer,
     engine=engine,
     connector_discovery=connector_discovery_service,
     expiration_time=60,  # 60 minutes cache expiration
