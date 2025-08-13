@@ -154,7 +154,7 @@ class DtrConsumerPostgresMemoryManager(DtrConsumerMemoryManager):
         """
         with self._lock:
             try:
-                loaded_bpns = 0
+                loaded_dtrs = 0
                 with Session(self.engine) as session:
                     result = session.exec(select(self.KnownDtrsModel)).all()
                     
@@ -174,20 +174,29 @@ class DtrConsumerPostgresMemoryManager(DtrConsumerMemoryManager):
                         # Convert datetime back to timestamp for the SDK
                         timestamp = expires_at.timestamp()
 
-                        self.known_dtrs[bpn] = {
-                            self.REFRESH_INTERVAL_KEY: timestamp,
-                            self.DTR_DATA_KEY: {
-                                self.DTR_CONNECTOR_URL_KEY: edc_url,
-                                self.DTR_ASSET_ID_KEY: asset_id,
-                                self.DTR_POLICIES_KEY: policies
+                        # Initialize BPN structure if it doesn't exist
+                        if bpn not in self.known_dtrs:
+                            self.known_dtrs[bpn] = {
+                                self.REFRESH_INTERVAL_KEY: timestamp,
+                                self.DTR_DATA_KEY: {}
                             }
+                        
+                        # Update refresh interval to the latest timestamp
+                        if timestamp > self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY]:
+                            self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY] = timestamp
+                        
+                        # Add DTR using asset_id as key
+                        self.known_dtrs[bpn][self.DTR_DATA_KEY][asset_id] = {
+                            self.DTR_CONNECTOR_URL_KEY: edc_url,
+                            self.DTR_ASSET_ID_KEY: asset_id,
+                            self.DTR_POLICIES_KEY: policies
                         }
-                        loaded_bpns += 1
+                        loaded_dtrs += 1
 
                 # Only log if there's a change in the data
                 new_hash = hashlib.sha256(json.dumps(self.known_dtrs, sort_keys=True, default=str).encode()).hexdigest()
                 if self.logger and self.verbose and (self._last_saved_hash is None or new_hash != self._last_saved_hash):
-                    self.logger.info(f"[DtrConsumerPostgresMemoryManager] Loaded {loaded_bpns} BPN DTR entries from the database.")
+                    self.logger.info(f"[DtrConsumerPostgresMemoryManager] Loaded {loaded_dtrs} DTR entries from the database.")
                     
                 self._last_saved_hash = new_hash
             except SQLAlchemyError as e:
@@ -214,22 +223,25 @@ class DtrConsumerPostgresMemoryManager(DtrConsumerMemoryManager):
                             # Convert timestamp to datetime object instead of using the formatted string
                             timestamp = bpn_data[self.REFRESH_INTERVAL_KEY]
                             expires_at = datetime.fromtimestamp(timestamp)
-                            dtr_data = bpn_data[self.DTR_DATA_KEY]
+                            dtr_dict = bpn_data[self.DTR_DATA_KEY]
                             
-                            if dtr_data is not None:
-                                session.add(self.KnownDtrsModel(
-                                    bpnl=bpn,
-                                    edc_url=dtr_data[self.DTR_CONNECTOR_URL_KEY],
-                                    asset_id=dtr_data[self.DTR_ASSET_ID_KEY],
-                                    policies=dtr_data[self.DTR_POLICIES_KEY],
-                                    expires_at=expires_at
-                                ))
-                                saved_dtrs += 1
+                            # Iterate through all DTRs for this BPN (now a dictionary keyed by asset_id)
+                            if isinstance(dtr_dict, dict):
+                                for asset_id, dtr_data in dtr_dict.items():
+                                    if dtr_data is not None:
+                                        session.add(self.KnownDtrsModel(
+                                            bpnl=bpn,
+                                            edc_url=dtr_data[self.DTR_CONNECTOR_URL_KEY],
+                                            asset_id=dtr_data[self.DTR_ASSET_ID_KEY],
+                                            policies=dtr_data[self.DTR_POLICIES_KEY],
+                                            expires_at=expires_at
+                                        ))
+                                        saved_dtrs += 1
                                     
                     session.commit()
                     self._last_saved_hash = current_hash
                     if self.logger and self.verbose:
-                        self.logger.info(f"[DtrConsumerPostgresMemoryManager] Saved {saved_dtrs} BPN DTR entries to the database.")
+                        self.logger.info(f"[DtrConsumerPostgresMemoryManager] Saved {saved_dtrs} DTR entries to the database.")
             except SQLAlchemyError as e:
                 if self.logger and self.verbose:
                     self.logger.error(f"[DtrConsumerPostgresMemoryManager] Error saving to db: {e}")

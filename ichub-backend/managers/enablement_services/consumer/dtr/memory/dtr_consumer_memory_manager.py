@@ -66,13 +66,12 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         """
         Add DTR to the in-memory cache for a specific BPN.
         
-        Implements time-based caching with automatic expiration. If DTR
-        for the BPN already exists and hasn't expired, no update is performed.
+        Supports multiple DTRs per BPN using asset_id as unique key.
         
         Args:
             bpn (str): The Business Partner Number to associate DTR with
             connector_url (str): URL of the EDC where the DTR is stored
-            asset_id (str): Asset ID of the DTR
+            asset_id (str): Asset ID of the DTR (used as unique key)
             policies (List[str]): List of policies for this DTR
         """
         with self._lock:
@@ -82,17 +81,22 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             # Always update the refresh interval timestamp
             self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY] = op.get_future_timestamp(minutes=self.expiration_time)
             
-            # Check if we already have valid DTR and the cache hasn't expired
-            if(self.DTR_DATA_KEY in self.known_dtrs[bpn]) and (self.known_dtrs[bpn][self.DTR_DATA_KEY] is not None):
+            # Initialize DTR dictionary if it doesn't exist
+            if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                self.known_dtrs[bpn][self.DTR_DATA_KEY] = {}
+            
+            # Check if this specific DTR already exists (avoid duplicates)
+            if asset_id in self.known_dtrs[bpn][self.DTR_DATA_KEY]:
                 if(self.logger and self.verbose):
-                    self.logger.debug(f"[DTR Manager] [{bpn}] DTR already cached, skipping update")
+                    self.logger.debug(f"[DTR Manager] [{bpn}] DTR with asset ID [{asset_id}] already cached, skipping duplicate")
                 return
             
-            # Store the DTR data under the specific key
-            self.known_dtrs[bpn][self.DTR_DATA_KEY] = self._create_dtr_cache_entry(connector_url=connector_url, asset_id=asset_id, policies=policies)
+            # Add the new DTR using asset_id as key
+            self.known_dtrs[bpn][self.DTR_DATA_KEY][asset_id] = self._create_dtr_cache_entry(connector_url=connector_url, asset_id=asset_id, policies=policies)
 
             if(self.logger and self.verbose):
-                self.logger.info(f"[DTR Manager] [{bpn}] Added DTR to the cache! Asset ID: [{asset_id}] Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+                total_dtrs = len(self.known_dtrs[bpn][self.DTR_DATA_KEY])
+                self.logger.info(f"[DTR Manager] [{bpn}] Added DTR to the cache! Asset ID: [{asset_id}] (Total DTRs: {total_dtrs}) Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
             
         return
 
@@ -131,8 +135,12 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
                 return False
                 
-            dtr_data = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            return dtr_data is not None and dtr_data.get(self.DTR_ASSET_ID_KEY) == asset_id
+            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if not isinstance(dtr_dict, dict):
+                return False
+                
+            # O(1) lookup using asset_id as key
+            return asset_id in dtr_dict
 
     def get_dtr_by_asset_id(self, bpn: str, asset_id: str) -> Optional[Dict]:
         """
@@ -152,9 +160,13 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
                 return None
                 
-            dtr_data = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if dtr_data is not None and dtr_data.get(self.DTR_ASSET_ID_KEY) == asset_id:
-                return copy.deepcopy(dtr_data)
+            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if not isinstance(dtr_dict, dict):
+                return None
+                
+            # O(1) lookup using asset_id as key
+            if asset_id in dtr_dict:
+                return copy.deepcopy(dtr_dict[asset_id])
             
             return None
 
@@ -181,11 +193,13 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         """
         with self._lock:
             if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
-                dtr_data = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-                if dtr_data is not None and dtr_data.get(self.DTR_ASSET_ID_KEY) == asset_id:
-                    self.known_dtrs[bpn][self.DTR_DATA_KEY] = None
+                dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                if isinstance(dtr_dict, dict) and asset_id in dtr_dict:
+                    # O(1) deletion using asset_id as key
+                    del dtr_dict[asset_id]
                     if(self.logger and self.verbose):
-                        self.logger.info(f"[DTR Manager] [{bpn}] Deleted DTR with asset ID [{asset_id}] from cache")
+                        remaining_dtrs = len(dtr_dict)
+                        self.logger.info(f"[DTR Manager] [{bpn}] Deleted DTR with asset ID [{asset_id}] from cache (Remaining DTRs: {remaining_dtrs})")
             
             return self.get_known_dtrs()
 
@@ -213,6 +227,100 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             self.known_dtrs.clear()
             if(self.logger and self.verbose):
                 self.logger.info("[DTR Manager] Purged entire DTR cache")
+
+    def get_dtrs_by_connector(self, bpn: str, connector_url: str) -> List[Dict]:
+        """
+        Retrieve DTRs for a specific BPN from a specific connector.
+        
+        Args:
+            bpn (str): The Business Partner Number
+            connector_url (str): The connector URL to filter by
+            
+        Returns:
+            List[Dict]: List of DTR data from the specified connector
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                return []
+                
+            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if not isinstance(dtr_dict, dict):
+                return []
+                
+            # Filter DTRs by connector URL
+            filtered_dtrs = [
+                copy.deepcopy(dtr) for dtr in dtr_dict.values()
+                if dtr.get(self.DTR_CONNECTOR_URL_KEY) == connector_url
+            ]
+            
+            return filtered_dtrs
+
+    def get_dtr_count(self, bpn: str) -> int:
+        """
+        Get the total number of DTRs cached for a specific BPN.
+        
+        Args:
+            bpn (str): The Business Partner Number
+            
+        Returns:
+            int: Number of DTRs cached for the BPN
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                return 0
+                
+            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if isinstance(dtr_dict, dict):
+                return len(dtr_dict)
+            
+            return 0
+
+    def get_all_connector_urls(self, bpn: str) -> List[str]:
+        """
+        Get all unique connector URLs that have DTRs for a specific BPN.
+        
+        Args:
+            bpn (str): The Business Partner Number
+            
+        Returns:
+            List[str]: List of unique connector URLs
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                return []
+                
+            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if not isinstance(dtr_dict, dict):
+                return []
+                
+            # Extract unique connector URLs
+            connector_urls = set()
+            for dtr in dtr_dict.values():
+                connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
+                if connector_url:
+                    connector_urls.add(connector_url)
+            
+            return list(connector_urls)
+
+    def get_all_asset_ids(self, bpn: str) -> List[str]:
+        """
+        Get all asset IDs for DTRs cached for a specific BPN.
+        
+        Args:
+            bpn (str): The Business Partner Number
+            
+        Returns:
+            List[str]: List of asset IDs
+        """
+        with self._lock:
+            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+                return []
+                
+            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+            if isinstance(dtr_dict, dict):
+                return list(dtr_dict.keys())
+            
+            return []
 
     
     def get_catalog(self,  connector_service:BaseConnectorConsumerService, counter_party_id: str = None, counter_party_address: str = None,
@@ -295,7 +403,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return catalogs
     
-    def get_dtrs(self, bpn: str, timeout:int=30) -> Dict:
+    def get_dtrs(self, bpn: str, timeout:int=30) -> List[Dict]:
         """
         Retrieve DTRs for a specific BPN, with automatic discovery if not cached.
         
@@ -305,21 +413,25 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         Args:
             bpn (str): The Business Partner Number to get DTRs for
+            timeout (int): Timeout for catalog requests
             
         Returns:
-            Dict: DTR data for the BPN including connector_url, asset_id, and policies
+            List[Dict]: List of DTR data for the BPN, each containing connector_url, asset_id, and policies
         """
         with self._lock:
             # Check if we have cached data that hasn't expired
             if bpn in self.known_dtrs and not self._is_cache_expired(bpn):
-                if self.DTR_DATA_KEY in self.known_dtrs[bpn] and self.known_dtrs[bpn][self.DTR_DATA_KEY] is not None:
-                    if(self.logger and self.verbose):
-                        self.logger.debug(f"[DTR Manager] [{bpn}] Returning DTR from cache. Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
-                    return copy.deepcopy(self.known_dtrs[bpn][self.DTR_DATA_KEY])
+                if self.DTR_DATA_KEY in self.known_dtrs[bpn] and isinstance(self.known_dtrs[bpn][self.DTR_DATA_KEY], dict):
+                    cached_dtrs_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                    if len(cached_dtrs_dict) > 0:
+                        if(self.logger and self.verbose):
+                            self.logger.debug(f"[DTR Manager] [{bpn}] Returning {len(cached_dtrs_dict)} DTRs from cache. Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+                        # Return list of DTR values
+                        return [copy.deepcopy(dtr) for dtr in cached_dtrs_dict.values()]
             
             # Cache is expired or doesn't exist, discover DTRs
             if(self.logger and self.verbose):
-                self.logger.info(f"[DTR Manager] No cached DTR were found, discovering DTRs for bpn [{bpn}]...")
+                self.logger.info(f"[DTR Manager] No cached DTRs were found, discovering DTRs for bpn [{bpn}]...")
             
             # Get connectors from the connector manager
             try:
@@ -327,7 +439,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 if not connectors or len(connectors) == 0:
                     if(self.logger and self.verbose):
                         self.logger.warning(f"[DTR Manager] [{bpn}] No connectors found for DTR discovery")
-                    return {}
+                    return []
                 
                 if(self.logger and self.verbose):
                     self.logger.debug(f"[DTR Manager] [{bpn}] Found {len(connectors)} connectors, searching for DTR assets")
@@ -374,16 +486,27 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 
                 # Return the cached DTRs for this BPN
                 if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
-                    return copy.deepcopy(self.known_dtrs[bpn][self.DTR_DATA_KEY])
+                    cached_dtrs_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                    if isinstance(cached_dtrs_dict, dict):
+                        cached_dtrs_list = list(cached_dtrs_dict.values())
+                        if(self.logger and self.verbose):
+                            self.logger.info(f"[DTR Manager] [{bpn}] Discovery complete. Found {len(cached_dtrs_list)} DTR(s) total")
+                        return [copy.deepcopy(dtr) for dtr in cached_dtrs_list]
+                    else:
+                        return []
                 else:
                     if(self.logger and self.verbose):
                         self.logger.info(f"[DTR Manager] [{bpn}] No DTR assets found in any connector catalogs")
-                    return {}
+                    return []
         
             except Exception as e:
                 if(self.logger and self.verbose):
                     self.logger.error(f"[DTR Manager] [{bpn}] Error discovering DTRs: {e}")
-                return {}
+                return []
+
+    def search_digital_twin(self, bpn:str, aas_id:str) -> Dict:
+        pass
+        
 
     def _is_dtr_asset(self, dataset: Dict) -> bool:
         """
