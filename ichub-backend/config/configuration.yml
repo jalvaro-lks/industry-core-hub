@@ -20,19 +20,19 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-participantId: "BPNL0000000093Q7"
+participantId: "<bpnl-partner-id>"
 hostname: "https://ichub-backend.url"
 
 discovery:
   discovery_finder:
-    url: "https://semantics.int.catena-x.net/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
+    url: "https://<discovery-finder-url>/api/v1.0/administration/connectors/discovery/search"
   connector_discovery:
     key: "bpn"
   oauth:
-    url: "https://centralidp.int.catena-x.net/auth/"
-    realm: "CX-Central"
-    client_id: "sa307"
-    client_secret: "fZItup0SGJGSpQaVbNLlJ6RBt2XvlxjJ"
+    url: "https://<central-idp-url>/auth/"
+    realm: "<realm>"
+    client_id: "<client-id>"
+    client_secret: "<client-secret>"
 
 authorization:
   enabled: true
@@ -97,17 +97,17 @@ cors:
     - "*"
 edc:
   controlplane:
-    hostname: https://edc-provider-ichub-control.int.catena-x.net
+    hostname: https://edc-control-plane.int.catena-x.net
     apikeyheader: X-Api-Key
-    apikey: ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC
+    apikey: <api-key>
     managementpath: /management
     protocolPath: /api/v1/dsp
     catalogPath: /catalog
   dataplane:
-    hostname: https://edc-provider-ichub-dataplane.int.catena-x.net
+    hostname: https://edc-dataplane.int.catena-x.net
     publicPath: "/api/public"
 digitalTwinRegistry:
-  hostname: https://dtr-ichub.int.catena-x.net
+  hostname: https://digital-twin-registry.url
   apiPath: /api/v3
   uri: ""
   asset_config:
