@@ -46,7 +46,7 @@ from tools.exceptions import exception_responses
 router = APIRouter(prefix="/connection", tags=["Open Connection Management"])
 #connection_service = ConnectionService()
 
-from ......dtr import dtr_manager
+from dtr import dtr_manager
 
 """
 # TODO: The following endpoints are not yet implemented but are planned for future development

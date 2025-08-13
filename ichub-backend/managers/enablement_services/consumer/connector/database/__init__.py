@@ -19,3 +19,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
+
+from .connector_consumer_postgres_memory_manager import ConsumerConnectorPostgresMemoryManager
+from .connector_consumer_sync_postgres_memory_manager import ConsumerConnectorSyncPostgresMemoryManager
+

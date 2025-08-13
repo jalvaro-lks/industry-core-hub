@@ -30,7 +30,7 @@ import logging
 logger = logging.getLogger("connector")
 logger.setLevel(logging.INFO)
 
-from .connector import connector_manager
+from connector import connector_manager
 from managers.config.config_manager import ConfigManager
 
 dtr_consumer_manager = DtrConsumerManager(

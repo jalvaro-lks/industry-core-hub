@@ -28,7 +28,7 @@ from managers.enablement_services.provider import ConnectorProviderManager
 from managers.config.config_manager import ConfigManager
 from tractusx_sdk.dataspace.managers import OAuth2Manager
 
-from managers.enablement_services.consumer import ConnectorConsumerMemoryManager
+from managers.enablement_services.consumer import ConsumerConnectorSyncPostgresMemoryManager
 import logging
 
 logger = logging.getLogger("connector")
@@ -64,9 +64,12 @@ connector_discovery_service = ConnectorDiscoveryService(
 )
 
 # Create the consumer manager
-connector_consumer_manager = ConnectorConsumerMemoryManager(
+connector_consumer_manager = ConsumerConnectorSyncPostgresMemoryManager(
+    engine=engine,
     connector_discovery=connector_discovery_service,
-    expiration_time=60  # 60 minutes cache expiration
+    expiration_time=60,  # 60 minutes cache expiration
+    logger=logger,
+    verbose=True
 )
 
 # Create the main connector manager

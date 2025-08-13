@@ -25,6 +25,10 @@
 __author__ = 'Eclipse Tractus-X Contributors'
 __license__ = "Apache License, Version 2.0"
 
-from .dtr_consumer_manager import DtrConsumerManager
+from .dtr_consumer_manager import DtrConsumerMemoryManager
+from .dtr_consumer_manager import DtrConsumerMemoryManager as DtrConsumerManager
 from .connector.memory.connector_consumer_memory_manager import ConnectorConsumerMemoryManager
 from .base_connector_consumer_manager import BaseConnectorConsumerManager
+
+from .connector.database.connector_consumer_postgres_memory_manager import ConsumerConnectorPostgresMemoryManager
+from .connector.database.connector_consumer_sync_postgres_memory_manager import ConsumerConnectorSyncPostgresMemoryManager

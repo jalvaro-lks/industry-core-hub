@@ -155,6 +155,9 @@ class ConsumerConnectorPostgresMemoryManager(ConnectorConsumerMemoryManager):
                 with Session(self.engine) as session:
                     result = session.exec(select(self.KnownConnectorsModel)).all()
                     
+                    # Store current state to compare for changes
+                    old_connectors = self.known_connectors.copy()
+                    
                     # Clear current known_connectors
                     self.known_connectors = {}
                     
@@ -164,7 +167,7 @@ class ConsumerConnectorPostgresMemoryManager(ConnectorConsumerMemoryManager):
                         expires_at = row.expires_at
                         
                         # Convert datetime back to timestamp for the SDK
-                        timestamp = (expires_at)
+                        timestamp = expires_at.timestamp()
 
                         self.known_connectors[bpn] = {
                             self.REFRESH_INTERVAL_KEY: timestamp,
@@ -172,10 +175,12 @@ class ConsumerConnectorPostgresMemoryManager(ConnectorConsumerMemoryManager):
                         }
                         loaded_bpns += 1
 
-                if self.logger and self.verbose:
+                # Only log if there's a change in the data
+                new_hash = hashlib.sha256(json.dumps(self.known_connectors, sort_keys=True, default=str).encode()).hexdigest()
+                if self.logger and self.verbose and (self._last_saved_hash is None or new_hash != self._last_saved_hash):
                     self.logger.info(f"[ConsumerConnectorPostgresMemoryManager] Loaded {loaded_bpns} BPN connector entries from the database.")
                     
-                self._last_saved_hash = hashlib.sha256(json.dumps(self.known_connectors, sort_keys=True, default=str).encode()).hexdigest()
+                self._last_saved_hash = new_hash
             except SQLAlchemyError as e:
                 if self.logger and self.verbose:
                     self.logger.error(f"[ConsumerConnectorPostgresMemoryManager] Error loading from db: {e}")
@@ -197,7 +202,9 @@ class ConsumerConnectorPostgresMemoryManager(ConnectorConsumerMemoryManager):
                     # Save each BPN's connector data
                     for bpn, bpn_data in self.known_connectors.items():
                         if self.CONNECTOR_LIST_KEY in bpn_data and self.REFRESH_INTERVAL_KEY in bpn_data:
-                            expires_at = op.timestamp_to_datetime(bpn_data[self.REFRESH_INTERVAL_KEY])
+                            # Convert timestamp to datetime object instead of using the formatted string
+                            timestamp = bpn_data[self.REFRESH_INTERVAL_KEY]
+                            expires_at = datetime.fromtimestamp(timestamp)
                             connectors_list = bpn_data[self.CONNECTOR_LIST_KEY]
                             
                             session.add(self.KnownConnectorsModel(
