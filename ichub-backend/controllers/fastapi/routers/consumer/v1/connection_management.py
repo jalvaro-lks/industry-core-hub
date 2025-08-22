@@ -144,8 +144,3 @@ async def data_post(post_request: DoPostParams) -> Response:
         content_type=post_request.content_type
     ))
 
-
-@router.get("/{bpn}/registries")
-async def find_registries(bpn: str) -> Response:
-    ## Check if the api key is present and if it is authenticated
-    return dtr_manager.consumer.get_dtrs(bpn=bpn)

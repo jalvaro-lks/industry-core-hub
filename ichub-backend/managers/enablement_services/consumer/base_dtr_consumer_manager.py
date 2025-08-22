@@ -175,6 +175,33 @@ class BaseDtrConsumerManager(ABC):
         """
         pass
 
+    @abstractmethod
+    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]]) -> Dict:
+        """
+        Discover digital twin shells using query specifications.
+        
+        This method discovers available DTRs for the given BPN, negotiates access,
+        and searches for shells matching the provided query specifications using
+        the /lookup/shellsByAssetLink API.
+        
+        Args:
+            counter_party_id (str): The Business Partner Number to search
+            query_spec (List[Dict[str, str]]): List of query specifications, each dict must contain:
+                - "name": The name of the query parameter (e.g., "manufacturePartId", "bpn", "serialnr")
+                - "value": The value to search for
+                
+                Example:
+                [
+                    {"name": "manufacturePartId", "value": "MPI7654"},
+                    {"name": "bpn", "value": "BPNL0073928UJ879"},
+                    {"name": "serialnr", "value": "DPPV-0001"}
+                ]
+            
+        Returns:
+            Dict: Search results containing matching digital twin shells with metadata
+        """
+        pass
+
     def _is_cache_expired(self, bpn: str) -> bool:
         """
         Helper method to check if cache for a specific BPN has expired.
