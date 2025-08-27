@@ -497,7 +497,7 @@ class TestPartManagementService:
         mock_repos.catalog_part_repository.create.return_value = new_catalog_part
         
         # Act
-        legal_entity, catalog_part = PartManagementService._find_catalog_part(
+        legal_entity, _ = PartManagementService._find_catalog_part(
             mock_repos, "BPNL123456789012", "PART001", auto_generate=True
         )
         
