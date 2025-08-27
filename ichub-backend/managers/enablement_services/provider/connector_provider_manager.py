@@ -311,7 +311,7 @@ class ConnectorProviderManager:
         existing_asset = self.connector_service.assets.get_by_id(oid=standard_asset_id)
         
         if existing_asset.status_code == 200:
-            logger.info(f"Asset with ID {standard_asset_id} already exists.")
+            logger.debug(f"Asset with ID {standard_asset_id} already exists.")
             return standard_asset_id
         
         # If it doesn't exist, create it
