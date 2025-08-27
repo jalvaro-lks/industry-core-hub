@@ -84,3 +84,32 @@ async def discover_shells(search_request: DiscoverShellsRequest) -> Response:
         media_type="application/json",
         status_code=200
     )
+    
+@router.post("/shell")
+async def discover_shell(search_request: DiscoverShellRequest) -> Response:
+    """
+    Discover digital twin shells using query specifications.
+    
+    This endpoint discovers available DTRs for the given BPN, negotiates access,
+    and searches for shells matching the provided query specifications using
+    the /lookup/shellsByAssetLink API.
+    
+    Args:
+        search_request: Request containing counter_party_id (BPN) and query_spec
+        
+    Returns:
+        Response containing discovered shells and metadata
+    """
+    
+    # Call the DTR manager's discover_shells method
+    result = dtr_manager.consumer.discover_shell(
+        counter_party_id=search_request.counter_party_id, 
+        id=search_request.id
+    )
+    
+    # Return the response as JSON
+    return Response(
+        content=json.dumps(result, indent=2),
+        media_type="application/json",
+        status_code=200
+    )
