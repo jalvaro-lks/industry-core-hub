@@ -737,20 +737,36 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         return None
     
     def _fetch_shell_descriptors(self, shells_response: Dict, dataplane_url: str, access_token: str) -> List[Dict]:
-            """Fetch shell descriptors from shell UUIDs."""
-            shell_uuids = shells_response.get('result', []) if isinstance(shells_response, dict) else shells_response
-            if not shell_uuids:
-                return []
-            
-            shells = []
-            for shell_uuid in shell_uuids:
-                try:
-                    shell = self._fetch_shell_descriptor(shell_uuid, dataplane_url, access_token)
-                    if shell:
-                        shells.append(shell)
-                except Exception:
-                    continue
-            return shells
+        """Fetch shell descriptors from shell UUIDs in parallel."""
+        shell_uuids = shells_response.get('result', []) if isinstance(shells_response, dict) else shells_response
+        if not shell_uuids:
+            return []
+        
+        shells = []
+        threads = []
+        
+        # Use a thread-safe list to collect results
+        def fetch_single_shell(shell_uuid: str, results_list: List[Dict]):
+            try:
+                shell = self._fetch_shell_descriptor(shell_uuid, dataplane_url, access_token)
+                if shell:
+                    with self._lock:  # Thread-safe append
+                        results_list.append(shell)
+            except Exception:
+                # Silently continue on error, as in original implementation
+                pass
+        
+        # Start threads for parallel fetching
+        for shell_uuid in shell_uuids:
+            thread = threading.Thread(target=fetch_single_shell, args=(shell_uuid, shells))
+            thread.start()
+            threads.append(thread)
+        
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+        
+        return shells
         
     def _extract_shell_ids(self, shells_response: Dict) -> List[str]:
         """Extract shell IDs from the lookup response."""
