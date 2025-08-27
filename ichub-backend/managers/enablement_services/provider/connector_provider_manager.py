@@ -45,12 +45,20 @@ class ConnectorProviderManager:
                  connector_provider_service: BaseConnectorProviderService,
                  ichub_url: str,
                  agreements: list,
-                 path_submodel_dispatcher: str = "/submodel-dispatcher"):
+                 path_submodel_dispatcher: str = "/submodel-dispatcher",
+                 authorization: bool = False,
+                 backend_api_key: str = "X-Api-Key",
+                 backend_api_key_value: str = ""):
 
         self.ichub_url = ichub_url  # for the circular submodel bundles.
         self.path_submodel_dispatcher = path_submodel_dispatcher
         self.agreements = agreements
         self.backend_submodel_dispatcher = self.ichub_url + self.path_submodel_dispatcher
+
+        # Initialize authorization attributes from parameters
+        self.authorization = authorization
+        self.backend_api_key = backend_api_key
+        self.backend_api_key_value = backend_api_key_value
 
         self.empty_policy = self.get_empty_policy_config()
         self.connector_service = connector_provider_service
@@ -303,7 +311,7 @@ class ConnectorProviderManager:
         existing_asset = self.connector_service.assets.get_by_id(oid=standard_asset_id)
         
         if existing_asset.status_code == 200:
-            logger.debug(f"Asset with ID {standard_asset_id} already exists.")
+            logger.info(f"Asset with ID {standard_asset_id} already exists.")
             return standard_asset_id
         
         # If it doesn't exist, create it

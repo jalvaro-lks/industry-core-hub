@@ -21,6 +21,7 @@
 #################################################################################
 
 import copy
+import hashlib
 import logging
 import threading
 import json
@@ -63,6 +64,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         """
         super().__init__(connector_consumer_manager, expiration_time, dct_type_id=dct_type_id, dct_type_key=dct_type_key, operator=operator, dct_type=dct_type)
         self.known_dtrs = {}
+        self.shell_descriptors = {}  # Central storage for shell descriptors by shell ID
         self.logger = logger if logger else None
         self.verbose = verbose
         self._lock = threading.RLock()
@@ -223,15 +225,16 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
 
     def purge_cache(self) -> None:
         """
-        Clear the entire DTR cache.
+        Clear the entire DTR cache and shell descriptors.
         
-        This method removes all cached DTRs for all BPNs,
+        This method removes all cached DTRs for all BPNs and all shell descriptors,
         effectively resetting the cache to an empty state.
         """
         with self._lock:
             self.known_dtrs.clear()
+            self.shell_descriptors.clear()
             if(self.logger and self.verbose):
-                self.logger.info("[DTR Manager] Purged entire DTR cache")
+                self.logger.info("[DTR Manager] Purged entire DTR cache and shell descriptors")
 
     def get_dtrs_by_connector(self, bpn: str, connector_url: str) -> List[Dict]:
         """
@@ -511,163 +514,178 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
 
     def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]]) -> Dict:
         """
-        Discover digital twin shells using query specifications.
-        
-        This method discovers available DTRs for the given BPN, negotiates access,
-        and searches for shells matching the provided query specifications using
-        the /lookup/shellsByAssetLink API.
-        
-        Args:
-            counter_party_id (str): The Business Partner Number to search
-            query_spec (List[Dict[str, str]]): List of query specifications, each dict must contain:
-                - "name": The name of the query parameter (e.g., "manufacturePartId", "bpn", "serialnr")  
-                - "value": The value to search for
-            
-        Returns:
-            Dict: Search results containing matching digital twin shells with metadata
+        Discover digital twin shells using query specifications with DTR tracking and retry.
         """
-        try:
-            if(self.logger and self.verbose):
-                self.logger.info(f"[DTR Manager] [{counter_party_id}] Starting shell discovery with {len(query_spec)} query parameters")
-            
-            # Step 1: Get available DTRs for the BPN
-            dtrs = self.get_dtrs(counter_party_id)
-            if not dtrs or len(dtrs) == 0:
-                if(self.logger and self.verbose):
-                    self.logger.warning(f"[DTR Manager] [{counter_party_id}] No DTRs found for shell discovery")
-                return {"shells": [], "message": "No DTRs found for the specified BPN"}
-            
-            if(self.logger and self.verbose):
-                self.logger.info(f"[DTR Manager] [{counter_party_id}] Found {len(dtrs)} DTR(s), starting shell search")
-            
-            # Step 2: Validate query specifications format
-            if not query_spec:
-                return {"shells": [], "message": "No query specifications provided"}
-            
-            # Step 3: Search each DTR for matching shells
-            all_shells = []
-            connector_service:BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
-            
-            for dtr in dtrs:
-                connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
-                asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
-                policies = dtr.get(self.DTR_POLICIES_KEY, [])
+        dtrs = self.get_dtrs(counter_party_id)
+        if not dtrs:
+            return {"shell_descriptors": [], "dtrs": [], "message": "No DTRs found"}
+        
+        if not query_spec:
+            return {"shell_descriptors": [], "dtrs": [], "message": "No query specifications provided"}
+        
+        all_shells = []
+        dtr_results = []
+        connector_service = self.connector_consumer_manager.connector_service
+        
+        # Process DTRs in parallel
+        threads = []
+        for dtr in dtrs:
+            thread = threading.Thread(
+                target=self._process_dtr_parallel,
+                kwargs={
+                    'connector_service': connector_service,
+                    'counter_party_id': counter_party_id,
+                    'dtr': dtr,
+                    'query_spec': query_spec,
+                    'dtr_results': dtr_results
+                }
+            )
+            thread.start()
+            threads.append(thread)
+        
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+        
+        # Collect all shell IDs from DTR results
+        for dtr_info in dtr_results:
+            shell_ids = dtr_info.get("shells", [])
+            all_shells.extend(shell_ids)
+        
+        # Get shell descriptors from central storage
+        shell_descriptors = [self.shell_descriptors.get(shell_id) for shell_id in all_shells if shell_id in self.shell_descriptors]
 
-                if not policies:
-                    if(self.logger and self.verbose):
-                        self.logger.warning(f"[DTR Manager] [{counter_party_id}] No policies found for DTR [{asset_id}]")
-                    continue
+        return {
+            "shell_descriptors": shell_descriptors,
+            "dtrs": dtr_results,
+            "shells_found": len(shell_descriptors),
+            "dtrs_searched": len(dtrs)
+        }
 
-                
-                # Search for shells using the lookup API
-                if(self.logger and self.verbose):
-                    self.logger.debug(f"[DTR Manager] [{counter_party_id}] Calling /lookup/shellsByAssetLink on Connector [{connector_url}] DTR [{dtr.get(self.DTR_ASSET_ID_KEY)}]")
-                print(json.dumps(query_spec))  # Debug output of query_spec
-                
-                # Use connector service do_post method instead of direct HTTP request
+    def _process_dtr_parallel(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], dtr_results: List) -> None:
+        """Process a single DTR in parallel and append result to shared list."""
+        dtr_info = self._process_dtr_with_retry(connector_service, counter_party_id, dtr, query_spec)
+        with self._lock:  # Thread-safe append to shared list
+            dtr_results.append(dtr_info)
+
+    def _process_dtr_with_retry(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], max_retries: int = 2) -> Dict:
+        """Process a single DTR with retry mechanism."""
+        connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
+        asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
+        policies = dtr.get(self.DTR_POLICIES_KEY, [])
+        
+        dtr_info = {
+            "connector_url": connector_url,
+            "asset_id": asset_id,
+            "status": "failed",
+            "shells_found": 0,
+            "shells": []
+        }
+        
+        if not policies:
+            dtr_info["error"] = "No policies found"
+            return dtr_info
+        
+        filter_expression = connector_service.get_filter_expression(
+            key=self.dct_type_key, operator=self.operator, value=self.dct_type
+        )
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Establish connection
                 dataplane_url, access_token = connector_service.do_dsp(
                     counter_party_id=counter_party_id,
                     counter_party_address=connector_url,
                     policies=policies,
-                    filter_expression=connector_service.get_filter_expression(
-                        key=self.dct_type_key,
-                        operator=self.operator,
-                        value=self.dct_type
-                    )
+                    filter_expression=filter_expression
                 )
-                print(f"[DTR Manager] [{counter_party_id}] Using Data Plane URL: {dataplane_url} + token [{access_token}]")
                 
-                 # TODO: Future implementation should use AAS service for shellsByAssetLink API support
-                # aas_service = AasService(
-                #     base_url=dataplane_url,
-                #     token=access_token,
-                #     base_lookup_url=dtr_endpoint,
-                #     api_path="",
-                #     edc_controlplane_hostname="",
-                #     edc_controlplane_catalog_path="",
-                #     edc_dataplane_hostname="",
-                #     edc_dataplane_public_path=""
-                # )
-                
-                # Use query_spec directly as it's already in the correct format for shell lookup
-                # Each query_spec item has "name" and "value" properties as required by the DTR API
-                
+                # Search for shells
                 response = HttpTools.do_post(
                     url=f"{dataplane_url}/lookup/shellsByAssetLink",
-                    headers={
-                        "Authorization": f"{access_token}"
-                    },
+                    headers={"Authorization": f"{access_token}"},
                     json=query_spec
                 )
-               
+                
                 if response.status_code == 200:
-                    shells_response = response.json()
-                    print(shells_response)
+                    shell_ids = self._extract_shell_ids(response.json())
+                    shells = self._fetch_shell_descriptors(response.json(), dataplane_url, access_token)
                     
-                    # Extract shell UUIDs from the response
-                    shell_uuids = []
-                    if isinstance(shells_response, dict) and 'result' in shells_response:
-                        shell_uuids = shells_response.get('result', [])
-                    elif isinstance(shells_response, list):
-                        shell_uuids = shells_response
+                    # Store shell descriptors in central memory
+                    for shell in shells:
+                        shell_id = shell.get("id")
+                        if shell_id:
+                            self.shell_descriptors[shell_id] = shell
                     
-                    # Fetch full shell descriptors for each UUID
-                    if shell_uuids:
-                        if(self.logger and self.verbose):
-                            self.logger.info(f"[DTR Manager] [{counter_party_id}] Found {len(shell_uuids)} shell UUIDs, fetching descriptors")
-                        
-                        for shell_uuid in shell_uuids:
-                            try:
-                                # Encode the shell UUID in base64
-                                encoded_shell_uuid = base64.b64encode(shell_uuid.encode('utf-8')).decode('utf-8')
-                                
-                                shell_response = HttpTools.do_get(
-                                    url=f"{dataplane_url}/shell-descriptors/{encoded_shell_uuid}",
-                                    headers={
-                                        "Authorization": f"{access_token}"
-                                    }
-                                )
-                                
-                                if shell_response.status_code == 200:
-                                    shell_descriptor = shell_response.json()
-                                    all_shells.append(shell_descriptor)
-                                    if(self.logger and self.verbose):
-                                        self.logger.debug(f"[DTR Manager] [{counter_party_id}] Retrieved shell descriptor for UUID [{shell_uuid}] (encoded: {encoded_shell_uuid})")
-                                else:
-                                    if(self.logger and self.verbose):
-                                        self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve shell descriptor for UUID [{shell_uuid}]: {shell_response.status_code}")
-                            except Exception as e:
-                                if(self.logger and self.verbose):
-                                    self.logger.error(f"[DTR Manager] [{counter_party_id}] Error retrieving shell descriptor for UUID [{shell_uuid}]: {e}")
-                        
-                        if(self.logger and self.verbose):
-                            self.logger.info(f"[DTR Manager] [{counter_party_id}] Retrieved {len([s for s in all_shells if isinstance(s, dict)])} shell descriptors from DTR [{asset_id}]")
-                    else:
-                        if(self.logger and self.verbose):
-                            self.logger.info(f"[DTR Manager] [{counter_party_id}] No shell UUIDs found in DTR [{asset_id}]")
+                    dtr_info.update({
+                        "status": "success",
+                        "shells_found": len(shell_ids),
+                        "shells": shell_ids  # Store just IDs in DTR info
+                    })
+                    return dtr_info
                 else:
-                    if(self.logger and self.verbose):
-                        self.logger.warning(f"[DTR Manager] [{counter_party_id}] Shell lookup failed for DTR [{asset_id}]: {response.status_code}")
+                    # Delete failed connection for retry
+                    self._delete_connection(connector_service, counter_party_id, connector_url, policies, filter_expression, counter_party_id, asset_id)
+                    
+                    if attempt == max_retries:
+                        dtr_info["error"] = f"HTTP {response.status_code} after {max_retries + 1} attempts"
+                    
+            except Exception as e:
+                # Delete failed connection for retry
+                self._delete_connection(connector_service, counter_party_id, connector_url, policies, filter_expression, counter_party_id, asset_id)
+                
+                if attempt == max_retries:
+                    dtr_info["error"] = str(e)
+        
+        return dtr_info
+    
+    def _fetch_shell_descriptors(self, shells_response: Dict, dataplane_url: str, access_token: str) -> List[Dict]:
+            """Fetch shell descriptors from shell UUIDs."""
+            shell_uuids = shells_response.get('result', []) if isinstance(shells_response, dict) else shells_response
+            if not shell_uuids:
+                return []
             
-            
-            # Step 7: Return aggregated results
-            result = {
-                "shells": all_shells,
-                "dtrs_searched": len(dtrs),
-                "shells_found": len(all_shells),
-                "query_spec": query_spec
-            }
-            
-            if(self.logger and self.verbose):
-                self.logger.info(f"[DTR Manager] [{counter_party_id}] Shell discovery complete. Found {len(all_shells)} shells across {len(dtrs)} DTRs")
-            
-            return result
-            
-        except Exception as e:
-            error_msg = f"Error during shell discovery: {str(e)}"
-            if(self.logger and self.verbose):
-                self.logger.error(f"[DTR Manager] [{counter_party_id}] {error_msg}")
-            return {"shells": [], "error": error_msg}
+            shells = []
+            for shell_uuid in shell_uuids:
+                try:
+                    encoded_uuid = base64.b64encode(shell_uuid.encode('utf-8')).decode('utf-8')
+                    response = HttpTools.do_get(
+                        url=f"{dataplane_url}/shell-descriptors/{encoded_uuid}",
+                        headers={"Authorization": f"{access_token}"}
+                    )
+                    if response.status_code == 200:
+                        shells.append(response.json())
+                except Exception:
+                    continue
+            return shells
+        
+    def _extract_shell_ids(self, shells_response: Dict) -> List[str]:
+        """Extract shell IDs from the lookup response."""
+        if isinstance(shells_response, dict) and 'result' in shells_response:
+            return shells_response.get('result', [])
+        elif isinstance(shells_response, list):
+            return shells_response
+        return []
+
+    def _delete_connection(self, connector_service:BaseConnectorConsumerService, counter_party_id: str, connector_url: str, policies: List, filter_expression: Dict, bpn: str, asset_id: str):
+        """Delete failed connection for retry and remove DTR from known DTRs."""
+        policies_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
+        filter_checksum = hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest()
+        connector_service.connection_manager.delete_connection(
+            counter_party_id=counter_party_id,
+            counter_party_address=connector_url,
+            query_checksum=filter_checksum,
+            policy_checksum=policies_checksum
+        )
+        
+        # Also remove the DTR from known_dtrs to avoid retrying problematic DTRs
+        with self._lock:
+            if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
+                dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                if isinstance(dtr_dict, dict) and asset_id in dtr_dict:
+                    del dtr_dict[asset_id]
+                    if self.logger and self.verbose:
+                        self.logger.info(f"[DTR Manager] [{bpn}] Removed failed DTR with asset ID [{asset_id}] from cache")
 
     def discover_shell(self, counter_party_id: str, aas_id: str) -> Dict:
         pass
@@ -739,8 +757,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             elif isinstance(policy, str):
                 # If it's already a string (policy ID), keep it as is
                 policies.append(policy)
-
-        return policies
 
         return policies
 

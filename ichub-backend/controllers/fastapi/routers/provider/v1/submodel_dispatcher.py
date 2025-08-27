@@ -29,7 +29,7 @@ from services.provider.submodel_dispatcher_service import SubmodelDispatcherServ
 from managers.config.config_manager import ConfigManager
 from tools.exceptions import exception_responses
 
-path_submodel_dispatcher = ConfigManager.get_config("submodel_dispatcher.apiPath", default="/submodel-dispatcher")
+path_submodel_dispatcher = ConfigManager.get_config("provider.submodel_dispatcher.apiPath", default="/submodel-dispatcher")
 router = APIRouter(prefix=path_submodel_dispatcher, tags=["Submodel Dispatcher"])
 submodel_dispatcher_service = SubmodelDispatcherService()
 

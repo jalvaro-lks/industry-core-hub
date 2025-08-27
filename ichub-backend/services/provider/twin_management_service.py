@@ -467,7 +467,7 @@ class TwinManagementService:
 
             ## Step 4b: Check if there is created a asset for the digital twin registry.
             
-            dtr_config = ConfigManager.get_config("digitalTwinRegistry")
+            dtr_config = ConfigManager.get_config("provider.digitalTwinRegistry")
             asset_config = dtr_config.get("asset_config")
             dtr_asset_id, _, _, _ = connector_manager.provider.register_dtr_offer(
                 base_dtr_url=dtr_config.get("hostname"),
@@ -494,35 +494,34 @@ class TwinManagementService:
                 # Step 5b: Update the registration status to STORED
                 db_twin_aspect_registration.status = TwinAspectRegistrationStatus.STORED.value
                 repo.commit()
-
+            
+            asset_id, usage_policy_id, access_policy_id, contract_id = connector_manager.provider.register_submodel_bundle_circular_offer(
+                semantic_id=db_twin_aspect.semantic_id
+            )
             # Step 6: Handle the EDC registration
-            if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.EDC_REGISTERED.value:
-                
-                # Step 6a: Register the aspect as asset in the EDC (if necessary) only submodel bundle allowed
-                asset_id, usage_policy_id, access_policy_id, contract_id = connector_manager.provider.register_submodel_bundle_circular_offer(
-                    semantic_id=db_twin_aspect.semantic_id
-                )
+            if asset_id and db_twin_aspect_registration.status < TwinAspectRegistrationStatus.EDC_REGISTERED.value:
 
                 # Step 6b: Update the registration status to EDC_REGISTERED
                 db_twin_aspect_registration.status = TwinAspectRegistrationStatus.EDC_REGISTERED.value
                 repo.commit()
-
+            
             # Step 7: Handle the DTR registration
             if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:               
+
                 # Step 7a: Register the submodel in the DTR (if necessary)
                 try:
-                    dtr_provider_managercreate_submodel_descriptor(
+                    dtr_provider_manager.create_submodel_descriptor(
                         aas_id=db_twin.aas_id,
                         submodel_id=db_twin_aspect.submodel_id,
                         semantic_id=db_twin_aspect.semantic_id,
-                        edc_asset_id=asset_id
-                )
+                        connector_asset_id=asset_id
+                    )
+                    # Step 7b: Update the registration status to DTR_REGISTERED only on success
+                    db_twin_aspect_registration.status = TwinAspectRegistrationStatus.DTR_REGISTERED.value
+                    repo.commit()
                 except Exception as e:
-                    logger.error("It was not possible to create the submodel descriptor")
-
-                # Step 7b: Update the registration status to DTR_REGISTERED
-                db_twin_aspect_registration.status = TwinAspectRegistrationStatus.DTR_REGISTERED.value
-                repo.commit()
+                    logger.error(f"Failed to create submodel descriptor: {e}")
+                    raise e  # Re-raise the exception to prevent twin creation from completing
 
             return TwinAspectRead(
                 semanticId=db_twin_aspect.semantic_id,

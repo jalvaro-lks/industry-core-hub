@@ -35,10 +35,10 @@ from database import engine
 from managers.config.config_manager import ConfigManager
 
 # Get DTR discovery configuration parameters
-dtr_dct_type_id = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_key')
-dtr_filter_operand_left = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_filter.operandLeft')
-dtr_filter_operator = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_filter.operator')
-dtr_dct_type = ConfigManager.get_config('digitalTwinRegistry.discovery.dct_type_filter.operandRight')
+dtr_dct_type_id = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_key')
+dtr_filter_operand_left = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_filter.operandLeft')
+dtr_filter_operator = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_filter.operator')
+dtr_dct_type = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_filter.operandRight')
 
 dtr_consumer_manager = DtrConsumerSyncPostgresMemoryManager(
     engine=engine,
@@ -54,20 +54,20 @@ dtr_consumer_manager = DtrConsumerSyncPostgresMemoryManager(
 """
 Currently only one digital twin registry is supported from the provider side.
 """
-dtr_hostname = ConfigManager.get_config('digitalTwinRegistry.hostname')
-dtr_uri = ConfigManager.get_config('digitalTwinRegistry.uri')
-dtr_lookup_uri = ConfigManager.get_config('digitalTwinRegistry.lookupUri')
-dtr_api_path = ConfigManager.get_config('digitalTwinRegistry.apiPath')
+dtr_hostname = ConfigManager.get_config('provider.digitalTwinRegistry.hostname')
+dtr_uri = ConfigManager.get_config('provider.digitalTwinRegistry.uri')
+dtr_lookup_uri = ConfigManager.get_config('provider.digitalTwinRegistry.lookupUri')
+dtr_api_path = ConfigManager.get_config('provider.digitalTwinRegistry.apiPath')
 dtr_url = f"{dtr_hostname}{dtr_uri}"
 dtr_lookup_url = f"{dtr_hostname}{dtr_lookup_uri}"
 
 dtr_provider_manager = DtrProviderManager(
     dtr_url=dtr_url, dtr_lookup_url=dtr_lookup_url,
     api_path=str(dtr_api_path),
-    edc_controlplane_hostname=ConfigManager.get_config("edc.controlplane.hostname"),
-    edc_controlplane_catalog_path=ConfigManager.get_config("edc.controlplane.protocolPath"),
-    edc_dataplane_hostname=ConfigManager.get_config("edc.dataplane.hostname"),
-    edc_dataplane_public_path=ConfigManager.get_config("edc.dataplane.publicPath")
+    connector_controlplane_hostname=ConfigManager.get_config("provider.connector.controlplane.hostname"),
+    connector_controlplane_catalog_path=ConfigManager.get_config("provider.connector.controlplane.protocolPath"),
+    connector_dataplane_hostname=ConfigManager.get_config("provider.connector.dataplane.hostname"),
+    connector_dataplane_public_path=ConfigManager.get_config("provider.connector.dataplane.publicPath")
 )
 
 dtr_manager = DtrManager(
