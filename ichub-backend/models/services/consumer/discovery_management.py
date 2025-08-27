@@ -39,3 +39,5 @@ class QuerySpec(BaseModel):
 
 class DiscoverShellsRequest(DiscoverRegistriesRequest):
     query_spec: List[QuerySpec] = Field(..., alias="querySpec", description="The query specifications for discovering shells.")
+    limit: Optional[int] = Field(None, description="Maximum number of shells to return per page.")
+    cursor: Optional[str] = Field(None, description="Cursor for pagination.")

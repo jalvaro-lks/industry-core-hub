@@ -20,9 +20,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
+## This file was created using an LLM (Claude Sonnet 4) and reviewed by a human committer
+
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, TYPE_CHECKING
 import hashlib
+
 
 if TYPE_CHECKING:
     from managers.enablement_services.connector_manager import BaseConnectorConsumerManager
@@ -201,7 +204,26 @@ class BaseDtrConsumerManager(ABC):
             Dict: Search results containing matching digital twin shells with metadata
         """
         pass
-
+    
+    @abstractmethod
+    def discover_shell(self, counter_party_id: str, id: str) -> Dict:
+        """
+        Discover a digital twin shell using its ID.
+        
+        This method discovers the DTR for the given BPN, negotiates access,
+        and retrieves the shell matching the provided ID using the
+        /lookup/shellsByAssetLink API.
+        
+        Args:
+            counter_party_id (str): The Business Partner Number to search
+            id (str): The ID of the shell to retrieve
+            
+        Returns:
+            Dict: Search results containing the matching digital twin shell with metadata
+        """
+        
+        pass
+    
     def _is_cache_expired(self, bpn: str) -> bool:
         """
         Helper method to check if cache for a specific BPN has expired.

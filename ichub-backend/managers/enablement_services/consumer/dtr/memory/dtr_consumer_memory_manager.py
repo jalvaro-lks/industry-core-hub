@@ -20,6 +20,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
+## This file was created using an LLM (Claude Sonnet 4) and reviewed by a human committer
+
 import copy
 import hashlib
 import logging
@@ -33,6 +35,7 @@ from tractusx_sdk.industry.services import AasService
 from tractusx_sdk.industry.models.aas.v3 import SpecificAssetId
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.consumer.base_dtr_consumer_manager import BaseDtrConsumerManager
+from managers.enablement_services.consumer.dtr.pagination_manager import PaginationManager, DtrPaginationState, PageState
 if TYPE_CHECKING:
     from managers.enablement_services.connector_manager import BaseConnectorConsumerManager
 from requests import Response
@@ -512,9 +515,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     self.logger.error(f"[DTR Manager] [{bpn}] Error discovering DTRs: {e}")
                 return []
 
-    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]]) -> Dict:
+    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]], limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
         """
-        Discover digital twin shells using query specifications with DTR tracking and retry.
+        Discover digital twin shells using query specifications with DTR tracking and pagination.
         """
         dtrs = self.get_dtrs(counter_party_id)
         if not dtrs:
@@ -523,52 +526,124 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         if not query_spec:
             return {"shell_descriptors": [], "dtrs": [], "message": "No query specifications provided"}
         
+        # Decode cursor or initialize
+        if cursor:
+            current_page = PaginationManager.decode_page_token(cursor)
+            
+            # Check if cursor is compatible with current limit
+            if not PaginationManager.is_cursor_compatible(current_page, limit):
+                # Cursor is incompatible - start fresh but use DTR cursors as starting point
+                # This allows continuing from where we left off but with new limit
+                return {
+                    "shell_descriptors": [],
+                    "dtrs": [],
+                    "message": f"Cursor was created with limit {current_page.limit} but request has limit {limit}. Please start pagination from the beginning.",
+                    "error": "LIMIT_MISMATCH"
+                }
+        else:
+            # Initialize first page
+            current_page = PageState(dtr_states={}, page_number=0, limit=limit)
+        
         all_shells = []
         dtr_results = []
         connector_service = self.connector_consumer_manager.connector_service
         
-        # Process DTRs in parallel
-        threads = []
+        # Calculate per-DTR limit
+        active_dtrs = len([dtr for dtr in dtrs if not current_page.dtr_states.get(dtr.get(self.DTR_ASSET_ID_KEY), DtrPaginationState("")).exhausted])
+        per_dtr_limit = PaginationManager.distribute_limit(limit or 50, active_dtrs) if limit else None
+        
+        # Process DTRs
+        new_dtr_states = {}
         for dtr in dtrs:
-            thread = threading.Thread(
-                target=self._process_dtr_parallel,
-                kwargs={
-                    'connector_service': connector_service,
-                    'counter_party_id': counter_party_id,
-                    'dtr': dtr,
-                    'query_spec': query_spec,
-                    'dtr_results': dtr_results
-                }
+            asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
+            dtr_state = current_page.dtr_states.get(asset_id, DtrPaginationState(asset_id))
+            
+            if dtr_state.exhausted:
+                new_dtr_states[asset_id] = dtr_state
+                continue
+            
+            dtr_info = self._process_dtr_with_retry(
+                connector_service, counter_party_id, dtr, query_spec,
+                limit=per_dtr_limit, cursor=dtr_state.cursor
             )
-            thread.start()
-            threads.append(thread)
+            
+            dtr_results.append(dtr_info)
+            shells = dtr_info.get("shells", [])
+            all_shells.extend(shells)
+            
+            # Update DTR state
+            paging_metadata = dtr_info.get("paging_metadata", {})
+            new_cursor = paging_metadata.get("cursor")
+            new_dtr_states[asset_id] = DtrPaginationState(
+                asset_id=asset_id,
+                cursor=new_cursor,
+                exhausted=not new_cursor
+            )
+            
+            # Stop if we've reached the total limit
+            if limit and len(all_shells) >= limit:
+                all_shells = all_shells[:limit]
+                break
         
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
+        # Create new page state with reference to current page as previous
+        new_page = PageState(
+            dtr_states=new_dtr_states,
+            page_number=current_page.page_number + 1,
+            limit=limit,  # Store the limit used for this page
+            previous_state=current_page  # Store current page as previous state
+        )
         
-        # Collect all shell IDs from DTR results
-        for dtr_info in dtr_results:
-            shell_ids = dtr_info.get("shells", [])
-            all_shells.extend(shell_ids)
-        
-        # Get shell descriptors from central storage
+        # Get shell descriptors
         shell_descriptors = [self.shell_descriptors.get(shell_id) for shell_id in all_shells if shell_id in self.shell_descriptors]
-
-        return {
+        
+        # Generate pagination tokens - only include pagination if limit or cursor was provided
+        pagination_enabled = limit is not None or cursor is not None
+        
+        response = {
             "shell_descriptors": shell_descriptors,
             "dtrs": dtr_results,
-            "shells_found": len(shell_descriptors),
-            "dtrs_searched": len(dtrs)
+            "shells_found": len(shell_descriptors)
         }
+        
+        if pagination_enabled:
+            # Generate next cursor if there's more data
+            has_more = PaginationManager.has_more_data(new_dtr_states)
+            next_cursor = PaginationManager.encode_page_token(new_page) if has_more else None
+            
+            # Generate previous cursor if we have a previous state
+            previous_cursor = None
+            if current_page.previous_state is not None:
+                previous_cursor = PaginationManager.encode_page_token(current_page.previous_state)
+            elif current_page.page_number > 0:
+                # For cases where we don't have previous_state but page_number > 0
+                # This shouldn't happen with proper implementation, but as a fallback
+                # we create an empty previous state
+                empty_previous = PageState(
+                    dtr_states={}, 
+                    page_number=current_page.page_number - 1,
+                    limit=limit
+                )
+                previous_cursor = PaginationManager.encode_page_token(empty_previous)
+            
+            pagination = {
+                "page": new_page.page_number
+            }
+            if next_cursor:
+                pagination["next"] = next_cursor
+            if previous_cursor:
+                pagination["previous"] = previous_cursor
+                
+            response["pagination"] = pagination
+        
+        return response
 
-    def _process_dtr_parallel(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], dtr_results: List) -> None:
+    def _process_dtr_parallel(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], dtr_results: List, limit: Optional[int] = None, cursor: Optional[str] = None) -> None:
         """Process a single DTR in parallel and append result to shared list."""
-        dtr_info = self._process_dtr_with_retry(connector_service, counter_party_id, dtr, query_spec)
+        dtr_info = self._process_dtr_with_retry(connector_service, counter_party_id, dtr, query_spec, limit=limit, cursor=cursor)
         with self._lock:  # Thread-safe append to shared list
             dtr_results.append(dtr_info)
 
-    def _process_dtr_with_retry(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], max_retries: int = 2) -> Dict:
+    def _process_dtr_with_retry(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], max_retries: int = 2, limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
         """Process a single DTR with retry mechanism."""
         connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
         asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
@@ -601,15 +676,25 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 )
                 
                 # Search for shells
+                url = f"{dataplane_url}/lookup/shellsByAssetLink"
+                if limit is not None or cursor is not None:
+                    query_params = []
+                    if limit is not None:
+                        query_params.append(f"limit={limit}")
+                    if cursor is not None:
+                        query_params.append(f"cursor={cursor}")
+                    url += "?" + "&".join(query_params)
+                
                 response = HttpTools.do_post(
-                    url=f"{dataplane_url}/lookup/shellsByAssetLink",
+                    url=url,
                     headers={"Authorization": f"{access_token}"},
                     json=query_spec
                 )
                 
                 if response.status_code == 200:
-                    shell_ids = self._extract_shell_ids(response.json())
-                    shells = self._fetch_shell_descriptors(response.json(), dataplane_url, access_token)
+                    response_data = response.json()
+                    shell_ids = self._extract_shell_ids(response_data)
+                    shells = self._fetch_shell_descriptors(response_data, dataplane_url, access_token)
                     
                     # Store shell descriptors in central memory
                     for shell in shells:
@@ -620,7 +705,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     dtr_info.update({
                         "status": "success",
                         "shells_found": len(shell_ids),
-                        "shells": shell_ids  # Store just IDs in DTR info
+                        "shells": shell_ids,  # Store just IDs in DTR info
+                        "paging_metadata": response_data.get("paging_metadata", {})
                     })
                     return dtr_info
                 else:
@@ -639,6 +725,17 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return dtr_info
     
+    def _fetch_shell_descriptor(self, shell_uuid: str, dataplane_url: str, access_token: str) -> Dict:
+        """Fetch single shell descriptor by UUID."""
+        encoded_uuid = base64.b64encode(shell_uuid.encode('utf-8')).decode('utf-8')
+        response = HttpTools.do_get(
+            url=f"{dataplane_url}/shell-descriptors/{encoded_uuid}",
+            headers={"Authorization": f"{access_token}"}
+        )
+        if response.status_code == 200:
+            return response.json()
+        return None
+    
     def _fetch_shell_descriptors(self, shells_response: Dict, dataplane_url: str, access_token: str) -> List[Dict]:
             """Fetch shell descriptors from shell UUIDs."""
             shell_uuids = shells_response.get('result', []) if isinstance(shells_response, dict) else shells_response
@@ -648,13 +745,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             shells = []
             for shell_uuid in shell_uuids:
                 try:
-                    encoded_uuid = base64.b64encode(shell_uuid.encode('utf-8')).decode('utf-8')
-                    response = HttpTools.do_get(
-                        url=f"{dataplane_url}/shell-descriptors/{encoded_uuid}",
-                        headers={"Authorization": f"{access_token}"}
-                    )
-                    if response.status_code == 200:
-                        shells.append(response.json())
+                    shell = self._fetch_shell_descriptor(shell_uuid, dataplane_url, access_token)
+                    if shell:
+                        shells.append(shell)
                 except Exception:
                     continue
             return shells
@@ -687,9 +780,56 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     if self.logger and self.verbose:
                         self.logger.info(f"[DTR Manager] [{bpn}] Removed failed DTR with asset ID [{asset_id}] from cache")
 
-    def discover_shell(self, counter_party_id: str, aas_id: str) -> Dict:
-        pass
+    def discover_shell(self, counter_party_id: str, id: str) -> Dict:
+        """
+        Discover a single digital twin shell by ID with DTR tracking and retry.
+        """
+        dtrs = self.get_dtrs(counter_party_id)
+        if not dtrs:
+            return {"status": 404, "message": "No DTRs found for this counterPartyId"}
+
+        if not id:
+            return {"status": 400, "message": "No shell ID provided"}
         
+        connector_service = self.connector_consumer_manager.connector_service
+        
+        # Try each DTR to find the shell
+        for dtr in dtrs:
+            connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
+            asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
+            policies = dtr.get(self.DTR_POLICIES_KEY, [])
+            
+            filter_expression = connector_service.get_filter_expression(
+                key=self.dct_type_key, operator=self.operator, value=self.dct_type
+            )
+            
+            try:
+                # Establish connection
+                dataplane_url, access_token = connector_service.do_dsp(
+                    counter_party_id=counter_party_id,
+                    counter_party_address=connector_url,
+                    policies=policies,
+                    filter_expression=filter_expression
+                )
+                
+                # Fetch specific shell descriptor
+                shell = self._fetch_shell_descriptor(id, dataplane_url, access_token)
+                if shell:
+                    return {
+                        "shell_descriptor": shell,
+                        "dtr": {
+                            "connector_url": connector_url,
+                            "asset_id": asset_id,
+                        }
+                    }
+                    
+            except Exception as e:
+                if self.logger and self.verbose:
+                    self.logger.debug(f"[DTR Manager] [{counter_party_id}] Failed to fetch shell {id} from DTR {connector_url}: {e}")
+                continue
+
+        return {"status": 404, "message": "Shell not found in any DTR of this counterPartyId"}
+
 
     def _is_dtr_asset(self, dataset: Dict) -> bool:
         """

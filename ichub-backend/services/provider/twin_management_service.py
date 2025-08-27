@@ -312,7 +312,7 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             if not db_twin_registration.dtr_registered:
-                dtr_provider_managercreate_or_update_shell_descriptor_serialized_part(
+                dtr_provider_manager.create_or_update_shell_descriptor_serialized_part(
                     global_id=db_twin.global_id,
                     aas_id=db_twin.aas_id,
                     manufacturer_id=create_input.manufacturer_id,

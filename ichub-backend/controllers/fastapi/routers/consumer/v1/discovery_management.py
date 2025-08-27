@@ -32,7 +32,8 @@ from tractusx_sdk.dataspace.tools.http_tools import HttpTools
 #from services.consumer import ConnectionService
 from models.services.consumer.discovery_management import (
     DiscoverRegistriesRequest,
-    DiscoverShellsRequest
+    DiscoverShellsRequest,
+    DiscoverShellRequest
 )
 
 from typing import Optional, List
@@ -72,7 +73,9 @@ async def discover_shells(search_request: DiscoverShellsRequest) -> Response:
     # Call the DTR manager's discover_shells method
     result = dtr_manager.consumer.discover_shells(
         counter_party_id=search_request.counter_party_id, 
-        query_spec=query_spec_dict
+        query_spec=query_spec_dict,
+        limit=search_request.limit,
+        cursor=search_request.cursor
     )
     
     # Return the response as JSON
