@@ -34,7 +34,8 @@ from models.services.consumer.discovery_management import (
     DiscoverRegistriesRequest,
     DiscoverShellsRequest,
     DiscoverShellRequest,
-    DiscoveryWithPaginationRequest
+    DiscoveryWithPaginationRequest,
+    DiscoverSubmodelsDataRequest
 )
 
 from typing import Optional, List
@@ -114,27 +115,81 @@ async def discover_shell(search_request: DiscoverShellRequest) -> Response:
         media_type="application/json",
         status_code=200
     )
-    
-@router.post("/catalog-parts")
-async def discover_catalog_parts(search_request: DiscoveryWithPaginationRequest) -> Response:
+
+
+@router.post("/shell/submodels")
+async def discover_submodels_data(search_request: DiscoverSubmodelsDataRequest) -> Response:
     """
-    Discover digital twin shells using query specifications.
+    Discover a digital twin shell by ID and retrieve its submodel data in parallel.
     
-    This endpoint discovers available DTRs for the given BPN, negotiates access,
-    and searches for shells matching the provided query specifications using
-    the /lookup/shellsByAssetLink API.
+    This endpoint first discovers the shell using the provided ID, then analyzes its submodels
+    to identify unique assets, pre-negotiates access to those assets in parallel, and finally
+    fetches the actual submodel data using the negotiated tokens.
+    
+    The process is optimized to avoid duplicate asset negotiations when multiple submodels
+    share the same underlying asset.
     
     Args:
-        search_request: Request containing counter_party_id (BPN) and query_spec
+        search_request: Request containing:
+            - counter_party_id (BPN): The Business Partner Number
+            - id: The shell ID to discover
+            - semantic_id_policies: Mapping of semantic IDs to their acceptable policies
         
     Returns:
-        Response containing discovered shells and metadata
+        Response containing the shell descriptor with submodel data included
+        
+    Example semantic_id_policies:
+    {
+        "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation": [
+            {
+                "odrl:permission": {
+                    "odrl:action": {
+                        "@id": "odrl:use"
+                    },
+                    "odrl:constraint": {
+                        "odrl:and": [
+                            {
+                                "odrl:leftOperand": {
+                                    "@id": "cx-policy:FrameworkAgreement"
+                                },
+                                "odrl:operator": {
+                                    "@id": "odrl:eq"
+                                },
+                                "odrl:rightOperand": "DataExchangeGovernance:1.0"
+                            },
+                            {
+                                "odrl:leftOperand": {
+                                    "@id": "cx-policy:Membership"
+                                },
+                                "odrl:operator": {
+                                    "@id": "odrl:eq"
+                                },
+                                "odrl:rightOperand": "active"
+                            },
+                            {
+                                "odrl:leftOperand": {
+                                    "@id": "cx-policy:UsagePurpose"
+                                },
+                                "odrl:operator": {
+                                    "@id": "odrl:eq"
+                                },
+                                "odrl:rightOperand": "cx.core.industrycore:1"
+                            }
+                        ]
+                    }
+                },
+                "odrl:prohibition": [],
+                "odrl:obligation": []
+            }
+        ]
+    }
     """
     
-    # Call the DTR manager's discover_shells method
-    result = dtr_manager.consumer.discover_shell(
-        counter_party_id=search_request.counter_party_id, 
-        id=search_request.id
+    # Call the DTR manager's discover_submodels_data method
+    result = dtr_manager.consumer.discover_submodels_data(
+        counter_party_id=search_request.counter_party_id,
+        id=search_request.id,
+        semantic_id_policies=search_request.semantic_id_policies
     )
     
     # Return the response as JSON
@@ -143,3 +198,4 @@ async def discover_catalog_parts(search_request: DiscoveryWithPaginationRequest)
         media_type="application/json",
         status_code=200
     )
+    

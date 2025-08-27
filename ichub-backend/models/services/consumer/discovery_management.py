@@ -43,3 +43,11 @@ class DiscoveryWithPaginationRequest(DiscoverRegistriesRequest):
 
 class DiscoverShellsRequest(DiscoveryWithPaginationRequest):
     query_spec: List[QuerySpec] = Field(..., alias="querySpec", description="The query specifications for discovering shells.")
+
+
+class DiscoverSubmodelsDataRequest(DiscoverShellRequest):
+    semantic_id_policies: Optional[Dict[str, List[Dict[str, Any]]]] = Field(
+        None, 
+        alias="semanticIdPolicies", 
+        description="Mapping of semantic IDs to their acceptable policies for submodel data retrieval."
+    )
