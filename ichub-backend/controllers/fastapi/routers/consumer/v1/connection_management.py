@@ -22,7 +22,7 @@
 
 from fastapi import APIRouter, Body, Header
 from fastapi import Depends
-from connector import connector_manager
+from connector import connector_consumer_manager
 
 from requests import Session
 
@@ -114,7 +114,7 @@ async def forget_connection(
 @router.post("/data/get")
 async def data_get(get_request: DoGetParams) -> Response:
     ## Check if the api key is present and if it is authenticated
-    return HttpTools.proxy(connector_manager.connector_service.consumer.do_get(
+    return HttpTools.proxy(connector_consumer_manager.connector_service.do_get(
         counter_party_id=get_request.counter_party_id,
         counter_party_address=get_request.counter_party_address,
         filter_expression=get_request.filter_expression,
@@ -130,7 +130,7 @@ async def data_get(get_request: DoGetParams) -> Response:
 @router.post("/data/post")
 async def data_post(post_request: DoPostParams) -> Response:
     ## Check if the api key is present and if it is authenticated
-    return HttpTools.proxy(connector_manager.connector_service.consumer.do_post(
+    return HttpTools.proxy(connector_consumer_manager.connector_service.do_post(
         counter_party_id=post_request.counter_party_id,
         counter_party_address=post_request.counter_party_address,
         filter_expression=post_request.filter_expression,
