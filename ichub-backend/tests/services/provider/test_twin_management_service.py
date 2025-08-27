@@ -249,8 +249,8 @@ class TestTwinManagementService:
         mock_dtr = Mock()
         mock_dtr_manager.return_value = mock_dtr
 
+        # Act
         with patch.object(self.service, 'get_or_create_enablement_stack', return_value=mock_enablement_service_stack):
-            # Act
             result = self.service.create_catalog_part_twin(create_input)
 
             # Assert
@@ -353,11 +353,11 @@ class TestTwinManagementService:
         mock_repo.twin_registration_repository.get_by_twin_id_enablement_service_stack_id.return_value = None
         mock_repo.twin_registration_repository.create_new.return_value = Mock(dtr_registered=False)
 
+        # Act
         with patch('services.provider.twin_management_service._create_dtr_manager') as mock_dtr_manager:
             mock_dtr = Mock()
             mock_dtr_manager.return_value = mock_dtr
 
-            # Act
             result = self.service.create_serialized_part_twin(create_input)
 
             # Assert
