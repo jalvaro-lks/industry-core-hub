@@ -45,9 +45,9 @@ connection_manager = PostgresMemoryRefreshConnectionManager(engine=engine, logge
 
 # Get configuration provider values
 provider_connector_controlplane_hostname = ConfigManager.get_config("provider.connector.controlplane.hostname")
-provider_connector_controlplane_management_api = ConfigManager.get_config("provider.connector.controlplane.managementpath")
-provider_api_key_header = ConfigManager.get_config("provider.connector.controlplane.apikeyheader")
-provider_api_key = ConfigManager.get_config("provider.connector.controlplane.apikey")
+provider_connector_controlplane_management_api = ConfigManager.get_config("provider.connector.controlplane.managementPath")
+provider_api_key_header = ConfigManager.get_config("provider.connector.controlplane.apiKeyHeader")
+provider_api_key = ConfigManager.get_config("provider.connector.controlplane.apiKey")
 provider_dataspace_version = ConfigManager.get_config("provider.connector.dataspace.version", default="jupiter")
 
 
@@ -107,9 +107,9 @@ connector_discovery_service = ConnectorDiscoveryService(
 )
 
 consumer_connector_controlplane_hostname = ConfigManager.get_config("consumer.connector.controlplane.hostname")
-consumer_connector_controlplane_management_api = ConfigManager.get_config("consumer.connector.controlplane.managementpath")
-consumer_api_key_header = ConfigManager.get_config("consumer.connector.controlplane.apikeyheader")
-consumer_api_key = ConfigManager.get_config("consumer.connector.controlplane.apikey")
+consumer_connector_controlplane_management_api = ConfigManager.get_config("consumer.connector.controlplane.managementPath")
+consumer_api_key_header = ConfigManager.get_config("consumer.connector.controlplane.apiKeyHeader")
+consumer_api_key = ConfigManager.get_config("consumer.connector.controlplane.apiKey")
 consumer_dataspace_version = ConfigManager.get_config("consumer.connector.dataspace.version", default="jupiter")
 
 consumer_connector_headers = {

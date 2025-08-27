@@ -35,10 +35,10 @@ from database import engine
 from managers.config.config_manager import ConfigManager
 
 # Get DTR discovery configuration parameters
-dtr_dct_type_id = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_key')
-dtr_filter_operand_left = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_filter.operandLeft')
-dtr_filter_operator = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_filter.operator')
-dtr_dct_type = ConfigManager.get_config('provider.digitalTwinRegistry.discovery.dct_type_filter.operandRight')
+dtr_dct_type_id = ConfigManager.get_config('consumer.discovery.digitalTwinRegistry.dct_type_key')
+dtr_filter_operand_left = ConfigManager.get_config('consumer.discovery.digitalTwinRegistry.dct_type_filter.operandLeft')
+dtr_filter_operator = ConfigManager.get_config('consumer.discovery.digitalTwinRegistry.dct_type_filter.operator')
+dtr_dct_type = ConfigManager.get_config('consumer.discovery.digitalTwinRegistry.dct_type_filter.operandRight')
 
 dtr_consumer_manager = DtrConsumerSyncPostgresMemoryManager(
     engine=engine,
