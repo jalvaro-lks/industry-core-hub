@@ -46,8 +46,8 @@ class DiscoverShellsRequest(DiscoveryWithPaginationRequest):
 
 
 class DiscoverSubmodelsDataRequest(DiscoverShellRequest):
-    semantic_id_policies: Optional[Dict[str, List[Dict[str, Any]]]] = Field(
+    governance: Optional[Dict[str, List[Dict[str, Any]]]] = Field(
         None, 
-        alias="semanticIdPolicies", 
+        alias="governance", 
         description="Mapping of semantic IDs to their acceptable policies for submodel data retrieval."
     )

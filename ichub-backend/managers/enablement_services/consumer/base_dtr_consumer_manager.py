@@ -224,6 +224,100 @@ class BaseDtrConsumerManager(ABC):
         
         pass
     
+    @abstractmethod
+    def discover_submodels(self, counter_party_id: str, id: str, governance: Dict[str, List[Dict]]) -> Dict:
+        """
+        Discover a digital twin shell by ID and retrieve its submodel data in parallel.
+        
+        This method first discovers the shell using the provided ID, then analyzes its submodels
+        to identify unique assets, pre-negotiates access to those assets in parallel, and finally
+        fetches the actual submodel data using the negotiated tokens.
+        
+        The process is optimized to avoid duplicate asset negotiations when multiple submodels
+        share the same underlying asset.
+        
+        Args:
+            counter_party_id (str): The Business Partner Number (BPN)
+            id (str): The shell ID to discover
+            governance (Dict[str, List[Dict]]): Mapping of semantic IDs to their acceptable policies.
+                Each key is a semantic ID (e.g., "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation")
+                and each value is a list of policy dictionaries containing ODRL policy definitions.
+                
+                Example:
+                {
+                    "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation": [
+                        {
+                            "odrl:permission": {
+                                "odrl:action": {"@id": "odrl:use"},
+                                "odrl:constraint": {
+                                    "odrl:and": [
+                                        {
+                                            "odrl:leftOperand": {"@id": "cx-policy:FrameworkAgreement"},
+                                            "odrl:operator": {"@id": "odrl:eq"},
+                                            "odrl:rightOperand": "DataExchangeGovernance:1.0"
+                                        }
+                                    ]
+                                }
+                            },
+                            "odrl:prohibition": [],
+                            "odrl:obligation": []
+                        }
+                    ]
+                }
+            
+        Returns:
+            Dict: Response containing:
+                - submodel_descriptors: Dict mapping submodel IDs to their metadata and status
+                - data: Dict mapping submodel IDs to their actual retrieved data (only for successful retrievals)
+                - dtr: Dict containing DTR connection information (connector_url, asset_id)
+                
+                Example response:
+                {
+                    "submodel_descriptors": {
+                        "submodel_id_1": {
+                            "semanticId": "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation",
+                            "semanticIds": "base64_encoded_semantic_ids",
+                            "asset_id": "asset_123",
+                            "connector_url": "https://connector.example.com/api/v1/dsp",
+                            "href": "https://dataplane.example.com/api/v1/submodels/submodel_id_1",
+                            "status": "success"
+                        },
+                        "submodel_id_2": {
+                            "semanticId": "urn:samm:io.catenax.another_aspect:1.0.0#AnotherAspect",
+                            "semanticIds": "base64_encoded_semantic_ids",
+                            "asset_id": "asset_456",
+                            "connector_url": "https://connector.example.com/api/v1/dsp",
+                            "href": "https://dataplane.example.com/api/v1/submodels/submodel_id_2",
+                            "status": "not_requested"
+                        },
+                        "submodel_id_3": {
+                            "semanticId": "urn:samm:io.catenax.failed_aspect:1.0.0#FailedAspect",
+                            "semanticIds": "base64_encoded_semantic_ids",
+                            "asset_id": "asset_789",
+                            "connector_url": "https://connector.example.com/api/v1/dsp",
+                            "href": "https://dataplane.example.com/api/v1/submodels/submodel_id_3",
+                            "status": "error",
+                            "message": "Asset negotiation failed: Connection timeout"
+                        }
+                    },
+                    "data": {
+                        "submodel_id_1": {
+                            "aspect_data": "actual_retrieved_submodel_data"
+                        }
+                    },
+                    "dtr": {
+                        "connector_url": "https://dtr-connector.example.com",
+                        "asset_id": "dtr_asset_123"
+                    }
+                }
+                
+        Status Values:
+            - "success": Data was successfully retrieved and is available in the data section
+            - "not_requested": Submodel was found but no policy was specified for this semantic ID
+            - "error": An error occurred during processing (check message field for details)
+        """
+        pass
+    
     def _is_cache_expired(self, bpn: str) -> bool:
         """
         Helper method to check if cache for a specific BPN has expired.

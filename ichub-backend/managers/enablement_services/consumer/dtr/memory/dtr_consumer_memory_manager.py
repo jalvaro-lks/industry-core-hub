@@ -537,7 +537,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 # Cursor is incompatible - start fresh but use DTR cursors as starting point
                 # This allows continuing from where we left off but with new limit
                 return {
-                    "shell_descriptors": [],
+                    "shellDescriptors": [],
                     "dtrs": [],
                     "error": f"Cursor was created with limit {current_page.limit} but request has limit {limit}. Please start pagination from the beginning.",
                     "error": "LIMIT_MISMATCH"
@@ -602,9 +602,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         pagination_enabled = limit is not None or cursor is not None
         
         response = {
-            "shell_descriptors": shell_descriptors,
+            "shellDescriptors": shell_descriptors,
             "dtrs": dtr_results,
-            "shells_found": len(shell_descriptors)
+            "shellsFound": len(shell_descriptors)
         }
         
         if pagination_enabled:
@@ -652,10 +652,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         policies = dtr.get(self.DTR_POLICIES_KEY, [])
         
         dtr = {
-            "connector_url": connector_url,
-            "asset_id": asset_id,
+            "connectorUrl": connector_url,
+            "assetId": asset_id,
             "status": "failed",
-            "shells_found": 0,
+            "shellsFound": 0,
             "shells": []
         }
         
@@ -706,7 +706,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     
                     dtr.update({
                         "status": "success",
-                        "shells_found": len(shell_ids),
+                        "shellsFound": len(shell_ids),
                         "shells": shell_ids,  # Store just IDs in DTR info
                         "paging_metadata": response_data.get("paging_metadata", {})
                     })
@@ -836,8 +836,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     return {
                         "shell_descriptor": shell,
                         "dtr": {
-                            "connector_url": connector_url,
-                            "asset_id": asset_id,
+                            "connectorUrl": connector_url,
+                            "assetId": asset_id,
                         }
                     }
                     
@@ -848,26 +848,27 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
 
         return {"status": 404, "error": "Shell not found in any DTR of this counterPartyId"}
 
-    def discover_submodels_data(self, counter_party_id: str, id: str, semantic_id_policies: Optional[Dict[str, List[Dict]]]) -> Dict:
+    def discover_submodels(self, counter_party_id: str, id: str, governance: Optional[Dict[str, List[Dict]]]) -> Dict:
         """
         Retrieve submodel data by first discovering the shell and then fetching all submodels in parallel.
         
         Args:
-            counter_party_id (str): The Business Partner Number
-            id (str): The shell ID to discover
-            semantic_id_policies (Optional[Dict[str, List[Dict]]]): Mapping of semantic IDs to their policies
+            counter_party_id: The Business Partner Number
+            id: The shell ID to discover
+            governance: Mapping of semantic IDs to their policies
             
         Returns:
             Dict: Response with submodel descriptors, data, and DTR info
         """
-        # First discover the shell
+        # Discover the shell
         shell_result = self.discover_shell(counter_party_id, id)
         if "shell_descriptor" not in shell_result:
             return {
                 "status": "error",
                 "error": shell_result.get("error", "Failed to discover shell"),
-                "submodel_descriptors": {},
+                "submodelDescriptors": {},
                 "submodels": {},
+                "submodelsFound": 0,
                 "dtr": None
             }
             
@@ -875,233 +876,191 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         dtr_info = shell_result.get("dtr", {})
         submodel_descriptors = shell_descriptor.get("submodelDescriptors", [])
         
-        # Initialize response structure
         response = {
-            "submodel_descriptors": {},
+            "submodelDescriptors": {},
             "submodels": {},
             "dtr": dtr_info
         }
         
         if not submodel_descriptors:
             response["error"] = "No submodels found in shell"
+            response["submodelsFound"] = 0
             return response
             
-        if not semantic_id_policies:
+        if not governance:
             response["error"] = "No semantic ID policies provided"
+            response["submodelsFound"] = len(submodel_descriptors)
             return response
             
-        # Process each submodel and collect metadata + data
-        requested_semantic_ids = set(semantic_id_policies.keys())
-        
-        # Step 1: Collect submodel metadata and prepare for data fetching
+        # Process submodels and collect metadata
         submodels_to_fetch = []
         for submodel in submodel_descriptors:
             submodel_id = submodel.get("id", "unknown")
             semantic_id = self._extract_semantic_id(submodel)
-            
-            # Extract endpoint information
             asset_id, connector_url, href = self._extract_submodel_endpoint_info(submodel)
-            
-            # Create base64 encoded semanticIds
             semantic_ids_base64 = self._create_semantic_ids_base64(submodel)
             
-            # Determine status
-            status = None
-            message = None
-            
-            if not semantic_id:
-                status = "error"
-                message = "No semantic ID found in submodel descriptor"
-            elif semantic_id not in semantic_id_policies:
-                status = "not_requested"
-            else:
-                # Will attempt to retrieve data
-                status = "pending"  # Will be updated after data fetch attempt
-                submodels_to_fetch.append({
-                    "submodel": submodel,
-                    "submodel_id": submodel_id,
-                    "semantic_id": semantic_id,
-                    "policies": semantic_id_policies[semantic_id],
-                    "asset_id": asset_id,
-                    "connector_url": connector_url,
-                    "href": href
-                })
-            
-            # Add to submodel_descriptors with status information
+            # Determine status and prepare descriptor
             descriptor = {
                 "semanticId": semantic_id,
-                "semanticIds": semantic_ids_base64,
-                "asset_id": asset_id,
-                "connector_url": connector_url,
+                "semanticIdKeys": semantic_ids_base64,
+                "assetId": asset_id,
+                "connectorUrl": connector_url,
                 "href": href,
-                "status": status
+                "status": self._determine_submodel_status(semantic_id, governance)
             }
             
-            # Only include message if there's an error
-            if message:
-                descriptor["error"] = message
-                
-            response["submodel_descriptors"][submodel_id] = descriptor
+            # Add error message if needed
+            if descriptor["status"] == "error" and not semantic_id:
+                descriptor["error"] = "No semantic ID found in submodel descriptor"
+            
+            response["submodelDescriptors"][submodel_id] = descriptor
+            
+            # Queue for data fetching if needed
+            if descriptor["status"] == "pending":
+                submodels_to_fetch.append({
+                    "submodelId": submodel_id,
+                    "semantic_id": semantic_id,
+                    "policies": governance[semantic_id],
+                    "assetId": asset_id,
+                    "connectorUrl": connector_url,
+                    "href": href
+                })
         
-        # Step 2: Fetch data for submodels we have policies for
+        # Fetch submodel data in parallel
         if submodels_to_fetch:
-            # Group by asset_id for optimization
-            assets_to_negotiate = {}
-            submodel_asset_mapping = {}
-            
-            for item in submodels_to_fetch:
-                asset_id = item["asset_id"]
-                submodel_id = item["submodel_id"]
-                
-                if asset_id and asset_id != "unknown":
-                    if asset_id not in assets_to_negotiate:
-                        assets_to_negotiate[asset_id] = {
-                            "connector_url": item["connector_url"],
-                            "policies": item["policies"],
-                            "submodels": []
-                        }
-                    assets_to_negotiate[asset_id]["submodels"].append(item)
-                    submodel_asset_mapping[submodel_id] = asset_id
-                else:
-                    # Mark as failed due to missing asset ID
-                    response["submodel_descriptors"][submodel_id]["status"] = "error"
-                    response["submodel_descriptors"][submodel_id]["error"] = "Failed to extract asset ID from endpoint"
-            
-            # Step 3: Negotiate assets in parallel
-            asset_tokens = {}
-            asset_negotiation_errors = {}
-            if assets_to_negotiate:
-                with ThreadPoolExecutor(max_workers=min(len(assets_to_negotiate), 10)) as executor:
-                    future_to_asset = {}
-                    for asset_id, asset_info in assets_to_negotiate.items():
-                        future = executor.submit(
-                            self._negotiate_asset,
-                            counter_party_id,
-                            asset_id,
-                            asset_info["connector_url"],
-                            asset_info["policies"]
-                        )
-                        future_to_asset[future] = asset_id
-                        
-                    for future in as_completed(future_to_asset):
-                        asset_id = future_to_asset[future]
-                        try:
-                            token = future.result()
-                            if token:
-                                asset_tokens[asset_id] = token
-                            else:
-                                asset_negotiation_errors[asset_id] = "Asset negotiation returned no token"
-                        except Exception as e:
-                            error_msg = f"Asset negotiation failed: {str(e)}"
-                            asset_negotiation_errors[asset_id] = error_msg
-                            if self.logger and self.verbose:
-                                self.logger.error(f"[DTR Manager] [{counter_party_id}] Error negotiating asset {asset_id}: {e}")
-            
-            # Mark submodels with failed asset negotiations
-            for asset_id, error_msg in asset_negotiation_errors.items():
-                if asset_id in assets_to_negotiate:
-                    for submodel_item in assets_to_negotiate[asset_id]["submodels"]:
-                        submodel_id = submodel_item["submodel_id"]
-                        response["submodel_descriptors"][submodel_id]["status"] = "error"
-                        response["submodel_descriptors"][submodel_id]["error"] = error_msg
-            
-            # Step 4: Fetch submodel data in parallel
-            with ThreadPoolExecutor(max_workers=min(len(submodels_to_fetch), 20)) as executor:
-                future_to_submodel = {}
-                for item in submodels_to_fetch:
-                    submodel_id = item["submodel_id"]
-                    asset_id = item["asset_id"]
-                    href = item["href"]
-                    
-                    # Only attempt fetch if asset negotiation was successful
-                    if asset_id in asset_tokens:
-                        access_token = asset_tokens[asset_id]
-                        future = executor.submit(self._fetch_submodel_data_with_token, submodel_id, href, access_token)
-                        future_to_submodel[future] = submodel_id
-                    elif asset_id not in asset_negotiation_errors:
-                        # Asset negotiation wasn't attempted (probably asset_id was "unknown")
-                        response["submodel_descriptors"][submodel_id]["status"] = "error"
-                        response["submodel_descriptors"][submodel_id]["error"] = "Asset negotiation was not attempted"
-                        
-                for future in as_completed(future_to_submodel):
-                    submodel_id = future_to_submodel[future]
-                    try:
-                        data = future.result()
-                        if data:
-                            response["submodels"][submodel_id] = data
-                            response["submodel_descriptors"][submodel_id]["status"] = "success"
-                        else:
-                            response["submodel_descriptors"][submodel_id]["status"] = "error"
-                            response["submodel_descriptors"][submodel_id]["error"] = "Data fetch returned no data"
-                    except Exception as e:
-                        error_msg = f"Data fetch failed: {str(e)}"
-                        response["submodel_descriptors"][submodel_id]["status"] = "error"
-                        response["submodel_descriptors"][submodel_id]["error"] = error_msg
-                        if self.logger and self.verbose:
-                            self.logger.error(f"[DTR Manager] [{counter_party_id}] Error fetching submodel {submodel_id}: {e}")
+            self._fetch_submodels_data(counter_party_id, submodels_to_fetch, response)
         
-        # Mark any remaining submodels that were supposed to be fetched but weren't processed
-        for item in submodels_to_fetch:
-            submodel_id = item["submodel_id"]
-            if response["submodel_descriptors"][submodel_id]["status"] == "pending":
-                response["submodel_descriptors"][submodel_id]["status"] = "error"
-                response["submodel_descriptors"][submodel_id]["error"] = "Processing was not completed"
+        # Add count of submodels found
+        response["submodelsFound"] = len(submodel_descriptors)
         
         return response
         
-    def _fetch_single_submodel_data_optimized(self, counter_party_id: str, submodel: Dict, policies: List[Dict]) -> Optional[Dict]:
-        """Fetch data for a single submodel with optimized error handling."""
-        try:
-            # Extract endpoint information
-            endpoints = submodel.get("endpoints", [])
-            dsp_endpoint = None
-            for endpoint in endpoints:
-                protocol_info = endpoint.get("protocolInformation", {})
-                if protocol_info.get("subprotocol") == "DSP":
-                    dsp_endpoint = endpoint
-                    break
-                    
-            if not dsp_endpoint:
-                return None
-                
-            protocol_info = dsp_endpoint["protocolInformation"]
-            subprotocol_body = protocol_info.get("subprotocolBody", "")
-            href = protocol_info.get("href", "")
-            
-            # Parse subprotocol body
-            parsed_body = self._parse_subprotocol_body(subprotocol_body)
-            if not parsed_body or "id" not in parsed_body or "dspEndpoint" not in parsed_body:
-                return None
-                
-            asset_id = parsed_body["id"]
-            dsp_endpoint_url = parsed_body["dspEndpoint"]
-            
-            # Perform DSP negotiation
-            connector_service = self.connector_consumer_manager.connector_service
-            dataplane_url, access_token = connector_service.do_dsp_by_asset_id(
-                counter_party_id=counter_party_id,
-                counter_party_address=dsp_endpoint_url,
-                asset_id=asset_id,
-                policies=policies
-            )
-            print(access_token)
-            
-            # Fetch submodel data using the href with the access token
-            headers = {"Authorization": f"{access_token}"}
-            response = HttpTools.do_get(href, headers=headers)
-            
-            if response.status_code == 200:
-                return response.json()
-            else:
-                if self.logger and self.verbose:
-                    self.logger.debug(f"[DTR Manager] [{counter_party_id}] Failed to fetch submodel data from {href}, status: {response.status_code}")
-                return None
-                
-        except Exception as e:
-            if self.logger and self.verbose:
-                self.logger.error(f"[DTR Manager] [{counter_party_id}] Error in _fetch_single_submodel_data_optimized: {e}")
-            return None
+    def _determine_submodel_status(self, semantic_id: Optional[str], governance: Dict[str, List[Dict]]) -> str:
+        """Determine the status of a submodel based on its semantic ID and governance policies."""
+        if not semantic_id:
+            return "error"
+        elif semantic_id not in governance:
+            return "not_requested"
+        else:
+            return "pending"
+    
+    def _fetch_submodels_data(self, counter_party_id: str, submodels_to_fetch: List[Dict], response: Dict) -> None:
+        """Fetch submodel data in parallel and update the response."""
+        # Group by asset_id for optimization
+        assets_to_negotiate = self._group_submodels_by_asset(submodels_to_fetch)
         
+        # Negotiate assets in parallel
+        asset_tokens = self._negotiate_assets_parallel(counter_party_id, assets_to_negotiate)
+        
+        # Mark failed negotiations
+        self._mark_failed_negotiations(assets_to_negotiate, asset_tokens, response)
+        
+        # Fetch data in parallel
+        self._fetch_data_parallel(submodels_to_fetch, asset_tokens, response)
+        
+        # Mark any remaining pending items as failed
+        self._mark_remaining_pending_as_failed(submodels_to_fetch, response)
+    
+    def _group_submodels_by_asset(self, submodels_to_fetch: List[Dict]) -> Dict[str, Dict]:
+        """Group submodels by asset_id for optimization."""
+        assets_to_negotiate = {}
+        for item in submodels_to_fetch:
+            asset_id = item["assetId"]
+            if asset_id and asset_id != "unknown":
+                if asset_id not in assets_to_negotiate:
+                    assets_to_negotiate[asset_id] = {
+                        "connectorUrl": item["connectorUrl"],
+                        "policies": item["policies"],
+                        "submodels": []
+                    }
+                assets_to_negotiate[asset_id]["submodels"].append(item)
+        return assets_to_negotiate
+    
+    def _negotiate_assets_parallel(self, counter_party_id: str, assets_to_negotiate: Dict[str, Dict]) -> Dict[str, str]:
+        """Negotiate assets in parallel and return successful tokens."""
+        asset_tokens = {}
+        if not assets_to_negotiate:
+            return asset_tokens
+            
+        with ThreadPoolExecutor(max_workers=min(len(assets_to_negotiate), 10)) as executor:
+            future_to_asset = {
+                executor.submit(
+                    self._negotiate_asset,
+                    counter_party_id,
+                    asset_id,
+                    asset_info["connectorUrl"],
+                    asset_info["policies"]
+                ): asset_id
+                for asset_id, asset_info in assets_to_negotiate.items()
+            }
+            
+            for future in as_completed(future_to_asset):
+                asset_id = future_to_asset[future]
+                try:
+                    token = future.result()
+                    if token:
+                        asset_tokens[asset_id] = token
+                except Exception as e:
+                    if self.logger and self.verbose:
+                        self.logger.error(f"[DTR Manager] [{counter_party_id}] Error negotiating asset {asset_id}: {e}")
+        
+        return asset_tokens
+    
+    def _mark_failed_negotiations(self, assets_to_negotiate: Dict[str, Dict], asset_tokens: Dict[str, str], response: Dict) -> None:
+        """Mark submodels with failed asset negotiations."""
+        failed_assets = set(assets_to_negotiate.keys()) - set(asset_tokens.keys())
+        for asset_id in failed_assets:
+            for submodel_item in assets_to_negotiate[asset_id]["submodels"]:
+                submodel_id = submodel_item["submodelId"]
+                response["submodelDescriptors"][submodel_id]["status"] = "error"
+                response["submodelDescriptors"][submodel_id]["error"] = "Asset negotiation failed"
+    
+    def _fetch_data_parallel(self, submodels_to_fetch: List[Dict], asset_tokens: Dict[str, str], response: Dict) -> None:
+        """Fetch submodel data in parallel."""
+        fetch_tasks = [
+            item for item in submodels_to_fetch 
+            if item["assetId"] in asset_tokens
+        ]
+        
+        if not fetch_tasks:
+            return
+            
+        with ThreadPoolExecutor(max_workers=min(len(fetch_tasks), 20)) as executor:
+            future_to_submodel = {
+                executor.submit(
+                    self._fetch_submodel_data_with_token,
+                    item["submodelId"],
+                    item["href"],
+                    asset_tokens[item["assetId"]]
+                ): item["submodelId"]
+                for item in fetch_tasks
+            }
+            
+            for future in as_completed(future_to_submodel):
+                submodel_id = future_to_submodel[future]
+                try:
+                    data = future.result()
+                    if data:
+                        response["submodels"][submodel_id] = data
+                        response["submodelDescriptors"][submodel_id]["status"] = "success"
+                    else:
+                        response["submodelDescriptors"][submodel_id]["status"] = "error"
+                        response["submodelDescriptors"][submodel_id]["error"] = "Data fetch returned no data"
+                except Exception as e:
+                    response["submodelDescriptors"][submodel_id]["status"] = "error"
+                    response["submodelDescriptors"][submodel_id]["error"] = f"Data fetch failed: {str(e)}"
+                    if self.logger and self.verbose:
+                        self.logger.error(f"[DTR Manager] Error fetching submodel {submodel_id}: {e}")
+    
+    def _mark_remaining_pending_as_failed(self, submodels_to_fetch: List[Dict], response: Dict) -> None:
+        """Mark any remaining pending submodels as failed."""
+        for item in submodels_to_fetch:
+            submodel_id = item["submodelId"]
+            if response["submodelDescriptors"][submodel_id]["status"] == "pending":
+                response["submodelDescriptors"][submodel_id]["status"] = "error"
+                response["submodelDescriptors"][submodel_id]["error"] = "Processing was not completed"
+
     def _extract_semantic_id(self, submodel_descriptor: Dict) -> Optional[str]:
         """Extract semantic ID from submodel descriptor."""
         semantic_id = submodel_descriptor.get("semanticId", {})
@@ -1113,19 +1072,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     return first_key.get("value")
         return None
         
-    def _parse_subprotocol_body(self, subprotocol_body: str) -> Optional[Dict[str, str]]:
-        """Parse subprotocol body to extract asset ID and DSP endpoint."""
-        try:
-            parts = subprotocol_body.split(";")
-            result = {}
-            for part in parts:
-                if "=" in part:
-                    key, value = part.split("=", 1)
-                    result[key] = value
-            return result
-        except Exception:
-            return None
-            
     def _extract_submodel_endpoint_info(self, submodel: Dict) -> tuple:
         """Extract asset_id, connector_url, and href from submodel descriptor."""
         asset_id = "unknown"
@@ -1172,135 +1118,24 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             if self.logger and self.verbose:
                 self.logger.error(f"[DTR Manager] Error creating base64 semantic IDs: {e}")
             return ""
-            
-    def _fetch_submodels_parallel(self, counter_party_id: str, submodels: List[Dict], semantic_id_policies: Dict[str, List[Dict]]) -> Dict[str, Any]:
-        """Fetch submodel data for multiple submodels in parallel with optimized asset negotiation."""
-        submodels_data = {}
-        
-        # Step 1: Scan all submodels and collect unique asset negotiation requirements
-        asset_negotiations = {}  # asset_id -> {dsp_endpoint, policies, submodel_ids[]}
-        submodel_to_asset = {}   # submodel_id -> asset_id
-        submodel_to_href = {}    # submodel_id -> href
-        
-        for submodel in submodels:
-            submodel_id = submodel.get("id", "unknown")
-            semantic_id = self._extract_semantic_id(submodel)
-            
-            if not semantic_id or semantic_id not in semantic_id_policies:
-                continue
-                
-            policies = semantic_id_policies[semantic_id]
-            
-            # Extract endpoint information
-            endpoints = submodel.get("endpoints", [])
-            dsp_endpoint = None
-            for endpoint in endpoints:
-                protocol_info = endpoint.get("protocolInformation", {})
-                if protocol_info.get("subprotocol") == "DSP":
-                    dsp_endpoint = endpoint
-                    break
-                    
-            if not dsp_endpoint:
-                continue
-                
-            protocol_info = dsp_endpoint["protocolInformation"]
-            subprotocol_body = protocol_info.get("subprotocolBody", "")
-            href = protocol_info.get("href", "")
-            
-            # Parse subprotocol body
-            parsed_body = self._parse_subprotocol_body(subprotocol_body)
-            if not parsed_body or "id" not in parsed_body or "dspEndpoint" not in parsed_body:
-                continue
-                
-            asset_id = parsed_body["id"]
-            dsp_endpoint_url = parsed_body["dspEndpoint"]
-            
-            # Store mapping
-            submodel_to_asset[submodel_id] = asset_id
-            submodel_to_href[submodel_id] = href
-            
-            # Collect unique asset negotiations
-            if asset_id not in asset_negotiations:
-                asset_negotiations[asset_id] = {
-                    "dsp_endpoint": dsp_endpoint_url,
-                    "policies": policies,
-                    "submodel_ids": []
-                }
-            asset_negotiations[asset_id]["submodel_ids"].append(submodel_id)
-        
-        if not asset_negotiations:
-            return submodels_data
-        
-        if self.logger and self.verbose:
-            total_submodels = len(submodel_to_asset)
-            unique_assets = len(asset_negotiations)
-            self.logger.info(f"[DTR Manager] [{counter_party_id}] Optimizing negotiations: {total_submodels} submodels using {unique_assets} unique assets")
-            
-        # Step 2: Pre-negotiate all unique assets in parallel
-        asset_tokens = {}  # asset_id -> access_token
-        
-        with ThreadPoolExecutor(max_workers=min(len(asset_negotiations), 10)) as executor:
-            # Submit all asset negotiation tasks
-            future_to_asset = {}
-            for asset_id, negotiation_info in asset_negotiations.items():
-                future = executor.submit(
-                    self._negotiate_asset,
-                    counter_party_id,
-                    asset_id,
-                    negotiation_info["dsp_endpoint"],
-                    negotiation_info["policies"]
-                )
-                future_to_asset[future] = asset_id
-                
-            # Process completed negotiations
-            for future in as_completed(future_to_asset):
-                asset_id = future_to_asset[future]
-                try:
-                    result = future.result()
-                    if result:
-                        asset_tokens[asset_id] = result
-                    else:
-                        if self.logger and self.verbose:
-                            self.logger.debug(f"[DTR Manager] [{counter_party_id}] Failed to negotiate asset {asset_id}")
-                except Exception as e:
-                    if self.logger and self.verbose:
-                        self.logger.error(f"[DTR Manager] [{counter_party_id}] Error negotiating asset {asset_id}: {e}")
-        
-        if self.logger and self.verbose:
-            successful_negotiations = len(asset_tokens)
-            self.logger.info(f"[DTR Manager] [{counter_party_id}] Successfully negotiated {successful_negotiations}/{len(asset_negotiations)} unique assets")
-        
-        # Step 3: Fetch submodel data in parallel using negotiated tokens
-        with ThreadPoolExecutor(max_workers=min(len(submodel_to_asset), 20)) as executor:
-            # Submit all submodel data fetch tasks
-            future_to_submodel = {}
-            for submodel_id, asset_id in submodel_to_asset.items():
-                if asset_id in asset_tokens:
-                    href = submodel_to_href[submodel_id]
-                    access_token = asset_tokens[asset_id]
-                    future = executor.submit(self._fetch_submodel_data_with_token, submodel_id, href, access_token)
-                    future_to_submodel[future] = submodel_id
-                    
-            # Process completed data fetches
-            for future in as_completed(future_to_submodel):
-                submodel_id = future_to_submodel[future]
-                try:
-                    result = future.result()
-                    if result:
-                        submodels_data[submodel_id] = result
-                    else:
-                        if self.logger and self.verbose:
-                            self.logger.debug(f"[DTR Manager] [{counter_party_id}] Failed to fetch data for submodel {submodel_id}")
-                except Exception as e:
-                    if self.logger and self.verbose:
-                        self.logger.error(f"[DTR Manager] [{counter_party_id}] Error fetching submodel {submodel_id}: {e}")
-                        
-        return submodels_data
-        
+
+    def _parse_subprotocol_body(self, subprotocol_body: str) -> Optional[Dict[str, str]]:
+        """Parse subprotocol body to extract asset ID and DSP endpoint."""
+        try:
+            parts = subprotocol_body.split(";")
+            result = {}
+            for part in parts:
+                if "=" in part:
+                    key, value = part.split("=", 1)
+                    result[key] = value
+            return result
+        except Exception:
+            return None
+
     def _negotiate_asset(self, counter_party_id: str, asset_id: str, dsp_endpoint_url: str, policies: List[Dict]) -> Optional[str]:
         """Negotiate access to a single asset and return the access token."""
         try:
-            connector_service:BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
+            connector_service = self.connector_consumer_manager.connector_service
             dataplane_url, access_token = connector_service.do_dsp_by_asset_id(
                 counter_party_id=counter_party_id,
                 counter_party_address=dsp_endpoint_url,
@@ -1329,7 +1164,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             if self.logger and self.verbose:
                 self.logger.error(f"[DTR Manager] Error fetching submodel {submodel_id}: {e}")
             return None
-        
+
     def _is_dtr_asset(self, dataset: Dict) -> bool:
         """
         Check if a dataset from a catalog is a DTR asset.

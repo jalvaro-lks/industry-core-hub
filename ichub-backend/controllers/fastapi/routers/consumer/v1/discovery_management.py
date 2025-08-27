@@ -118,7 +118,7 @@ async def discover_shell(search_request: DiscoverShellRequest) -> Response:
 
 
 @router.post("/shell/submodels")
-async def discover_submodels_data(search_request: DiscoverSubmodelsDataRequest) -> Response:
+async def discover_submodels(search_request: DiscoverSubmodelsDataRequest) -> Response:
     """
     Discover a digital twin shell by ID and retrieve its submodel data in parallel.
     
@@ -186,10 +186,10 @@ async def discover_submodels_data(search_request: DiscoverSubmodelsDataRequest) 
     """
     
     # Call the DTR manager's discover_submodels_data method
-    result = dtr_manager.consumer.discover_submodels_data(
+    result = dtr_manager.consumer.discover_submodels(
         counter_party_id=search_request.counter_party_id,
         id=search_request.id,
-        semantic_id_policies=search_request.semantic_id_policies
+        governance=search_request.governance
     )
     
     # Return the response as JSON
