@@ -855,10 +855,15 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Args:
             counter_party_id: The Business Partner Number
             id: The shell ID to discover
-            governance: Mapping of semantic IDs to their policies
+            governance: Optional mapping of semantic IDs to their policies. If None, only submodel 
+                       descriptors are returned without actual data (status will be "governance_not_found")
             
         Returns:
-            Dict: Response with submodel descriptors, data, and DTR info
+            Dict: Response with submodel descriptors, data, DTR info, and count of submodels found
+                - submodelDescriptors: Dict mapping submodel IDs to their descriptors with status
+                - submodels: Dict mapping submodel IDs to their actual data (if successfully fetched)
+                - submodelsFound: Int count of total submodels discovered in the shell
+                - dtr: DTR connection information
         """
         # Discover the shell
         shell_result = self.discover_shell(counter_party_id, id)
@@ -887,11 +892,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             response["submodelsFound"] = 0
             return response
             
-        if not governance:
-            response["error"] = "No semantic ID policies provided"
-            response["submodelsFound"] = len(submodel_descriptors)
-            return response
-            
         # Process submodels and collect metadata
         submodels_to_fetch = []
         for submodel in submodel_descriptors:
@@ -916,10 +916,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             
             response["submodelDescriptors"][submodel_id] = descriptor
             
-            # Queue for data fetching if needed
-            if descriptor["status"] == "pending":
+            # Queue for data fetching if needed (only if governance is provided)
+            if governance and descriptor["status"] == "pending":
                 submodels_to_fetch.append({
-                    "submodelId": submodel_id,
+                    "submodel_id": submodel_id,
                     "semantic_id": semantic_id,
                     "policies": governance[semantic_id],
                     "assetId": asset_id,
@@ -927,7 +927,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     "href": href
                 })
         
-        # Fetch submodel data in parallel
+        # Fetch submodel data in parallel (only if governance policies are available)
         if submodels_to_fetch:
             self._fetch_submodels_data(counter_party_id, submodels_to_fetch, response)
         
@@ -936,12 +936,14 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return response
         
-    def _determine_submodel_status(self, semantic_id: Optional[str], governance: Dict[str, List[Dict]]) -> str:
+    def _determine_submodel_status(self, semantic_id: Optional[str], governance: Optional[Dict[str, List[Dict]]]) -> str:
         """Determine the status of a submodel based on its semantic ID and governance policies."""
         if not semantic_id:
             return "error"
+        elif not governance:
+            return "governance_not_found"
         elif semantic_id not in governance:
-            return "not_requested"
+            return "governance_not_found"
         else:
             return "pending"
     
@@ -1012,7 +1014,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         failed_assets = set(assets_to_negotiate.keys()) - set(asset_tokens.keys())
         for asset_id in failed_assets:
             for submodel_item in assets_to_negotiate[asset_id]["submodels"]:
-                submodel_id = submodel_item["submodelId"]
+                submodel_id = submodel_item["submodel_id"]
                 response["submodelDescriptors"][submodel_id]["status"] = "error"
                 response["submodelDescriptors"][submodel_id]["error"] = "Asset negotiation failed"
     
@@ -1030,10 +1032,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             future_to_submodel = {
                 executor.submit(
                     self._fetch_submodel_data_with_token,
-                    item["submodelId"],
+                    item["submodel_id"],
                     item["href"],
                     asset_tokens[item["assetId"]]
-                ): item["submodelId"]
+                ): item["submodel_id"]
                 for item in fetch_tasks
             }
             
@@ -1056,7 +1058,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
     def _mark_remaining_pending_as_failed(self, submodels_to_fetch: List[Dict], response: Dict) -> None:
         """Mark any remaining pending submodels as failed."""
         for item in submodels_to_fetch:
-            submodel_id = item["submodelId"]
+            submodel_id = item["submodel_id"]
             if response["submodelDescriptors"][submodel_id]["status"] == "pending":
                 response["submodelDescriptors"][submodel_id]["status"] = "error"
                 response["submodelDescriptors"][submodel_id]["error"] = "Processing was not completed"
