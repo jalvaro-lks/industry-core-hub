@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Grid2,
@@ -39,8 +39,8 @@ import {
   Alert,
   CircularProgress,
   Card,
-  CardContent,
-  Chip
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -50,6 +50,7 @@ import {
   discoverPartTypeShells, 
   discoverPartInstanceShells,
   discoverShellsByCustomerPartId,
+  discoverShellsWithCustomQuery,
   ShellDiscoveryPaginator 
 } from '../features/part-discovery/api';
 import { 
@@ -57,6 +58,8 @@ import {
   AASData,
   getAASDataSummary
 } from '../features/part-discovery/utils';
+import { fetchPartners } from '../features/partner-management/api';
+import { PartnerInstance } from '../types/partner';
 
 interface PartCardData {
   id: string;
@@ -83,9 +86,13 @@ interface SerializedPartData {
 const PartsDiscovery = () => {
   const [partType, setPartType] = useState('Part');
   const [bpnl, setBpnl] = useState('');
+  const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
+  const [availablePartners, setAvailablePartners] = useState<PartnerInstance[]>([]);
+  const [isLoadingPartners, setIsLoadingPartners] = useState(false);
   const [aasId, setAasId] = useState('');
   const [customerPartId, setCustomerPartId] = useState('');
   const [manufacturerPartId, setManufacturerPartId] = useState('');
+  const [partInstanceId, setPartInstanceId] = useState('');
   const [pageLimit, setPageLimit] = useState<number>(10);
   const [customLimit, setCustomLimit] = useState<string>('');
   const [isCustomLimit, setIsCustomLimit] = useState<boolean>(false);
@@ -102,6 +109,125 @@ const PartsDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Load available partners on component mount
+  useEffect(() => {
+    const loadPartners = async () => {
+      try {
+        setIsLoadingPartners(true);
+        const partners = await fetchPartners();
+        setAvailablePartners(partners);
+      } catch (err) {
+        console.error('Error loading partners:', err);
+        // Don't show error for partners loading as it's not critical
+      } finally {
+        setIsLoadingPartners(false);
+      }
+    };
+
+    loadPartners();
+  }, []);
+
+  // Helper function to get company name from BPNL
+  const getCompanyName = (bpnlValue: string): string => {
+    const partner = availablePartners.find(p => p.bpnl === bpnlValue);
+    return partner?.name || bpnlValue;
+  };
+
+  // Handle part type change and clear Part Instance ID when switching to Part
+  const handlePartTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newPartType = event.target.value;
+    setPartType(newPartType);
+    
+    // Clear Part Instance ID when switching to Part Type
+    if (newPartType === 'Part') {
+      setPartInstanceId('');
+    }
+  };
+
+  // Helper function to generate active filter chips - scalable for future filters
+  const getActiveFilterChips = () => {
+    const filters = [
+      {
+        value: customerPartId,
+        label: 'Customer Part ID',
+        tooltip: 'Customer Part ID'
+      },
+      {
+        value: manufacturerPartId,
+        label: 'Manufacturer Part ID',
+        tooltip: 'Manufacturer Part ID'
+      },
+      {
+        value: aasId,
+        label: 'AAS-ID',
+        tooltip: 'Asset Administration Shell ID'
+      },
+      // Only show Part Instance ID filter when Part Instance is selected
+      ...(partType === 'Serialized' ? [{
+        value: partInstanceId,
+        label: 'Part Instance ID',
+        tooltip: 'Part Instance Identifier'
+      }] : [])
+      // Future filters can be easily added here:
+      // {
+      //   value: someNewFilter,
+      //   label: 'New Filter Name',
+      //   tooltip: 'New Filter Description'
+      // }
+    ];
+
+    return filters
+      .filter(filter => filter.value && filter.value.trim())
+      .map((filter, index) => {
+        return (
+          <Chip 
+            key={`filter-${filter.label}-${index}`}
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Typography component="span" sx={{ fontSize: 'inherit', color: 'inherit' }}>
+                  {filter.label}: 
+                </Typography>
+                <Typography component="span" sx={{ fontSize: 'inherit', fontWeight: '700', ml: 0.5, color: 'inherit' }}>
+                  {filter.value}
+                </Typography>
+              </Box>
+            } 
+            size="medium" 
+            color="primary" 
+            variant="filled"
+            title={`${filter.tooltip}: ${filter.value}`}
+            sx={{
+              backgroundColor: 'rgba(25, 118, 210, 0.1)',
+              color: '#1976d2',
+              border: '1px solid rgba(25, 118, 210, 0.3)',
+              borderRadius: '20px',
+              fontSize: '0.85rem',
+              fontWeight: '500',
+              px: 2,
+              py: 0.5,
+              height: 'auto',
+              minHeight: '32px',
+              maxWidth: '100%',
+              '& .MuiChip-label': {
+                px: 1,
+                py: 0.5,
+                whiteSpace: 'nowrap',
+                overflow: 'visible',
+                textOverflow: 'unset'
+              },
+              '&:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                borderColor: 'rgba(25, 118, 210, 0.5)',
+                transform: 'translateY(-1px)',
+                boxShadow: '0 4px 12px rgba(25, 118, 210, 0.2)'
+              },
+              transition: 'all 0.2s ease-in-out'
+            }}
+          />
+        );
+      });
+  };
 
   // Convert AAS data to card format
   const convertToPartCards = (shells: AASData[]): PartCardData[] => {
@@ -147,6 +273,8 @@ const PartsDiscovery = () => {
     setTotalPages(0);
     setError(null);
     // Reset search fields
+    setBpnl('');
+    setSelectedPartner(null);
     setCustomerPartId('');
     setManufacturerPartId('');
   };
@@ -177,9 +305,15 @@ const PartsDiscovery = () => {
       let response: ShellDiscoveryResponse;
       const limit = pageLimit === 0 ? undefined : pageLimit; // No limit if pageLimit is 0
       
-      // Priority search: Customer Part ID > Manufacturer Part ID > Digital Twin Type
+      // Priority search: Customer Part ID > Part Instance ID > Manufacturer Part ID > Digital Twin Type
       if (customerPartId.trim()) {
         response = await discoverShellsByCustomerPartId(bpnl, customerPartId.trim(), limit);
+      } else if (partType === 'Serialized' && partInstanceId.trim()) {
+        // Search by Part Instance ID using custom query
+        const querySpec = [
+          { name: 'partInstanceId', value: partInstanceId.trim() }
+        ];
+        response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
       } else if (manufacturerPartId.trim()) {
         // For manufacturerPartId search, we would need a specific API function
         // For now, fall back to digital twin type search
@@ -199,6 +333,65 @@ const PartsDiscovery = () => {
       }
 
       setCurrentResponse(response);
+      
+      // Log the full response for debugging
+      console.log('API Response:', response);
+      
+      // Check for any error-like fields in the response object
+      const responseObj = response as unknown as Record<string, unknown>;
+      const errorFields = Object.keys(responseObj).filter(key => 
+        key.toLowerCase().includes('error') || 
+        key.toLowerCase().includes('warning') ||
+        key.toLowerCase().includes('message')
+      );
+      
+      if (errorFields.length > 0) {
+        const errorValues = errorFields
+          .map(field => ({ field, value: responseObj[field] }))
+          .filter(({ value }) => value && typeof value === 'string' && value.trim() !== '');
+        
+        if (errorValues.length > 0) {
+          console.warn('Additional error fields found in response:', errorValues);
+          // Log but don't automatically show these as errors unless they're critical
+        }
+      }
+      
+      // Check if the API returned an error in the response
+      if (response.error) {
+        // Handle specific error cases with user-friendly messages
+        if (response.error.toLowerCase().includes('no dtrs found')) {
+          setError(`No Digital Twin Registries found for partner "${bpnl}". Please verify the BPNL is correct and if the partner has a Connector (with a reachable DTR) connected in the same dataspace as you.`);
+        } else {
+          setError(`Search failed: ${response.error}`);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if no shell descriptors were found
+      if (!response.shellDescriptors || response.shellDescriptors.length === 0) {
+        setError('No digital twins found for the specified criteria. Please try different search parameters.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check for errors in DTR statuses
+      if (response.dtrs && response.dtrs.length > 0) {
+        const errorDtrs = response.dtrs.filter(dtr => 
+          dtr.status && (
+            dtr.status.toLowerCase().includes('error') ||
+            dtr.status.toLowerCase().includes('failed') ||
+            dtr.status.toLowerCase().includes('timeout') ||
+            dtr.status.toLowerCase().includes('unavailable')
+          )
+        );
+        if (errorDtrs.length > 0) {
+          console.warn('DTR errors found:', errorDtrs);
+          const errorMessages = errorDtrs.map(dtr => `DTR ${dtr.connectorUrl}: ${dtr.status}`);
+          setError(`DTR issues detected: ${errorMessages.join(', ')}`);
+          // Don't return here - continue processing in case there are still valid results
+        }
+      }
       
       // Create paginator
       const digitalTwinType = partType === 'Part' ? 'PartType' : 'PartInstance';
@@ -221,7 +414,7 @@ const PartsDiscovery = () => {
         setPartTypeCards([]);
       }
 
-      setCurrentPage(response.pagination.page);
+      setCurrentPage(response.pagination?.page || 1);
       // Calculate total pages (this would ideally come from the API)
       if (pageLimit === 0) {
         setTotalPages(1); // No pagination when no limit is set
@@ -234,13 +427,44 @@ const PartsDiscovery = () => {
 
     } catch (err) {
       console.error('Search error:', err);
-      setError('Error searching for parts. Please try again.');
+      
+      // Extract meaningful error message from different error types
+      let errorMessage = 'Error searching for parts. Please try again.';
+      
+      if (err instanceof Error) {
+        // Handle standard Error objects
+        errorMessage = `Search failed: ${err.message}`;
+      } else if (typeof err === 'string') {
+        // Handle string errors
+        errorMessage = `Search failed: ${err}`;
+      } else if (err && typeof err === 'object') {
+        // Handle axios or other structured errors
+        if ('response' in err && err.response) {
+          // Axios error with response
+          const axiosErr = err as { response: { data?: { error?: string; message?: string }; status: number; statusText: string } };
+          if (axiosErr.response.data?.error) {
+            errorMessage = `API Error: ${axiosErr.response.data.error}`;
+          } else if (axiosErr.response.data?.message) {
+            errorMessage = `API Error: ${axiosErr.response.data.message}`;
+          } else if (axiosErr.response.statusText) {
+            errorMessage = `HTTP ${axiosErr.response.status}: ${axiosErr.response.statusText}`;
+          } else {
+            errorMessage = `HTTP Error ${axiosErr.response.status}`;
+          }
+        } else if ('message' in err) {
+          // Object with message property
+          const errWithMessage = err as { message: string };
+          errorMessage = `Search failed: ${errWithMessage.message}`;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-    const handlePageChange = async (_: React.ChangeEvent<unknown>, page: number) => {
+  const handlePageChange = async (_: React.ChangeEvent<unknown>, page: number) => {
     if (!paginator || page === currentPage) return;
 
     setIsLoading(true);
@@ -263,8 +487,19 @@ const PartsDiscovery = () => {
       }
 
       if (newResponse) {
+        // Check if the pagination response contains an error
+        if (newResponse.error) {
+          if (newResponse.error.toLowerCase().includes('no dtrs found')) {
+            setError(`No Digital Twin Registries found for partner "${bpnl}" on page ${page}. Please verify the BPNL is correct and the partner has registered digital twins.`);
+          } else {
+            setError(`Pagination failed: ${newResponse.error}`);
+          }
+          setIsLoading(false);
+          return;
+        }
+        
         setCurrentResponse(newResponse);
-        setCurrentPage(newResponse.pagination.page);
+        setCurrentPage(newResponse.pagination?.page || currentPage);
 
         // Update results based on part type
         if (partType === 'Part') {
@@ -279,7 +514,31 @@ const PartsDiscovery = () => {
       }
     } catch (err) {
       console.error('Pagination error:', err);
-      setError('Error loading page. Please try again.');
+      
+      // Extract meaningful error message from pagination errors
+      let errorMessage = 'Error loading page. Please try again.';
+      
+      if (err instanceof Error) {
+        errorMessage = `Pagination failed: ${err.message}`;
+      } else if (typeof err === 'string') {
+        errorMessage = `Pagination failed: ${err}`;
+      } else if (err && typeof err === 'object') {
+        if ('response' in err && err.response) {
+          const axiosErr = err as { response: { data?: { error?: string; message?: string }; status: number; statusText: string } };
+          if (axiosErr.response.data?.error) {
+            errorMessage = `Pagination API Error: ${axiosErr.response.data.error}`;
+          } else if (axiosErr.response.data?.message) {
+            errorMessage = `Pagination API Error: ${axiosErr.response.data.message}`;
+          } else {
+            errorMessage = `Pagination HTTP ${axiosErr.response.status}: ${axiosErr.response.statusText}`;
+          }
+        } else if ('message' in err) {
+          const errWithMessage = err as { message: string };
+          errorMessage = `Pagination failed: ${errWithMessage.message}`;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -329,7 +588,7 @@ const PartsDiscovery = () => {
           }}
         >
           <Grid2 container alignItems="center" justifyContent="space-between">
-            <Grid2>
+            <Grid2 size={3}>
               <Button
                 variant="outlined"
                 onClick={handleGoBack}
@@ -348,7 +607,7 @@ const PartsDiscovery = () => {
                 New Search
               </Button>
             </Grid2>
-            <Grid2>
+            <Grid2 size={6}>
               <Typography 
                 variant="h6" 
                 sx={{ 
@@ -357,20 +616,26 @@ const PartsDiscovery = () => {
                   textAlign: 'center'
                 }}
               >
-                Parts Discovery
+                Dataspace Discovery
               </Typography>
             </Grid2>
-            <Grid2>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Chip 
-                  label={partType === 'Part' ? 'Catalog Parts' : 'Serialized Parts'} 
-                  size="small" 
-                  color="primary" 
-                  variant="outlined" 
-                />
-                <Typography variant="body2" color="textSecondary">
-                  BPNL: {bpnl}
-                </Typography>
+            <Grid2 size={3}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end',
+                minHeight: '32px'
+              }}>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="body2" sx={{ fontWeight: '500', color: 'primary.main', fontSize: '0.875rem' }}>
+                    {getCompanyName(bpnl)}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.75rem', display: 'block' }}>
+                    {bpnl}
+                  </Typography>
+                </Box>
               </Box>
             </Grid2>
           </Grid2>
@@ -382,16 +647,125 @@ const PartsDiscovery = () => {
         <Grid2 container direction="row" sx={{ flex: 1 }}>
           {/* Sidebar - only shown when no search has been performed */}
           {!hasSearched && (
-            <Grid2 size={{ lg: 2, md: 4, sm: 12 }} padding={4} className="parts-discovery-sidebar">
-              <Typography variant="subtitle1" gutterBottom>Part Type</Typography>
-              <RadioGroup value={partType} onChange={(e) => setPartType(e.target.value)}>
-                <FormControlLabel value="Part" control={<Radio />} label="Part Type (Catalog)" />
-                <FormControlLabel value="Serialized" control={<Radio />} label="Serialized Parts" />
-              </RadioGroup>
-
-              <Box mt={4}>
-                <Typography variant="subtitle1" gutterBottom>Results per Page</Typography>
-                <FormControl fullWidth size="small" sx={{ mt: 2 }}>
+            <Grid2 
+              size={{ lg: 2, md: 4, sm: 12 }} 
+              padding={0}
+              className="parts-discovery-sidebar"
+              sx={{
+                background: 'linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+                minHeight: '100vh',
+                borderRight: '1px solid rgba(59, 130, 246, 0.2)',
+                boxShadow: '4px 0 16px rgba(30, 58, 138, 0.1)'
+              }}
+            >
+              <Box sx={{ p: 2 }}>
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    fontWeight: '600', 
+                    color: 'white',
+                    mb: 2,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+                    pb: 1
+                  }}
+                >
+                  Digital Twin Type
+                </Typography>
+                <RadioGroup 
+                  value={partType} 
+                  onChange={handlePartTypeChange}
+                  sx={{
+                    '& .MuiFormControlLabel-root': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      margin: '4px 0',
+                      borderRadius: 2,
+                      padding: '8px 12px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      transition: 'all 0.2s ease',
+                      color: 'white',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                        borderColor: 'rgba(255, 255, 255, 0.3)'
+                      }
+                    },
+                    '& .MuiFormControlLabel-label': {
+                      fontWeight: '400',
+                      fontSize: '0.875rem',
+                      color: 'white'
+                    },
+                    '& .MuiRadio-root': {
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      padding: '6px',
+                      '&.Mui-checked': {
+                        color: '#60a5fa'
+                      }
+                    },
+                    '& .Mui-checked + .MuiFormControlLabel-label': {
+                      fontWeight: '500',
+                      color: '#bfdbfe'
+                    }
+                  }}
+                >
+                  <FormControlLabel value="Part" control={<Radio />} label="Part Type (Catalog)" />
+                  <FormControlLabel value="Serialized" control={<Radio />} label="Part Instance (Serialized)" />
+                </RadioGroup>
+              </Box>
+                
+              <Box sx={{ p: 2 }}>
+                <Typography 
+                  variant="subtitle2" 
+                  sx={{ 
+                    fontWeight: '600', 
+                    color: 'white',
+                    mb: 2,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+                    pb: 1
+                  }}
+                >
+                  Results per Page
+                </Typography>
+                <FormControl 
+                  fullWidth 
+                  size="small" 
+                  sx={{ 
+                    mt: 1,
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: 2,
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: 'white',
+                      fontSize: '0.875rem',
+                      '& input::placeholder': {
+                        fontSize: '0.75rem',
+                        color: 'rgba(255, 255, 255, 0.5)'
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                        borderColor: 'rgba(255, 255, 255, 0.3)'
+                      },
+                      '&.Mui-focused': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                        borderColor: '#60a5fa'
+                      }
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: 'rgba(255, 255, 255, 0.8)',
+                      fontSize: '0.875rem',
+                      '&.Mui-focused': {
+                        color: '#bfdbfe'
+                      }
+                    },
+                    '& .MuiSelect-icon': {
+                      color: 'rgba(255, 255, 255, 0.7)'
+                    }
+                  }}
+                >
                   <InputLabel>Results per Page</InputLabel>
                   <Select
                     value={isCustomLimit ? 'custom' : pageLimit}
@@ -443,10 +817,41 @@ const PartsDiscovery = () => {
                           : "Enter a number between 1 and 1000"
                       }
                       error={customLimit !== '' && (isNaN(parseInt(customLimit)) || parseInt(customLimit) < 1 || parseInt(customLimit) > 1000)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                          borderRadius: 2,
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: 'white',
+                          '& input::placeholder': {
+                            fontSize: '0.75rem',
+                            color: 'rgba(255, 255, 255, 0.5)'
+                          },
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                            borderColor: 'rgba(255, 255, 255, 0.3)'
+                          },
+                          '&.Mui-focused': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                            borderColor: '#60a5fa'
+                          }
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: '0.875rem',
+                          '&.Mui-focused': {
+                            color: '#bfdbfe'
+                          }
+                        },
+                        '& .MuiFormHelperText-root': {
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '0.75rem'
+                        }
+                      }}
                     />
                     
-                    <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      <Typography variant="caption" color="textSecondary" sx={{ width: '100%', mb: 0.5 }}>
+                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      <Typography variant="caption" sx={{ width: '100%', mb: 0.5, color: 'rgba(255, 255, 255, 0.8)', fontWeight: '500', fontSize: '0.7rem' }}>
                         Quick select:
                       </Typography>
                       {[25, 75, 150, 200, 500].map((value) => (
@@ -454,20 +859,45 @@ const PartsDiscovery = () => {
                           key={value}
                           label={value}
                           size="small"
-                          variant="outlined"
                           onClick={() => {
                             setCustomLimit(value.toString());
                             setPageLimit(value);
                           }}
-                          sx={{ cursor: 'pointer' }}
+                          sx={{ 
+                            cursor: 'pointer',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            fontSize: '0.7rem',
+                            height: '24px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                              borderColor: '#60a5fa'
+                            }
+                          }}
                         />
                       ))}
                     </Box>
                   </Box>
                 )}
+              </Box>
 
-                <Box mt={3}>
-                  <Typography variant="subtitle1" gutterBottom>Advanced Options</Typography>
+              <Box sx={{ p: 2 }}>
+                  <Typography 
+                    variant="subtitle2" 
+                    sx={{ 
+                      fontWeight: '600', 
+                      color: 'white',
+                      mb: 2,
+                      fontSize: '0.85rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+                      pb: 1
+                    }}
+                  >
+                    Advanced Options
+                  </Typography>
                   <TextField
                     fullWidth
                     size="small"
@@ -475,7 +905,38 @@ const PartsDiscovery = () => {
                     placeholder="Enter Customer Part ID"
                     value={customerPartId}
                     onChange={(e) => setCustomerPartId(e.target.value)}
-                    sx={{ mb: 2 }}
+                    sx={{ 
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: 'white',
+                        '& input::placeholder': {
+                          fontSize: '0.75rem',
+                          color: 'rgba(255, 255, 255, 0.5)'
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                          borderColor: 'rgba(255, 255, 255, 0.3)'
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                          borderColor: '#60a5fa'
+                        }
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontSize: '0.875rem',
+                        '&.Mui-focused': {
+                          color: '#bfdbfe'
+                        }
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontSize: '0.75rem'
+                      }
+                    }}
                     helperText="Search by specific Customer Part identifier"
                   />
                   <TextField
@@ -485,7 +946,38 @@ const PartsDiscovery = () => {
                     placeholder="Enter Manufacturer Part ID"
                     value={manufacturerPartId}
                     onChange={(e) => setManufacturerPartId(e.target.value)}
-                    sx={{ mb: 2 }}
+                    sx={{ 
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: 'white',
+                        '& input::placeholder': {
+                          fontSize: '0.75rem',
+                          color: 'rgba(255, 255, 255, 0.5)'
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                          borderColor: 'rgba(255, 255, 255, 0.3)'
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                          borderColor: '#60a5fa'
+                        }
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontSize: '0.875rem',
+                        '&.Mui-focused': {
+                          color: '#bfdbfe'
+                        }
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontSize: '0.75rem'
+                      }
+                    }}
                     helperText="Search by specific Manufacturer Part identifier"
                   />
                   <TextField
@@ -495,10 +987,85 @@ const PartsDiscovery = () => {
                     placeholder="Enter Asset Administration Shell ID"
                     value={aasId}
                     onChange={(e) => setAasId(e.target.value)}
-                    sx={{ mb: 2 }}
+                    sx={{ 
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: 'white',
+                        '& input::placeholder': {
+                          fontSize: '0.75rem',
+                          color: 'rgba(255, 255, 255, 0.5)'
+                        },
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                          borderColor: 'rgba(255, 255, 255, 0.3)'
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                          borderColor: '#60a5fa'
+                        }
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        fontSize: '0.875rem',
+                        '&.Mui-focused': {
+                          color: '#bfdbfe'
+                        }
+                      },
+                      '& .MuiFormHelperText-root': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontSize: '0.75rem'
+                      }
+                    }}
                     helperText="Specific Asset Administration Shell identifier"
                   />
-                </Box>
+                  
+                  {/* Part Instance ID - Only shown when Part Instance is selected */}
+                  {partType === 'Serialized' && (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Part Instance ID (Optional)"
+                      placeholder="Enter Part Instance identifier"
+                      value={partInstanceId}
+                      onChange={(e) => setPartInstanceId(e.target.value)}
+                      sx={{ 
+                        mb: 2,
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                          borderRadius: 2,
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: 'white',
+                          '& input::placeholder': {
+                            fontSize: '0.75rem',
+                            color: 'rgba(255, 255, 255, 0.5)'
+                          },
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                            borderColor: 'rgba(255, 255, 255, 0.3)'
+                          },
+                          '&.Mui-focused': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                            borderColor: '#60a5fa'
+                          }
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          fontSize: '0.875rem',
+                          '&.Mui-focused': {
+                            color: '#bfdbfe'
+                          }
+                        },
+                        '& .MuiFormHelperText-root': {
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '0.75rem'
+                        }
+                      }}
+                      helperText="Search by specific Part Instance identifier"
+                    />
+                  )}
               </Box>
             </Grid2>
           )}
@@ -538,7 +1105,7 @@ const PartsDiscovery = () => {
                     textShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}
                 >
-                  Parts Discovery
+                  Dataspace Discovery
                 </Typography>
                 <Typography 
                   variant="h6" 
@@ -572,42 +1139,95 @@ const PartsDiscovery = () => {
                   }}
                 >
                   <Box display="flex" flexDirection="column" gap={4}>
-                    <TextField
-                      fullWidth
-                      label="Partner BPNL *"
-                      placeholder="Enter partner BPNL (e.g., BPNL0000000093Q7)"
-                      variant="outlined"
-                      value={bpnl}
-                      onChange={(e) => setBpnl(e.target.value)}
-                      error={!!error && !bpnl.trim()}
-                      helperText={!!error && !bpnl.trim() ? 'BPNL is required' : 'Business Partner Number Legal Entity'}
-                      slotProps={{
-                        input: {
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton onClick={handleSearch} disabled={isLoading}>
-                                <SearchIcon />
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        },
+                    <Autocomplete
+                      freeSolo
+                      options={availablePartners}
+                      getOptionLabel={(option) => {
+                        if (typeof option === 'string') return option;
+                        return `${option.name} - ${option.bpnl}`;
                       }}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 3,
-                          fontSize: '1.1rem',
-                          backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                          },
-                          '&.Mui-focused': {
-                            backgroundColor: 'white'
-                          }
-                        },
-                        '& .MuiInputLabel-root': {
-                          fontSize: '1.1rem'
+                      value={bpnl}
+                      onChange={(_, newValue) => {
+                        if (typeof newValue === 'string') {
+                          // Custom BPNL entered
+                          setBpnl(newValue);
+                          setSelectedPartner(null);
+                        } else if (newValue) {
+                          // Partner selected from dropdown
+                          setBpnl(newValue.bpnl);
+                          setSelectedPartner(newValue);
+                        } else {
+                          // Cleared
+                          setBpnl('');
+                          setSelectedPartner(null);
                         }
                       }}
+                      onInputChange={(_, newInputValue) => {
+                        setBpnl(newInputValue);
+                        if (!availablePartners.find(p => p.bpnl === newInputValue)) {
+                          setSelectedPartner(null);
+                        }
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Partner BPNL *"
+                          placeholder="Select partner or enter custom BPNL (e.g., BPNL0000000093Q7)"
+                          variant="outlined"
+                          error={!!error && !bpnl.trim()}
+                          helperText={
+                            !!error && !bpnl.trim() 
+                              ? 'BPNL is required' 
+                              : 'Select from available partners or enter a custom Business Partner Number Legal Entity'
+                          }
+                          slotProps={{
+                            input: {
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {isLoadingPartners ? <CircularProgress color="inherit" size={20} /> : null}
+                                  {params.InputProps.endAdornment}
+                                  <InputAdornment position="end">
+                                    <IconButton onClick={handleSearch} disabled={isLoading}>
+                                      <SearchIcon />
+                                    </IconButton>
+                                  </InputAdornment>
+                                </>
+                              ),
+                            },
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 3,
+                              fontSize: '1.1rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                              },
+                              '&.Mui-focused': {
+                                backgroundColor: 'white'
+                              }
+                            },
+                            '& .MuiInputLabel-root': {
+                              fontSize: '1.1rem'
+                            }
+                          }}
+                        />
+                      )}
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                            {option.name}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {option.bpnl}
+                          </Typography>
+                        </Box>
+                      )}
+                      loading={isLoadingPartners}
+                      loadingText="Loading partners..."
+                      noOptionsText="No partners found. You can still enter a custom BPNL."
+                      sx={{ width: '100%' }}
                     />
                     
                     <Button
@@ -655,44 +1275,90 @@ const PartsDiscovery = () => {
             {/* Results Section - shown when search has been performed */}
             {hasSearched && (
               <Box sx={{ width: '100%' }}>
-                {/* Results Summary */}
+                {/* Results Summary - always shown when there's a response */}
                 {currentResponse && (
-                  <Box display="flex" justifyContent="center" mb={3}>
-                    <Card sx={{ 
-                      maxWidth: '800px', 
-                      width: '100%',
-                      background: 'rgba(255, 255, 255, 0.95)',
-                      backdropFilter: 'blur(10px)',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                      borderRadius: 3,
-                      border: '1px solid rgba(255, 255, 255, 0.3)'
-                    }}>
-                      <CardContent sx={{ py: 3 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-                          <Typography variant="h6" sx={{ fontWeight: '600', color: '#1976d2' }}>
-                            Found {currentResponse.shellsFound} {partType === 'Part' ? 'catalog parts' : 'serialized parts'}
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2 }}>
+                    {/* Left Side - Part Type Indicator + Active Filters */}
+                    <Box 
+                      display="flex" 
+                      alignItems="center" 
+                      gap={1.5} 
+                      flexWrap="wrap"
+                    >
+                      {/* Part Type - Always shown */}
+                      <Box
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '16px',
+                          backgroundColor: 'rgba(76, 175, 80, 0.08)',
+                          border: '1px solid rgba(76, 175, 80, 0.2)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            fontWeight: '600', 
+                            color: '#4caf50', 
+                            fontSize: '0.75rem',
+                            letterSpacing: '0.02em'
+                          }}
+                        >
+                          {partType === 'Part' ? 'Catalog Parts' : 'Part Instances'}
+                        </Typography>
+                      </Box>
+
+                      {/* Active Filters - Only shown when there are filters */}
+                      {getActiveFilterChips().length > 0 && (
+                        <>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontWeight: '600', 
+                              color: '#666', 
+                              fontSize: '0.75rem',
+                              letterSpacing: '0.02em'
+                            }}
+                          >
+                            Active Filters:
                           </Typography>
-                          <Box display="flex" gap={1}>
-                            <Chip 
-                              label={`Page ${currentPage}`} 
-                              size="medium" 
-                              color="primary" 
-                              variant="filled"
-                              sx={{ fontWeight: '600' }}
-                            />
-                            <Chip 
-                              label={`${currentResponse.shellDescriptors.length} shown`} 
-                              size="medium" 
-                              color="secondary" 
-                              variant="outlined"
-                              sx={{ fontWeight: '600' }}
-                            />
-                          </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
+                          {getActiveFilterChips()}
+                        </>
+                      )}
+                    </Box>
+
+                    {/* Results Count - Right Side - Generic number */}
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: '16px',
+                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                        border: '1px solid rgba(25, 118, 210, 0.2)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          fontWeight: '600', 
+                          color: '#1976d2', 
+                          fontSize: '0.8rem',
+                          letterSpacing: '0.02em'
+                        }}
+                      >
+                        {currentResponse.shellsFound}
+                      </Typography>
+                    </Box>
                   </Box>
                 )}
+
+                {/* Remove the duplicate simple results count section since we now handle both cases above */}
 
                 {/* Results Display */}
                 <Box sx={{ px: { xs: 2, md: 4 }, pb: 4 }}>
@@ -734,28 +1400,25 @@ const PartsDiscovery = () => {
 
                 {/* Pagination */}
                 {currentResponse && !isLoading && pageLimit > 0 && (
-                  <Box display="flex" justifyContent="center" alignItems="center" gap={3} mt={6} mb={4}>
+                  <Box display="flex" justifyContent="center" alignItems="center" gap={2} mt={4} mb={3}>
                     {paginator?.hasPrevious() && (
                       <Button
                         variant="outlined"
                         onClick={() => handlePageChange({} as React.ChangeEvent<unknown>, currentPage - 1)}
                         disabled={isLoading}
                         startIcon={<ArrowBackIcon />}
+                        size="small"
                         sx={{ 
                           borderColor: 'primary.main',
                           color: 'primary.main',
-                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                          backdropFilter: 'blur(10px)',
-                          borderRadius: 3,
-                          px: 3,
-                          py: 1.5,
-                          fontWeight: '600',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 0.5,
+                          fontSize: '0.8rem',
+                          textTransform: 'none',
                           '&:hover': {
-                            borderColor: 'primary.dark',
                             backgroundColor: 'primary.main',
-                            color: 'white',
-                            transform: 'translateY(-1px)',
-                            boxShadow: '0 8px 25px rgba(25, 118, 210, 0.3)'
+                            color: 'white'
                           }
                         }}
                       >
@@ -766,23 +1429,21 @@ const PartsDiscovery = () => {
                     <Box 
                       display="flex" 
                       alignItems="center" 
-                      gap={1}
+                      gap={0.5}
                       sx={{
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        backdropFilter: 'blur(10px)',
-                        px: 4,
-                        py: 2,
-                        borderRadius: 3,
-                        border: '2px solid',
+                        px: 2,
+                        py: 0.5,
+                        borderRadius: 2,
+                        border: '1px solid',
                         borderColor: 'primary.main',
-                        boxShadow: '0 8px 25px rgba(25, 118, 210, 0.2)'
+                        backgroundColor: 'background.paper'
                       }}
                     >
-                      <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                      <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: '500', fontSize: '0.8rem' }}>
                         Page {currentPage}
                       </Typography>
                       {totalPages > 1 && (
-                        <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
                           of {totalPages}
                         </Typography>
                       )}
@@ -794,21 +1455,19 @@ const PartsDiscovery = () => {
                         onClick={() => handlePageChange({} as React.ChangeEvent<unknown>, currentPage + 1)}
                         disabled={isLoading}
                         endIcon={<ArrowForwardIcon />}
+                        size="small"
                         sx={{ 
-                          background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-                          borderRadius: 3,
-                          px: 3,
-                          py: 1.5,
-                          fontWeight: '600',
-                          boxShadow: '0 8px 25px rgba(25, 118, 210, 0.3)',
+                          backgroundColor: 'primary.main',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 0.5,
+                          fontSize: '0.8rem',
+                          textTransform: 'none',
                           '&:hover': {
-                            background: 'linear-gradient(45deg, #1565c0 30%, #2196f3 90%)',
-                            transform: 'translateY(-1px)',
-                            boxShadow: '0 12px 35px rgba(25, 118, 210, 0.4)'
+                            backgroundColor: 'primary.dark'
                           },
                           '&:disabled': {
-                            background: '#e0e0e0',
-                            boxShadow: 'none'
+                            backgroundColor: 'action.disabled'
                           }
                         }}
                       >

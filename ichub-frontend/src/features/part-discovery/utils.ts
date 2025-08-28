@@ -304,6 +304,7 @@ export interface ShellDiscoveryResponse {
   dtrs: DTRInfo[];
   shellsFound: number;
   pagination: PaginationInfo;
+  error?: string; // Optional error field for API error responses
 }
 
 export interface DTRInfo {
