@@ -27,7 +27,7 @@ import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { Box, Typography, IconButton, Button, Tooltip } from "@mui/material";
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
-import { CardChip } from "./CardChip";
+import { DiscoveryCardChip } from "./DiscoveryCardChip";
 import { StatusVariants } from "../../../../types/statusVariants";
 import { ErrorNotFound } from "../../../../components/general/ErrorNotFound";
 import LoadingSpinner from "../../../../components/general/LoadingSpinner";
@@ -47,22 +47,20 @@ export interface CardDecisionProps {
   onMore: (e1: string, e2: string) => void;
   onClick: (e: string) => void;
   onRegisterClick?: (manufacturerId: string, manufacturerPartId: string) => void; 
-  isLoading: boolean
+  isLoading: boolean;
 }
 
 export enum ButtonEvents {
-  SHARE,
   MORE,
   REGISTER, 
 }
 
-export const ProductCard = ({
+export const CatalogPartsDiscovery = ({
   items,
-  onShare,
   onMore,
   onClick,
   onRegisterClick, 
-  isLoading,
+  isLoading
 }: CardDecisionProps) => {
 
   const handleDecision = (
@@ -72,9 +70,7 @@ export const ProductCard = ({
     type: ButtonEvents
   ) => {
     e.stopPropagation();
-    if (type === ButtonEvents.SHARE) {
-      return onShare(manufacturerId, manufacturerPartId);
-    } else if (type === ButtonEvents.MORE) {
+    if (type === ButtonEvents.MORE) {
       return onMore(manufacturerId, manufacturerPartId);
     } else if (type === ButtonEvents.REGISTER) {
       if (onRegisterClick) {
@@ -106,7 +102,7 @@ export const ProductCard = ({
               }}
             >
               <Box className="custom-card-header">
-                <CardChip status={item.status} statusText={item.status} />
+                <DiscoveryCardChip status={item.status} statusText={item.status} />
 
                 <Box className="custom-card-header-buttons">                  
                   {(item.status === StatusVariants.draft || item.status === StatusVariants.pending) && (

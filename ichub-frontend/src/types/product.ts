@@ -56,6 +56,14 @@ export interface PartType {
   customerPartIds?: Record<string, { name: string; bpnl: string }>; // e.g., { "CUSTOMER_BPNL_XYZ": { name: "BMW", bpnl: "BPNL00000003CRHK" } }
 }
 
+
+export interface DiscoveryPartType {
+    manufacturerId: string;
+    manufacturerPartId: string;
+    customerPartId: string,
+    id: string,
+    globalAssetId: string,
+}
 export type ApiPartData = Omit<PartType, 'status'> & {
   status: number; // Status from API is a number
 };
