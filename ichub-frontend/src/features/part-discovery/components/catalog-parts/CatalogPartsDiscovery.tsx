@@ -22,11 +22,10 @@
 
 import MoreVert from "@mui/icons-material/MoreVert";
 import Launch from "@mui/icons-material/Launch";
-import CloudQueueIcon from '@mui/icons-material/CloudQueue';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import Download from '@mui/icons-material/Download';
-import { Box, Typography, IconButton, Button, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import { Box, Typography, IconButton, Button, Tooltip, Menu } from "@mui/material";
 import { useState } from "react";
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { DiscoveryCardChip } from "./DiscoveryCardChip";
@@ -62,6 +61,7 @@ export const CatalogPartsDiscovery = ({
 }: CardDecisionProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<AppContent | null>(null);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const open = Boolean(anchorEl);
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, item: AppContent) => {
@@ -75,17 +75,28 @@ export const CatalogPartsDiscovery = ({
     setSelectedItem(null);
   };
 
-  const handleCopyShellId = async () => {
+    const handleCopyShellId = async () => {
     if (selectedItem?.shellId) {
       try {
         await navigator.clipboard.writeText(selectedItem.shellId);
         console.log('Shell ID copied to clipboard:', selectedItem.shellId);
-        // You could add a toast notification here
+        setCopySuccess(true);
+        
+        // Close menu after showing feedback for 1.5 seconds
+        setTimeout(() => {
+          handleMenuClose();
+          // Reset success state after menu closes
+          setTimeout(() => {
+            setCopySuccess(false);
+          }, 300);
+        }, 1500);
       } catch (err) {
         console.error('Failed to copy Shell ID:', err);
+        handleMenuClose();
       }
+    } else {
+      handleMenuClose();
     }
-    handleMenuClose();
   };
 
   const handleDownloadTwinData = () => {
@@ -112,7 +123,8 @@ export const CatalogPartsDiscovery = ({
   };
 
   return (
-    <Box className="custom-cards-list">
+    <>
+      <Box className="custom-cards-list">
       {isLoading && (
         <LoadingSpinner />
       )}
@@ -144,24 +156,34 @@ export const CatalogPartsDiscovery = ({
                 </Box>
 
                 <Box className="custom-card-header-buttons">                  
-                  {(item.status === StatusVariants.draft || item.status === StatusVariants.pending) && (
-                    <Tooltip title="Register part" arrow>
-                      <span> 
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (onRegisterClick) {
-                              onRegisterClick(item.manufacturerId, item.manufacturerPartId);
+                  {item.rawTwinData && (
+                    <Tooltip title="Download Twin Data" arrow>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (item.rawTwinData) {
+                            try {
+                              const jsonString = JSON.stringify(item.rawTwinData, null, 2);
+                              const blob = new Blob([jsonString], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = `twin-${item.manufacturerPartId || item.shellId || 'data'}.json`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              URL.revokeObjectURL(url);
+                              
+                              console.log('Twin data downloaded successfully');
+                            } catch (err) {
+                              console.error('Failed to download twin data:', err);
                             }
-                          }}
-                        >
-                          {item.status === StatusVariants.draft ? (
-                            <CloudUploadIcon className="register-btn"/>
-                          ) : (
-                            <CloudQueueIcon sx={{ color: "rgba(255, 255, 255, 0.5)" }} />
-                          )}
-                        </IconButton>
-                      </span>
+                          }
+                        }}
+                      >
+                        <Download sx={{ color: "white"}} />
+                      </IconButton>
                     </Tooltip>
                   )}
                   <Tooltip title="More options" arrow>
@@ -223,24 +245,85 @@ export const CatalogPartsDiscovery = ({
         }}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        PaperProps={{
+          sx: {
+            backgroundColor: 'white !important'
+          }
+        }}
       >
         {selectedItem?.shellId && (
-          <MenuItem onClick={handleCopyShellId}>
-            <ListItemIcon>
-              <ContentCopy fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Copy Shell ID</ListItemText>
-          </MenuItem>
+          <Box
+            onClick={handleCopyShellId}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              backgroundColor: copySuccess ? '#4caf50 !important' : 'transparent',
+              transition: 'background-color 0.3s ease',
+              '&:hover': {
+                backgroundColor: copySuccess ? '#4caf50 !important' : '#f5f5f5'
+              }
+            }}
+          >
+            <Box component="span" sx={{ 
+              fontSize: '0.875rem', 
+              color: copySuccess ? 'white' : 'black',
+              transition: 'color 0.3s ease'
+            }}>
+              {copySuccess ? 'Copied!' : 'Copy Shell ID'}
+            </Box>
+            {copySuccess ? (
+              <CheckCircle 
+                fontSize="small" 
+                sx={{ 
+                  color: 'white !important', 
+                  fill: 'white !important',
+                  marginLeft: 2 
+                }} 
+              />
+            ) : (
+              <ContentCopy 
+                fontSize="small" 
+                sx={{ 
+                  color: '#000000 !important', 
+                  fill: '#000000 !important',
+                  marginLeft: 2 
+                }} 
+              />
+            )}
+          </Box>
         )}
         {selectedItem?.rawTwinData && (
-          <MenuItem onClick={handleDownloadTwinData}>
-            <ListItemIcon>
-              <Download fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Download Twin Data</ListItemText>
-          </MenuItem>
+          <Box
+            onClick={handleDownloadTwinData}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#f5f5f5'
+              }
+            }}
+          >
+            <Box component="span" sx={{ fontSize: '0.875rem', color: 'black' }}>
+              Download Twin Data
+            </Box>
+            <Download 
+              fontSize="small" 
+              sx={{ 
+                color: '#000000 !important', 
+                fill: '#000000 !important',
+                marginLeft: 2 
+              }} 
+            />
+          </Box>
         )}
       </Menu>
     </Box>
+    </>
   );
 };

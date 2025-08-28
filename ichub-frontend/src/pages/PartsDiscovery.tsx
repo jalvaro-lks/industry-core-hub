@@ -55,11 +55,11 @@ import InfoIcon from '@mui/icons-material/Info';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ContentCopy from '@mui/icons-material/ContentCopy';
+import Download from '@mui/icons-material/Download';
+import CheckCircle from '@mui/icons-material/CheckCircle';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import { 
-  discoverPartTypeShells, 
-  discoverPartInstanceShells,
-  discoverShellsByCustomerPartId,
   discoverShellsWithCustomQuery,
   discoverSingleShell,
   ShellDiscoveryPaginator,
@@ -98,6 +98,7 @@ interface SerializedPartData {
   digitalTwinType: string;
   submodelCount: number;
   dtrIndex?: number; // DTR index for display
+  rawTwinData?: AASData; // Raw AAS/shell data for download
 }
 
 // Helper function to create a map from shell ID to DTR index
@@ -142,7 +143,7 @@ const getDtrColor = (dtrIndex: number) => {
 };
 
 const PartsDiscovery = () => {
-  const [partType, setPartType] = useState('Part');
+  const [partType, setPartType] = useState('Catalog');
   const [bpnl, setBpnl] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
   const [availablePartners, setAvailablePartners] = useState<PartnerInstance[]>([]);
@@ -212,7 +213,7 @@ const PartsDiscovery = () => {
     setPartType(newPartType);
     
     // Clear Part Instance ID when switching to Part Type
-    if (newPartType === 'Part') {
+    if (newPartType === 'Catalog') {
       setPartInstanceId('');
     }
   };
@@ -382,7 +383,8 @@ const PartsDiscovery = () => {
         partInstanceId: summary.partInstanceId || undefined,
         digitalTwinType: summary.digitalTwinType || 'Unknown',
         submodelCount: summary.submodelCount,
-        dtrIndex
+        dtrIndex,
+        rawTwinData: shell
       };
     });
   };
@@ -426,35 +428,49 @@ const PartsDiscovery = () => {
     setError(null);
     
     try {
-      let response: ShellDiscoveryResponse;
       const limit = pageLimit === 0 ? undefined : pageLimit; // No limit if pageLimit is 0
       
-      // Priority search: Customer Part ID > Part Instance ID > Manufacturer Part ID > Digital Twin Type
+      // Build custom query with all provided parameters
+      const querySpec: Array<{ name: string; value: string }> = [];
+      
+      // Add digitalTwinType based on part type selection
+      querySpec.push({
+        name: 'digitalTwinType',
+        value: partType === 'Catalog' ? 'PartType' : 'PartInstance'
+      });
+      
+      // Add all provided search parameters
       if (customerPartId.trim()) {
-        response = await discoverShellsByCustomerPartId(bpnl, customerPartId.trim(), limit);
-      } else if (partType === 'Serialized' && partInstanceId.trim()) {
-        // Search by Part Instance ID using custom query
-        const querySpec = [
-          { name: 'partInstanceId', value: partInstanceId.trim() }
-        ];
-        response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
-      } else if (manufacturerPartId.trim()) {
-        // For manufacturerPartId search, we would need a specific API function
-        // For now, fall back to digital twin type search
-        // TODO: Implement discoverShellsByManufacturerPartId API function
-        if (partType === 'Part') {
-          response = await discoverPartTypeShells(bpnl, limit);
-        } else {
-          response = await discoverPartInstanceShells(bpnl, limit);
-        }
-      } else {
-        // Default: search by digital twin type (Part Type or Part Instance)
-        if (partType === 'Part') {
-          response = await discoverPartTypeShells(bpnl, limit);
-        } else {
-          response = await discoverPartInstanceShells(bpnl, limit);
-        }
+        querySpec.push({
+          name: 'customerPartId',
+          value: customerPartId.trim()
+        });
       }
+      
+      if (manufacturerPartId.trim()) {
+        querySpec.push({
+          name: 'manufacturerPartId',
+          value: manufacturerPartId.trim()
+        });
+      }
+      
+      if (globalAssetId.trim()) {
+        querySpec.push({
+          name: 'globalAssetId',
+          value: globalAssetId.trim()
+        });
+      }
+      
+      // Only add partInstanceId if part type is Serialized (PartInstance)
+      if (partType === 'Serialized' && partInstanceId.trim()) {
+        querySpec.push({
+          name: 'partInstanceId',
+          value: partInstanceId.trim()
+        });
+      }
+      
+      // Use custom query for comprehensive search
+      const response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
 
       setCurrentResponse(response);
       
@@ -518,7 +534,7 @@ const PartsDiscovery = () => {
       }
       
       // Create paginator
-      const digitalTwinType = partType === 'Part' ? 'PartType' : 'PartInstance';
+      const digitalTwinType = partType === 'Catalog' ? 'PartType' : 'PartInstance';
       const newPaginator = new ShellDiscoveryPaginator(
         response,
         bpnl,
@@ -531,7 +547,7 @@ const PartsDiscovery = () => {
       const shellToDtrMap = response.dtrs ? createShellToDtrMap(response.dtrs) : undefined;
 
       // Process results based on part type
-      if (partType === 'Part') {
+      if (partType === 'Catalog') {
         const cards = convertToPartCards(response.shellDescriptors, shellToDtrMap);
         setPartTypeCards(cards);
         setSerializedParts([]);
@@ -632,7 +648,7 @@ const PartsDiscovery = () => {
         const shellToDtrMap = newResponse.dtrs ? createShellToDtrMap(newResponse.dtrs) : undefined;
 
         // Update results based on part type
-        if (partType === 'Part') {
+        if (partType === 'Catalog') {
           const cards = convertToPartCards(newResponse.shellDescriptors, shellToDtrMap);
           setPartTypeCards(cards);
         } else {
@@ -954,7 +970,7 @@ const PartsDiscovery = () => {
                     }
                   }}
                 >
-                  <FormControlLabel value="Part" control={<Radio />} label="Part Type (Catalog)" />
+                  <FormControlLabel value="Catalog" control={<Radio />} label="Part Type (Catalog)" />
                   <FormControlLabel value="Serialized" control={<Radio />} label="Part Instance (Serialized)" />
                 </RadioGroup>
               </Box>
@@ -1228,8 +1244,8 @@ const PartsDiscovery = () => {
                   <TextField
                     fullWidth
                     size="small"
-                    label="AAS-ID (Optional)"
-                    placeholder="Enter Asset Administration Shell ID"
+                    label="Global Asset ID (Optional)"
+                    placeholder="Enter Global Asset ID"
                     value={globalAssetId}
                     onChange={(e) => setGlobalAssetId(e.target.value)}
                     sx={{ 
@@ -1264,7 +1280,7 @@ const PartsDiscovery = () => {
                         fontSize: '0.75rem'
                       }
                     }}
-                    helperText="Specific Asset Administration Shell identifier"
+                    helperText="Global Asset ID of the Digital Twin"
                   />
                   
                   {/* Part Instance ID - Only shown when Part Instance is selected */}
@@ -1776,7 +1792,7 @@ const PartsDiscovery = () => {
                             letterSpacing: '0.02em'
                           }}
                         >
-                          {partType === 'Part' ? 'Catalog Parts' : 'Part Instances'}
+                          {partType === 'Catalog' ? 'Catalog Parts' : 'Part Instances'}
                         </Typography>
                       </Box>
 
@@ -2289,6 +2305,44 @@ const PartsDiscovery = () => {
 
 // Component for displaying serialized parts in a table
 const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+  const handleCopyAasId = async (aasId: string, partId: string) => {
+    try {
+      await navigator.clipboard.writeText(aasId);
+      console.log('AAS ID copied to clipboard:', aasId);
+      setCopySuccess(partId);
+      
+      // Reset after 2 seconds
+      setTimeout(() => {
+        setCopySuccess(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy AAS ID:', err);
+    }
+  };
+
+  const handleDownloadTwinData = (part: SerializedPartData) => {
+    if (part.rawTwinData) {
+      try {
+        const jsonString = JSON.stringify(part.rawTwinData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `twin-${part.manufacturerPartId || part.aasId || 'data'}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('Twin data downloaded successfully');
+      } catch (err) {
+        console.error('Failed to download twin data:', err);
+      }
+    }
+  };
   return (
     <Box sx={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2382,18 +2436,57 @@ const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
                 />
               </td>
               <td style={{ padding: '12px' }}>
-                <IconButton
-                  size="small"
-                  sx={{
-                    color: '#1976d2',
-                    '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                    }
-                  }}
-                  title="See more details"
-                >
-                  <OpenInNewIcon />
-                </IconButton>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {/* Copy AAS ID Button */}
+                  <IconButton
+                    size="small"
+                    onClick={() => handleCopyAasId(part.aasId, part.id)}
+                    sx={{
+                      color: copySuccess === part.id ? '#4caf50' : '#1976d2',
+                      backgroundColor: copySuccess === part.id ? 'rgba(76, 175, 80, 0.1)' : 'transparent',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        backgroundColor: copySuccess === part.id 
+                          ? 'rgba(76, 175, 80, 0.2)' 
+                          : 'rgba(25, 118, 210, 0.04)'
+                      }
+                    }}
+                    title={copySuccess === part.id ? "Copied!" : "Copy AAS ID"}
+                  >
+                    {copySuccess === part.id ? <CheckCircle /> : <ContentCopy />}
+                  </IconButton>
+
+                  {/* Download Twin Data Button */}
+                  {part.rawTwinData && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDownloadTwinData(part)}
+                      sx={{
+                        color: '#1976d2',
+                        '&:hover': {
+                          backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                        }
+                      }}
+                      title="Download Twin Data"
+                    >
+                      <Download />
+                    </IconButton>
+                  )}
+
+                  {/* See more details Button */}
+                  <IconButton
+                    size="small"
+                    sx={{
+                      color: '#1976d2',
+                      '&:hover': {
+                        backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                      }
+                    }}
+                    title="See more details"
+                  >
+                    <OpenInNewIcon />
+                  </IconButton>
+                </Box>
               </td>
             </tr>
           ))}
