@@ -35,11 +35,15 @@
   z-index: 1100;
 }
 
-.sidebarArea, .parts-discovery-sidebar {
+.sidebarArea {
+  z-index: 100000;
+}
+
+.parts-discovery-sidebar {
   position: sticky;
   top: 68.8px; // Header height
   height: calc(100vh - 68.8px);
-  z-index: 1099;
+  z-index: 0;
 }
 
 /* Content area styling */

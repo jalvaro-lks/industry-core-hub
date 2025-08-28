@@ -217,6 +217,86 @@ export const discoverShellsWithCustomQuery = async (
   return discoverShells(request);
 };
 
+// Types for Single Shell Discovery
+export interface SingleShellDiscoveryRequest {
+  counterPartyId: string;
+  id: string;
+}
+
+export interface SingleShellDiscoveryResponse {
+  shell_descriptor: {
+    description: unknown[];
+    displayName: unknown[];
+    globalAssetId: string;
+    id: string;
+    specificAssetIds: Array<{
+      supplementalSemanticIds: unknown[];
+      name: string;
+      value: string;
+      externalSubjectId: {
+        type: string;
+        keys: Array<{
+          type: string;
+          value: string;
+        }>;
+      };
+    }>;
+    submodelDescriptors: Array<{
+      endpoints: Array<{
+        interface: string;
+        protocolInformation: {
+          href: string;
+          endpointProtocol: string;
+          endpointProtocolVersion: string[];
+          subprotocol: string;
+          subprotocolBody: string;
+          subprotocolBodyEncoding: string;
+          securityAttributes: Array<{
+            type: string;
+            key: string;
+            value: string;
+          }>;
+        };
+      }>;
+      idShort: string;
+      id: string;
+      semanticId: {
+        type: string;
+        keys: Array<{
+          type: string;
+          value: string;
+        }>;
+      };
+      supplementalSemanticId: unknown[];
+      description: unknown[];
+      displayName: unknown[];
+    }>;
+  };
+  dtr: {
+    connector_url: string;
+    asset_id: string;
+  };
+}
+
+/**
+ * Discover a single shell by AAS ID
+ */
+export const discoverSingleShell = async (
+  counterPartyId: string,
+  aasId: string
+): Promise<SingleShellDiscoveryResponse> => {
+  const request: SingleShellDiscoveryRequest = {
+    counterPartyId,
+    id: aasId
+  };
+
+  const response = await axios.post<SingleShellDiscoveryResponse>(
+    `${backendUrl}/discover/shell`,
+    request
+  );
+  return response.data;
+};
+
 // Enhanced pagination functions that automatically extract cursors
 
 /**

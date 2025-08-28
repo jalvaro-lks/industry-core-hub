@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid2,
@@ -45,13 +45,17 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import { 
   discoverPartTypeShells, 
   discoverPartInstanceShells,
   discoverShellsByCustomerPartId,
   discoverShellsWithCustomQuery,
-  ShellDiscoveryPaginator 
+  discoverSingleShell,
+  ShellDiscoveryPaginator,
+  SingleShellDiscoveryResponse 
 } from '../features/part-discovery/api';
 import { 
   ShellDiscoveryResponse, 
@@ -89,13 +93,21 @@ const PartsDiscovery = () => {
   const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
   const [availablePartners, setAvailablePartners] = useState<PartnerInstance[]>([]);
   const [isLoadingPartners, setIsLoadingPartners] = useState(false);
-  const [aasId, setAasId] = useState('');
+  const [globalAssetId, setGlobalAssetId] = useState('');
   const [customerPartId, setCustomerPartId] = useState('');
   const [manufacturerPartId, setManufacturerPartId] = useState('');
   const [partInstanceId, setPartInstanceId] = useState('');
   const [pageLimit, setPageLimit] = useState<number>(10);
   const [customLimit, setCustomLimit] = useState<string>('');
   const [isCustomLimit, setIsCustomLimit] = useState<boolean>(false);
+  
+  // Single Twin Search Mode
+  const [searchMode, setSearchMode] = useState<'discovery' | 'single'>('discovery');
+  const [singleTwinAasId, setSingleTwinAasId] = useState('');
+  const [singleTwinResult, setSingleTwinResult] = useState<SingleShellDiscoveryResponse | null>(null);
+  
+  // Sidebar visibility
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   
   // Results and pagination
   const [partTypeCards, setPartTypeCards] = useState<PartCardData[]>([]);
@@ -145,6 +157,51 @@ const PartsDiscovery = () => {
     }
   };
 
+  // Handle single twin search
+  const handleSingleTwinSearch = async () => {
+    if (!bpnl.trim()) {
+      setError('Please enter a partner BPNL');
+      return;
+    }
+    
+    if (!singleTwinAasId.trim()) {
+      setError('Please enter an AAS ID');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setSingleTwinResult(null);
+    
+    try {
+      const response = await discoverSingleShell(bpnl, singleTwinAasId.trim());
+      setSingleTwinResult(response);
+      setHasSearched(true);
+    } catch (err) {
+      let errorMessage = 'Failed to discover digital twin';
+      
+      if (err instanceof Error) {
+        errorMessage = `Single twin search failed: ${err.message}`;
+      } else if (typeof err === 'string') {
+        errorMessage = `Single twin search failed: ${err}`;
+      } else if (err && typeof err === 'object') {
+        if ('response' in err && err.response && typeof err.response === 'object' && 'data' in err.response) {
+          const responseData = err.response.data as Record<string, unknown>;
+          if (typeof responseData.message === 'string') {
+            errorMessage = `Single twin search failed: ${responseData.message}`;
+          }
+        } else if ('message' in err) {
+          const errWithMessage = err as { message: string };
+          errorMessage = `Single twin search failed: ${errWithMessage.message}`;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Helper function to generate active filter chips - scalable for future filters
   const getActiveFilterChips = () => {
     const filters = [
@@ -159,9 +216,9 @@ const PartsDiscovery = () => {
         tooltip: 'Manufacturer Part ID'
       },
       {
-        value: aasId,
-        label: 'AAS-ID',
-        tooltip: 'Asset Administration Shell ID'
+        value: globalAssetId,
+        label: 'Global Asset ID',
+        tooltip: 'Global Asset ID'
       },
       // Only show Part Instance ID filter when Part Instance is selected
       ...(partType === 'Serialized' ? [{
@@ -644,18 +701,143 @@ const PartsDiscovery = () => {
 
       {/* Main Content Container */}
       <Box sx={{ flex: 1, display: 'flex' }}>
-        <Grid2 container direction="row" sx={{ flex: 1 }}>
-          {/* Sidebar - only shown when no search has been performed */}
-          {!hasSearched && (
+        {/* Search Mode Toggle and Sidebar Toggle */}
+        {!hasSearched && (
+          <Box 
+            sx={{ 
+              position: 'absolute',
+              top: '80px',
+              right: '20px',
+              zIndex: 1001,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '20px',
+              padding: '8px 16px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)'
+            }}
+          >
+            {/* Sidebar Toggle - only show in discovery mode */}
+            {searchMode === 'discovery' && (
+              <Box display="flex" alignItems="center" gap={1}>
+                <IconButton
+                  onClick={() => setSidebarVisible(!sidebarVisible)}
+                  size="small"
+                  sx={{
+                    color: '#1976d2',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                      transform: 'scale(1.1)'
+                    }
+                  }}
+                >
+                  {sidebarVisible ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                </IconButton>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    fontWeight: '500', 
+                    color: '#1976d2',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateX(2px)'
+                    }
+                  }}
+                  onClick={() => setSidebarVisible(!sidebarVisible)}
+                >
+                  {sidebarVisible ? 'Hide' : 'Show'} Filters
+                </Typography>
+              </Box>
+            )}
+
+            {/* Mode Toggle */}
+            <Box display="flex" alignItems="center" gap={1}>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  fontWeight: '500', 
+                  color: searchMode === 'discovery' ? '#1976d2' : '#666',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem'
+                }}
+                onClick={() => setSearchMode('discovery')}
+              >
+              Discovery Mode
+            </Typography>
+            <Box
+              sx={{
+                width: '40px',
+                height: '20px',
+                backgroundColor: searchMode === 'single' ? '#1976d2' : '#ddd',
+                borderRadius: '10px',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => setSearchMode(searchMode === 'discovery' ? 'single' : 'discovery')}
+            >
+              <Box
+                sx={{
+                  width: '16px',
+                  height: '16px',
+                  backgroundColor: 'white',
+                  borderRadius: '50%',
+                  position: 'absolute',
+                  top: '2px',
+                  left: searchMode === 'single' ? '22px' : '2px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              />
+            </Box>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                fontWeight: '500', 
+                color: searchMode === 'single' ? '#1976d2' : '#666',
+                cursor: 'pointer',
+                fontSize: '0.8rem'
+              }}
+              onClick={() => setSearchMode('single')}
+            >
+              Single Twin
+            </Typography>
+            </Box>
+          </Box>
+        )}
+
+        <Grid2 container direction="row" sx={{ 
+          flex: 1,
+          minHeight: '100vh'
+        }}>
+          {/* Sidebar - animated hide/show */}
+          {!hasSearched && searchMode === 'discovery' && (
             <Grid2 
-              size={{ lg: 2, md: 4, sm: 12 }} 
+              size={sidebarVisible ? { lg: 2, md: 4, sm: 12 } : 0}
               padding={0}
               className="parts-discovery-sidebar"
               sx={{
                 background: 'linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
                 minHeight: '100vh',
-                borderRight: '1px solid rgba(59, 130, 246, 0.2)',
-                boxShadow: '4px 0 16px rgba(30, 58, 138, 0.1)'
+                borderRight: sidebarVisible ? '1px solid rgba(59, 130, 246, 0.2)' : 'none',
+                boxShadow: sidebarVisible ? '4px 0 16px rgba(30, 58, 138, 0.1)' : 'none',
+                width: sidebarVisible ? 'auto' : '0px',
+                minWidth: sidebarVisible ? 'auto' : '0px',
+                maxWidth: sidebarVisible ? 'auto' : '0px',
+                overflow: 'hidden',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                opacity: sidebarVisible ? 1 : 0,
+                transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
+                // Ensure it takes no space when hidden
+                flexBasis: sidebarVisible ? 'auto' : '0px !important',
+                flexShrink: sidebarVisible ? 0 : 1,
+                flexGrow: 0
               }}
             >
               <Box sx={{ p: 2 }}>
@@ -985,8 +1167,8 @@ const PartsDiscovery = () => {
                     size="small"
                     label="AAS-ID (Optional)"
                     placeholder="Enter Asset Administration Shell ID"
-                    value={aasId}
-                    onChange={(e) => setAasId(e.target.value)}
+                    value={globalAssetId}
+                    onChange={(e) => setGlobalAssetId(e.target.value)}
                     sx={{ 
                       mb: 2,
                       '& .MuiOutlinedInput-root': {
@@ -1072,18 +1254,32 @@ const PartsDiscovery = () => {
 
           {/* Main Content */}
           <Grid2 
-            size={hasSearched ? 12 : { lg: 10, md: 8, sm: 12 }}
+            size={
+              hasSearched 
+                ? 12 
+                : (searchMode === 'discovery' 
+                    ? (sidebarVisible ? { lg: 10, md: 8, sm: 12 } : 12)
+                    : 12
+                  )
+            }
             sx={{
               display: 'flex',
               flexDirection: 'column',
               justifyContent: hasSearched ? 'flex-start' : 'center',
               alignItems: 'center',
               minHeight: hasSearched ? 'auto' : '100vh',
-              p: hasSearched ? 3 : 4
+              p: hasSearched ? 3 : 4,
+              pt: searchMode === 'single' && !hasSearched ? 4 : (hasSearched ? 3 : 4),
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              // Ensure proper positioning when sidebar is hidden
+              ...(searchMode === 'discovery' && !sidebarVisible && !hasSearched && {
+                pl: 4,
+                pr: 4
+              })
             }}
           >
-            {/* Centered Welcome Screen - only shown when no search has been performed */}
-            {!hasSearched && (
+            {/* Centered Welcome Screen - only shown when no search has been performed and in discovery mode */}
+            {!hasSearched && searchMode === 'discovery' && (
               <Box 
                 sx={{ 
                   textAlign: 'center',
@@ -1257,6 +1453,216 @@ const PartsDiscovery = () => {
                       }}
                     >
                       {isLoading ? 'Searching...' : 'Start Discovery'}
+                    </Button>
+                  </Box>
+                </Card>
+              </Box>
+            )}
+
+            {/* Single Twin Search Screen - only shown when no search has been performed and in single mode */}
+            {!hasSearched && searchMode === 'single' && (
+              <Box 
+                sx={{ 
+                  textAlign: 'center',
+                  maxWidth: '700px',
+                  width: '100%',
+                  mx: 'auto',
+                  transform: 'translateY(-8vh)' // Slightly above center to match discovery mode
+                }}
+              >
+                <Typography 
+                  variant="h2" 
+                  sx={{ 
+                    fontWeight: '700', 
+                    background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 2,
+                    fontSize: { xs: '2.5rem', md: '3.5rem' },
+                    textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  Single Digital Twin
+                </Typography>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    color: '#5f6368',
+                    mb: 6,
+                    fontWeight: '400',
+                    fontSize: { xs: '1.1rem', md: '1.3rem' },
+                    lineHeight: 1.6,
+                    maxWidth: '600px',
+                    mx: 'auto'
+                  }}
+                >
+                  Search for a specific digital twin by providing its Asset Administration Shell (AAS) ID
+                </Typography>
+
+                {/* Centered Search Card */}
+                <Card 
+                  sx={{ 
+                    p: 5,
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.1), 0 8px 25px rgba(0,0,0,0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: 4,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 25px 70px rgba(0,0,0,0.15), 0 10px 30px rgba(0,0,0,0.08)'
+                    }
+                  }}
+                >
+                  <Box display="flex" flexDirection="column" gap={4}>
+                    <Autocomplete
+                      freeSolo
+                      options={availablePartners}
+                      getOptionLabel={(option) => {
+                        if (typeof option === 'string') return option;
+                        return `${option.name} - ${option.bpnl}`;
+                      }}
+                      value={bpnl}
+                      onChange={(_, newValue) => {
+                        if (typeof newValue === 'string') {
+                          // Custom BPNL entered
+                          setBpnl(newValue);
+                          setSelectedPartner(null);
+                        } else if (newValue) {
+                          // Partner selected from dropdown
+                          setBpnl(newValue.bpnl);
+                          setSelectedPartner(newValue);
+                        } else {
+                          // Cleared
+                          setBpnl('');
+                          setSelectedPartner(null);
+                        }
+                      }}
+                      onInputChange={(_, newInputValue) => {
+                        setBpnl(newInputValue);
+                        if (!availablePartners.find(p => p.bpnl === newInputValue)) {
+                          setSelectedPartner(null);
+                        }
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Partner BPNL *"
+                          placeholder="Select partner or enter custom BPNL (e.g., BPNL0000000093Q7)"
+                          variant="outlined"
+                          error={!!error && !bpnl.trim()}
+                          helperText={
+                            !!error && !bpnl.trim() 
+                              ? 'BPNL is required' 
+                              : 'Select from available partners or enter a custom Business Partner Number Legal Entity'
+                          }
+                          slotProps={{
+                            input: {
+                              ...params.InputProps,
+                              endAdornment: (
+                                <>
+                                  {isLoadingPartners ? <CircularProgress color="inherit" size={20} /> : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              ),
+                            },
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              borderRadius: 3,
+                              fontSize: '1.1rem',
+                              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                              },
+                              '&.Mui-focused': {
+                                backgroundColor: 'white'
+                              }
+                            },
+                            '& .MuiInputLabel-root': {
+                              fontSize: '1.1rem'
+                            }
+                          }}
+                        />
+                      )}
+                      renderOption={(props, option) => (
+                        <Box component="li" {...props} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                            {option.name}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {option.bpnl}
+                          </Typography>
+                        </Box>
+                      )}
+                      loading={isLoadingPartners}
+                      loadingText="Loading partners..."
+                      noOptionsText="No partners found. You can still enter a custom BPNL."
+                      sx={{ width: '100%' }}
+                    />
+
+                    {/* AAS ID Field */}
+                    <TextField
+                      fullWidth
+                      label="Asset Administration Shell ID *"
+                      placeholder="Enter AAS ID (e.g., urn:uuid:35bb3960-70f8-4ff4-bd9f-0670f3beb39d)"
+                      variant="outlined"
+                      value={singleTwinAasId}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSingleTwinAasId(e.target.value)}
+                      error={!!error && !singleTwinAasId.trim()}
+                      helperText={
+                        !!error && !singleTwinAasId.trim() 
+                          ? 'AAS ID is required' 
+                          : 'Enter the unique identifier for the Asset Administration Shell'
+                      }
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 3,
+                          fontSize: '1.1rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                          },
+                          '&.Mui-focused': {
+                            backgroundColor: 'white'
+                          }
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontSize: '1.1rem'
+                        }
+                      }}
+                    />
+
+                    
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      onClick={handleSingleTwinSearch}
+                      disabled={isLoading || !bpnl.trim() || !singleTwinAasId.trim()}
+                      startIcon={isLoading ? <CircularProgress size={24} color="inherit" /> : <SearchIcon />}
+                      sx={{
+                        py: 2,
+                        borderRadius: 3,
+                        fontSize: '1.2rem',
+                        fontWeight: '600',
+                        textTransform: 'none',
+                        background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                        boxShadow: '0 8px 25px rgba(25, 118, 210, 0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(45deg, #1565c0 30%, #2196f3 90%)',
+                          boxShadow: '0 12px 35px rgba(25, 118, 210, 0.4)',
+                          transform: 'translateY(-1px)'
+                        },
+                        '&:disabled': {
+                          background: '#e0e0e0',
+                          boxShadow: 'none'
+                        }
+                      }}
+                    >
+                      {isLoading ? 'Searching...' : 'Search Digital Twin'}
                     </Button>
                   </Box>
                 </Card>
