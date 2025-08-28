@@ -40,13 +40,21 @@ import {
   CircularProgress,
   Card,
   Chip,
-  Autocomplete
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import InfoIcon from '@mui/icons-material/Info';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import { 
   discoverPartTypeShells, 
@@ -75,17 +83,63 @@ interface PartCardData {
   digitalTwinType: string;
   globalAssetId: string;
   submodelCount: number;
+  dtrIndex?: number; // DTR index for display
+  rawTwinData?: AASData; // Raw AAS/shell data for download
 }
 
 interface SerializedPartData {
   id: string;
   globalAssetId: string;
+  aasId: string; // AAS Shell ID
   manufacturerId: string;
   manufacturerPartId: string;
   customerPartId?: string;
+  partInstanceId?: string; // Part Instance ID
   digitalTwinType: string;
   submodelCount: number;
+  dtrIndex?: number; // DTR index for display
 }
+
+// Helper function to create a map from shell ID to DTR index
+const createShellToDtrMap = (dtrs: any[]): Map<string, number> => {
+  const shellToDtrMap = new Map<string, number>();
+  dtrs.forEach((dtr, dtrIndex) => {
+    if (dtr.shells && Array.isArray(dtr.shells)) {
+      dtr.shells.forEach((shellId: string) => {
+        shellToDtrMap.set(shellId, dtrIndex);
+      });
+    }
+  });
+  return shellToDtrMap;
+};
+
+// Helper function to get consistent colors for DTR identifiers
+const getDtrColor = (dtrIndex: number) => {
+  const baseColors = [
+    { bg: 'rgba(76, 175, 80, 0.9)', color: 'white', light: 'rgba(76, 175, 80, 0.1)', border: 'rgba(76, 175, 80, 0.3)' }, // Green
+    { bg: 'rgba(33, 150, 243, 0.9)', color: 'white', light: 'rgba(33, 150, 243, 0.1)', border: 'rgba(33, 150, 243, 0.3)' }, // Blue
+    { bg: 'rgba(255, 152, 0, 0.9)', color: 'white', light: 'rgba(255, 152, 0, 0.1)', border: 'rgba(255, 152, 0, 0.3)' }, // Orange
+    { bg: 'rgba(156, 39, 176, 0.9)', color: 'white', light: 'rgba(156, 39, 176, 0.1)', border: 'rgba(156, 39, 176, 0.3)' }, // Purple
+    { bg: 'rgba(244, 67, 54, 0.9)', color: 'white', light: 'rgba(244, 67, 54, 0.1)', border: 'rgba(244, 67, 54, 0.3)' }, // Red
+    { bg: 'rgba(0, 188, 212, 0.9)', color: 'white', light: 'rgba(0, 188, 212, 0.1)', border: 'rgba(0, 188, 212, 0.3)' }, // Cyan
+    { bg: 'rgba(139, 195, 74, 0.9)', color: 'white', light: 'rgba(139, 195, 74, 0.1)', border: 'rgba(139, 195, 74, 0.3)' }, // Light Green
+    { bg: 'rgba(121, 85, 72, 0.9)', color: 'white', light: 'rgba(121, 85, 72, 0.1)', border: 'rgba(121, 85, 72, 0.3)' }, // Brown
+  ];
+  
+  const colorIndex = dtrIndex % baseColors.length;
+  const variation = Math.floor(dtrIndex / baseColors.length);
+  
+  // For DTRs beyond 8, add opacity variations to distinguish them
+  const baseColor = baseColors[colorIndex];
+  const opacity = Math.max(0.7, 1 - (variation * 0.1)); // Gradually reduce opacity
+  
+  return {
+    bg: baseColor.bg.replace('0.9)', `${opacity})`),
+    color: baseColor.color,
+    light: baseColor.light,
+    border: baseColor.border
+  };
+};
 
 const PartsDiscovery = () => {
   const [partType, setPartType] = useState('Part');
@@ -108,6 +162,12 @@ const PartsDiscovery = () => {
   
   // Sidebar visibility
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  
+  // DTR Info Dialog
+  const [dtrInfoOpen, setDtrInfoOpen] = useState(false);
+  
+  // DTR Section Visibility
+  const [dtrSectionVisible, setDtrSectionVisible] = useState(false);
   
   // Results and pagination
   const [partTypeCards, setPartTypeCards] = useState<PartCardData[]>([]);
@@ -287,9 +347,10 @@ const PartsDiscovery = () => {
   };
 
   // Convert AAS data to card format
-  const convertToPartCards = (shells: AASData[]): PartCardData[] => {
+  const convertToPartCards = (shells: AASData[], shellToDtrMap?: Map<string, number>): PartCardData[] => {
     return shells.map(shell => {
       const summary = getAASDataSummary(shell);
+      const dtrIndex = shellToDtrMap?.get(shell.id);
       return {
         id: shell.id,
         manufacturerId: summary.manufacturerId || 'Unknown',
@@ -299,23 +360,29 @@ const PartsDiscovery = () => {
         category: summary.customerPartId || undefined,
         digitalTwinType: summary.digitalTwinType || 'Unknown',
         globalAssetId: shell.globalAssetId,
-        submodelCount: summary.submodelCount
+        submodelCount: summary.submodelCount,
+        dtrIndex,
+        rawTwinData: shell
       };
     });
   };
 
   // Convert AAS data to serialized parts format
-  const convertToSerializedParts = (shells: AASData[]): SerializedPartData[] => {
+  const convertToSerializedParts = (shells: AASData[], shellToDtrMap?: Map<string, number>): SerializedPartData[] => {
     return shells.map(shell => {
       const summary = getAASDataSummary(shell);
+      const dtrIndex = shellToDtrMap?.get(shell.id);
       return {
         id: shell.id,
         globalAssetId: shell.globalAssetId,
+        aasId: shell.id, // AAS Shell ID
         manufacturerId: summary.manufacturerId || 'Unknown',
         manufacturerPartId: summary.manufacturerPartId || 'Unknown',
         customerPartId: summary.customerPartId || undefined,
+        partInstanceId: summary.partInstanceId || undefined,
         digitalTwinType: summary.digitalTwinType || 'Unknown',
-        submodelCount: summary.submodelCount
+        submodelCount: summary.submodelCount,
+        dtrIndex
       };
     });
   };
@@ -460,13 +527,16 @@ const PartsDiscovery = () => {
       );
       setPaginator(newPaginator);
 
+      // Create DTR mapping if DTRs are available
+      const shellToDtrMap = response.dtrs ? createShellToDtrMap(response.dtrs) : undefined;
+
       // Process results based on part type
       if (partType === 'Part') {
-        const cards = convertToPartCards(response.shellDescriptors);
+        const cards = convertToPartCards(response.shellDescriptors, shellToDtrMap);
         setPartTypeCards(cards);
         setSerializedParts([]);
       } else {
-        const serialized = convertToSerializedParts(response.shellDescriptors);
+        const serialized = convertToSerializedParts(response.shellDescriptors, shellToDtrMap);
         setSerializedParts(serialized);
         setPartTypeCards([]);
       }
@@ -558,12 +628,15 @@ const PartsDiscovery = () => {
         setCurrentResponse(newResponse);
         setCurrentPage(newResponse.pagination?.page || currentPage);
 
+        // Create DTR mapping if DTRs are available
+        const shellToDtrMap = newResponse.dtrs ? createShellToDtrMap(newResponse.dtrs) : undefined;
+
         // Update results based on part type
         if (partType === 'Part') {
-          const cards = convertToPartCards(newResponse.shellDescriptors);
+          const cards = convertToPartCards(newResponse.shellDescriptors, shellToDtrMap);
           setPartTypeCards(cards);
         } else {
-          const serialized = convertToSerializedParts(newResponse.shellDescriptors);
+          const serialized = convertToSerializedParts(newResponse.shellDescriptors, shellToDtrMap);
           setSerializedParts(serialized);
         }
       } else {
@@ -604,16 +677,6 @@ const PartsDiscovery = () => {
   const handleCardClick = (partId: string) => {
     console.log('Card clicked:', partId);
     // Navigate to part details or perform other action
-  };
-
-  const handleCardShare = (manufacturerId: string, manufacturerPartId: string) => {
-    console.log('Share part:', manufacturerId, manufacturerPartId);
-    // Implement share functionality
-  };
-
-  const handleCardMore = (manufacturerId: string, manufacturerPartId: string) => {
-    console.log('More actions for part:', manufacturerId, manufacturerPartId);
-    // Implement more actions
   };
 
   const handleRegisterClick = (manufacturerId: string, manufacturerPartId: string) => {
@@ -1681,8 +1744,8 @@ const PartsDiscovery = () => {
             {/* Results Section - shown when search has been performed */}
             {hasSearched && (
               <Box sx={{ width: '100%' }}>
-                {/* Results Summary - always shown when there's a response */}
-                {currentResponse && (
+                {/* Discovery Mode Results */}
+                {currentResponse && searchMode === 'discovery' && (
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2 }}>
                     {/* Left Side - Part Type Indicator + Active Filters */}
                     <Box 
@@ -1766,6 +1829,138 @@ const PartsDiscovery = () => {
 
                 {/* Remove the duplicate simple results count section since we now handle both cases above */}
 
+                {/* DTR Information Section - Discovery Mode */}
+                {currentResponse && currentResponse.dtrs && searchMode === 'discovery' && (
+                  <Box sx={{ px: 2, mb: 3 }}>
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: 'rgba(0,0,0,0.02)'
+                        },
+                        p: 1,
+                        borderRadius: 1,
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onClick={() => setDtrSectionVisible(!dtrSectionVisible)}
+                    >
+                      <Typography 
+                        variant="subtitle2" 
+                        sx={{ 
+                          fontWeight: '600', 
+                          color: 'text.primary',
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        Digital Twin Registries ({currentResponse.dtrs.length})
+                      </Typography>
+                      <IconButton size="small" sx={{ color: 'text.secondary' }}>
+                        {dtrSectionVisible ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </Box>
+                    
+                    {dtrSectionVisible && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
+                        {currentResponse.dtrs.map((dtr, index) => {
+                          const dtrColor = getDtrColor(index);
+                          return (
+                            <Card
+                              key={index}
+                              sx={{
+                                p: 2.5,
+                                border: `1px solid ${dtrColor.border}`,
+                                borderRadius: 2,
+                                backgroundColor: dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected'
+                                  ? dtrColor.light 
+                                  : 'rgba(244, 67, 54, 0.02)',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                <Box sx={{ flex: 1 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <Chip
+                                      label={`DTR ${index + 1}`}
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: dtrColor.bg,
+                                        color: dtrColor.color,
+                                        fontWeight: '600',
+                                        fontSize: '0.75rem'
+                                      }}
+                                    />
+                                    <Chip
+                                      label={dtr.status}
+                                      size="small"
+                                      color={dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected' ? 'success' : 'error'}
+                                      sx={{ 
+                                        textTransform: 'capitalize',
+                                        fontWeight: '500'
+                                      }}
+                                    />
+                                  </Box>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontFamily: 'monospace', 
+                                    fontSize: '0.8rem', 
+                                    color: 'text.secondary',
+                                    wordBreak: 'break-all',
+                                    backgroundColor: 'rgba(0,0,0,0.04)',
+                                    p: 1,
+                                    borderRadius: 1
+                                  }}
+                                >
+                                  {dtr.connectorUrl}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            
+                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+                              <Box>
+                                <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                                  Asset ID:
+                                </Typography>
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    fontFamily: 'monospace', 
+                                    fontSize: '0.75rem',
+                                    wordBreak: 'break-all',
+                                    mt: 0.5
+                                  }}
+                                >
+                                  {dtr.assetId}
+                                </Typography>
+                              </Box>
+                              
+                              <Box>
+                                <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                                  Shells Found:
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                  <Chip
+                                    label={dtr.shellsFound}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.75rem' }}
+                                  />
+                                </Box>
+                              </Box>
+                            </Box>
+                          </Card>
+                        );
+                        })}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
                 {/* Results Display */}
                 <Box sx={{ px: { xs: 2, md: 4 }, pb: 4 }}>
                   {partType === 'Serialized' ? (
@@ -1783,15 +1978,16 @@ const PartsDiscovery = () => {
                       {partTypeCards.length > 0 ? (
                         <CatalogPartsDiscovery
                           onClick={handleCardClick}
-                          onShare={handleCardShare}
-                          onMore={handleCardMore}
                           onRegisterClick={handleRegisterClick}
                           items={partTypeCards.map(card => ({
                             id: card.id,
                             manufacturerId: card.manufacturerId,
                             manufacturerPartId: card.manufacturerPartId,
                             name: card.name,
-                            category: card.category
+                            category: card.category,
+                            dtrIndex: card.dtrIndex,
+                            shellId: card.id, // The shell ID is the same as the card ID (AAS ID)
+                            rawTwinData: card.rawTwinData
                           }))}
                           isLoading={isLoading}
                         />
@@ -1882,6 +2078,206 @@ const PartsDiscovery = () => {
                     )}
                   </Box>
                 )}
+                
+                {/* Single Twin Mode Results */}
+                {singleTwinResult && searchMode === 'single' && (
+                  <Box sx={{ width: '100%' }}>
+                    {/* Single Twin Results Header */}
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} sx={{ px: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: '600', color: 'primary.main' }}>
+                        Digital Twin Found
+                      </Typography>
+                      <Chip 
+                        label="Single Twin" 
+                        size="small" 
+                        sx={{ 
+                          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                          color: 'primary.main',
+                          fontWeight: '600',
+                          fontSize: '0.75rem'
+                        }} 
+                      />
+                    </Box>
+
+                    {/* Single Twin Information Table */}
+                    <Card sx={{ mx: 2, mb: 3 }}>
+                      <Box sx={{ p: 3 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: '600', mb: 2, color: 'primary.main' }}>
+                          Digital Twin Information
+                        </Typography>
+                        
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 2, alignItems: 'start' }}>
+                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                            AAS ID:
+                          </Typography>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                            {singleTwinResult.shell_descriptor.id}
+                          </Typography>
+
+                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                            Global Asset ID:
+                          </Typography>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                            {singleTwinResult.shell_descriptor.globalAssetId}
+                          </Typography>
+
+                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                            DTR Information:
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2">
+                              Digital Twin Registry Details
+                            </Typography>
+                            <IconButton
+                              size="small"
+                              onClick={() => setDtrInfoOpen(true)}
+                              sx={{
+                                color: 'primary.main',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(25, 118, 210, 0.1)'
+                                }
+                              }}
+                            >
+                              <InfoIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+
+                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                            Submodels:
+                          </Typography>
+                          <Typography variant="body2">
+                            {singleTwinResult.shell_descriptor.submodelDescriptors.length} submodel(s)
+                          </Typography>
+
+                          {/* Show specific asset IDs if available */}
+                          {singleTwinResult.shell_descriptor.specificAssetIds.length > 0 && (
+                            <>
+                              <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
+                                Asset Identifiers:
+                              </Typography>
+                              <Box>
+                                {singleTwinResult.shell_descriptor.specificAssetIds.map((assetId, index) => (
+                                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                    <strong>{assetId.name}:</strong> {assetId.value}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            </>
+                          )}
+                        </Box>
+
+                        {/* Action Buttons */}
+                        <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => {
+                              // TODO: Implement view submodels functionality
+                              console.log('View submodels:', singleTwinResult.shell_descriptor.submodelDescriptors);
+                            }}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              px: 3
+                            }}
+                          >
+                            View Submodels
+                          </Button>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            onClick={() => {
+                              // TODO: Implement view more details functionality  
+                              console.log('View more details:', singleTwinResult);
+                            }}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              px: 3
+                            }}
+                          >
+                            More Details
+                          </Button>
+                        </Box>
+                      </Box>
+                    </Card>
+                    
+                    {/* DTR Information Dialog */}
+                    <Dialog
+                      open={dtrInfoOpen}
+                      onClose={() => setDtrInfoOpen(false)}
+                      maxWidth="md"
+                      fullWidth
+                      PaperProps={{
+                        sx: {
+                          borderRadius: 3,
+                          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+                        }
+                      }}
+                    >
+                      <DialogTitle sx={{ 
+                        fontWeight: '600', 
+                        color: 'primary.main',
+                        borderBottom: '1px solid rgba(0,0,0,0.12)',
+                        pb: 2,
+                        px: 3,
+                        pt: 3
+                      }}>
+                        Digital Twin Registry Information
+                      </DialogTitle>
+                      <DialogContent sx={{ px: 3, py: 3 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {/* DTR Connector URL */}
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary', mb: 1 }}>
+                              DTR Connector URL:
+                            </Typography>
+                            <Typography variant="body2" sx={{ 
+                              wordBreak: 'break-all', 
+                              fontFamily: 'monospace', 
+                              backgroundColor: 'rgba(0,0,0,0.05)', 
+                              p: 2, 
+                              borderRadius: 1,
+                              fontSize: '0.8rem'
+                            }}>
+                              {singleTwinResult?.dtr?.connectorUrl}
+                            </Typography>
+                          </Box>
+
+                          {/* DTR Asset ID */}
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary', mb: 1 }}>
+                              DTR Asset ID:
+                            </Typography>
+                            <Typography variant="body2" sx={{ 
+                              wordBreak: 'break-all', 
+                              fontFamily: 'monospace', 
+                              backgroundColor: 'rgba(0,0,0,0.05)', 
+                              p: 2, 
+                              borderRadius: 1,
+                              fontSize: '0.8rem'
+                            }}>
+                              {singleTwinResult?.dtr?.assetId}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </DialogContent>
+                      <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+                        <Button
+                          onClick={() => setDtrInfoOpen(false)}
+                          variant="contained"
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            px: 3
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </DialogActions>
+                    </Dialog>
+                  </Box>
+                )}
               </Box>
             )}
           </Grid2>
@@ -1899,7 +2295,13 @@ const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
         <thead>
           <tr style={{ backgroundColor: '#f5f5f5' }}>
             <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
+              DTR Source
+            </th>
+            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
               Global Asset ID
+            </th>
+            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
+              AAS ID
             </th>
             <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
               Manufacturer ID
@@ -1911,18 +2313,46 @@ const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
               Customer Part ID
             </th>
             <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
+              Part Instance ID
+            </th>
+            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
               Digital Twin Type
             </th>
             <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
               Submodels
+            </th>
+            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
+              Actions
             </th>
           </tr>
         </thead>
         <tbody>
           {parts.map((part) => (
             <tr key={part.id} style={{ borderBottom: '1px solid #eee' }}>
+              <td style={{ padding: '12px' }}>
+                {part.dtrIndex !== undefined ? (
+                  <Chip 
+                    label={`DTR ${part.dtrIndex + 1}`}
+                    size="small" 
+                    variant="filled"
+                    sx={{
+                      backgroundColor: getDtrColor(part.dtrIndex).bg,
+                      color: getDtrColor(part.dtrIndex).color,
+                      fontWeight: '600',
+                      fontSize: '0.75rem'
+                    }}
+                  />
+                ) : (
+                  <Typography variant="caption" color="textSecondary">
+                    Unknown
+                  </Typography>
+                )}
+              </td>
               <td style={{ padding: '12px', fontSize: '12px' }}>
                 {part.globalAssetId}
+              </td>
+              <td style={{ padding: '12px', fontSize: '12px' }}>
+                {part.aasId}
               </td>
               <td style={{ padding: '12px' }}>
                 {part.manufacturerId}
@@ -1932,6 +2362,9 @@ const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
               </td>
               <td style={{ padding: '12px' }}>
                 {part.customerPartId || '-'}
+              </td>
+              <td style={{ padding: '12px' }}>
+                {part.partInstanceId || '-'}
               </td>
               <td style={{ padding: '12px' }}>
                 <Chip 
@@ -1947,6 +2380,20 @@ const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
                   size="small" 
                   color="secondary" 
                 />
+              </td>
+              <td style={{ padding: '12px' }}>
+                <IconButton
+                  size="small"
+                  sx={{
+                    color: '#1976d2',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
+                  }}
+                  title="See more details"
+                >
+                  <OpenInNewIcon />
+                </IconButton>
               </td>
             </tr>
           ))}

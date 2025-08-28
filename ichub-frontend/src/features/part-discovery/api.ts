@@ -273,8 +273,8 @@ export interface SingleShellDiscoveryResponse {
     }>;
   };
   dtr: {
-    connector_url: string;
-    asset_id: string;
+    connectorUrl: string;
+    assetId: string;
   };
 }
 

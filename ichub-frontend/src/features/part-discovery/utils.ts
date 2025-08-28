@@ -181,6 +181,13 @@ export const getDigitalTwinType = (aasData: AASData): string | null => {
 };
 
 /**
+ * Gets the part instance ID from the AAS data
+ */
+export const getPartInstanceId = (aasData: AASData): string | null => {
+  return getSpecificAssetIdByName(aasData, 'partInstanceId');
+};
+
+/**
  * Gets all specific asset IDs as a key-value map
  */
 export const getAllSpecificAssetIds = (aasData: AASData): Record<string, string> => {
@@ -286,6 +293,7 @@ export const getAASDataSummary = (aasData: AASData) => {
   const manufacturerId = getManufacturerId(aasData);
   const customerPartId = getCustomerPartId(aasData);
   const digitalTwinType = getDigitalTwinType(aasData);
+  const partInstanceId = getPartInstanceId(aasData);
   
   return {
     globalAssetId: aasData.globalAssetId,
@@ -294,6 +302,7 @@ export const getAASDataSummary = (aasData: AASData) => {
     manufacturerId,
     customerPartId,
     digitalTwinType,
+    partInstanceId,
     submodelCount: aasData.submodelDescriptors.length
   };
 };

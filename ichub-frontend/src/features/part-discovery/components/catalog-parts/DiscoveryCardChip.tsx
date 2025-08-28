@@ -28,6 +28,8 @@ import { StatusVariants } from '../../../../types/statusVariants'
 export interface CardChipProps {
   status?: StatusVariants
   statusText?: string
+  dtrIndex?: number
+  useDtrDisplay?: boolean
 }
 
 interface ChipStyle {
@@ -64,12 +66,56 @@ const statusStyles: Record<StatusVariants | 'default', ChipStyle> = {
   }
 }
 
-export const DiscoveryCardChip = ({ status, statusText }: CardChipProps) => {
+// Helper function to get consistent colors for DTR identifiers
+const getDtrColor = (dtrIndex: number) => {
+  const baseColors = [
+    { bg: 'rgba(76, 175, 80, 0.9)', color: 'white' }, // Green
+    { bg: 'rgba(33, 150, 243, 0.9)', color: 'white' }, // Blue
+    { bg: 'rgba(255, 152, 0, 0.9)', color: 'white' }, // Orange
+    { bg: 'rgba(156, 39, 176, 0.9)', color: 'white' }, // Purple
+    { bg: 'rgba(244, 67, 54, 0.9)', color: 'white' }, // Red
+    { bg: 'rgba(0, 188, 212, 0.9)', color: 'white' }, // Cyan
+    { bg: 'rgba(139, 195, 74, 0.9)', color: 'white' }, // Light Green
+    { bg: 'rgba(121, 85, 72, 0.9)', color: 'white' }, // Brown
+  ];
+  
+  const colorIndex = dtrIndex % baseColors.length;
+  const variation = Math.floor(dtrIndex / baseColors.length);
+  
+  // For DTRs beyond 8, add opacity variations to distinguish them
+  const baseColor = baseColors[colorIndex];
+  const opacity = Math.max(0.7, 1 - (variation * 0.1)); // Gradually reduce opacity
+  
+  return {
+    bg: baseColor.bg.replace('0.9)', `${opacity})`),
+    color: baseColor.color
+  };
+};
+
+export const DiscoveryCardChip = ({ status, statusText, dtrIndex, useDtrDisplay }: CardChipProps) => {
   const theme = useTheme()
 
-  // Ensure the status is valid; otherwise, use 'default'
-  const statusKey = status && statusStyles[status] ? status : 'default'
+  // If DTR display is requested and dtrIndex is provided, use DTR styling
+  if (useDtrDisplay && dtrIndex !== undefined) {
+    const dtrColors = getDtrColor(dtrIndex);
+    return (
+      <MuiChip
+        label={`DTR ${dtrIndex + 1}`}
+        variant="outlined"
+        sx={{
+          color: dtrColors.color,
+          backgroundColor: dtrColors.bg,
+          borderRadius: '4px',
+          border: 'none',
+          height: '28px',
+          fontWeight: '600',
+        }}
+      />
+    );
+  }
 
+  // Otherwise, use original status styling
+  const statusKey = status && statusStyles[status] ? status : 'default'
   const { color, backgroundColor, border } = statusStyles[statusKey]
 
   return (

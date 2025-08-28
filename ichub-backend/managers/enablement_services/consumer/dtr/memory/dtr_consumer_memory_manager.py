@@ -705,7 +705,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                             self.shell_descriptors[shell_id] = shell
                     
                     dtr.update({
-                        "status": "success",
+                        "status": "connected",
                         "shellsFound": len(shell_ids),
                         "shells": shell_ids,  # Store just IDs in DTR info
                         "paging_metadata": response_data.get("paging_metadata", {})

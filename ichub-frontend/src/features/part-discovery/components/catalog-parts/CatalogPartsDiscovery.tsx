@@ -20,17 +20,20 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import IosShare from "@mui/icons-material/IosShare";
 import MoreVert from "@mui/icons-material/MoreVert";
 import Launch from "@mui/icons-material/Launch";
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { Box, Typography, IconButton, Button, Tooltip } from "@mui/material";
+import ContentCopy from '@mui/icons-material/ContentCopy';
+import Download from '@mui/icons-material/Download';
+import { Box, Typography, IconButton, Button, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { useState } from "react";
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { DiscoveryCardChip } from "./DiscoveryCardChip";
 import { StatusVariants } from "../../../../types/statusVariants";
 import { ErrorNotFound } from "../../../../components/general/ErrorNotFound";
 import LoadingSpinner from "../../../../components/general/LoadingSpinner";
+import { AASData } from "../../../part-discovery/utils";
 
 export interface AppContent {
   id?: string;
@@ -39,44 +42,73 @@ export interface AppContent {
   name?: string;
   category?: string;
   status?: StatusVariants;
+  dtrIndex?: number; // DTR index for display
+  shellId?: string; // Shell ID (AAS ID) for display
+  rawTwinData?: AASData; // Raw AAS/shell data for download
 }
 
 export interface CardDecisionProps {
   items: AppContent[];
-  onShare: (e1: string, e2: string) => void;
-  onMore: (e1: string, e2: string) => void;
   onClick: (e: string) => void;
   onRegisterClick?: (manufacturerId: string, manufacturerPartId: string) => void; 
   isLoading: boolean;
 }
 
-export enum ButtonEvents {
-  MORE,
-  REGISTER, 
-}
-
 export const CatalogPartsDiscovery = ({
   items,
-  onMore,
   onClick,
   onRegisterClick, 
   isLoading
 }: CardDecisionProps) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedItem, setSelectedItem] = useState<AppContent | null>(null);
+  const open = Boolean(anchorEl);
 
-  const handleDecision = (
-    e: React.SyntheticEvent,
-    manufacturerId: string,
-    manufacturerPartId: string,
-    type: ButtonEvents
-  ) => {
-    e.stopPropagation();
-    if (type === ButtonEvents.MORE) {
-      return onMore(manufacturerId, manufacturerPartId);
-    } else if (type === ButtonEvents.REGISTER) {
-      if (onRegisterClick) {
-        onRegisterClick(manufacturerId, manufacturerPartId);
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, item: AppContent) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedItem(item);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedItem(null);
+  };
+
+  const handleCopyShellId = async () => {
+    if (selectedItem?.shellId) {
+      try {
+        await navigator.clipboard.writeText(selectedItem.shellId);
+        console.log('Shell ID copied to clipboard:', selectedItem.shellId);
+        // You could add a toast notification here
+      } catch (err) {
+        console.error('Failed to copy Shell ID:', err);
       }
     }
+    handleMenuClose();
+  };
+
+  const handleDownloadTwinData = () => {
+    if (selectedItem?.rawTwinData) {
+      try {
+        const jsonString = JSON.stringify(selectedItem.rawTwinData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `twin-${selectedItem.manufacturerPartId || selectedItem.shellId || 'data'}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('Twin data downloaded successfully');
+      } catch (err) {
+        console.error('Failed to download twin data:', err);
+      }
+    }
+    handleMenuClose();
   };
 
   return (
@@ -102,7 +134,14 @@ export const CatalogPartsDiscovery = ({
               }}
             >
               <Box className="custom-card-header">
-                <DiscoveryCardChip status={item.status} statusText={item.status} />
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <DiscoveryCardChip 
+                    status={item.status} 
+                    statusText={item.status} 
+                    dtrIndex={item.dtrIndex}
+                    useDtrDisplay={item.dtrIndex !== undefined}
+                  />
+                </Box>
 
                 <Box className="custom-card-header-buttons">                  
                   {(item.status === StatusVariants.draft || item.status === StatusVariants.pending) && (
@@ -110,7 +149,10 @@ export const CatalogPartsDiscovery = ({
                       <span> 
                         <IconButton
                           onClick={(e) => {
-                            handleDecision(e, item.manufacturerId, item.manufacturerPartId, ButtonEvents.REGISTER);
+                            e.stopPropagation();
+                            if (onRegisterClick) {
+                              onRegisterClick(item.manufacturerId, item.manufacturerPartId);
+                            }
                           }}
                         >
                           {item.status === StatusVariants.draft ? (
@@ -122,22 +164,9 @@ export const CatalogPartsDiscovery = ({
                       </span>
                     </Tooltip>
                   )}
-                  {item.status !== StatusVariants.draft && item.status !== StatusVariants.pending && (
-                    <Tooltip title="Share part" arrow>
-                      <IconButton
-                        onClick={(e) => {
-                          handleDecision(e, item.manufacturerId, item.manufacturerPartId, ButtonEvents.SHARE);
-                        }}
-                      >
-                        <IosShare sx={{ color: "white"}} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
                   <Tooltip title="More options" arrow>
                     <IconButton
-                      onClick={(e) => {
-                        handleDecision(e, item.manufacturerId, item.manufacturerPartId, ButtonEvents.MORE);
-                      }}
+                      onClick={(e) => handleMenuClick(e, item)}
                     >
                       <MoreVert sx={{ color: "rgba(255, 255, 255, 0.68)" }} />
                     </IconButton>
@@ -148,6 +177,27 @@ export const CatalogPartsDiscovery = ({
                 <Typography variant="h5">
                   {name}
                 </Typography>
+                {item.shellId && (
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      fontFamily: 'monospace', 
+                      fontSize: '0.7rem',
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      display: 'block',
+                      mt: 0.5,
+                      mb: 0.5,
+                      wordBreak: 'break-all',
+                      lineHeight: 1.1,
+                      maxHeight: '15px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {item.shellId}
+                  </Typography>
+                )}
                 <br></br>
                 <Typography variant="label2">
                   {item.category}
@@ -162,6 +212,35 @@ export const CatalogPartsDiscovery = ({
           </Box>
         );
       })}
+      
+      {/* More options menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleMenuClose}
+        MenuListProps={{
+          'aria-labelledby': 'more-options-button',
+        }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        {selectedItem?.shellId && (
+          <MenuItem onClick={handleCopyShellId}>
+            <ListItemIcon>
+              <ContentCopy fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Copy Shell ID</ListItemText>
+          </MenuItem>
+        )}
+        {selectedItem?.rawTwinData && (
+          <MenuItem onClick={handleDownloadTwinData}>
+            <ListItemIcon>
+              <Download fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Download Twin Data</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
     </Box>
   );
 };
