@@ -33,16 +33,11 @@ import {
   CircularProgress,
   Card,
   Chip,
-  Autocomplete,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
+  Autocomplete
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import InfoIcon from '@mui/icons-material/Info';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -50,6 +45,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import PartsDiscoverySidebar from '../features/part-discovery/components/PartsDiscoverySidebar';
 import SerializedPartsTable from '../features/part-discovery/components/SerializedPartsTable';
+import { SingleTwinResult } from '../features/part-discovery/components/SingleTwinResult';
 import { useAdditionalSidebar } from '../hooks/useAdditionalSidebar';
 import { 
   discoverShellsWithCustomQuery,
@@ -154,9 +150,6 @@ const PartsDiscovery = () => {
   const [searchMode, setSearchMode] = useState<'discovery' | 'single'>('discovery');
   const [singleTwinAasId, setSingleTwinAasId] = useState('');
   const [singleTwinResult, setSingleTwinResult] = useState<SingleShellDiscoveryResponse | null>(null);
-  
-  // DTR Info Dialog
-  const [dtrInfoOpen, setDtrInfoOpen] = useState(false);
   
   // DTR Section Visibility
   const [dtrSectionVisible, setDtrSectionVisible] = useState(false);
@@ -1410,7 +1403,7 @@ const PartsDiscovery = () => {
                 </Alert>
               </Box>
             )}
-
+        
             {/* Results Section - shown when search has been performed */}
             {hasSearched && (
               <Box sx={{ 
@@ -1418,9 +1411,13 @@ const PartsDiscovery = () => {
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden',
+                overflow: searchMode === 'single' ? 'auto' : 'hidden',
                 pt: 3 // Add top padding to create space from the header
               }}>
+                {/* Single Twin Mode Results - Outside Results Display to avoid padding inheritance */}
+                {singleTwinResult && searchMode === 'single' && (
+                  <SingleTwinResult singleTwinResult={singleTwinResult} />
+                )}
                 {/* Discovery Mode Results */}
                 {currentResponse && searchMode === 'discovery' && (
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2, flexShrink: 0 }}>
@@ -1687,6 +1684,7 @@ const PartsDiscovery = () => {
                   )}
                 </Box>
 
+
                 {/* Pagination */}
                 {currentResponse && !isLoading && pageLimit > 0 && (
                   <Box display="flex" justifyContent="center" alignItems="center" gap={2} sx={{ mt: 2, mb: 3, px: 2, flexShrink: 0 }}>
@@ -1794,205 +1792,6 @@ const PartsDiscovery = () => {
                   </Box>
                 )}
                 
-                {/* Single Twin Mode Results */}
-                {singleTwinResult && searchMode === 'single' && (
-                  <Box sx={{ width: '100%' }}>
-                    {/* Single Twin Results Header */}
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} sx={{ px: 2 }}>
-                      <Typography variant="h6" sx={{ fontWeight: '600', color: 'primary.main' }}>
-                        Digital Twin Found
-                      </Typography>
-                      <Chip 
-                        label="Single Twin" 
-                        size="small" 
-                        sx={{ 
-                          backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                          color: 'primary.main',
-                          fontWeight: '600',
-                          fontSize: '0.75rem'
-                        }} 
-                      />
-                    </Box>
-
-                    {/* Single Twin Information Table */}
-                    <Card sx={{ mx: 2, mb: 3 }}>
-                      <Box sx={{ p: 3 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: '600', mb: 2, color: 'primary.main' }}>
-                          Digital Twin Information
-                        </Typography>
-                        
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 2, alignItems: 'start' }}>
-                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                            AAS ID:
-                          </Typography>
-                          <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-                            {singleTwinResult.shell_descriptor.id}
-                          </Typography>
-
-                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                            Global Asset ID:
-                          </Typography>
-                          <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-                            {singleTwinResult.shell_descriptor.globalAssetId}
-                          </Typography>
-
-                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                            DTR Information:
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2">
-                              Digital Twin Registry Details
-                            </Typography>
-                            <IconButton
-                              size="small"
-                              onClick={() => setDtrInfoOpen(true)}
-                              sx={{
-                                color: 'primary.main',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(25, 118, 210, 0.1)'
-                                }
-                              }}
-                            >
-                              <InfoIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-
-                          <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                            Submodels:
-                          </Typography>
-                          <Typography variant="body2">
-                            {singleTwinResult.shell_descriptor.submodelDescriptors.length} submodel(s)
-                          </Typography>
-
-                          {/* Show specific asset IDs if available */}
-                          {singleTwinResult.shell_descriptor.specificAssetIds.length > 0 && (
-                            <>
-                              <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                                Asset Identifiers:
-                              </Typography>
-                              <Box>
-                                {singleTwinResult.shell_descriptor.specificAssetIds.map((assetId, index) => (
-                                  <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                    <strong>{assetId.name}:</strong> {assetId.value}
-                                  </Typography>
-                                ))}
-                              </Box>
-                            </>
-                          )}
-                        </Box>
-
-                        {/* Action Buttons */}
-                        <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => {
-                              // TODO: Implement view submodels functionality
-                              console.log('View submodels:', singleTwinResult.shell_descriptor.submodelDescriptors);
-                            }}
-                            sx={{
-                              borderRadius: 2,
-                              textTransform: 'none',
-                              px: 3
-                            }}
-                          >
-                            View Submodels
-                          </Button>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => {
-                              // TODO: Implement view more details functionality  
-                              console.log('View more details:', singleTwinResult);
-                            }}
-                            sx={{
-                              borderRadius: 2,
-                              textTransform: 'none',
-                              px: 3
-                            }}
-                          >
-                            More Details
-                          </Button>
-                        </Box>
-                      </Box>
-                    </Card>
-                    
-                    {/* DTR Information Dialog */}
-                    <Dialog
-                      open={dtrInfoOpen}
-                      onClose={() => setDtrInfoOpen(false)}
-                      maxWidth="md"
-                      fullWidth
-                      PaperProps={{
-                        sx: {
-                          borderRadius: 3,
-                          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
-                        }
-                      }}
-                    >
-                      <DialogTitle sx={{ 
-                        fontWeight: '600', 
-                        color: 'primary.main',
-                        borderBottom: '1px solid rgba(0,0,0,0.12)',
-                        pb: 2,
-                        px: 3,
-                        pt: 3
-                      }}>
-                        Digital Twin Registry Information
-                      </DialogTitle>
-                      <DialogContent sx={{ px: 3, py: 3 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          {/* DTR Connector URL */}
-                          <Box sx={{ mt: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary', mb: 1 }}>
-                              DTR Connector URL:
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              wordBreak: 'break-all', 
-                              fontFamily: 'monospace', 
-                              backgroundColor: 'rgba(0,0,0,0.05)', 
-                              p: 2, 
-                              borderRadius: 1,
-                              fontSize: '0.8rem'
-                            }}>
-                              {singleTwinResult?.dtr?.connectorUrl}
-                            </Typography>
-                          </Box>
-
-                          {/* DTR Asset ID */}
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: '600', color: 'text.secondary', mb: 1 }}>
-                              DTR Asset ID:
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              wordBreak: 'break-all', 
-                              fontFamily: 'monospace', 
-                              backgroundColor: 'rgba(0,0,0,0.05)', 
-                              p: 2, 
-                              borderRadius: 1,
-                              fontSize: '0.8rem'
-                            }}>
-                              {singleTwinResult?.dtr?.assetId}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </DialogContent>
-                      <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
-                        <Button
-                          onClick={() => setDtrInfoOpen(false)}
-                          variant="contained"
-                          sx={{
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            px: 3
-                          }}
-                        >
-                          Close
-                        </Button>
-                      </DialogActions>
-                    </Dialog>
-                  </Box>
-                )}
               </Box>
             )}
         </Box>
