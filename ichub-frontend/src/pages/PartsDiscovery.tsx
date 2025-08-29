@@ -25,17 +25,10 @@ import {
   Box,
   Grid2,
   Typography,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
   TextField,
   Button,
   InputAdornment,
   IconButton,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Alert,
   CircularProgress,
   Card,
@@ -49,16 +42,18 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import InfoIcon from '@mui/icons-material/Info';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import Download from '@mui/icons-material/Download';
 import CheckCircle from '@mui/icons-material/CheckCircle';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
+import PartsDiscoverySidebar from '../features/part-discovery/components/PartsDiscoverySidebar';
+import { useAdditionalSidebar } from '../hooks/useAdditionalSidebar';
 import { 
   discoverShellsWithCustomQuery,
   discoverSingleShell,
@@ -102,7 +97,7 @@ interface SerializedPartData {
 }
 
 // Helper function to create a map from shell ID to DTR index
-const createShellToDtrMap = (dtrs: any[]): Map<string, number> => {
+const createShellToDtrMap = (dtrs: Array<Record<string, unknown> & { shells?: string[] }>): Map<string, number> => {
   const shellToDtrMap = new Map<string, number>();
   dtrs.forEach((dtr, dtrIndex) => {
     if (dtr.shells && Array.isArray(dtr.shells)) {
@@ -143,6 +138,8 @@ const getDtrColor = (dtrIndex: number) => {
 };
 
 const PartsDiscovery = () => {
+  const { showSidebar, hideSidebar, isVisible } = useAdditionalSidebar();
+  
   const [partType, setPartType] = useState('Catalog');
   const [bpnl, setBpnl] = useState('');
   const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
@@ -160,9 +157,6 @@ const PartsDiscovery = () => {
   const [searchMode, setSearchMode] = useState<'discovery' | 'single'>('discovery');
   const [singleTwinAasId, setSingleTwinAasId] = useState('');
   const [singleTwinResult, setSingleTwinResult] = useState<SingleShellDiscoveryResponse | null>(null);
-  
-  // Sidebar visibility
-  const [sidebarVisible, setSidebarVisible] = useState(true);
   
   // DTR Info Dialog
   const [dtrInfoOpen, setDtrInfoOpen] = useState(false);
@@ -182,6 +176,41 @@ const PartsDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Show sidebar when in discovery mode and not searched
+  useEffect(() => {
+    if (searchMode === 'discovery' && !hasSearched) {
+      showSidebar(
+        <PartsDiscoverySidebar
+          partType={partType}
+          onPartTypeChange={handlePartTypeChange}
+          pageLimit={pageLimit}
+          onPageLimitChange={setPageLimit}
+          customLimit={customLimit}
+          onCustomLimitChange={setCustomLimit}
+          isCustomLimit={isCustomLimit}
+          onIsCustomLimitChange={setIsCustomLimit}
+          customerPartId={customerPartId}
+          onCustomerPartIdChange={setCustomerPartId}
+          manufacturerPartId={manufacturerPartId}
+          onManufacturerPartIdChange={setManufacturerPartId}
+          globalAssetId={globalAssetId}
+          onGlobalAssetIdChange={setGlobalAssetId}
+          partInstanceId={partInstanceId}
+          onPartInstanceIdChange={setPartInstanceId}
+        />
+      );
+    } else {
+      hideSidebar();
+    }
+  }, [searchMode, hasSearched, partType, pageLimit, customLimit, isCustomLimit, customerPartId, manufacturerPartId, globalAssetId, partInstanceId, showSidebar, hideSidebar]);
+
+  // Cleanup: Hide sidebar when component unmounts (navigation away from PartsDiscovery)
+  useEffect(() => {
+    return () => {
+      hideSidebar();
+    };
+  }, [hideSidebar]);
 
   // Load available partners on component mount
   useEffect(() => {
@@ -216,6 +245,30 @@ const PartsDiscovery = () => {
     if (newPartType === 'Catalog') {
       setPartInstanceId('');
     }
+  };
+
+  // Helper function to display filters sidebar
+  const handleDisplayFilters = () => {
+    showSidebar(
+      <PartsDiscoverySidebar
+        partType={partType}
+        onPartTypeChange={handlePartTypeChange}
+        pageLimit={pageLimit}
+        onPageLimitChange={setPageLimit}
+        customLimit={customLimit}
+        onCustomLimitChange={setCustomLimit}
+        isCustomLimit={isCustomLimit}
+        onIsCustomLimitChange={setIsCustomLimit}
+        customerPartId={customerPartId}
+        onCustomerPartIdChange={setCustomerPartId}
+        manufacturerPartId={manufacturerPartId}
+        onManufacturerPartIdChange={setManufacturerPartId}
+        globalAssetId={globalAssetId}
+        onGlobalAssetIdChange={setGlobalAssetId}
+        partInstanceId={partInstanceId}
+        onPartInstanceIdChange={setPartInstanceId}
+      />
+    );
   };
 
   // Handle single twin search
@@ -544,7 +597,7 @@ const PartsDiscovery = () => {
       setPaginator(newPaginator);
 
       // Create DTR mapping if DTRs are available
-      const shellToDtrMap = response.dtrs ? createShellToDtrMap(response.dtrs) : undefined;
+      const shellToDtrMap = response.dtrs ? createShellToDtrMap(response.dtrs as unknown as Array<Record<string, unknown> & { shells?: string[] }>) : undefined;
 
       // Process results based on part type
       if (partType === 'Catalog') {
@@ -645,7 +698,7 @@ const PartsDiscovery = () => {
         setCurrentPage(newResponse.pagination?.page || currentPage);
 
         // Create DTR mapping if DTRs are available
-        const shellToDtrMap = newResponse.dtrs ? createShellToDtrMap(newResponse.dtrs) : undefined;
+        const shellToDtrMap = newResponse.dtrs ? createShellToDtrMap(newResponse.dtrs as unknown as Array<Record<string, unknown> & { shells?: string[] }>) : undefined;
 
         // Update results based on part type
         if (partType === 'Catalog') {
@@ -702,11 +755,12 @@ const PartsDiscovery = () => {
 
   return (
     <Box sx={{ 
-      minHeight: '100vh', 
+      height: '100vh', 
       display: 'flex', 
       flexDirection: 'column',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-      backgroundAttachment: 'fixed'
+      backgroundAttachment: 'fixed',
+      overflow: 'hidden'
     }}>
       {/* Compact Header - shown when search results are displayed */}
       {hasSearched && (
@@ -779,8 +833,13 @@ const PartsDiscovery = () => {
       )}
 
       {/* Main Content Container */}
-      <Box sx={{ flex: 1, display: 'flex' }}>
-        {/* Search Mode Toggle and Sidebar Toggle */}
+      <Box sx={{ 
+        flex: 1, 
+        display: 'flex',
+        height: hasSearched ? 'calc(100vh - 72px)' : '100vh',
+        overflow: 'hidden'
+      }}>
+        {/* Search Mode Toggle */}
         {!hasSearched && (
           <Box 
             sx={{ 
@@ -799,40 +858,64 @@ const PartsDiscovery = () => {
               border: '1px solid rgba(255, 255, 255, 0.2)'
             }}
           >
-            {/* Sidebar Toggle - only show in discovery mode */}
-            {searchMode === 'discovery' && (
-              <Box display="flex" alignItems="center" gap={1}>
-                <IconButton
-                  onClick={() => setSidebarVisible(!sidebarVisible)}
-                  size="small"
-                  sx={{
-                    color: '#1976d2',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                      transform: 'scale(1.1)'
+            {/* Display Filters Button - Only show in Discovery mode when sidebar should be available but is hidden */}
+            {searchMode === 'discovery' && !isVisible && (
+              <Button
+                onClick={handleDisplayFilters}
+                size="small"
+                startIcon={<VisibilityIcon />}
+                sx={{
+                  color: 'rgba(25, 118, 210, 0.8)',
+                  fontSize: '0.8rem',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  py: 0.3,
+                  px: 0.8,
+                  minHeight: '22px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                    color: '#1976d2'
+                  },
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    '& > svg': {
+                      fontSize: '14px'
                     }
-                  }}
-                >
-                  {sidebarVisible ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
-                </IconButton>
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    fontWeight: '500', 
-                    color: '#1976d2',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateX(2px)'
+                  }
+                }}
+              >
+                Display Filters
+              </Button>
+            )}
+
+            {/* Hide Filters Button - Only show in Discovery mode when sidebar is visible */}
+            {searchMode === 'discovery' && isVisible && (
+              <Button
+                onClick={hideSidebar}
+                size="small"
+                startIcon={<VisibilityOffIcon />}
+                sx={{
+                  color: 'rgba(25, 118, 210, 0.8)',
+                  fontSize: '0.8rem',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  py: 0.3,
+                  px: 0.8,
+                  minHeight: '22px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                    color: '#1976d2'
+                  },
+                  '& .MuiButton-startIcon': {
+                    marginRight: '4px',
+                    '& > svg': {
+                      fontSize: '14px'
                     }
-                  }}
-                  onClick={() => setSidebarVisible(!sidebarVisible)}
-                >
-                  {sidebarVisible ? 'Hide' : 'Show'} Filters
-                </Typography>
-              </Box>
+                  }
+                }}
+              >
+                Hide Filters
+              </Button>
             )}
 
             {/* Mode Toggle */}
@@ -891,472 +974,20 @@ const PartsDiscovery = () => {
           </Box>
         )}
 
-        <Grid2 container direction="row" sx={{ 
-          flex: 1,
-          minHeight: '100vh'
-        }}>
-          {/* Sidebar - animated hide/show */}
-          {!hasSearched && searchMode === 'discovery' && (
-            <Grid2 
-              size={sidebarVisible ? { lg: 2, md: 4, sm: 12 } : 0}
-              padding={0}
-              className="parts-discovery-sidebar"
-              sx={{
-                background: 'linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
-                minHeight: '100vh',
-                borderRight: sidebarVisible ? '1px solid rgba(59, 130, 246, 0.2)' : 'none',
-                boxShadow: sidebarVisible ? '4px 0 16px rgba(30, 58, 138, 0.1)' : 'none',
-                width: sidebarVisible ? 'auto' : '0px',
-                minWidth: sidebarVisible ? 'auto' : '0px',
-                maxWidth: sidebarVisible ? 'auto' : '0px',
-                overflow: 'hidden',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                opacity: sidebarVisible ? 1 : 0,
-                transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
-                // Ensure it takes no space when hidden
-                flexBasis: sidebarVisible ? 'auto' : '0px !important',
-                flexShrink: sidebarVisible ? 0 : 1,
-                flexGrow: 0
-              }}
-            >
-              <Box sx={{ p: 2 }}>
-                <Typography 
-                  variant="subtitle2" 
-                  sx={{ 
-                    fontWeight: '600', 
-                    color: 'white',
-                    mb: 2,
-                    fontSize: '0.85rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.3px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
-                    pb: 1
-                  }}
-                >
-                  Digital Twin Type
-                </Typography>
-                <RadioGroup 
-                  value={partType} 
-                  onChange={handlePartTypeChange}
-                  sx={{
-                    '& .MuiFormControlLabel-root': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      margin: '4px 0',
-                      borderRadius: 2,
-                      padding: '8px 12px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      transition: 'all 0.2s ease',
-                      color: 'white',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                        borderColor: 'rgba(255, 255, 255, 0.3)'
-                      }
-                    },
-                    '& .MuiFormControlLabel-label': {
-                      fontWeight: '400',
-                      fontSize: '0.875rem',
-                      color: 'white'
-                    },
-                    '& .MuiRadio-root': {
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      padding: '6px',
-                      '&.Mui-checked': {
-                        color: '#60a5fa'
-                      }
-                    },
-                    '& .Mui-checked + .MuiFormControlLabel-label': {
-                      fontWeight: '500',
-                      color: '#bfdbfe'
-                    }
-                  }}
-                >
-                  <FormControlLabel value="Catalog" control={<Radio />} label="Part Type (Catalog)" />
-                  <FormControlLabel value="Serialized" control={<Radio />} label="Part Instance (Serialized)" />
-                </RadioGroup>
-              </Box>
-                
-              <Box sx={{ p: 2 }}>
-                <Typography 
-                  variant="subtitle2" 
-                  sx={{ 
-                    fontWeight: '600', 
-                    color: 'white',
-                    mb: 2,
-                    fontSize: '0.85rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.3px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
-                    pb: 1
-                  }}
-                >
-                  Results per Page
-                </Typography>
-                <FormControl 
-                  fullWidth 
-                  size="small" 
-                  sx={{ 
-                    mt: 1,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: 2,
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      color: 'white',
-                      fontSize: '0.875rem',
-                      '& input::placeholder': {
-                        fontSize: '0.75rem',
-                        color: 'rgba(255, 255, 255, 0.5)'
-                      },
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                        borderColor: 'rgba(255, 255, 255, 0.3)'
-                      },
-                      '&.Mui-focused': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                        borderColor: '#60a5fa'
-                      }
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      fontSize: '0.875rem',
-                      '&.Mui-focused': {
-                        color: '#bfdbfe'
-                      }
-                    },
-                    '& .MuiSelect-icon': {
-                      color: 'rgba(255, 255, 255, 0.7)'
-                    }
-                  }}
-                >
-                  <InputLabel>Results per Page</InputLabel>
-                  <Select
-                    value={isCustomLimit ? 'custom' : pageLimit}
-                    label="Results per Page"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === 'custom') {
-                        setIsCustomLimit(true);
-                        setPageLimit(parseInt(customLimit) || 10);
-                      } else {
-                        setIsCustomLimit(false);
-                        setPageLimit(value as number);
-                      }
-                    }}
-                  >
-                    <MenuItem value={5}>5</MenuItem>
-                    <MenuItem value={10}>10</MenuItem>
-                    <MenuItem value={20}>20</MenuItem>
-                    <MenuItem value={50}>50</MenuItem>
-                    <MenuItem value={100}>100</MenuItem>
-                    <MenuItem value="custom">Custom</MenuItem>
-                    <MenuItem value={0}>No Limit</MenuItem>
-                  </Select>
-                </FormControl>
-
-                {isCustomLimit && (
-                  <Box sx={{ mt: 2 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Custom Limit"
-                      placeholder="Enter number of results per page"
-                      type="number"
-                      value={customLimit}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setCustomLimit(value);
-                        if (value && !isNaN(parseInt(value)) && parseInt(value) > 0) {
-                          setPageLimit(parseInt(value));
-                        }
-                      }}
-                      inputProps={{
-                        min: 1,
-                        max: 1000
-                      }}
-                      helperText={
-                        customLimit && (isNaN(parseInt(customLimit)) || parseInt(customLimit) < 1 || parseInt(customLimit) > 1000)
-                          ? "Please enter a valid number between 1 and 1000"
-                          : "Enter a number between 1 and 1000"
-                      }
-                      error={customLimit !== '' && (isNaN(parseInt(customLimit)) || parseInt(customLimit) < 1 || parseInt(customLimit) > 1000)}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                          borderRadius: 2,
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: 'white',
-                          '& input::placeholder': {
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.5)'
-                          },
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                            borderColor: 'rgba(255, 255, 255, 0.3)'
-                          },
-                          '&.Mui-focused': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                            borderColor: '#60a5fa'
-                          }
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontSize: '0.875rem',
-                          '&.Mui-focused': {
-                            color: '#bfdbfe'
-                          }
-                        },
-                        '& .MuiFormHelperText-root': {
-                          color: 'rgba(255, 255, 255, 0.7)',
-                          fontSize: '0.75rem'
-                        }
-                      }}
-                    />
-                    
-                    <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      <Typography variant="caption" sx={{ width: '100%', mb: 0.5, color: 'rgba(255, 255, 255, 0.8)', fontWeight: '500', fontSize: '0.7rem' }}>
-                        Quick select:
-                      </Typography>
-                      {[25, 75, 150, 200, 500].map((value) => (
-                        <Chip
-                          key={value}
-                          label={value}
-                          size="small"
-                          onClick={() => {
-                            setCustomLimit(value.toString());
-                            setPageLimit(value);
-                          }}
-                          sx={{ 
-                            cursor: 'pointer',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            color: 'white',
-                            border: '1px solid rgba(255, 255, 255, 0.3)',
-                            fontSize: '0.7rem',
-                            height: '24px',
-                            '&:hover': {
-                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              borderColor: '#60a5fa'
-                            }
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-              </Box>
-
-              <Box sx={{ p: 2 }}>
-                  <Typography 
-                    variant="subtitle2" 
-                    sx={{ 
-                      fontWeight: '600', 
-                      color: 'white',
-                      mb: 2,
-                      fontSize: '0.85rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.3px',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
-                      pb: 1
-                    }}
-                  >
-                    Advanced Options
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Customer Part ID (Optional)"
-                    placeholder="Enter Customer Part ID"
-                    value={customerPartId}
-                    onChange={(e) => setCustomerPartId(e.target.value)}
-                    sx={{ 
-                      mb: 2,
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        '& input::placeholder': {
-                          fontSize: '0.75rem',
-                          color: 'rgba(255, 255, 255, 0.5)'
-                        },
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                          borderColor: 'rgba(255, 255, 255, 0.3)'
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                          borderColor: '#60a5fa'
-                        }
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        fontSize: '0.875rem',
-                        '&.Mui-focused': {
-                          color: '#bfdbfe'
-                        }
-                      },
-                      '& .MuiFormHelperText-root': {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontSize: '0.75rem'
-                      }
-                    }}
-                    helperText="Search by specific Customer Part identifier"
-                  />
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Manufacturer Part ID (Optional)"
-                    placeholder="Enter Manufacturer Part ID"
-                    value={manufacturerPartId}
-                    onChange={(e) => setManufacturerPartId(e.target.value)}
-                    sx={{ 
-                      mb: 2,
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        '& input::placeholder': {
-                          fontSize: '0.75rem',
-                          color: 'rgba(255, 255, 255, 0.5)'
-                        },
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                          borderColor: 'rgba(255, 255, 255, 0.3)'
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                          borderColor: '#60a5fa'
-                        }
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        fontSize: '0.875rem',
-                        '&.Mui-focused': {
-                          color: '#bfdbfe'
-                        }
-                      },
-                      '& .MuiFormHelperText-root': {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontSize: '0.75rem'
-                      }
-                    }}
-                    helperText="Search by specific Manufacturer Part identifier"
-                  />
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Global Asset ID (Optional)"
-                    placeholder="Enter Global Asset ID"
-                    value={globalAssetId}
-                    onChange={(e) => setGlobalAssetId(e.target.value)}
-                    sx={{ 
-                      mb: 2,
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        '& input::placeholder': {
-                          fontSize: '0.75rem',
-                          color: 'rgba(255, 255, 255, 0.5)'
-                        },
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                          borderColor: 'rgba(255, 255, 255, 0.3)'
-                        },
-                        '&.Mui-focused': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                          borderColor: '#60a5fa'
-                        }
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        fontSize: '0.875rem',
-                        '&.Mui-focused': {
-                          color: '#bfdbfe'
-                        }
-                      },
-                      '& .MuiFormHelperText-root': {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontSize: '0.75rem'
-                      }
-                    }}
-                    helperText="Global Asset ID of the Digital Twin"
-                  />
-                  
-                  {/* Part Instance ID - Only shown when Part Instance is selected */}
-                  {partType === 'Serialized' && (
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Part Instance ID (Optional)"
-                      placeholder="Enter Part Instance identifier"
-                      value={partInstanceId}
-                      onChange={(e) => setPartInstanceId(e.target.value)}
-                      sx={{ 
-                        mb: 2,
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                          borderRadius: 2,
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          color: 'white',
-                          '& input::placeholder': {
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.5)'
-                          },
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                            borderColor: 'rgba(255, 255, 255, 0.3)'
-                          },
-                          '&.Mui-focused': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                            borderColor: '#60a5fa'
-                          }
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          fontSize: '0.875rem',
-                          '&.Mui-focused': {
-                            color: '#bfdbfe'
-                          }
-                        },
-                        '& .MuiFormHelperText-root': {
-                          color: 'rgba(255, 255, 255, 0.7)',
-                          fontSize: '0.75rem'
-                        }
-                      }}
-                      helperText="Search by specific Part Instance identifier"
-                    />
-                  )}
-              </Box>
-            </Grid2>
-          )}
-
-          {/* Main Content */}
-          <Grid2 
-            size={
-              hasSearched 
-                ? 12 
-                : (searchMode === 'discovery' 
-                    ? (sidebarVisible ? { lg: 10, md: 8, sm: 12 } : 12)
-                    : 12
-                  )
-            }
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: hasSearched ? 'flex-start' : 'center',
-              alignItems: 'center',
-              minHeight: hasSearched ? 'auto' : '100vh',
-              p: hasSearched ? 3 : 4,
-              pt: searchMode === 'single' && !hasSearched ? 4 : (hasSearched ? 3 : 4),
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              // Ensure proper positioning when sidebar is hidden
-              ...(searchMode === 'discovery' && !sidebarVisible && !hasSearched && {
-                pl: 4,
-                pr: 4
-              })
-            }}
-          >
+        {/* Main Content */}
+        <Box 
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: hasSearched ? 'flex-start' : 'center',
+            alignItems: 'center',
+            height: '100%',
+            overflow: hasSearched ? 'auto' : 'hidden',
+            p: hasSearched ? 0 : 4,
+            pt: searchMode === 'single' && !hasSearched ? 4 : (hasSearched ? 0 : 4)
+          }}
+        >
             {/* Centered Welcome Screen - only shown when no search has been performed and in discovery mode */}
             {!hasSearched && searchMode === 'discovery' && (
               <Box 
@@ -1759,10 +1390,16 @@ const PartsDiscovery = () => {
 
             {/* Results Section - shown when search has been performed */}
             {hasSearched && (
-              <Box sx={{ width: '100%' }}>
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
                 {/* Discovery Mode Results */}
                 {currentResponse && searchMode === 'discovery' && (
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2, flexShrink: 0 }}>
                     {/* Left Side - Part Type Indicator + Active Filters */}
                     <Box 
                       display="flex" 
@@ -1815,30 +1452,33 @@ const PartsDiscovery = () => {
                       )}
                     </Box>
 
-                    {/* Results Count - Right Side - Generic number */}
-                    <Box
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        px: 2,
-                        py: 0.5,
-                        borderRadius: '16px',
-                        backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                        border: '1px solid rgba(25, 118, 210, 0.2)',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                      }}
-                    >
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          fontWeight: '600', 
-                          color: '#1976d2', 
-                          fontSize: '0.8rem',
-                          letterSpacing: '0.02em'
+                    {/* Results Count - Right Side */}
+                    <Box display="flex" alignItems="center" gap={1}>
+                      {/* Results Count */}
+                      <Box
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: '16px',
+                          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                          border: '1px solid rgba(25, 118, 210, 0.2)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                         }}
                       >
-                        {currentResponse.shellsFound}
-                      </Typography>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            fontWeight: '600', 
+                            color: '#1976d2', 
+                            fontSize: '0.8rem',
+                            letterSpacing: '0.02em'
+                          }}
+                        >
+                          {currentResponse.shellsFound}
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
                 )}
@@ -1847,7 +1487,7 @@ const PartsDiscovery = () => {
 
                 {/* DTR Information Section - Discovery Mode */}
                 {currentResponse && currentResponse.dtrs && searchMode === 'discovery' && (
-                  <Box sx={{ px: 2, mb: 3 }}>
+                  <Box sx={{ px: 2, mb: 3, flexShrink: 0 }}>
                     <Box 
                       sx={{ 
                         display: 'flex', 
@@ -1978,7 +1618,13 @@ const PartsDiscovery = () => {
                 )}
 
                 {/* Results Display */}
-                <Box sx={{ px: { xs: 2, md: 4 }, pb: 4 }}>
+                <Box sx={{ 
+                  px: { xs: 2, md: 4 }, 
+                  flex: 1,
+                  overflow: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
                   {partType === 'Serialized' ? (
                     <>
                       {serializedParts.length > 0 ? (
@@ -2018,7 +1664,7 @@ const PartsDiscovery = () => {
 
                 {/* Pagination */}
                 {currentResponse && !isLoading && pageLimit > 0 && (
-                  <Box display="flex" justifyContent="center" alignItems="center" gap={2} mt={4} mb={3}>
+                  <Box display="flex" justifyContent="center" alignItems="center" gap={2} sx={{ mt: 2, mb: 3, px: 2, flexShrink: 0 }}>
                     {paginator?.hasPrevious() && (
                       <Button
                         variant="outlined"
@@ -2296,8 +1942,7 @@ const PartsDiscovery = () => {
                 )}
               </Box>
             )}
-          </Grid2>
-        </Grid2>
+        </Box>
       </Box>
     </Box>
   );
