@@ -37,13 +37,14 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Tooltip
 } from '@mui/material';
+import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import InfoIcon from '@mui/icons-material/Info';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -176,6 +177,10 @@ const PartsDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  
+  // Pagination loading states
+  const [isLoadingNext, setIsLoadingNext] = useState(false);
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
 
   // Show sidebar when in discovery mode and not searched
   useEffect(() => {
@@ -451,6 +456,9 @@ const PartsDiscovery = () => {
     setCurrentPage(1);
     setTotalPages(0);
     setError(null);
+    // Reset pagination loading states
+    setIsLoadingNext(false);
+    setIsLoadingPrevious(false);
     // Reset search fields
     setBpnl('');
     setSelectedPartner(null);
@@ -479,9 +487,19 @@ const PartsDiscovery = () => {
 
     setIsLoading(true);
     setError(null);
+    // Reset pagination loading states for new search
+    setIsLoadingNext(false);
+    setIsLoadingPrevious(false);
     
     try {
-      const limit = pageLimit === 0 ? undefined : pageLimit; // No limit if pageLimit is 0
+      // Calculate the correct limit based on whether custom limit is being used
+      let limit: number | undefined;
+      if (isCustomLimit) {
+        const customLimitNum = parseInt(customLimit);
+        limit = customLimitNum;
+      } else {
+        limit = pageLimit === 0 ? undefined : pageLimit; // No limit if pageLimit is 0
+      }
       
       // Build custom query with all provided parameters
       const querySpec: Array<{ name: string; value: string }> = [];
@@ -612,10 +630,10 @@ const PartsDiscovery = () => {
 
       setCurrentPage(response.pagination?.page || 1);
       // Calculate total pages (this would ideally come from the API)
-      if (pageLimit === 0) {
+      if (limit === undefined) {
         setTotalPages(1); // No pagination when no limit is set
       } else {
-        setTotalPages(Math.ceil(response.shellsFound / pageLimit));
+        setTotalPages(Math.ceil(response.shellsFound / limit));
       }
 
       // Mark that search has been performed successfully
@@ -663,7 +681,16 @@ const PartsDiscovery = () => {
   const handlePageChange = async (_: React.ChangeEvent<unknown>, page: number) => {
     if (!paginator || page === currentPage) return;
 
-    setIsLoading(true);
+    // Determine direction and set appropriate loading state
+    const isNext = page === currentPage + 1;
+    const isPrevious = page === currentPage - 1;
+    
+    if (isNext) {
+      setIsLoadingNext(true);
+    } else if (isPrevious) {
+      setIsLoadingPrevious(true);
+    }
+    
     setError(null);
     
     try {
@@ -678,7 +705,6 @@ const PartsDiscovery = () => {
         // For non-sequential navigation, show a helpful message
         // Cursor-based pagination doesn't support random page access efficiently
         setError(`Direct navigation to page ${page} is not supported. Please use next/previous navigation.`);
-        setIsLoading(false);
         return;
       }
 
@@ -690,7 +716,6 @@ const PartsDiscovery = () => {
           } else {
             setError(`Pagination failed: ${newResponse.error}`);
           }
-          setIsLoading(false);
           return;
         }
         
@@ -739,7 +764,9 @@ const PartsDiscovery = () => {
       
       setError(errorMessage);
     } finally {
-      setIsLoading(false);
+      // Clean up pagination loading states
+      setIsLoadingNext(false);
+      setIsLoadingPrevious(false);
     }
   };
 
@@ -755,8 +782,7 @@ const PartsDiscovery = () => {
 
   return (
     <Box sx={{ 
-      height: '100%', 
-      minHeight: 'calc(100vh - 68.8px)', // Account for header height
+      height: '100%', // Use full available height from parent
       display: 'flex', 
       flexDirection: 'column',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
@@ -1396,7 +1422,8 @@ const PartsDiscovery = () => {
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                pt: 3 // Add top padding to create space from the header
               }}>
                 {/* Discovery Mode Results */}
                 {currentResponse && searchMode === 'discovery' && (
@@ -1488,7 +1515,7 @@ const PartsDiscovery = () => {
 
                 {/* DTR Information Section - Discovery Mode */}
                 {currentResponse && currentResponse.dtrs && searchMode === 'discovery' && (
-                  <Box sx={{ px: 2, mb: 3, flexShrink: 0 }}>
+                  <Box sx={{ px: 2, mb: 3, mt: 2, flexShrink: 0 }}>
                     <Box 
                       sx={{ 
                         display: 'flex', 
@@ -1624,7 +1651,8 @@ const PartsDiscovery = () => {
                   flex: 1,
                   overflow: 'auto',
                   display: 'flex',
-                  flexDirection: 'column'
+                  flexDirection: 'column',
+                  height: '100%' // Ensure it takes full available height
                 }}>
                   {partType === 'Serialized' ? (
                     <>
@@ -1670,8 +1698,18 @@ const PartsDiscovery = () => {
                       <Button
                         variant="outlined"
                         onClick={() => handlePageChange({} as React.ChangeEvent<unknown>, currentPage - 1)}
-                        disabled={isLoading}
-                        startIcon={<ArrowBackIcon />}
+                        disabled={isLoadingPrevious}
+                        startIcon={isLoadingPrevious ? (
+                          <CircularProgress 
+                            size={16} 
+                            sx={{ 
+                              color: isLoadingPrevious ? 'currentColor' : 'primary.main',
+                              '& .MuiCircularProgress-circle': {
+                                strokeLinecap: 'round'
+                              }
+                            }} 
+                          />
+                        ) : <ArrowBackIcon />}
                         size="small"
                         sx={{ 
                           borderColor: 'primary.main',
@@ -1684,6 +1722,14 @@ const PartsDiscovery = () => {
                           '&:hover': {
                             backgroundColor: 'primary.main',
                             color: 'white'
+                          },
+                          '&:disabled': {
+                            borderColor: 'action.disabled',
+                            color: 'action.disabled',
+                            backgroundColor: 'transparent',
+                            '&:hover': {
+                              backgroundColor: 'transparent'
+                            }
                           }
                         }}
                       >
@@ -1718,8 +1764,18 @@ const PartsDiscovery = () => {
                       <Button
                         variant="contained"
                         onClick={() => handlePageChange({} as React.ChangeEvent<unknown>, currentPage + 1)}
-                        disabled={isLoading}
-                        endIcon={<ArrowForwardIcon />}
+                        disabled={isLoadingNext}
+                        endIcon={isLoadingNext ? (
+                          <CircularProgress 
+                            size={16} 
+                            sx={{ 
+                              color: 'white',
+                              '& .MuiCircularProgress-circle': {
+                                strokeLinecap: 'round'
+                              }
+                            }} 
+                          />
+                        ) : <ArrowForwardIcon />}
                         size="small"
                         sx={{ 
                           backgroundColor: 'primary.main',
@@ -1989,155 +2045,287 @@ const SerializedPartsTable = ({ parts }: { parts: SerializedPartData[] }) => {
       }
     }
   };
+
+  // Transform data for DataGrid
+  const rows = parts.map((part, index) => ({
+    id: part.id || `part-${index}`,
+    dtrIndex: part.dtrIndex,
+    globalAssetId: part.globalAssetId,
+    aasId: part.aasId,
+    manufacturerId: part.manufacturerId,
+    manufacturerPartId: part.manufacturerPartId,
+    customerPartId: part.customerPartId || '',
+    partInstanceId: part.partInstanceId || '',
+    digitalTwinType: part.digitalTwinType,
+    submodelCount: part.submodelCount,
+    rawTwinData: part.rawTwinData
+  }));
+
+  // Define columns for DataGrid
+  const columns: GridColDef[] = [
+    {
+      field: 'dtrIndex',
+      headerName: 'DTR Source',
+      width: 100,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Chip
+          label={`DTR${params.value !== undefined ? params.value + 1 : 'X'}`}
+          size="small"
+          color="success"
+          variant="filled"
+          sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}
+        />
+      ),
+    },
+    {
+      field: 'globalAssetId',
+      headerName: 'Global Asset ID',
+      width: 280,
+      renderCell: (params) => (
+        <Tooltip title={params.value} arrow>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontFamily: 'monospace',
+              fontSize: '0.8rem',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              height: '100%'
+            }}
+          >
+            {params.value}
+          </Typography>
+        </Tooltip>
+      ),
+    },
+    {
+      field: 'aasId',
+      headerName: 'AAS ID',
+      width: 280,
+      renderCell: (params) => (
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          height: '100%',
+          width: '100%'
+        }}>
+          <Tooltip title={params.value} arrow>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontFamily: 'monospace',
+                fontSize: '0.8rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                flex: 1
+              }}
+            >
+              {params.value}
+            </Typography>
+          </Tooltip>
+        </Box>
+      ),
+    },
+    {
+      field: 'manufacturerId',
+      headerName: 'Manufacturer ID',
+      width: 150,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: 'manufacturerPartId',
+      headerName: 'Manufacturer Part ID',
+      width: 180,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: 'customerPartId',
+      headerName: 'Customer Part ID',
+      width: 150,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value || '-'}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: 'partInstanceId',
+      headerName: 'Part Instance ID',
+      width: 150,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value || '-'}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: 'digitalTwinType',
+      headerName: 'Digital Twin Type',
+      width: 150,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          color="primary"
+          variant="outlined"
+          sx={{ fontSize: '0.75rem' }}
+        />
+      ),
+    },
+    {
+      field: 'submodelCount',
+      headerName: 'Submodels',
+      width: 100,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
+          {params.value}
+        </Typography>
+      ),
+    },
+    {
+      field: 'actions',
+      type: 'actions',
+      headerName: 'Actions',
+      width: 120,
+      getActions: (params) => [
+        <GridActionsCellItem
+          icon={
+            <Tooltip title="Copy AAS ID" arrow>
+              {copySuccess === params.row.id ? (
+                <CheckCircle sx={{ color: 'success.main' }} />
+              ) : (
+                <ContentCopy />
+              )}
+            </Tooltip>
+          }
+          label="Copy AAS ID"
+          onClick={() => handleCopyAasId(params.row.aasId, params.row.id)}
+        />,
+        <GridActionsCellItem
+          icon={
+            <Tooltip title="Download Twin Data" arrow>
+              <Download />
+            </Tooltip>
+          }
+          label="Download"
+          onClick={() => handleDownloadTwinData(params.row)}
+          disabled={!params.row.rawTwinData}
+        />,
+        <GridActionsCellItem
+          icon={
+            <Tooltip title="View Details" arrow>
+              <VisibilityIcon />
+            </Tooltip>
+          }
+          label="View"
+          onClick={() => {
+            console.log('View details for:', params.row);
+            // Add view functionality here
+          }}
+        />,
+      ],
+    },
+  ];
+
   return (
-    <Box sx={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ backgroundColor: '#f5f5f5' }}>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              DTR Source
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Global Asset ID
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              AAS ID
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Manufacturer ID
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Manufacturer Part ID
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Customer Part ID
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Part Instance ID
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Digital Twin Type
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Submodels
-            </th>
-            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {parts.map((part) => (
-            <tr key={part.id} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '12px' }}>
-                {part.dtrIndex !== undefined ? (
-                  <Chip 
-                    label={`DTR ${part.dtrIndex + 1}`}
-                    size="small" 
-                    variant="filled"
-                    sx={{
-                      backgroundColor: getDtrColor(part.dtrIndex).bg,
-                      color: getDtrColor(part.dtrIndex).color,
-                      fontWeight: '600',
-                      fontSize: '0.75rem'
-                    }}
-                  />
-                ) : (
-                  <Typography variant="caption" color="textSecondary">
-                    Unknown
-                  </Typography>
-                )}
-              </td>
-              <td style={{ padding: '12px', fontSize: '12px' }}>
-                {part.globalAssetId}
-              </td>
-              <td style={{ padding: '12px', fontSize: '12px' }}>
-                {part.aasId}
-              </td>
-              <td style={{ padding: '12px' }}>
-                {part.manufacturerId}
-              </td>
-              <td style={{ padding: '12px' }}>
-                {part.manufacturerPartId}
-              </td>
-              <td style={{ padding: '12px' }}>
-                {part.customerPartId || '-'}
-              </td>
-              <td style={{ padding: '12px' }}>
-                {part.partInstanceId || '-'}
-              </td>
-              <td style={{ padding: '12px' }}>
-                <Chip 
-                  label={part.digitalTwinType} 
-                  size="small" 
-                  color="primary" 
-                  variant="outlined" 
-                />
-              </td>
-              <td style={{ padding: '12px' }}>
-                <Chip 
-                  label={part.submodelCount} 
-                  size="small" 
-                  color="secondary" 
-                />
-              </td>
-              <td style={{ padding: '12px' }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  {/* Copy AAS ID Button */}
-                  <IconButton
-                    size="small"
-                    onClick={() => handleCopyAasId(part.aasId, part.id)}
-                    sx={{
-                      color: copySuccess === part.id ? '#4caf50' : '#1976d2',
-                      backgroundColor: copySuccess === part.id ? 'rgba(76, 175, 80, 0.1)' : 'transparent',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        backgroundColor: copySuccess === part.id 
-                          ? 'rgba(76, 175, 80, 0.2)' 
-                          : 'rgba(25, 118, 210, 0.04)'
-                      }
-                    }}
-                    title={copySuccess === part.id ? "Copied!" : "Copy AAS ID"}
-                  >
-                    {copySuccess === part.id ? <CheckCircle /> : <ContentCopy />}
-                  </IconButton>
-
-                  {/* Download Twin Data Button */}
-                  {part.rawTwinData && (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDownloadTwinData(part)}
-                      sx={{
-                        color: '#1976d2',
-                        '&:hover': {
-                          backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                        }
-                      }}
-                      title="Download Twin Data"
-                    >
-                      <Download />
-                    </IconButton>
-                  )}
-
-                  {/* See more details Button */}
-                  <IconButton
-                    size="small"
-                    sx={{
-                      color: '#1976d2',
-                      '&:hover': {
-                        backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                      }
-                    }}
-                    title="See more details"
-                  >
-                    <OpenInNewIcon />
-                  </IconButton>
-                </Box>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <Box sx={{ height: '100%', width: '100%' }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        initialState={{
+          pagination: {
+            paginationModel: { page: 0, pageSize: 25 },
+          },
+          sorting: {
+            sortModel: [{ field: 'globalAssetId', sort: 'asc' }],
+          },
+        }}
+        pageSizeOptions={[10, 25, 50, 100]}
+        disableRowSelectionOnClick
+        disableColumnFilter={false}
+        disableColumnSelector={false}
+        disableDensitySelector={false}
+        rowHeight={60}
+        sx={{
+          border: '1px solid #e0e0e0',
+          borderRadius: 1,
+          backgroundColor: 'white',
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: '#f8f9fa',
+            fontWeight: 600,
+            borderBottom: '2px solid #ddd',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          },
+          '& .MuiDataGrid-cell': {
+            borderBottom: '1px solid #f0f0f0',
+            display: 'flex',
+            alignItems: 'center',
+          },
+          '& .MuiDataGrid-row:hover': {
+            backgroundColor: '#f8f9fa',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            borderTop: '2px solid #ddd',
+            backgroundColor: '#f8f9fa',
+          },
+          '& .MuiDataGrid-toolbarContainer': {
+            padding: '16px',
+            borderBottom: '1px solid #e0e0e0',
+            backgroundColor: '#f8f9fa',
+          },
+          '& .MuiDataGrid-virtualScroller': {
+            height: '100%',
+          },
+        }}
+        slots={{
+          toolbar: () => (
+            <Box sx={{ 
+              p: 2, 
+              borderBottom: '1px solid #e0e0e0',
+              backgroundColor: '#f8f9fa',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                Showing {parts.length} serialized parts
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Click on column headers to sort • Use column filters for search
+              </Typography>
+            </Box>
+          ),
+        }}
+      />
     </Box>
   );
 };
