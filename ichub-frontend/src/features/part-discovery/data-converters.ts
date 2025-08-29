@@ -44,6 +44,7 @@ export const convertToPartCards = (
       globalAssetId: shell.globalAssetId,
       submodelCount: summary.submodelCount,
       dtrIndex,
+      idShort: shell.idShort, // Include idShort from AAS data
       rawTwinData: shell
     };
   });
@@ -70,6 +71,7 @@ export const convertToSerializedParts = (
       digitalTwinType: summary.digitalTwinType || 'Unknown',
       submodelCount: summary.submodelCount,
       dtrIndex,
+      idShort: shell.idShort, // Include idShort from AAS data
       rawTwinData: shell
     };
   });

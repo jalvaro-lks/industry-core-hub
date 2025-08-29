@@ -36,9 +36,10 @@ import { SerializedPartData } from '../types';
 
 interface SerializedPartsTableProps {
   parts: SerializedPartData[];
+  onView?: (part: SerializedPartData) => void;
 }
 
-const SerializedPartsTable = ({ parts }: SerializedPartsTableProps) => {
+const SerializedPartsTable = ({ parts, onView }: SerializedPartsTableProps) => {
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   const handleCopyAasId = async (aasId: string, partId: string) => {
@@ -84,6 +85,7 @@ const SerializedPartsTable = ({ parts }: SerializedPartsTableProps) => {
     dtrIndex: part.dtrIndex,
     globalAssetId: part.globalAssetId,
     aasId: part.aasId,
+    idShort: part.idShort,
     manufacturerId: part.manufacturerId,
     manufacturerPartId: part.manufacturerPartId,
     customerPartId: part.customerPartId || '',
@@ -162,6 +164,27 @@ const SerializedPartsTable = ({ parts }: SerializedPartsTableProps) => {
               {params.value}
             </Typography>
           </Tooltip>
+        </Box>
+      ),
+    },
+    {
+      field: 'idShort',
+      headerName: 'ID Short',
+      width: 180,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '0.875rem',
+              fontFamily: 'monospace',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {params.value || '-'}
+          </Typography>
         </Box>
       ),
     },
@@ -279,7 +302,9 @@ const SerializedPartsTable = ({ parts }: SerializedPartsTableProps) => {
           label="View"
           onClick={() => {
             console.log('View details for:', params.row);
-            // Add view functionality here
+            if (onView) {
+              onView(params.row);
+            }
           }}
         />,
       ],

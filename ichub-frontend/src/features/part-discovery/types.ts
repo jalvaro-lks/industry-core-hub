@@ -40,6 +40,7 @@ export interface SerializedPartData {
   id: string;
   globalAssetId: string;
   aasId: string;
+  idShort?: string;
   manufacturerId: string;
   manufacturerPartId: string;
   customerPartId?: string;

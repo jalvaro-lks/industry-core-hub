@@ -28,11 +28,17 @@ import {
   TextField,
   Button,
   InputAdornment,
+  useTheme,
+  useMediaQuery,
   IconButton,
   Alert,
   CircularProgress,
   Card,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Autocomplete
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -42,6 +48,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import PartsDiscoverySidebar from '../features/part-discovery/components/PartsDiscoverySidebar';
 import SerializedPartsTable from '../features/part-discovery/components/SerializedPartsTable';
@@ -72,6 +82,7 @@ interface PartCardData {
   globalAssetId: string;
   submodelCount: number;
   dtrIndex?: number; // DTR index for display
+  idShort?: string; // Optional idShort from AAS data
   rawTwinData?: AASData; // Raw AAS/shell data for download
 }
 
@@ -86,6 +97,7 @@ interface SerializedPartData {
   digitalTwinType: string;
   submodelCount: number;
   dtrIndex?: number; // DTR index for display
+  idShort?: string; // Optional idShort from AAS data
   rawTwinData?: AASData; // Raw AAS/shell data for download
 }
 
@@ -147,12 +159,22 @@ const PartsDiscovery = () => {
   const [isCustomLimit, setIsCustomLimit] = useState<boolean>(false);
   
   // Single Twin Search Mode
-  const [searchMode, setSearchMode] = useState<'discovery' | 'single'>('discovery');
+  const [searchMode, setSearchMode] = useState<'discovery' | 'single' | 'view'>('discovery');
   const [singleTwinAasId, setSingleTwinAasId] = useState('');
   const [singleTwinResult, setSingleTwinResult] = useState<SingleShellDiscoveryResponse | null>(null);
   
+  // Twin View Mode (for viewing existing twin data)
+  const [viewingTwin, setViewingTwin] = useState<SingleShellDiscoveryResponse | null>(null);
+  
   // DTR Section Visibility
   const [dtrSectionVisible, setDtrSectionVisible] = useState(false);
+  
+  // DTR carousel state
+  const [dtrCarouselIndex, setDtrCarouselIndex] = useState(0);
+  
+  // DTR copy states
+  const [copiedAssetId, setCopiedAssetId] = useState<string | null>(null);
+  const [copiedConnectorUrl, setCopiedConnectorUrl] = useState<string | null>(null);
   
   // Results and pagination
   const [partTypeCards, setPartTypeCards] = useState<PartCardData[]>([]);
@@ -170,6 +192,52 @@ const PartsDiscovery = () => {
   // Pagination loading states
   const [isLoadingNext, setIsLoadingNext] = useState(false);
   const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
+
+  // Responsive design hooks
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // DTR carousel configuration
+  const dtrItemsPerSlide = isMobile ? 1 : 2;
+  const isSingleDtr = currentResponse?.dtrs.length === 1;
+  
+  // DTR carousel navigation functions
+  const handleDtrPrevious = () => {
+    setDtrCarouselIndex(prev => Math.max(0, prev - dtrItemsPerSlide));
+  };
+
+  const handleDtrNext = () => {
+    if (currentResponse?.dtrs) {
+      const maxIndex = Math.max(0, currentResponse.dtrs.length - dtrItemsPerSlide);
+      setDtrCarouselIndex(prev => Math.min(maxIndex, prev + dtrItemsPerSlide));
+    }
+  };
+
+  // Reset DTR carousel when DTRs change
+  useEffect(() => {
+    setDtrCarouselIndex(0);
+  }, [currentResponse?.dtrs]);
+
+  // Copy functions for DTR data
+  const handleCopyAssetId = async (assetId: string, dtrIndex: number) => {
+    try {
+      await navigator.clipboard.writeText(assetId);
+      setCopiedAssetId(`${dtrIndex}-${assetId}`);
+      setTimeout(() => setCopiedAssetId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy asset ID:', err);
+    }
+  };
+
+  const handleCopyConnectorUrl = async (connectorUrl: string, dtrIndex: number) => {
+    try {
+      await navigator.clipboard.writeText(connectorUrl);
+      setCopiedConnectorUrl(`${dtrIndex}-${connectorUrl}`);
+      setTimeout(() => setCopiedConnectorUrl(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy connector URL:', err);
+    }
+  };
 
   // Show sidebar when in discovery mode and not searched
   useEffect(() => {
@@ -410,6 +478,7 @@ const PartsDiscovery = () => {
         globalAssetId: shell.globalAssetId,
         submodelCount: summary.submodelCount,
         dtrIndex,
+        idShort: shell.idShort, // Include idShort from AAS data
         rawTwinData: shell
       };
     });
@@ -431,6 +500,7 @@ const PartsDiscovery = () => {
         digitalTwinType: summary.digitalTwinType || 'Unknown',
         submodelCount: summary.submodelCount,
         dtrIndex,
+        idShort: shell.idShort, // Include idShort from AAS data
         rawTwinData: shell
       };
     });
@@ -761,7 +831,66 @@ const PartsDiscovery = () => {
 
   const handleCardClick = (partId: string) => {
     console.log('Card clicked:', partId);
-    // Navigate to part details or perform other action
+    
+    // Find the card data to get the raw twin data
+    const card = partTypeCards.find(c => c.id === partId || `${c.manufacturerId}/${c.manufacturerPartId}` === partId);
+    if (card && card.rawTwinData) {
+      // Get DTR information if available
+      let dtrInfo = undefined;
+      if (currentResponse?.dtrs && card.dtrIndex !== undefined && currentResponse.dtrs[card.dtrIndex]) {
+        const dtr = currentResponse.dtrs[card.dtrIndex];
+        dtrInfo = {
+          connectorUrl: dtr.connectorUrl || 'Unknown',
+          assetId: dtr.assetId || card.id
+        };
+      }
+      
+      // Convert the raw twin data to the format expected by SingleTwinResult
+      const twinResult: SingleShellDiscoveryResponse = {
+        shell_descriptor: {
+          ...card.rawTwinData,
+          idShort: card.rawTwinData.idShort || card.rawTwinData.id, // Use actual idShort if available, otherwise fallback to AAS ID
+        },
+        dtr: dtrInfo || {
+          connectorUrl: 'Local Discovery',
+          assetId: card.id
+        }
+      };
+      
+      setViewingTwin(twinResult);
+      setSearchMode('view');
+    }
+  };
+
+  const handleSerializedPartView = (part: SerializedPartData) => {
+    console.log('View serialized part:', part);
+    
+    if (part.rawTwinData) {
+      // Get DTR information if available
+      let dtrInfo = undefined;
+      if (currentResponse?.dtrs && part.dtrIndex !== undefined && currentResponse.dtrs[part.dtrIndex]) {
+        const dtr = currentResponse.dtrs[part.dtrIndex];
+        dtrInfo = {
+          connectorUrl: dtr.connectorUrl || 'Unknown',
+          assetId: dtr.assetId || part.aasId
+        };
+      }
+      
+      // Convert the raw twin data to the format expected by SingleTwinResult
+      const twinResult: SingleShellDiscoveryResponse = {
+        shell_descriptor: {
+          ...part.rawTwinData,
+          idShort: part.rawTwinData.idShort || part.rawTwinData.id, // Use actual idShort if available, otherwise fallback to AAS ID
+        },
+        dtr: dtrInfo || {
+          connectorUrl: 'Local Discovery',
+          assetId: part.aasId
+        }
+      };
+      
+      setViewingTwin(twinResult);
+      setSearchMode('view');
+    }
   };
 
   const handleRegisterClick = (manufacturerId: string, manufacturerPartId: string) => {
@@ -795,23 +924,48 @@ const PartsDiscovery = () => {
         >
           <Grid2 container alignItems="center" justifyContent="space-between">
             <Grid2 size={3}>
-              <Button
-                variant="outlined"
-                onClick={handleGoBack}
-                startIcon={<ArrowBackIcon />}
-                size="small"
-                sx={{
-                  borderColor: 'primary.main',
-                  color: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'primary.main',
-                    color: 'white',
-                    borderColor: 'primary.main'
-                  }
-                }}
-              >
-                New Search
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                {searchMode === 'view' ? (
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setViewingTwin(null);
+                      setSearchMode('discovery');
+                    }}
+                    startIcon={<ArrowBackIcon />}
+                    size="small"
+                    sx={{
+                      borderColor: 'success.main',
+                      color: 'success.main',
+                      '&:hover': {
+                        backgroundColor: 'success.main',
+                        color: 'white',
+                        borderColor: 'success.main'
+                      }
+                    }}
+                  >
+                    Back to Results
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    onClick={handleGoBack}
+                    startIcon={<ArrowBackIcon />}
+                    size="small"
+                    sx={{
+                      borderColor: 'primary.main',
+                      color: 'primary.main',
+                      '&:hover': {
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        borderColor: 'primary.main'
+                      }
+                    }}
+                  >
+                    New Search
+                  </Button>
+                )}
+              </Box>
             </Grid2>
             <Grid2 size={6}>
               <Typography 
@@ -1418,6 +1572,13 @@ const PartsDiscovery = () => {
                 {singleTwinResult && searchMode === 'single' && (
                   <SingleTwinResult singleTwinResult={singleTwinResult} />
                 )}
+                
+                {/* View Twin Mode Results - For viewing twins from catalog */}
+                {viewingTwin && searchMode === 'view' && (
+                  <Box sx={{ width: '100%', p: 2 }}>
+                    <SingleTwinResult singleTwinResult={viewingTwin} />
+                  </Box>
+                )}
                 {/* Discovery Mode Results */}
                 {currentResponse && searchMode === 'discovery' && (
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2, flexShrink: 0 }}>
@@ -1540,153 +1701,299 @@ const PartsDiscovery = () => {
                     </Box>
                     
                     {dtrSectionVisible && (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2 }}>
-                        {currentResponse.dtrs.map((dtr, index) => {
-                          const dtrColor = getDtrColor(index);
-                          return (
-                            <Card
-                              key={index}
-                              sx={{
-                                p: 2.5,
-                                border: `1px solid ${dtrColor.border}`,
-                                borderRadius: 2,
-                                backgroundColor: dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected'
-                                  ? dtrColor.light 
-                                  : 'rgba(244, 67, 54, 0.02)',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                                <Box sx={{ flex: 1 }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                    <Chip
-                                      label={`DTR ${index + 1}`}
-                                      size="small"
-                                      sx={{
-                                        backgroundColor: dtrColor.bg,
-                                        color: dtrColor.color,
-                                        fontWeight: '600',
-                                        fontSize: '0.75rem'
-                                      }}
-                                    />
-                                    <Chip
-                                      label={dtr.status}
-                                      size="small"
-                                      color={dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected' ? 'success' : 'error'}
-                                      sx={{ 
-                                        textTransform: 'capitalize',
-                                        fontWeight: '500'
-                                      }}
-                                    />
-                                  </Box>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontFamily: 'monospace', 
-                                    fontSize: '0.8rem', 
-                                    color: 'text.secondary',
-                                    wordBreak: 'break-all',
-                                    backgroundColor: 'rgba(0,0,0,0.04)',
-                                    p: 1,
-                                    borderRadius: 1
-                                  }}
-                                >
-                                  {dtr.connectorUrl}
+                      <Box sx={{ mt: 2 }}>
+                        {/* DTR Carousel */}
+                        {currentResponse.dtrs.length > 0 && (
+                          <Box>
+                            {/* Carousel Navigation Header */}
+                            {currentResponse.dtrs.length > dtrItemsPerSlide && (
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                  {Math.floor(dtrCarouselIndex / dtrItemsPerSlide) + 1} of {Math.ceil(currentResponse.dtrs.length / dtrItemsPerSlide)} • {currentResponse.dtrs.length} total
                                 </Typography>
-                              </Box>
-                            </Box>
-                            
-                            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-                              <Box>
-                                <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                                  Asset ID:
-                                </Typography>
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
-                                    fontFamily: 'monospace', 
-                                    fontSize: '0.75rem',
-                                    wordBreak: 'break-all',
-                                    mt: 0.5
-                                  }}
-                                >
-                                  {dtr.assetId}
-                                </Typography>
-                              </Box>
-                              
-                              <Box>
-                                <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary' }}>
-                                  Shells Found:
-                                </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                  <Chip
-                                    label={dtr.shellsFound}
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <IconButton
                                     size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                    sx={{ fontSize: '0.75rem' }}
-                                  />
+                                    onClick={handleDtrPrevious}
+                                    disabled={dtrCarouselIndex === 0}
+                                    sx={{ 
+                                      color: dtrCarouselIndex === 0 ? 'text.disabled' : 'primary.main',
+                                      '&:hover': { backgroundColor: 'primary.light' }
+                                    }}
+                                  >
+                                    <ChevronLeftIcon />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    onClick={handleDtrNext}
+                                    disabled={dtrCarouselIndex >= currentResponse.dtrs.length - dtrItemsPerSlide}
+                                    sx={{ 
+                                      color: dtrCarouselIndex >= currentResponse.dtrs.length - dtrItemsPerSlide ? 'text.disabled' : 'primary.main',
+                                      '&:hover': { backgroundColor: 'primary.light' }
+                                    }}
+                                  >
+                                    <ChevronRightIcon />
+                                  </IconButton>
                                 </Box>
                               </Box>
+                            )}
+                            
+                            {/* DTR Cards Grid */}
+                            <Box sx={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: isSingleDtr ? '1fr' : (isMobile ? '1fr' : 'repeat(2, 1fr)'),
+                              gap: 1.5,
+                              overflow: 'hidden'
+                            }}>
+                              {currentResponse.dtrs
+                                .slice(dtrCarouselIndex, dtrCarouselIndex + dtrItemsPerSlide)
+                                .map((dtr, relativeIndex) => {
+                                  const actualIndex = dtrCarouselIndex + relativeIndex;
+                                  const dtrColor = getDtrColor(actualIndex);
+                                  return (
+                                    <Card
+                                      key={actualIndex}
+                                      sx={{
+                                        p: 2,
+                                        border: `2px solid ${dtrColor.border}`,
+                                        borderRadius: 2,
+                                        backgroundColor: dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected'
+                                          ? dtrColor.light 
+                                          : 'rgba(244, 67, 54, 0.02)',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                        transition: 'all 0.3s ease',
+                                        position: 'relative',
+                                        '&:hover': {
+                                          boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                          borderColor: dtrColor.bg.replace('0.9)', '1)'),
+                                          backgroundColor: dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected'
+                                            ? dtrColor.light.replace('0.1)', '0.15)')
+                                            : 'rgba(244, 67, 54, 0.05)'
+                                        }
+                                      }}
+                                    >
+                                      {/* DTR Header */}
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                        <Box sx={{ flex: 1 }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                            <Chip
+                                              label={`DTR ${actualIndex + 1}`}
+                                              size="small"
+                                              sx={{
+                                                backgroundColor: dtrColor.bg,
+                                                color: dtrColor.color,
+                                                fontWeight: '700',
+                                                fontSize: '0.75rem',
+                                                height: '24px',
+                                                borderRadius: '6px'
+                                              }}
+                                            />
+                                            <Chip
+                                              label={dtr.status}
+                                              size="small"
+                                              color={dtr.status === 'success' || dtr.status?.toLowerCase() === 'connected' ? 'success' : 'error'}
+                                              sx={{ 
+                                                textTransform: 'capitalize',
+                                                fontWeight: '600',
+                                                fontSize: '0.7rem',
+                                                height: '24px'
+                                              }}
+                                            />
+                                          </Box>
+                                        </Box>
+                                        
+                                        {/* Shells Found - Top Right Corner */}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                          <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary', fontSize: '0.65rem', mb: 0.3 }}>
+                                            Shells Found
+                                          </Typography>
+                                          <Chip
+                                            label={dtr.shellsFound}
+                                            size="small"
+                                            color="primary"
+                                            variant="outlined"
+                                            sx={{ 
+                                              fontSize: '0.65rem', 
+                                              height: '20px',
+                                              fontWeight: '600'
+                                            }}
+                                          />
+                                        </Box>
+                                      </Box>
+                                      
+                                      {/* Connector URL and Asset ID Grid */}
+                                      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 1.5, mb: 1.5 }}>
+                                        <Box>
+                                          <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary', fontSize: '0.65rem', mb: 0.3, display: 'block' }}>
+                                            Connector URL:
+                                          </Typography>
+                                          <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            backgroundColor: 'rgba(0,0,0,0.04)',
+                                            borderRadius: 1,
+                                            p: 1,
+                                            gap: 1
+                                          }}>
+                                            <Typography 
+                                              variant="body2" 
+                                              sx={{ 
+                                                fontFamily: 'monospace', 
+                                                fontSize: '0.7rem', 
+                                                color: 'text.secondary',
+                                                wordBreak: 'break-all',
+                                                lineHeight: 1.2,
+                                                flex: 1
+                                              }}
+                                            >
+                                              {dtr.connectorUrl}
+                                            </Typography>
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => handleCopyConnectorUrl(dtr.connectorUrl, actualIndex)}
+                                              sx={{ 
+                                                p: 0.5,
+                                                minWidth: 'auto',
+                                                '&:hover': { backgroundColor: 'rgba(0,0,0,0.1)' }
+                                              }}
+                                            >
+                                              {copiedConnectorUrl === `${actualIndex}-${dtr.connectorUrl}` ? 
+                                                <CheckIcon sx={{ fontSize: 14, color: 'success.main' }} /> : 
+                                                <ContentCopyIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                              }
+                                            </IconButton>
+                                          </Box>
+                                        </Box>
+                                        
+                                        <Box>
+                                          <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary', fontSize: '0.65rem', mb: 0.3, display: 'block' }}>
+                                            Asset ID:
+                                          </Typography>
+                                          <Box sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            backgroundColor: 'rgba(0,0,0,0.04)',
+                                            borderRadius: 1,
+                                            p: 1,
+                                            gap: 1
+                                          }}>
+                                            <Typography 
+                                              variant="body2" 
+                                              sx={{ 
+                                                fontFamily: 'monospace', 
+                                                fontSize: '0.65rem',
+                                                wordBreak: 'break-all',
+                                                lineHeight: 1.2,
+                                                flex: 1
+                                              }}
+                                            >
+                                              {dtr.assetId}
+                                            </Typography>
+                                            <IconButton
+                                              size="small"
+                                              onClick={() => handleCopyAssetId(dtr.assetId, actualIndex)}
+                                              sx={{ 
+                                                p: 0.5,
+                                                minWidth: 'auto',
+                                                '&:hover': { backgroundColor: 'rgba(0,0,0,0.1)' }
+                                              }}
+                                            >
+                                              {copiedAssetId === `${actualIndex}-${dtr.assetId}` ? 
+                                                <CheckIcon sx={{ fontSize: 14, color: 'success.main' }} /> : 
+                                                <ContentCopyIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                              }
+                                            </IconButton>
+                                          </Box>
+                                        </Box>
+                                      </Box>
+                                    </Card>
+                                  );
+                                })}
                             </Box>
-                          </Card>
-                        );
-                        })}
+                            
+                            {/* Carousel Indicators */}
+                            {currentResponse.dtrs.length > dtrItemsPerSlide && (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 0.5 }}>
+                                {Array.from({ length: Math.ceil(currentResponse.dtrs.length / dtrItemsPerSlide) }).map((_, pageIndex) => {
+                                  const isActive = Math.floor(dtrCarouselIndex / dtrItemsPerSlide) === pageIndex;
+                                  return (
+                                    <Box
+                                      key={pageIndex}
+                                      onClick={() => setDtrCarouselIndex(pageIndex * dtrItemsPerSlide)}
+                                      sx={{
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: '50%',
+                                        backgroundColor: isActive ? 'primary.main' : 'grey.300',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                          backgroundColor: isActive ? 'primary.dark' : 'grey.400'
+                                        }
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </Box>
+                            )}
+                          </Box>
+                        )}
                       </Box>
                     )}
                   </Box>
                 )}
 
                 {/* Results Display */}
-                <Box sx={{ 
-                  px: { xs: 2, md: 4 }, 
-                  flex: 1,
-                  overflow: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  height: '100%' // Ensure it takes full available height
-                }}>
-                  {partType === 'Serialized' ? (
-                    <>
-                      {serializedParts.length > 0 ? (
-                        <SerializedPartsTable parts={serializedParts} />
-                      ) : !isLoading && currentResponse ? (
-                        <Box textAlign="center" py={4}>
-                          <Typography color="textSecondary">No serialized parts found</Typography>
-                        </Box>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      {partTypeCards.length > 0 ? (
-                        <CatalogPartsDiscovery
-                          onClick={handleCardClick}
-                          onRegisterClick={handleRegisterClick}
-                          items={partTypeCards.map(card => ({
-                            id: card.id,
-                            manufacturerId: card.manufacturerId,
-                            manufacturerPartId: card.manufacturerPartId,
-                            name: card.name,
-                            category: card.category,
-                            dtrIndex: card.dtrIndex,
-                            shellId: card.id, // The shell ID is the same as the card ID (AAS ID)
-                            rawTwinData: card.rawTwinData
-                          }))}
-                          isLoading={isLoading}
-                        />
-                      ) : !isLoading && currentResponse ? (
-                        <Box textAlign="center" py={4}>
-                          <Typography color="textSecondary">No catalog parts found</Typography>
-                        </Box>
-                      ) : null}
-                    </>
-                  )}
-                </Box>
+                {searchMode === 'discovery' && (
+                  <Box sx={{ 
+                    px: { xs: 2, md: 4 }, 
+                    flex: 1,
+                    overflow: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%' // Ensure it takes full available height
+                  }}>
+                    {partType === 'Serialized' ? (
+                      <>
+                        {serializedParts.length > 0 ? (
+                          <SerializedPartsTable parts={serializedParts} onView={handleSerializedPartView} />
+                        ) : !isLoading && currentResponse ? (
+                          <Box textAlign="center" py={4}>
+                            <Typography color="textSecondary">No serialized parts found</Typography>
+                          </Box>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {partTypeCards.length > 0 ? (
+                          <CatalogPartsDiscovery
+                            onClick={handleCardClick}
+                            onRegisterClick={handleRegisterClick}
+                            items={partTypeCards.map(card => ({
+                              id: card.id,
+                              manufacturerId: card.manufacturerId,
+                              manufacturerPartId: card.manufacturerPartId,
+                              name: card.name,
+                              category: card.category,
+                              dtrIndex: card.dtrIndex,
+                              shellId: card.id, // The shell ID is the same as the card ID (AAS ID)
+                              rawTwinData: card.rawTwinData
+                            }))}
+                            isLoading={isLoading}
+                          />
+                        ) : !isLoading && currentResponse ? (
+                          <Box textAlign="center" py={4}>
+                            <Typography color="textSecondary">No catalog parts found</Typography>
+                          </Box>
+                        ) : null}
+                      </>
+                    )}
+                  </Box>
+                )}
 
 
                 {/* Pagination */}
-                {currentResponse && !isLoading && pageLimit > 0 && (
+                {currentResponse && !isLoading && pageLimit > 0 && searchMode === 'discovery' && (
                   <Box display="flex" justifyContent="center" alignItems="center" gap={2} sx={{ mt: 2, mb: 3, px: 2, flexShrink: 0 }}>
                     {paginator?.hasPrevious() && (
                       <Button

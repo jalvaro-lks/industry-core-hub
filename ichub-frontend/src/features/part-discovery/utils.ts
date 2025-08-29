@@ -90,6 +90,7 @@ export interface AASData {
   displayName: string[];
   globalAssetId: string;
   id: string;
+  idShort?: string; // Optional idShort field
   specificAssetIds: SpecificAssetId[];
   submodelDescriptors: SubmodelDescriptor[];
 }

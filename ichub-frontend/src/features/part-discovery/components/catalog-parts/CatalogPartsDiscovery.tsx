@@ -43,6 +43,7 @@ export interface AppContent {
   status?: StatusVariants;
   dtrIndex?: number; // DTR index for display
   shellId?: string; // Shell ID (AAS ID) for display
+  idShort?: string; // idShort for display
   rawTwinData?: AASData; // Raw AAS/shell data for download
 }
 
@@ -141,9 +142,6 @@ export const CatalogPartsDiscovery = ({
               sx={{
                 height: "220px"
               }}
-              onClick={() => {
-                onClick(productId);
-              }}
             >
               <Box className="custom-card-header">
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -199,7 +197,7 @@ export const CatalogPartsDiscovery = ({
                 <Typography variant="h5">
                   {name}
                 </Typography>
-                {item.shellId && (
+                {(item.idShort || item.shellId) && (
                   <Typography 
                     variant="caption" 
                     sx={{ 
@@ -217,7 +215,7 @@ export const CatalogPartsDiscovery = ({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {item.shellId}
+                    {item.idShort || item.shellId}
                   </Typography>
                 )}
                 <br></br>
@@ -226,7 +224,15 @@ export const CatalogPartsDiscovery = ({
                 </Typography>
               </Box>
               <Box className="custom-card-button-box">
-                <Button variant="contained" size="small" endIcon={<Launch />}>
+                <Button 
+                  variant="contained" 
+                  size="small" 
+                  endIcon={<Launch />}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card click
+                    onClick(productId);
+                  }}
+                >
                   View
                 </Button>
               </Box>
