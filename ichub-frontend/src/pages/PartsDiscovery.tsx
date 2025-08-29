@@ -1195,11 +1195,11 @@ const PartsDiscovery = () => {
                     mx: 'auto'
                   }}
                 >
-                  Discover and explore digital twin parts in the Catena-X network
+                  Discover and explore digital twin parts in a Tractus-X network
                 </Typography>
 
                 {/* Centered Search Card */}
-                <Card 
+                <Card
                   sx={{ 
                     p: 5,
                     background: 'rgba(255, 255, 255, 0.9)',

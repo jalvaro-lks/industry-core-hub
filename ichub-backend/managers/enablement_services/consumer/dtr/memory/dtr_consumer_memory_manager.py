@@ -902,6 +902,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             
             # Determine status and prepare descriptor
             descriptor = {
+                "submodelId": submodel_id,
                 "semanticId": semantic_id,
                 "semanticIdKeys": semantic_ids_base64,
                 "assetId": asset_id,
@@ -935,14 +936,252 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         response["submodelsFound"] = len(submodel_descriptors)
         
         return response
+
+    def discover_submodel(self, counter_party_id: str, id: str, governance: Optional[List[Dict]], submodel_id: str) -> Dict:
+        """
+        Retrieve a specific submodel data by submodel ID using direct API call for faster, exact lookup.
         
+        Args:
+            counter_party_id: The Business Partner Number
+            id: The shell ID to discover
+            governance: Optional list of policies for the submodel. If None, only submodel 
+                       descriptor is returned without actual data (status will be "governance_not_found")
+            submodel_id: The specific submodel ID to search for (required)
+            
+        Returns:
+            Dict: Response with submodel descriptor, data, and DTR info
+                - submodelDescriptor: Dict containing the submodel descriptor with status
+                - submodel: Dict containing the actual submodel data (if successfully fetched)
+                - dtr: DTR connection information
+        """
+        # Get DTRs for the counter party
+        dtrs = self.get_dtrs(counter_party_id)
+        if not dtrs:
+            return {
+                "status": "error",
+                "error": "No DTRs found for this counterPartyId",
+                "submodelDescriptor": {},
+                "submodel": {},
+                "dtr": None
+            }
+        
+        connector_service = self.connector_consumer_manager.connector_service
+        
+        # Try each DTR to find the submodel
+        for dtr in dtrs:
+            connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
+            asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
+            policies = dtr.get(self.DTR_POLICIES_KEY, [])
+            
+            filter_expression = connector_service.get_filter_expression(
+                key=self.dct_type_key, operator=self.operator, value=self.dct_type
+            )
+            
+            try:
+                # Establish connection
+                dataplane_url, access_token = connector_service.do_dsp(
+                    counter_party_id=counter_party_id,
+                    counter_party_address=connector_url,
+                    policies=policies,
+                    filter_expression=filter_expression
+                )
+                
+                # Direct API call to fetch specific submodel descriptor
+                import base64
+                encoded_shell_id = base64.b64encode(id.encode('utf-8')).decode('utf-8')
+                encoded_submodel_id = base64.b64encode(submodel_id.encode('utf-8')).decode('utf-8')
+                
+                from tractusx_sdk.dataspace.tools.http_tools import HttpTools
+                response_desc = HttpTools.do_get(
+                    url=f"{dataplane_url}/shell-descriptors/{encoded_shell_id}/submodel-descriptors/{encoded_submodel_id}",
+                    headers={"Authorization": f"{access_token}"}
+                )
+                
+                if response_desc.status_code == 200:
+                    submodel_descriptor = response_desc.json()
+                    
+                    # Extract information from submodel descriptor
+                    current_semantic_id = self._extract_semantic_id(submodel_descriptor)
+                    asset_id_sub, connector_url_sub, href = self._extract_submodel_endpoint_info(submodel_descriptor)
+                    semantic_ids_base64 = self._create_semantic_ids_base64(submodel_descriptor)
+                    
+                    # Determine status and prepare descriptor
+                    descriptor = {
+                        "submodelId": submodel_id,
+                        "semanticId": current_semantic_id,
+                        "semanticIdKeys": semantic_ids_base64,
+                        "assetId": asset_id_sub,
+                        "connectorUrl": connector_url_sub,
+                        "href": href,
+                        "status": self._determine_single_submodel_status(current_semantic_id, governance)
+                    }
+                    
+                    # Add error message if needed
+                    if descriptor["status"] == "error" and not current_semantic_id:
+                        descriptor["error"] = "No semantic ID found in submodel descriptor"
+                    
+                    response = {
+                        "submodelDescriptor": descriptor,
+                        "submodel": {},
+                        "dtr": {
+                            "connectorUrl": connector_url,
+                            "assetId": asset_id,
+                        }
+                    }
+                    
+                    # Fetch submodel data if governance policies are available
+                    if governance and descriptor["status"] == "pending":
+                        submodel_info = {
+                            "submodel_id": submodel_id,
+                            "semantic_id": current_semantic_id,
+                            "policies": governance,
+                            "assetId": asset_id_sub,
+                            "connectorUrl": connector_url_sub,
+                            "href": href
+                        }
+                        response = self._fetch_single_submodel_data(counter_party_id, submodel_info, response)
+                    
+                    return response
+                    
+            except Exception as e:
+                if self.logger and self.verbose:
+                    self.logger.debug(f"[DTR Manager] [{counter_party_id}] Failed to fetch submodel {submodel_id} from DTR {connector_url}: {e}")
+                continue
+        
+        return {
+            "status": "error",
+            "error": f"Submodel '{submodel_id}' not found in any DTR of this counterPartyId",
+            "submodelDescriptor": {},
+            "submodel": {},
+            "dtr": None
+        }
+
+    def discover_submodel_by_semantic_ids(self, counter_party_id: str, id: str, governance: Optional[List[Dict]], semantic_ids: List[Dict[str, str]]) -> Dict:
+        """
+        Retrieve submodel data by semantic IDs. May return multiple results.
+        
+        Searches for submodels by semantic IDs (requiring all to match).
+        
+        Args:
+            counter_party_id: The Business Partner Number
+            id: The shell ID to discover
+            governance: Optional list of policies for the submodel. If None, only submodel 
+                       descriptor is returned without actual data (status will be "governance_not_found")
+            semantic_ids: List of semantic ID objects to search for.
+                         Each object should have "type" and "value" keys.
+                         ALL semantic IDs must match for the submodel to be selected.
+                         Example: [{"type": "GlobalReference", "value": "urn:samm:..."}]
+            
+        Returns:
+            Dict: Response with submodel descriptors, data, and DTR info
+                - submodelDescriptors: Dict mapping submodel IDs to their descriptors with status
+                - submodels: Dict mapping submodel IDs to their actual data (if successfully fetched)
+                - submodelsFound: Int count of total submodels matching the semantic IDs
+                - dtr: DTR connection information
+        """
+        # Discover the shell
+        shell_result = self.discover_shell(counter_party_id, id)
+        if "shell_descriptor" not in shell_result:
+            return {
+                "status": "error",
+                "error": shell_result.get("error", "Failed to discover shell"),
+                "submodelDescriptors": {},
+                "submodels": {},
+                "submodelsFound": 0,
+                "dtr": None
+            }
+            
+        shell_descriptor = shell_result["shell_descriptor"]
+        dtr_info = shell_result.get("dtr", {})
+        submodel_descriptors = shell_descriptor.get("submodelDescriptors", [])
+        
+        response = {
+            "submodelDescriptors": {},
+            "submodels": {},
+            "submodelsFound": 0,
+            "dtr": dtr_info
+        }
+        
+        if not submodel_descriptors:
+            response["error"] = "No submodels found in shell"
+            return response
+            
+        # Process submodels and filter by semantic_ids (all must match)
+        submodels_to_fetch = []
+        found_submodels = []
+        
+        for submodel in submodel_descriptors:
+            current_submodel_id = submodel.get("id", "unknown")
+            current_semantic_id = self._extract_semantic_id(submodel)
+            current_all_semantic_ids = self._extract_all_semantic_ids(submodel)
+            
+            # Check semantic_ids (all must match)
+            if semantic_ids and self._semantic_ids_match(current_all_semantic_ids, semantic_ids):
+                # Found a matching submodel
+                found_submodels.append(submodel)
+                asset_id, connector_url, href = self._extract_submodel_endpoint_info(submodel)
+                semantic_ids_base64 = self._create_semantic_ids_base64(submodel)
+                
+                # Determine status and prepare descriptor
+                descriptor = {
+                    "submodelId": current_submodel_id,
+                    "semanticId": current_semantic_id,
+                    "semanticIdKeys": semantic_ids_base64,
+                    "assetId": asset_id,
+                    "connectorUrl": connector_url,
+                    "href": href,
+                    "status": self._determine_single_submodel_status(current_semantic_id, governance)
+                }
+                
+                # Add error message if needed
+                if descriptor["status"] == "error" and not current_semantic_id:
+                    descriptor["error"] = "No semantic ID found in submodel descriptor"
+                
+                response["submodelDescriptors"][current_submodel_id] = descriptor
+                
+                # Queue for data fetching if needed (only if governance is provided)
+                if governance and descriptor["status"] == "pending":
+                    submodels_to_fetch.append({
+                        "submodel_id": current_submodel_id,
+                        "semantic_id": current_semantic_id,
+                        "policies": governance,  # governance is a list for single submodel
+                        "assetId": asset_id,
+                        "connectorUrl": connector_url,
+                        "href": href
+                    })
+        
+        # Set count of found submodels
+        response["submodelsFound"] = len(found_submodels)
+        
+        # Check if any submodels were found
+        if not found_submodels:
+            semantic_criteria = []
+            for sem_id in semantic_ids:
+                semantic_criteria.append(f"{sem_id['type']}:{sem_id['value']}")
+            search_criteria = f"semantic_ids [{', '.join(semantic_criteria)}]"
+            response["error"] = f"No submodels found with {search_criteria} in shell"
+            return response
+        
+        # Fetch submodel data for multiple submodels (only if governance policies are available)
+        if submodels_to_fetch:
+            self._fetch_submodels_data(counter_party_id, submodels_to_fetch, response)
+        
+        return response
+    
     def _determine_submodel_status(self, semantic_id: Optional[str], governance: Optional[Dict[str, List[Dict]]]) -> str:
-        """Determine the status of a submodel based on its semantic ID and governance policies."""
+        """Determine the status of a submodel based on its semantic ID and governance policies (batch case)."""
+        if not semantic_id:
+            return "error"
+        elif not governance or semantic_id not in governance:
+            return "governance_not_found"
+        else:
+            return "pending"
+    
+    def _determine_single_submodel_status(self, semantic_id: Optional[str], governance: Optional[List[Dict]]) -> str:
+        """Determine the status of a submodel based on its semantic ID and governance policies (single submodel case)."""
         if not semantic_id:
             return "error"
         elif not governance:
-            return "governance_not_found"
-        elif semantic_id not in governance:
             return "governance_not_found"
         else:
             return "pending"
@@ -953,10 +1192,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         assets_to_negotiate = self._group_submodels_by_asset(submodels_to_fetch)
         
         # Negotiate assets in parallel
-        asset_tokens = self._negotiate_assets_parallel(counter_party_id, assets_to_negotiate)
+        asset_tokens, asset_errors = self._negotiate_assets_parallel(counter_party_id, assets_to_negotiate)
         
-        # Mark failed negotiations
-        self._mark_failed_negotiations(assets_to_negotiate, asset_tokens, response)
+        # Mark failed negotiations with specific error messages
+        self._mark_failed_negotiations(assets_to_negotiate, asset_tokens, asset_errors, response)
         
         # Fetch data in parallel
         self._fetch_data_parallel(submodels_to_fetch, asset_tokens, response)
@@ -964,6 +1203,45 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         # Mark any remaining pending items as failed
         self._mark_remaining_pending_as_failed(submodels_to_fetch, response)
     
+    def _fetch_single_submodel_data(self, counter_party_id: str, submodel_info: Dict, response: Dict) -> Dict:
+        """Fetch data for a single submodel and update the response."""
+        submodel_id = submodel_info["submodel_id"]
+        asset_id = submodel_info["assetId"]
+        connector_url = submodel_info["connectorUrl"]
+        href = submodel_info["href"]
+        policies = submodel_info["policies"]
+        
+        # Update response structure for single submodel
+        if asset_id == "unknown" or not asset_id:
+            response["submodelDescriptor"]["status"] = "error"
+            response["submodelDescriptor"]["error"] = "Invalid asset ID"
+            return response
+        
+        try:
+            # Negotiate access to the asset
+            access_token = self._negotiate_asset(counter_party_id, asset_id, connector_url, policies)
+            
+            if not access_token:
+                response["submodelDescriptor"]["status"] = "error"
+                response["submodelDescriptor"]["error"] = "Asset negotiation failed. You may not have enough access permissions to this submodel."
+                return response
+            
+            # Fetch the submodel data
+            data = self._fetch_submodel_data_with_token(submodel_id, href, access_token)
+            
+            if data:
+                response["submodel"] = data
+                response["submodelDescriptor"]["status"] = "success"
+            else:
+                response["submodelDescriptor"]["status"] = "error"
+                response["submodelDescriptor"]["error"] = "Data fetch returned no data"
+                
+        except Exception as e:
+            response["submodelDescriptor"]["status"] = "error"
+            response["submodelDescriptor"]["error"] = f"Asset negotiation failed. You may not have enough access permissions to this submodel. {str(e)}"
+            if self.logger and self.verbose:
+                self.logger.error(f"[DTR Manager] Error fetching single submodel {submodel_id}: {e}")
+        return response
     def _group_submodels_by_asset(self, submodels_to_fetch: List[Dict]) -> Dict[str, Dict]:
         """Group submodels by asset_id for optimization."""
         assets_to_negotiate = {}
@@ -979,11 +1257,12 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 assets_to_negotiate[asset_id]["submodels"].append(item)
         return assets_to_negotiate
     
-    def _negotiate_assets_parallel(self, counter_party_id: str, assets_to_negotiate: Dict[str, Dict]) -> Dict[str, str]:
-        """Negotiate assets in parallel and return successful tokens."""
+    def _negotiate_assets_parallel(self, counter_party_id: str, assets_to_negotiate: Dict[str, Dict]) -> tuple[Dict[str, str], Dict[str, str]]:
+        """Negotiate assets in parallel and return successful tokens and error messages."""
         asset_tokens = {}
+        asset_errors = {}
         if not assets_to_negotiate:
-            return asset_tokens
+            return asset_tokens, asset_errors
             
         with ThreadPoolExecutor(max_workers=min(len(assets_to_negotiate), 10)) as executor:
             future_to_asset = {
@@ -1003,20 +1282,29 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     token = future.result()
                     if token:
                         asset_tokens[asset_id] = token
+                    else:
+                        asset_errors[asset_id] = "Asset negotiation failed. You may not have enough access permissions to this submodel."
                 except Exception as e:
+                    error_message = str(e)
+                    # Concatenate the specific error with the generic message
+                    combined_message = f"Asset negotiation failed. You may not have enough access permissions to this submodel. {error_message}"
+                    asset_errors[asset_id] = combined_message
                     if self.logger and self.verbose:
                         self.logger.error(f"[DTR Manager] [{counter_party_id}] Error negotiating asset {asset_id}: {e}")
         
-        return asset_tokens
+        return asset_tokens, asset_errors
     
-    def _mark_failed_negotiations(self, assets_to_negotiate: Dict[str, Dict], asset_tokens: Dict[str, str], response: Dict) -> None:
-        """Mark submodels with failed asset negotiations."""
+    def _mark_failed_negotiations(self, assets_to_negotiate: Dict[str, Dict], asset_tokens: Dict[str, str], asset_errors: Dict[str, str], response: Dict) -> None:
+        """Mark submodels with failed asset negotiations and include specific error messages."""
         failed_assets = set(assets_to_negotiate.keys()) - set(asset_tokens.keys())
         for asset_id in failed_assets:
+            # Get the specific error message for this asset, or use a default
+            error_message = asset_errors.get(asset_id, "Asset negotiation failed. You may not have enough access permissions to this submodel.")
+            
             for submodel_item in assets_to_negotiate[asset_id]["submodels"]:
                 submodel_id = submodel_item["submodel_id"]
                 response["submodelDescriptors"][submodel_id]["status"] = "error"
-                response["submodelDescriptors"][submodel_id]["error"] = "Asset negotiation failed"
+                response["submodelDescriptors"][submodel_id]["error"] = error_message
     
     def _fetch_data_parallel(self, submodels_to_fetch: List[Dict], asset_tokens: Dict[str, str], response: Dict) -> None:
         """Fetch submodel data in parallel."""
@@ -1064,7 +1352,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 response["submodelDescriptors"][submodel_id]["error"] = "Processing was not completed"
 
     def _extract_semantic_id(self, submodel_descriptor: Dict) -> Optional[str]:
-        """Extract semantic ID from submodel descriptor."""
+        """Extract semantic ID value from submodel descriptor."""
         semantic_id = submodel_descriptor.get("semanticId", {})
         if isinstance(semantic_id, dict):
             keys = semantic_id.get("keys", [])
@@ -1073,6 +1361,48 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 if isinstance(first_key, dict):
                     return first_key.get("value")
         return None
+    
+    def _extract_semantic_id_with_type(self, submodel_descriptor: Dict) -> Optional[Dict[str, str]]:
+        """Extract semantic ID with both type and value from submodel descriptor."""
+        semantic_id = submodel_descriptor.get("semanticId", {})
+        if isinstance(semantic_id, dict):
+            keys = semantic_id.get("keys", [])
+            if keys and isinstance(keys, list) and len(keys) > 0:
+                first_key = keys[0]
+                if isinstance(first_key, dict):
+                    return {
+                        "type": first_key.get("type"),
+                        "value": first_key.get("value")
+                    }
+        return None
+    
+    def _extract_all_semantic_ids(self, submodel_descriptor: Dict) -> List[Dict[str, str]]:
+        """Extract all semantic IDs with both type and value from submodel descriptor."""
+        semantic_id = submodel_descriptor.get("semanticId", {})
+        semantic_ids = []
+        
+        if isinstance(semantic_id, dict):
+            keys = semantic_id.get("keys", [])
+            if keys and isinstance(keys, list):
+                for key in keys:
+                    if isinstance(key, dict) and key.get("type") and key.get("value"):
+                        semantic_ids.append({
+                            "type": key.get("type"),
+                            "value": key.get("value")
+                        })
+        return semantic_ids
+    
+    def _semantic_ids_match(self, submodel_semantic_ids: List[Dict[str, str]], target_semantic_ids: List[Dict[str, str]]) -> bool:
+        """Check if all target semantic IDs are present in the submodel semantic IDs."""
+        if not target_semantic_ids:
+            return False
+        
+        # Convert to sets of tuples for easier comparison
+        submodel_set = {(sid["type"], sid["value"]) for sid in submodel_semantic_ids}
+        target_set = {(sid["type"], sid["value"]) for sid in target_semantic_ids}
+        
+        # All target semantic IDs must be present in the submodel
+        return target_set.issubset(submodel_set)
         
     def _extract_submodel_endpoint_info(self, submodel: Dict) -> tuple:
         """Extract asset_id, connector_url, and href from submodel descriptor."""
@@ -1136,19 +1466,14 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
 
     def _negotiate_asset(self, counter_party_id: str, asset_id: str, dsp_endpoint_url: str, policies: List[Dict]) -> Optional[str]:
         """Negotiate access to a single asset and return the access token."""
-        try:
-            connector_service = self.connector_consumer_manager.connector_service
-            dataplane_url, access_token = connector_service.do_dsp_by_asset_id(
-                counter_party_id=counter_party_id,
-                counter_party_address=dsp_endpoint_url,
-                asset_id=asset_id,
-                policies=policies
-            )
-            return access_token
-        except Exception as e:
-            if self.logger and self.verbose:
-                self.logger.error(f"[DTR Manager] [{counter_party_id}] Error negotiating asset {asset_id}: {e}")
-            return None
+        connector_service = self.connector_consumer_manager.connector_service
+        dataplane_url, access_token = connector_service.do_dsp_by_asset_id(
+            counter_party_id=counter_party_id,
+            counter_party_address=dsp_endpoint_url,
+            asset_id=asset_id,
+            policies=policies
+        )
+        return access_token
             
     def _fetch_submodel_data_with_token(self, submodel_id: str, href: str, access_token: str) -> Optional[Dict]:
         """Fetch submodel data using a pre-negotiated access token."""

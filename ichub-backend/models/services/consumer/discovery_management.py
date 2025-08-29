@@ -51,3 +51,21 @@ class DiscoverSubmodelsDataRequest(DiscoverShellRequest):
         alias="governance", 
         description="Mapping of semantic IDs to their acceptable policies for submodel data retrieval."
     )
+
+class DiscoverSubmodelDataRequest(DiscoverShellRequest):
+    submodel_id: str = Field(None, alias="submodelId", description="The ID of the submodel.")
+    governance: List[Dict[str, Any]] = Field(
+        None, 
+        alias="governance", 
+        description="Policies to be accepted for this semantic ID."
+    )
+
+class DiscoverSubmodelSemanticIdDataRequest(DiscoverShellRequest):
+    semantic_ids: Optional[List[Dict[str, str]]] = Field(None, alias="semanticIds", description="The semantic IDs of the submodel.")
+    semantic_id: Optional[str] = Field(None, alias="semanticId", description="The semantic ID of the submodel.")
+
+    governance: List[Dict[str, Any]] = Field(
+        None, 
+        alias="governance", 
+        description="Policies to be accepted for this semantic ID."
+    )

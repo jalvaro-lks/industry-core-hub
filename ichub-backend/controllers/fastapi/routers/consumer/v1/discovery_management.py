@@ -35,7 +35,9 @@ from models.services.consumer.discovery_management import (
     DiscoverShellsRequest,
     DiscoverShellRequest,
     DiscoveryWithPaginationRequest,
-    DiscoverSubmodelsDataRequest
+    DiscoverSubmodelsDataRequest,
+    DiscoverSubmodelDataRequest,
+    DiscoverSubmodelSemanticIdDataRequest
 )
 
 from typing import Optional, List
@@ -198,4 +200,223 @@ async def discover_submodels(search_request: DiscoverSubmodelsDataRequest) -> Re
         media_type="application/json",
         status_code=200
     )
+    
+@router.post("/shell/submodel")
+async def discover_submodel(search_request: DiscoverSubmodelDataRequest) -> Response:
+    """
+    Discover a specific submodel by exact submodel ID using direct API call for optimal performance.
+    
+    This endpoint uses the DTR API direct endpoint /shell-descriptors/:base64aasid/submodel-descriptors/:base64submodelid
+    for fast, exact lookup of a specific submodel when you know the exact submodel ID.
+    
+    Args:
+        search_request: Request containing:
+            - counter_party_id (BPN): The Business Partner Number
+            - id: The shell ID to discover
+            - submodel_id: The exact submodel ID to retrieve (required)
+            - governance: List of policy dictionaries for the target submodel
+        
+    Returns:
+        Response containing single submodel descriptor and data
+        
+    Example governance structure:
+    [
+        {
+            "odrl:permission": {
+                "odrl:action": {"@id": "odrl:use"},
+                "odrl:constraint": {
+                    "odrl:and": [
+                        {
+                            "odrl:leftOperand": {"@id": "cx-policy:FrameworkAgreement"},
+                            "odrl:operator": {"@id": "odrl:eq"},
+                            "odrl:rightOperand": "DataExchangeGovernance:1.0"
+                        }
+                    ]
+                }
+            },
+            "odrl:prohibition": [],
+            "odrl:obligation": []
+        }
+    ]
+    """
+    
+    # Validate that submodel_id is provided
+    if not search_request.submodel_id:
+        return Response(
+            content=json.dumps({
+                "error": "submodelId is required for direct submodel lookup",
+                "status": "error"
+            }, indent=2),
+            media_type="application/json",
+            status_code=400
+        )
+    
+    try:
+        # Call the DTR manager's direct discover_submodel method
+        result = dtr_manager.consumer.discover_submodel(
+            counter_party_id=search_request.counter_party_id,
+            id=search_request.id,
+            submodel_id=search_request.submodel_id,
+            governance=search_request.governance
+        )
+        
+        # Return the response as JSON
+        return Response(
+            content=json.dumps(result, indent=2),
+            media_type="application/json",
+            status_code=200
+        )
+        
+    except Exception as e:
+        # Forward the original error message from connector service
+        error_message = str(e)
+        status_code = 500
+        
+        # Check for specific connector service errors to provide better status codes
+        if "No valid asset and policy allowed" in error_message:
+            status_code = 403
+        elif "negotiation failed" in error_message.lower():
+            status_code = 403
+        elif "not found" in error_message.lower():
+            status_code = 404
+        elif "timeout" in error_message.lower():
+            status_code = 504
+            
+        return Response(
+            content=json.dumps({
+                "error": error_message,
+                "status": "error",
+                "endpoint": "/discover/shell/submodel"
+            }, indent=2),
+            media_type="application/json",
+            status_code=status_code
+        )
+
+
+@router.post("/shell/submodels/semanticId")
+async def discover_submodels_by_semantic_id(search_request: DiscoverSubmodelSemanticIdDataRequest) -> Response:
+    """
+    Discover submodels by semantic IDs. Searches through all submodels to find matches.
+    
+    This endpoint discovers the shell and searches through all submodels to find those
+    that match the provided semantic IDs (requiring all to match). May return multiple results.
+    
+    Args:
+        search_request: Request containing:
+            - counter_party_id (BPN): The Business Partner Number
+            - id: The shell ID to discover
+            - semantic_ids: List of semantic ID objects to search for
+            - semantic_id: Single semantic ID (converted to semantic_ids format)
+            - governance: List of policy dictionaries for target submodels
+        
+    Returns:
+        Response containing multiple submodel descriptors and data
+        
+    Example semantic_id format:
+    "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
+    
+    Example semantic_ids format:
+    [
+        {"type": "GlobalReference", "value": "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"},
+        {"type": "DataElement", "value": "urn:samm:io.catenax.another_aspect:1.0.0#AnotherAspect"}
+    ]
+    """
+    
+    # Normalize semantic ID input:
+    # If semantic_ids is provided, use it directly and ignore semantic_id
+    # If semantic_id is provided (and semantic_ids is None), convert it to semantic_ids format with "GlobalReference" type
+    normalized_semantic_ids = None
+    if search_request.semantic_ids is not None:
+        # Validate semantic_ids format before using
+        for i, semantic_id in enumerate(search_request.semantic_ids):
+            if not isinstance(semantic_id, dict):
+                return Response(
+                    content=json.dumps({
+                        "error": f"Invalid semantic ID format at index {i}: must be an object with 'type' and 'value' keys",
+                        "status": "error"
+                    }, indent=2),
+                    media_type="application/json",
+                    status_code=400
+                )
+            
+            if "type" not in semantic_id or "value" not in semantic_id:
+                return Response(
+                    content=json.dumps({
+                        "error": f"Invalid semantic ID format at index {i}: missing required 'type' or 'value' key",
+                        "status": "error"
+                    }, indent=2),
+                    media_type="application/json",
+                    status_code=400
+                )
+            
+            if not isinstance(semantic_id["type"], str) or not isinstance(semantic_id["value"], str):
+                return Response(
+                    content=json.dumps({
+                        "error": f"Invalid semantic ID format at index {i}: 'type' and 'value' must be strings",
+                        "status": "error"
+                    }, indent=2),
+                    media_type="application/json",
+                    status_code=400
+                )
+        
+        # Use semantic_ids directly, ignore semantic_id field
+        normalized_semantic_ids = search_request.semantic_ids
+    elif search_request.semantic_id is not None:
+        # Convert semantic_id to semantic_ids format with default "GlobalReference" type
+        normalized_semantic_ids = [
+            {
+                "type": "GlobalReference",
+                "value": search_request.semantic_id
+            }
+        ]
+    else:
+        return Response(
+            content=json.dumps({
+                "error": "Either 'semanticIds' or 'semanticId' must be provided for semantic ID search",
+                "status": "error"
+            }, indent=2),
+            media_type="application/json",
+            status_code=400
+        )
+    
+    try:
+        # Call the DTR manager's semantic search method
+        result = dtr_manager.consumer.discover_submodel_by_semantic_ids(
+            counter_party_id=search_request.counter_party_id,
+            id=search_request.id,
+            semantic_ids=normalized_semantic_ids,
+            governance=search_request.governance
+        )
+        
+        # Return the response as JSON
+        return Response(
+            content=json.dumps(result, indent=2),
+            media_type="application/json",
+            status_code=200
+        )
+        
+    except Exception as e:
+        # Forward the original error message from connector service
+        error_message = str(e)
+        status_code = 500
+        
+        # Check for specific connector service errors to provide better status codes
+        if "No valid asset and policy allowed" in error_message:
+            status_code = 403
+        elif "negotiation failed" in error_message.lower():
+            status_code = 403
+        elif "not found" in error_message.lower():
+            status_code = 404
+        elif "timeout" in error_message.lower():
+            status_code = 504
+            
+        return Response(
+            content=json.dumps({
+                "error": error_message,
+                "status": "error",
+                "endpoint": "/discover/shell/submodels/semanticId"
+            }, indent=2),
+            media_type="application/json",
+            status_code=status_code
+        )
     

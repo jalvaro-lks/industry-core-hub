@@ -318,6 +318,76 @@ class BaseDtrConsumerManager(ABC):
         """
         pass
     
+    @abstractmethod
+    def discover_submodel(self, counter_party_id: str, id: str, governance: List[Dict], submodel_id: str) -> Dict:
+        """
+        Discover a specific submodel by ID using direct API call for faster, exact lookup.
+        
+        This method uses the DTR API endpoint /shell-descriptors/:base64aasid/submodel-descriptors/:base64submodelid
+        for direct, efficient lookup of a specific submodel.
+        
+        Args:
+            counter_party_id (str): The Business Partner Number (BPN)
+            id (str): The shell ID to discover
+            governance (List[Dict]): List of policy dictionaries containing ODRL policy definitions
+                for the target submodel.
+            submodel_id (str): The specific submodel ID to search for (required)
+            
+        Returns:
+            Dict: Response containing:
+                - submodelDescriptor: Dict containing the submodel descriptor with status
+                - submodel: Dict containing the actual submodel data (if successfully fetched)
+                - dtr: Dict containing DTR connection information (connector_url, asset_id)
+        """
+        pass
+    
+    @abstractmethod
+    def discover_submodel_by_semantic_ids(self, counter_party_id: str, id: str, governance: List[Dict], semantic_ids: List[Dict[str, str]]) -> Dict:
+        """
+        Discover submodels by semantic IDs. May return multiple results.
+        
+        This method discovers the shell and searches through all submodels to find those
+        that match the provided semantic IDs (requiring all to match).
+        
+        Args:
+            counter_party_id (str): The Business Partner Number (BPN)
+            id (str): The shell ID to discover
+            governance (List[Dict]): List of policy dictionaries containing ODRL policy definitions
+                for the target submodels.
+            semantic_ids (List[Dict[str, str]]): List of semantic ID objects to search for.
+                Each object should have "type" and "value" keys.
+                ALL semantic IDs must match for the submodel to be selected.
+                Example: [{"type": "GlobalReference", "value": "urn:samm:..."}]
+            
+        Returns:
+            Dict: Response containing:
+                - submodelDescriptors: Dict mapping submodel IDs to their descriptors with status
+                - submodels: Dict mapping submodel IDs to their actual data (if successfully fetched)
+                - submodelsFound: Int count of total submodels matching the semantic IDs
+                - dtr: Dict containing DTR connection information (connector_url, asset_id)
+                
+        Example governance structure:
+        [
+            {
+                "odrl:permission": {
+                    "odrl:action": {"@id": "odrl:use"},
+                    "odrl:constraint": {
+                        "odrl:and": [
+                            {
+                                "odrl:leftOperand": {"@id": "cx-policy:FrameworkAgreement"},
+                                "odrl:operator": {"@id": "odrl:eq"},
+                                "odrl:rightOperand": "DataExchangeGovernance:1.0"
+                            }
+                        ]
+                    }
+                },
+                "odrl:prohibition": [],
+                "odrl:obligation": []
+            }
+        ]
+        """
+        pass
+    
     def _is_cache_expired(self, bpn: str) -> bool:
         """
         Helper method to check if cache for a specific BPN has expired.
