@@ -27,6 +27,7 @@
   background-image: 
     linear-gradient(rgba($brand-dark, 0.3), rgba($brand-dark, 0.6)), 
     url('/stars-background.png') !important;
+  min-height: 100vh;
 }
 
 .more-options-menu{
@@ -39,7 +40,7 @@
 }
 
 .sidebarArea {
-  z-index: 100000;
+  z-index: 1000;
 }
 
 .parts-discovery-sidebar {
@@ -52,6 +53,9 @@
 /* Content area styling */
 .contentArea {
   padding: 20px;
+  min-height: calc(100vh - 68.8px); /* Full height minus header */
+  display: flex;
+  flex-direction: column;
 }
 
 .productWrapper {

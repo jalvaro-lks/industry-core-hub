@@ -1792,7 +1792,7 @@ const PartsDiscovery = () => {
                             letterSpacing: '0.02em'
                           }}
                         >
-                          {partType === 'Catalog' ? 'Catalog Parts' : 'Part Instances'}
+                          {partType === 'Catalog' ? 'Catalog Parts' : 'Serialized Parts'}
                         </Typography>
                       </Box>
 
