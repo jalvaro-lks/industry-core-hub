@@ -755,7 +755,8 @@ const PartsDiscovery = () => {
 
   return (
     <Box sx={{ 
-      height: '100vh', 
+      height: '100%', 
+      minHeight: 'calc(100vh - 68.8px)', // Account for header height
       display: 'flex', 
       flexDirection: 'column',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
@@ -836,7 +837,7 @@ const PartsDiscovery = () => {
       <Box sx={{ 
         flex: 1, 
         display: 'flex',
-        height: hasSearched ? 'calc(100vh - 72px)' : '100vh',
+        height: hasSearched ? 'calc(100% - 72px)' : '100%',
         overflow: 'hidden'
       }}>
         {/* Search Mode Toggle */}
