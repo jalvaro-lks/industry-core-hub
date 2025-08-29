@@ -1570,13 +1570,19 @@ const PartsDiscovery = () => {
               }}>
                 {/* Single Twin Mode Results - Outside Results Display to avoid padding inheritance */}
                 {singleTwinResult && searchMode === 'single' && (
-                  <SingleTwinResult singleTwinResult={singleTwinResult} />
+                  <SingleTwinResult 
+                    counterPartyId={selectedPartner?.bpnl || ''} 
+                    singleTwinResult={singleTwinResult} 
+                  />
                 )}
                 
                 {/* View Twin Mode Results - For viewing twins from catalog */}
                 {viewingTwin && searchMode === 'view' && (
                   <Box sx={{ width: '100%', p: 2 }}>
-                    <SingleTwinResult singleTwinResult={viewingTwin} />
+                    <SingleTwinResult 
+                      counterPartyId={selectedPartner?.bpnl || ''} 
+                      singleTwinResult={viewingTwin} 
+                    />
                   </Box>
                 )}
                 {/* Discovery Mode Results */}

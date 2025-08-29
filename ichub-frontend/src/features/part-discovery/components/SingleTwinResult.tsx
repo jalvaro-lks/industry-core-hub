@@ -47,8 +47,10 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import SecurityIcon from '@mui/icons-material/Security';
 import LockIcon from '@mui/icons-material/Lock';
+import { SubmodelViewer } from './SubmodelViewer';
 
 interface SingleTwinResultProps {
+  counterPartyId: string;
   singleTwinResult: {
     shell_descriptor: {
       id: string;
@@ -96,11 +98,13 @@ interface SingleTwinResultProps {
   };
 }
 
-export const SingleTwinResult: React.FC<SingleTwinResultProps> = ({ singleTwinResult }) => {
+export const SingleTwinResult: React.FC<SingleTwinResultProps> = ({ counterPartyId, singleTwinResult }) => {
   const [dtrInfoOpen, setDtrInfoOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [allSubmodelsOpen, setAllSubmodelsOpen] = useState(false);
+  const [submodelViewerOpen, setSubmodelViewerOpen] = useState(false);
+  const [selectedSubmodel, setSelectedSubmodel] = useState<SingleTwinResultProps['singleTwinResult']['shell_descriptor']['submodelDescriptors'][0] | null>(null);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -325,8 +329,8 @@ export const SingleTwinResult: React.FC<SingleTwinResultProps> = ({ singleTwinRe
   };
 
   const handleRetrieveSubmodel = (submodel: SingleTwinResultProps['singleTwinResult']['shell_descriptor']['submodelDescriptors'][0]) => {
-    // TODO: Implement retrieve specific submodel functionality
-    console.log('Retrieve submodel:', submodel);
+    setSelectedSubmodel(submodel);
+    setSubmodelViewerOpen(true);
   };
 
   return (
@@ -1486,6 +1490,18 @@ export const SingleTwinResult: React.FC<SingleTwinResultProps> = ({ singleTwinRe
           }
         }}
       />
+
+      {/* Submodel Viewer Dialog */}
+      {selectedSubmodel && (
+        <SubmodelViewer
+          open={submodelViewerOpen}
+          onClose={() => setSubmodelViewerOpen(false)}
+          counterPartyId={counterPartyId}
+          shellId={singleTwinResult.shell_descriptor.id}
+          dtrConnectorUrl={singleTwinResult.dtr?.connectorUrl}
+          submodel={selectedSubmodel}
+        />
+      )}
     </Box>
   );
 };

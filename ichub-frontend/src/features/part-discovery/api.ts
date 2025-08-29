@@ -486,3 +486,144 @@ export class ShellDiscoveryPaginator {
     };
   }
 }
+
+// Submodel Discovery API Functions
+
+export interface SubmodelDiscoveryRequest {
+  counterPartyId: string;
+  id: string;
+  submodelId: string;
+  governance: Array<{
+    "odrl:permission": {
+      "odrl:action": {
+        "@id": string;
+      };
+      "odrl:constraint": {
+        "odrl:and": Array<{
+          "odrl:leftOperand": {
+            "@id": string;
+          };
+          "odrl:operator": {
+            "@id": string;
+          };
+          "odrl:rightOperand": string;
+        }>;
+      };
+    };
+    "odrl:prohibition": unknown[];
+    "odrl:obligation": unknown[];
+  }>;
+}
+
+export interface SubmodelDiscoveryResponse {
+  submodelDescriptor: {
+    submodelId: string;
+    semanticId: string;
+    semanticIdKeys: string;
+    assetId: string;
+    connectorUrl: string;
+    href: string;
+    status: string;
+    error?: string;
+  };
+  submodel: Record<string, unknown>;
+  dtr: {
+    connectorUrl: string;
+    assetId: string;
+  } | null;
+  status?: string;
+  error?: string;
+}
+
+/**
+ * Default governance policy for PartTypeInformation semantic ID
+ */
+const getDefaultGovernancePolicy = () => ([
+  {
+    "odrl:permission": {
+      "odrl:action": {
+        "@id": "odrl:use"
+      },
+      "odrl:constraint": {
+        "odrl:and": [
+          {
+            "odrl:leftOperand": {
+              "@id": "cx-policy:FrameworkAgreement"
+            },
+            "odrl:operator": {
+              "@id": "odrl:eq"
+            },
+            "odrl:rightOperand": "DataExchangeGovernance:1.0"
+          },
+          {
+            "odrl:leftOperand": {
+              "@id": "cx-policy:Membership"
+            },
+            "odrl:operator": {
+              "@id": "odrl:eq"
+            },
+            "odrl:rightOperand": "active"
+          },
+          {
+            "odrl:leftOperand": {
+              "@id": "cx-policy:UsagePurpose"
+            },
+            "odrl:operator": {
+              "@id": "odrl:eq"
+            },
+            "odrl:rightOperand": "cx.core.industrycore:1"
+          }
+        ]
+      }
+    },
+    "odrl:prohibition": [],
+    "odrl:obligation": []
+  }
+]);
+
+/**
+ * Get governance policy based on semantic ID
+ */
+const getGovernancePolicyForSemanticId = (semanticId: string) => {
+  // Currently only PartTypeInformation requires specific policy
+  if (semanticId === "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation") {
+    return getDefaultGovernancePolicy();
+  }
+  
+  // For future extensibility, add more semantic ID policies here
+  // Example:
+  // if (semanticId === "other:semantic:id") {
+  //   return getOtherPolicy();
+  // }
+  
+  // Default governance policy for unknown semantic IDs
+  return getDefaultGovernancePolicy();
+};
+
+/**
+ * Fetch a specific submodel data
+ */
+export const fetchSubmodel = async (
+  counterPartyId: string,
+  shellId: string,
+  submodelId: string,
+  semanticId?: string
+): Promise<SubmodelDiscoveryResponse> => {
+  const governance = semanticId ? 
+    getGovernancePolicyForSemanticId(semanticId) : 
+    getDefaultGovernancePolicy();
+
+  const request: SubmodelDiscoveryRequest = {
+    counterPartyId,
+    id: shellId,
+    submodelId,
+    governance
+  };
+
+  const response = await axios.post<SubmodelDiscoveryResponse>(
+    `${backendUrl}/discover/shell/submodel`,
+    request
+  );
+  
+  return response.data;
+};
