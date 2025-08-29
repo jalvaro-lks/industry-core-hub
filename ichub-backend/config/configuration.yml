@@ -20,25 +20,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-participantId: "<bpnl-partner-id>"
-hostname: "https://ichub-backend.url"
-
-discovery:
-  discovery_finder:
-    url: "https://<discovery-finder-url>/api/v1.0/administration/connectors/discovery/search"
-  connector_discovery:
-    key: "bpn"
-  oauth:
-    url: "https://<central-idp-url>/auth/"
-    realm: "<realm>"
-    client_id: "<client-id>"
-    client_secret: "<client-secret>"
+hostname: "<<YOUR_BACKEND_HOSTNAME>>"
 
 authorization:
   enabled: true
   apiKey: 
     key: "X-Api-Key"
-    value: <<example>>
+    value: <<YOUR_API_KEY>>
 agreements:
   - semanticid: urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation
     usage:
@@ -95,59 +83,91 @@ cors:
     - "PATCH"
   allow_headers:
     - "*"
-edc:
-  controlplane:
-    hostname: https://edc-control-plane.int.catena-x.net
-    apikeyheader: X-Api-Key
-    apikey: <api-key>
-    managementpath: /management
-    protocolPath: /api/v1/dsp
-    catalogPath: /catalog
-  dataplane:
-    hostname: https://edc-dataplane.int.catena-x.net
-    publicPath: "/api/public"
-digitalTwinRegistry:
-  hostname: https://digital-twin-registry.url
-  apiPath: /api/v3
-  uri: ""
-  asset_config:
-    dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
-    # existing_asset_id: <registry-asset> # -- In case an existing DTR asset wants to be used specify here the id, otherwise it will be created based on the url, if it not exists it will be created
-  lookup:
-    uri: ""
-  policy:
-    usage:
-      context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          LogicalConstraint: odrl:and
-          constraints:
-            - leftOperand: cx-policy:FrameworkAgreement
-              operator: odrl:eq
-              rightOperand: DataExchangeGovernance:1.0
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-            - leftOperand: cx-policy:UsagePurpose
-              operator: odrl:eq
-              rightOperand: cx.core.digitalTwinRegistry:1
-      prohibition: []
-      obligation: []
-    access:
-      context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-      prohibition: []
-      obligation: []
 
-submodel_dispatcher:
-  path: "./data/submodels"
-  apiPath: /submodel-dispatcher
+consumer:
+  discovery:
+    discovery_finder:
+      url: "<<DISCOVERY_FINDER_URL>>"
+    connector_discovery:
+      key: "bpn"
+    oauth:
+      url: "<<OAUTH_URL>>"
+      realm: "<<OAUTH_REALM>>"
+      client_id: "<<OAUTH_CLIENT_ID>>"
+      client_secret: "<<OAUTH_CLIENT_SECRET>>"
+    digitalTwinRegistry:
+      dct_type_key: "dct:type"
+      dct_type_filter:
+        operandLeft: "'http://purl.org/dc/terms/type'.'@id'"
+        operator: "="
+        operandRight: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+  connector:
+    dataspace:
+      version: "jupiter"
+    controlplane:
+      hostname: <<CONSUMER_CONTROLPLANE_HOSTNAME>>
+      apiKeyHeader: X-Api-Key
+      apiKey: <<CONSUMER_CONTROLPLANE_API_KEY>>
+      managementPath: /management
+      protocolPath: /api/v1/dsp
+      catalogPath: /catalog
+
+provider:
+  connector: 
+    dataspace:
+      version: "jupiter"
+    controlplane:
+      hostname: <<PROVIDER_CONTROLPLANE_HOSTNAME>>
+      apiKeyHeader: X-Api-Key
+      apiKey: <<PROVIDER_CONTROLPLANE_API_KEY>>
+      managementPath: /management
+      protocolPath: /api/v1/dsp
+    dataplane:
+      hostname: <<PROVIDER_DATAPLANE_HOSTNAME>>
+      publicPath: "/api/public"
+
+  digitalTwinRegistry:
+    hostname: https://dtr-ichub.int.catena-x.net
+    apiPath: /api/v3
+    uri: ""
+    asset_config:
+      dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+      # existing_asset_id: <registry-asset> # -- In case an existing DTR asset wants to be used specify here the id, otherwise it will be created based on the url, if it not exists it will be created
+    lookup:
+      uri: ""
+    policy:
+      usage:
+        context:
+          odrl: http://www.w3.org/ns/odrl/2/
+          cx-policy: https://w3id.org/catenax/policy/
+        permission:
+          - action: odrl:use
+            LogicalConstraint: odrl:and
+            constraints:
+              - leftOperand: cx-policy:FrameworkAgreement
+                operator: odrl:eq
+                rightOperand: DataExchangeGovernance:1.0
+              - leftOperand: cx-policy:Membership
+                operator: odrl:eq
+                rightOperand: active
+              - leftOperand: cx-policy:UsagePurpose
+                operator: odrl:eq
+                rightOperand: cx.core.digitalTwinRegistry:1
+        prohibition: []
+        obligation: []
+      access:
+        context:
+          odrl: http://www.w3.org/ns/odrl/2/
+          cx-policy: https://w3id.org/catenax/policy/
+        permission:
+          - action: odrl:use
+            constraints:
+              - leftOperand: cx-policy:Membership
+                operator: odrl:eq
+                rightOperand: active
+        prohibition: []
+        obligation: []
+
+  submodel_dispatcher:
+    path: "./data/submodels"
+    apiPath: /submodel-dispatcher
