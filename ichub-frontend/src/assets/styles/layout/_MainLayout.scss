@@ -27,7 +27,8 @@
   background-image: 
     linear-gradient(rgba($brand-dark, 0.3), rgba($brand-dark, 0.6)), 
     url('/stars-background.png') !important;
-  min-height: 100vh;
+  height: 100vh; // Fixed height instead of min-height
+  overflow: hidden; // Prevent body scrolling
 }
 
 .more-options-menu{
@@ -41,6 +42,18 @@
 
 .sidebarArea {
   z-index: 1000;
+  position: sticky;
+  top: 68.8px; // Stick below header
+  height: calc(100vh - 68.8px);
+  overflow-y: auto; // Allow sidebar to scroll if needed
+}
+
+.additionalSidebarArea {
+  position: sticky;
+  top: 68.8px; // Stick below header
+  height: calc(100vh - 68.8px);
+  overflow-y: auto; // Allow additional sidebar to scroll if needed
+  z-index: 900;
 }
 
 .parts-discovery-sidebar {
@@ -48,12 +61,14 @@
   top: 68.8px; // Header height
   height: calc(100vh - 68.8px);
   z-index: 0;
+  overflow-y: auto; // Allow additional sidebar to scroll if needed
 }
 
 /* Content area styling */
 .contentArea {
-  padding: 20px;
-  min-height: calc(100vh - 68.8px); /* Full height minus header */
+  padding: 0; // Remove default padding as components handle their own
+  height: calc(100vh - 68.8px); /* Fixed height minus header */
+  overflow: hidden; // Prevent content area from scrolling - let components handle it
   display: flex;
   flex-direction: column;
 }

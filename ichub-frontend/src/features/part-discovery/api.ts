@@ -229,6 +229,7 @@ export interface SingleShellDiscoveryResponse {
     displayName: unknown[];
     globalAssetId: string;
     id: string;
+    idShort: string;
     specificAssetIds: Array<{
       supplementalSemanticIds: unknown[];
       name: string;
