@@ -45,13 +45,19 @@ from tools.exceptions import exception_responses
 router = APIRouter(prefix="/discover", tags=["Part Discovery Management"])
 #connection_service = ConnectionService()
 
-from dtr import dtr_manager
+from dtr import dtr_manager  # Use the original manager
+from utils.async_utils import AsyncManagerWrapper
+
+# Create universal async wrapper - works with any manager!
+async_dtr = AsyncManagerWrapper(dtr_manager.consumer, "DTRConsumer")
 
 
-@router.get("/registries")
+@router.post("/registries")
 async def discover_registries(request: DiscoverRegistriesRequest) -> Response:
     ## Check if the api key is present and if it is authenticated
-    return dtr_manager.consumer.get_dtrs(bpn=request.counter_party_id)
+    # Clean, simple async call - no manual thread pool management needed!
+    result = await async_dtr.get_dtrs(request.counter_party_id)
+    return result
 
 @router.post("/shells")
 async def discover_shells(search_request: DiscoverShellsRequest) -> Response:
@@ -74,10 +80,11 @@ async def discover_shells(search_request: DiscoverShellsRequest) -> Response:
         for spec in search_request.query_spec
     ]
     
-    # Call the DTR manager's discover_shells method
-    result = dtr_manager.consumer.discover_shells(
-        counter_party_id=search_request.counter_party_id, 
+    # Clean, simple async call - no manual thread pool management needed!
+    result = await async_dtr.discover_shells(
+        counter_party_id=search_request.counter_party_id,
         query_spec=query_spec_dict,
+        dtr_policies=search_request.dtr_policies,
         limit=search_request.limit,
         cursor=search_request.cursor
     )
@@ -105,10 +112,11 @@ async def discover_shell(search_request: DiscoverShellRequest) -> Response:
         Response containing discovered shells and metadata
     """
     
-    # Call the DTR manager's discover_shells method
-    result = dtr_manager.consumer.discover_shell(
-        counter_party_id=search_request.counter_party_id, 
-        id=search_request.id
+    # Clean, simple async call - no manual thread pool management needed!
+    result = await async_dtr.discover_shell(
+        counter_party_id=search_request.counter_party_id,
+        id=search_request.id,
+        dtr_policies=search_request.dtr_policies
     )
     
     # Return the response as JSON
@@ -187,10 +195,11 @@ async def discover_submodels(search_request: DiscoverSubmodelsDataRequest) -> Re
     }
     """
     
-    # Call the DTR manager's discover_submodels_data method
-    result = dtr_manager.consumer.discover_submodels(
+    # Clean, simple async call - no manual thread pool management needed!
+    result = await async_dtr.discover_submodels(
         counter_party_id=search_request.counter_party_id,
         id=search_request.id,
+        dtr_policies=search_request.dtr_policies,
         governance=search_request.governance
     )
     
@@ -252,10 +261,11 @@ async def discover_submodel(search_request: DiscoverSubmodelDataRequest) -> Resp
         )
     
     try:
-        # Call the DTR manager's direct discover_submodel method
-        result = dtr_manager.consumer.discover_submodel(
+        # Clean, simple async call - no manual thread pool management needed!
+        result = await async_dtr.discover_submodel(
             counter_party_id=search_request.counter_party_id,
             id=search_request.id,
+            dtr_policies=search_request.dtr_policies,
             submodel_id=search_request.submodel_id,
             governance=search_request.governance
         )
@@ -380,12 +390,12 @@ async def discover_submodels_by_semantic_id(search_request: DiscoverSubmodelSema
         )
     
     try:
-        # Call the DTR manager's semantic search method
-        result = dtr_manager.consumer.discover_submodel_by_semantic_ids(
+        # Clean, simple async call - no manual thread pool management needed!
+        result = await async_dtr.discover_submodel_by_semantic_ids(
             counter_party_id=search_request.counter_party_id,
             id=search_request.id,
-            semantic_ids=normalized_semantic_ids,
-            governance=search_request.governance
+            dtr_policies=search_request.dtr_policies,
+            semantic_id_policies=normalized_semantic_ids
         )
         
         # Return the response as JSON

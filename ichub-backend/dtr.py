@@ -70,9 +70,15 @@ dtr_provider_manager = DtrProviderManager(
     connector_dataplane_public_path=ConfigManager.get_config("provider.connector.dataplane.publicPath")
 )
 
+from utils.async_utils import AsyncManagerWrapper
+
 dtr_manager = DtrManager(
     dtr_consumer_manager=dtr_consumer_manager,
     dtr_provider_manager=dtr_provider_manager
-)  
+)
+
+# Create universal async wrappers - works with any manager!
+async_dtr_consumer = AsyncManagerWrapper(dtr_manager.consumer, "DTRConsumer")
+async_dtr_provider = AsyncManagerWrapper(dtr_manager.provider, "DTRProvider")  
 
 

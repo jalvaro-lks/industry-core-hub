@@ -47,6 +47,10 @@ router = APIRouter(prefix="/connection", tags=["Open Connection Management"])
 #connection_service = ConnectionService()
 
 from dtr import dtr_manager
+from utils.async_utils import AsyncManagerWrapper
+
+# Create universal async wrapper - works with any manager!
+async_connector = AsyncManagerWrapper(connector_consumer_manager, "ConnectorConsumer")
 
 """
 # TODO: The following endpoints are not yet implemented but are planned for future development

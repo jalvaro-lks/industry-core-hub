@@ -26,22 +26,30 @@ from typing import Optional, List
 from services.provider.partner_management_service import PartnerManagementService
 from models.services.provider.partner_management import BusinessPartnerRead, BusinessPartnerCreate, DataExchangeAgreementRead
 from tools.exceptions import exception_responses
+from utils.async_utils import AsyncManagerWrapper
 
 router = APIRouter(prefix="/partner-management", tags=["Partner Management"])
 partner_management_service = PartnerManagementService()
 
+# Create universal async wrapper - works with any service/manager!
+async_partner_service = AsyncManagerWrapper(partner_management_service, "PartnerManagement")
+
 @router.get("/business-partner", response_model=List[BusinessPartnerRead], responses=exception_responses)
 async def partner_management_get_business_partners() -> List[BusinessPartnerRead]:
-    return partner_management_service.list_business_partners()
+    # Clean, simple async call - no manual thread pool management needed!
+    return await async_partner_service.list_business_partners()
 
 @router.get("/business-partner/{business_partner_number}", response_model=Optional[BusinessPartnerRead], responses=exception_responses)
 async def partner_management_get_business_partner(business_partner_number: str) -> Optional[BusinessPartnerRead]:
-    return partner_management_service.get_business_partner(business_partner_number)
+    # Clean, simple async call - no manual thread pool management needed!
+    return await async_partner_service.get_business_partner(business_partner_number)
 
 @router.post("/business-partner", response_model=BusinessPartnerRead, responses=exception_responses)
 async def partner_management_create_business_partner(business_partner_create: BusinessPartnerCreate) -> BusinessPartnerRead:
-    return partner_management_service.create_business_partner(business_partner_create)
+    # Clean, simple async call - no manual thread pool management needed!
+    return await async_partner_service.create_business_partner(business_partner_create)
 
 @router.get("/business-partner/{business_partner_number}/data-exchange-agreement", response_model=List[DataExchangeAgreementRead], responses=exception_responses)
 async def partner_management_get_data_exchange_agreements(business_partner_number: str) -> List[DataExchangeAgreementRead]:
-    return partner_management_service.get_data_exchange_agreements(business_partner_number)
+    # Clean, simple async call - no manual thread pool management needed!
+    return await async_partner_service.get_data_exchange_agreements(business_partner_number)

@@ -38,6 +38,7 @@ data:
     database:
       connectionString: {{ include "industry-core-hub.postgresql.dsn" . | quote }}
       echo: {{ .Values.backend.configuration.database.echo }}
+    server: {{ .Values.backend.resources.server | toYaml | nindent 6 }}
     cors: {{ .Values.backend.cors | toYaml | nindent 6 }}
     consumer: {{ .Values.backend.configuration.consumer | toYaml | nindent 6 }}
     provider: {{ .Values.backend.configuration.provider | toYaml | nindent 6 }}

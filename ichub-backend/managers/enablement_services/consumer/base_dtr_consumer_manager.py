@@ -179,7 +179,7 @@ class BaseDtrConsumerManager(ABC):
         pass
 
     @abstractmethod
-    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]]) -> Dict:
+    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]], dtr_policies: Optional[List[Dict]] = None) -> Dict:
         """
         Discover digital twin shells using query specifications.
         
@@ -199,6 +199,8 @@ class BaseDtrConsumerManager(ABC):
                     {"name": "bpn", "value": "BPNL0073928UJ879"},
                     {"name": "serialnr", "value": "DPPV-0001"}
                 ]
+            dtr_policies (Optional[List[Dict]]): DTR policies to use for connection negotiation.
+                                               If None, will use policies from cached DTR entries for automatic contract negotiation.
             
         Returns:
             Dict: Search results containing matching digital twin shells with metadata
@@ -206,7 +208,7 @@ class BaseDtrConsumerManager(ABC):
         pass
     
     @abstractmethod
-    def discover_shell(self, counter_party_id: str, id: str) -> Dict:
+    def discover_shell(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None) -> Dict:
         """
         Discover a digital twin shell using its ID.
         
@@ -217,6 +219,8 @@ class BaseDtrConsumerManager(ABC):
         Args:
             counter_party_id (str): The Business Partner Number to search
             id (str): The ID of the shell to retrieve
+            dtr_policies (Optional[List[Dict]]): DTR policies to use for connection negotiation.
+                                               If None, will use policies from cached DTR entries for automatic contract negotiation.
             
         Returns:
             Dict: Search results containing the matching digital twin shell with metadata
@@ -225,7 +229,7 @@ class BaseDtrConsumerManager(ABC):
         pass
     
     @abstractmethod
-    def discover_submodels(self, counter_party_id: str, id: str, governance: Dict[str, List[Dict]]) -> Dict:
+    def discover_submodels(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[Dict[str, List[Dict]]] = None) -> Dict:
         """
         Discover a digital twin shell by ID and retrieve its submodel data in parallel.
         
@@ -239,6 +243,7 @@ class BaseDtrConsumerManager(ABC):
         Args:
             counter_party_id (str): The Business Partner Number (BPN)
             id (str): The shell ID to discover
+            dtr_policies (List[Dict]): DTR policies to use for connection negotiation
             governance (Dict[str, List[Dict]]): Mapping of semantic IDs to their acceptable policies.
                 Each key is a semantic ID (e.g., "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation")
                 and each value is a list of policy dictionaries containing ODRL policy definitions.
@@ -319,7 +324,7 @@ class BaseDtrConsumerManager(ABC):
         pass
     
     @abstractmethod
-    def discover_submodel(self, counter_party_id: str, id: str, governance: List[Dict], submodel_id: str) -> Dict:
+    def discover_submodel(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[List[Dict]] = None, submodel_id: str = None) -> Dict:
         """
         Discover a specific submodel by ID using direct API call for faster, exact lookup.
         
@@ -342,7 +347,7 @@ class BaseDtrConsumerManager(ABC):
         pass
     
     @abstractmethod
-    def discover_submodel_by_semantic_ids(self, counter_party_id: str, id: str, governance: List[Dict], semantic_ids: List[Dict[str, str]]) -> Dict:
+    def discover_submodel_by_semantic_ids(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[List[Dict]] = None, semantic_ids: List[Dict[str, str]] = None) -> Dict:
         """
         Discover submodels by semantic IDs. May return multiple results.
         

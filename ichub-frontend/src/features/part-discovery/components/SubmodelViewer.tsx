@@ -20,7 +20,8 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -49,6 +50,7 @@ import DataObjectIcon from '@mui/icons-material/DataObject';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
+import CheckIcon from '@mui/icons-material/Check';
 import { fetchSubmodel, SubmodelDiscoveryResponse } from '../api';
 
 interface SubmodelViewerProps {
@@ -96,19 +98,18 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-const JsonViewer: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
-  const theme = useTheme();
+const JsonViewer: React.FC<{ data: Record<string, unknown>; filename?: string }> = ({ data, filename = 'submodel.json' }) => {
   const [copySuccess, setCopySuccess] = useState(false);
 
   const handleCopyJson = () => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 5)).then(() => {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     });
   };
 
-  // Format JSON with line numbers
-  const jsonString = JSON.stringify(data, null, 2);
+  // Format JSON with line numbers and higher indentation
+  const jsonString = JSON.stringify(data, null, 4); // Increased indentation to 4 spaces
   const lines = jsonString.split('\n');
 
   const formatJsonWithLineNumbers = () => {
@@ -122,14 +123,17 @@ const JsonViewer: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
               textAlign: 'right',
               pr: 2,
               color: '#858585', // VS Code line number color
-              fontSize: '0.75rem',
-              fontFamily: 'monospace',
+              fontSize: '13px',
+              fontFamily: 'Consolas',
+              letterSpacing: '0.5px',
               userSelect: 'none',
-              borderRight: '1px solid #3e3e3e', // VS Code border color
+              borderRight: '1px solid #3E3E3E', // VS Code border color
               backgroundColor: '#252526', // VS Code line number background
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'flex-end'
+              justifyContent: 'flex-end',
+              minHeight: '18px', // VS Code line height
+              lineHeight: '18px'
             }}
           >
             {lineNumber}
@@ -138,12 +142,15 @@ const JsonViewer: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
             sx={{
               flex: 1,
               pl: 2,
-              fontFamily: 'monospace',
-              fontSize: '0.875rem',
+              fontFamily: 'Consolas',
+              fontSize: '13px',
+              letterSpacing: '0.5px',
               whiteSpace: 'pre',
               color: '#D4D4D4',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              minHeight: '18px', // VS Code line height
+              lineHeight: '18px'
             }}
           >
             <span dangerouslySetInnerHTML={{ __html: highlightJson(line) }} />
@@ -154,39 +161,113 @@ const JsonViewer: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
   };
 
   const highlightJson = (line: string): string => {
-    // Simple text without highlighting
-    return line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let highlightedLine = line;
+    
+    // Escape HTML first
+    highlightedLine = highlightedLine
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    // String values (including the quotes)
+    highlightedLine = highlightedLine.replace(
+      /("(?:[^"\\]|\\.)*")\s*:/g, 
+      '<span style="color: #9CDCFE;">$1</span>:'
+    );
+    
+    // String values (not keys)
+    highlightedLine = highlightedLine.replace(
+      /:\s*("(?:[^"\\]|\\.)*")/g, 
+      ': <span style="color: #CE9178;">$1</span>'
+    );
+    
+    // Numbers
+    highlightedLine = highlightedLine.replace(
+      /:\s*(-?\d+\.?\d*)/g, 
+      ': <span style="color: #B5CEA8;">$1</span>'
+    );
+    
+    // Booleans
+    highlightedLine = highlightedLine.replace(
+      /:\s*(true|false)/g, 
+      ': <span style="color: #569CD6;">$1</span>'
+    );
+    
+    // null
+    highlightedLine = highlightedLine.replace(
+      /:\s*(null)/g, 
+      ': <span style="color: #569CD6;">$1</span>'
+    );
+    
+    // Brackets and braces
+    highlightedLine = highlightedLine.replace(
+      /([{}[\]])/g, 
+      '<span style="color: #FFD700;">$1</span>'
+    );
+    
+    // Commas
+    highlightedLine = highlightedLine.replace(
+      /(,)/g, 
+      '<span style="color: #D4D4D4;">$1</span>'
+    );
+    
+    return highlightedLine;
   };
 
   return (
     <Box sx={{ position: 'relative', height: '100%' }}>
+      {/* VS Code-like tab header */}
+      <Box
+        sx={{
+          height: '35px',
+          backgroundColor: '#2D2D30',
+          borderBottom: '1px solid #3E3E3E',
+          display: 'flex',
+          alignItems: 'center',
+          px: 2,
+          fontSize: '13px',
+          fontFamily: '"Segoe UI", "Helvetica Neue", Arial, sans-serif',
+          color: '#CCCCCC'
+        }}
+      >
+        <DataObjectIcon sx={{ fontSize: '16px', mr: 1, color: '#FFD700' }} />
+        {filename}
+        <Box sx={{ ml: 'auto' }}>
+          <Tooltip title={copySuccess ? "Copied!" : "Copy JSON"}>
+            <IconButton
+              size="small"
+              onClick={handleCopyJson}
+              sx={{
+                color: copySuccess ? '#4CAF50' : '#CCCCCC', // Green when copied
+                backgroundColor: copySuccess ? 'rgba(76, 175, 80, 0.1)' : 'transparent',
+                '&:hover': {
+                  backgroundColor: copySuccess 
+                    ? 'rgba(76, 175, 80, 0.2)' 
+                    : 'rgba(255, 255, 255, 0.1)'
+                },
+                transition: 'all 0.2s ease-in-out'
+              }}
+            >
+              {copySuccess ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+      
       <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
-        <Tooltip title={copySuccess ? "Copied!" : "Copy JSON"}>
-          <IconButton
-            size="small"
-            onClick={handleCopyJson}
-            sx={{
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 0.9)'
-              }
-            }}
-          >
-            <ContentCopyIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
       </Box>
       <Paper
         sx={{
           width: '100%',
-          maxHeight: '100%',
-          minHeight: 'fit-content',
-          backgroundColor: '#1e1e1e', // VS Code dark background
-          border: `1px solid ${theme.palette.divider}`,
+          height: 'calc(100% - 35px)', // Account for header
+          backgroundColor: '#1E1E1E', // VS Code dark background
+          border: '1px solid #3E3E3E', // VS Code border color
+          borderTop: 'none', // No top border since we have the header
           borderRadius: 0,
           overflow: 'hidden',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          fontFamily: 'Consolas',
         }}
       >
         <Box
@@ -194,18 +275,22 @@ const JsonViewer: React.FC<{ data: Record<string, unknown> }> = ({ data }) => {
             maxHeight: '100%',
             overflow: 'auto',
             '&::-webkit-scrollbar': {
-              width: '12px',
-              height: '12px'
+              width: '14px',
+              height: '14px'
             },
             '&::-webkit-scrollbar-track': {
-              backgroundColor: '#2d2d2d' // Dark scrollbar track
+              backgroundColor: '#1E1E1E' // Match editor background
             },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: '#555', // Dark scrollbar thumb
-              borderRadius: '6px'
+              backgroundColor: '#424242', // VS Code scrollbar thumb
+              borderRadius: '0px',
+              border: '1px solid #1E1E1E'
             },
             '&::-webkit-scrollbar-thumb:hover': {
-              backgroundColor: '#777' // Lighter on hover
+              backgroundColor: '#4F4F4F' // Lighter on hover
+            },
+            '&::-webkit-scrollbar-corner': {
+              backgroundColor: '#1E1E1E'
             }
           }}
         >
@@ -229,18 +314,20 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
   const [submodelData, setSubmodelData] = useState<SubmodelDiscoveryResponse | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [lastLoadedSubmodelId, setLastLoadedSubmodelId] = useState<string | null>(null);
+  const isFetching = useRef(false);
   const theme = useTheme();
 
   const semanticIdValue = submodel.semanticId?.keys?.[0]?.value || '';
 
   const fetchSubmodelData = useCallback(async () => {
-    // Prevent multiple calls for the same submodel
-    if (lastLoadedSubmodelId === submodel.id || loading) {
+    // Prevent multiple calls for the same submodel or if already fetching
+    if (lastLoadedSubmodelId === submodel.id || isFetching.current) {
       console.log('SubmodelViewer: Preventing duplicate API call for submodel:', submodel.id);
       return;
     }
 
     console.log('SubmodelViewer: Fetching submodel data for:', submodel.id);
+    isFetching.current = true;
     setLoading(true);
     setError(null);
     
@@ -255,12 +342,18 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
       setLastLoadedSubmodelId(submodel.id);
       console.log('SubmodelViewer: Successfully fetched submodel data');
     } catch (err) {
+      // Don't show error for cancelled requests
+      if (axios.isCancel(err)) {
+        console.log('SubmodelViewer: Request was cancelled');
+        return;
+      }
       console.error('Error fetching submodel:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch submodel data');
     } finally {
       setLoading(false);
+      isFetching.current = false;
     }
-  }, [counterPartyId, shellId, submodel.id, semanticIdValue, lastLoadedSubmodelId, loading]);
+  }, [counterPartyId, shellId, submodel.id, semanticIdValue, lastLoadedSubmodelId]);
 
   useEffect(() => {
     if (open && submodel.id && counterPartyId && shellId) {
@@ -281,6 +374,7 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
     if (!open) {
       setActiveTab(0);
       setError(null);
+      isFetching.current = false;
     }
   }, [open]);
 
@@ -561,7 +655,10 @@ Best regards`);
       );
     }
 
-    return <JsonViewer data={submodelData.submodel} />;
+    // Generate the same filename as the download function
+    const filename = `submodel-${submodel.id}-${submodel.idShort || 'data'}.json`;
+    
+    return <JsonViewer data={submodelData.submodel} filename={filename} />;
   };
 
   return (

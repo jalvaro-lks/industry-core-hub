@@ -30,6 +30,7 @@ class DiscoverRegistriesRequest(BaseModel):
 
 class DiscoverShellRequest(DiscoverRegistriesRequest):
     id: str = Field(alias="id", description="The ID of the AAS.")
+    dtr_policies: Optional[List[Dict[str, Any]]] = Field(None, alias="dtrGovernance", description="DTR policies to use for connection negotiation. If not provided, will use cached policies for automatic contract negotiation.")
 
 
 class QuerySpec(BaseModel):
@@ -43,6 +44,7 @@ class DiscoveryWithPaginationRequest(DiscoverRegistriesRequest):
 
 class DiscoverShellsRequest(DiscoveryWithPaginationRequest):
     query_spec: List[QuerySpec] = Field(..., alias="querySpec", description="The query specifications for discovering shells.")
+    dtr_policies: Optional[List[Dict[str, Any]]] = Field(None, alias="dtrGovernance", description="DTR policies to use for connection negotiation. If not provided, will use cached policies for automatic contract negotiation.")
 
 
 class DiscoverSubmodelsDataRequest(DiscoverShellRequest):

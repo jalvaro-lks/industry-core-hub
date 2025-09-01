@@ -72,7 +72,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         self.shell_descriptors = {}  # Central storage for shell descriptors by shell ID
         self.logger = logger if logger else None
         self.verbose = verbose
-        self._lock = threading.RLock()
+        # Use separate locks for different data structures to reduce contention
+        self._dtrs_lock = threading.RLock()  # Only for known_dtrs modifications
+        self._shells_lock = threading.RLock()  # Only for shell_descriptors modifications
+        self._list_lock = threading.RLock()  # Only for thread-safe list operations
         
     def add_dtr(self, bpn: str, connector_url: str, asset_id: str, policies: List[str]) -> None:
         """
@@ -86,7 +89,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             asset_id (str): Asset ID of the DTR (used as unique key)
             policies (List[str]): List of policies for this DTR
         """
-        with self._lock:
+        with self._dtrs_lock:
             if bpn not in self.known_dtrs:
                 self.known_dtrs[bpn] = {}
 
@@ -140,19 +143,19 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             bool: True if the DTR is known for the BPN, False otherwise
         """
-        with self._lock:
-            if bpn not in self.known_dtrs:
-                return False
+        # Read operation - no lock needed for simple lookups
+        if bpn not in self.known_dtrs:
+            return False
+        
+        if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+            return False
             
-            if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
-                return False
-                
-            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if not isinstance(dtr_dict, dict):
-                return False
-                
-            # O(1) lookup using asset_id as key
-            return asset_id in dtr_dict
+        dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+        if not isinstance(dtr_dict, dict):
+            return False
+            
+        # O(1) lookup using asset_id as key
+        return asset_id in dtr_dict
 
     def get_dtr_by_asset_id(self, bpn: str, asset_id: str) -> Optional[Dict]:
         """
@@ -165,22 +168,22 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             Optional[Dict]: The DTR data if found, None otherwise
         """
-        with self._lock:
-            if bpn not in self.known_dtrs:
-                return None
-            
-            if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
-                return None
-                
-            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if not isinstance(dtr_dict, dict):
-                return None
-                
-            # O(1) lookup using asset_id as key
-            if asset_id in dtr_dict:
-                return copy.deepcopy(dtr_dict[asset_id])
-            
+        # Read operation - no lock needed for simple lookups
+        if bpn not in self.known_dtrs:
             return None
+        
+        if self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+            return None
+            
+        dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+        if not isinstance(dtr_dict, dict):
+            return None
+            
+        # O(1) lookup using asset_id as key
+        if asset_id in dtr_dict:
+            return copy.deepcopy(dtr_dict[asset_id])
+        
+        return None
 
     def get_known_dtrs(self) -> Dict:
         """
@@ -189,8 +192,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             Dict: Complete cache dictionary containing all BPNs and their associated DTRs
         """
-        with self._lock:
-            return copy.deepcopy(self.known_dtrs)
+        # Read operation - return a deep copy of the current state
+        return copy.deepcopy(self.known_dtrs)
 
     def delete_dtr(self, bpn: str, asset_id: str) -> Dict:
         """
@@ -203,7 +206,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             Dict: Updated cache state after deletion
         """
-        with self._lock:
+        with self._dtrs_lock:
             if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
                 dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
                 if isinstance(dtr_dict, dict) and asset_id in dtr_dict:
@@ -222,7 +225,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Args:
             bpn (str): The Business Partner Number to purge from cache
         """
-        with self._lock:
+        with self._dtrs_lock:
             if bpn in self.known_dtrs:
                 del self.known_dtrs[bpn]
                 if(self.logger and self.verbose):
@@ -235,11 +238,13 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         This method removes all cached DTRs for all BPNs and all shell descriptors,
         effectively resetting the cache to an empty state.
         """
-        with self._lock:
-            self.known_dtrs.clear()
-            self.shell_descriptors.clear()
-            if(self.logger and self.verbose):
-                self.logger.info("[DTR Manager] Purged entire DTR cache and shell descriptors")
+        # Need both locks since we're clearing everything
+        with self._dtrs_lock:
+            with self._shells_lock:
+                self.known_dtrs.clear()
+                self.shell_descriptors.clear()
+                if(self.logger and self.verbose):
+                    self.logger.info("[DTR Manager] Purged entire DTR cache and shell descriptors")
 
     def get_dtrs_by_connector(self, bpn: str, connector_url: str) -> List[Dict]:
         """
@@ -252,21 +257,21 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             List[Dict]: List of DTR data from the specified connector
         """
-        with self._lock:
-            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
-                return []
-                
-            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if not isinstance(dtr_dict, dict):
-                return []
-                
-            # Filter DTRs by connector URL
-            filtered_dtrs = [
-                copy.deepcopy(dtr) for dtr in dtr_dict.values()
-                if dtr.get(self.DTR_CONNECTOR_URL_KEY) == connector_url
-            ]
+        # Read operation - no lock needed for lookups
+        if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+            return []
             
-            return filtered_dtrs
+        dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+        if not isinstance(dtr_dict, dict):
+            return []
+            
+        # Filter DTRs by connector URL
+        filtered_dtrs = [
+            copy.deepcopy(dtr) for dtr in dtr_dict.values()
+            if dtr.get(self.DTR_CONNECTOR_URL_KEY) == connector_url
+        ]
+        
+        return filtered_dtrs
 
     def get_dtr_count(self, bpn: str) -> int:
         """
@@ -278,15 +283,15 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             int: Number of DTRs cached for the BPN
         """
-        with self._lock:
-            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
-                return 0
-                
-            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if isinstance(dtr_dict, dict):
-                return len(dtr_dict)
-            
+        # Read operation - no lock needed
+        if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
             return 0
+            
+        dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+        if isinstance(dtr_dict, dict):
+            return len(dtr_dict)
+        
+        return 0
 
     def get_all_connector_urls(self, bpn: str) -> List[str]:
         """
@@ -298,22 +303,22 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             List[str]: List of unique connector URLs
         """
-        with self._lock:
-            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
-                return []
-                
-            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if not isinstance(dtr_dict, dict):
-                return []
-                
-            # Extract unique connector URLs
-            connector_urls = set()
-            for dtr in dtr_dict.values():
-                connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
-                if connector_url:
-                    connector_urls.add(connector_url)
+        # Read operation - no lock needed
+        if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
+            return []
             
-            return list(connector_urls)
+        dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+        if not isinstance(dtr_dict, dict):
+            return []
+            
+        # Extract unique connector URLs
+        connector_urls = set()
+        for dtr in dtr_dict.values():
+            connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
+            if connector_url:
+                connector_urls.add(connector_url)
+        
+        return list(connector_urls)
 
     def get_all_asset_ids(self, bpn: str) -> List[str]:
         """
@@ -325,15 +330,15 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             List[str]: List of asset IDs
         """
-        with self._lock:
-            if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
-                return []
-                
-            dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-            if isinstance(dtr_dict, dict):
-                return list(dtr_dict.keys())
-            
+        # Read operation - no lock needed
+        if bpn not in self.known_dtrs or self.DTR_DATA_KEY not in self.known_dtrs[bpn]:
             return []
+            
+        dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+        if isinstance(dtr_dict, dict):
+            return list(dtr_dict.keys())
+        
+        return []
 
     
     def get_catalog(self,  connector_service:BaseConnectorConsumerService, counter_party_id: str = None, counter_party_address: str = None,
@@ -431,20 +436,19 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Returns:
             List[Dict]: List of DTR data for the BPN, each containing connector_url, asset_id, and policies
         """
-        with self._lock:
-            # Check if we have cached data that hasn't expired
-            if bpn in self.known_dtrs and not self._is_cache_expired(bpn):
-                if self.DTR_DATA_KEY in self.known_dtrs[bpn] and isinstance(self.known_dtrs[bpn][self.DTR_DATA_KEY], dict):
-                    cached_dtrs_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-                    if len(cached_dtrs_dict) > 0:
-                        if(self.logger and self.verbose):
-                            self.logger.debug(f"[DTR Manager] [{bpn}] Returning {len(cached_dtrs_dict)} DTRs from cache. Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
-                        # Return list of DTR values
-                        return [copy.deepcopy(dtr) for dtr in cached_dtrs_dict.values()]
-            
-            # Cache is expired or doesn't exist, discover DTRs
-            if(self.logger and self.verbose):
-                self.logger.info(f"[DTR Manager] No cached DTRs were found, discovering DTRs for bpn [{bpn}]...")
+        # Check if we have cached data that hasn't expired (read operation - no lock needed)
+        if bpn in self.known_dtrs and not self._is_cache_expired(bpn):
+            if self.DTR_DATA_KEY in self.known_dtrs[bpn] and isinstance(self.known_dtrs[bpn][self.DTR_DATA_KEY], dict):
+                cached_dtrs_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                if len(cached_dtrs_dict) > 0:
+                    if(self.logger and self.verbose):
+                        self.logger.debug(f"[DTR Manager] [{bpn}] Returning {len(cached_dtrs_dict)} DTRs from cache. Next refresh at [{op.timestamp_to_datetime(self.known_dtrs[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+                    # Return list of DTR values
+                    return [copy.deepcopy(dtr) for dtr in cached_dtrs_dict.values()]
+        
+        # Cache is expired or doesn't exist, discover DTRs
+        if(self.logger and self.verbose):
+            self.logger.info(f"[DTR Manager] No cached DTRs were found, discovering DTRs for bpn [{bpn}]...")
             
             # Get connectors from the connector manager
             try:
@@ -517,16 +521,25 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     self.logger.error(f"[DTR Manager] [{bpn}] Error discovering DTRs: {e}")
                 return []
 
-    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]], limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
+    def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]], dtr_policies: Optional[List[Dict]] = None, limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
         """
         Discover digital twin shells using query specifications with DTR tracking and pagination.
+        
+        Args:
+            counter_party_id (str): The Business Partner Number
+            query_spec (List[Dict[str, str]]): Query specifications for shell discovery
+            dtr_policies (Optional[List[Dict]]): DTR policies to use for connection negotiation. 
+                                               If None, will use policies from cached DTR entries for automatic contract negotiation.
+            limit (Optional[int]): Maximum number of shells to return
+            cursor (Optional[str]): Pagination cursor for continuing previous queries
         """
         dtrs = self.get_dtrs(counter_party_id)
         if not dtrs:
             return {"shell_descriptors": [], "dtrs": [], "error": "No DTRs found"}
         
-        if not query_spec:
-            return {"shell_descriptors": [], "dtrs": [], "error": "No query specifications provided"}
+        # Remove the validation for dtr_policies since we now support automatic negotiation
+        # if not dtr_policies:
+        #     return {"shell_descriptors": [], "dtrs": [], "error": "No DTR policies provided"}
         
         # Decode cursor or initialize
         if cursor:
@@ -565,7 +578,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 continue
             
             dtr = self._process_dtr_with_retry(
-                connector_service, counter_party_id, dtr, query_spec,
+                connector_service, counter_party_id, dtr, query_spec, dtr_policies,
                 limit=per_dtr_limit, cursor=dtr_state.cursor
             )
             
@@ -639,17 +652,19 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return response
 
-    def _process_dtr_parallel(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], dtr_results: List, limit: Optional[int] = None, cursor: Optional[str] = None) -> None:
+    def _process_dtr_parallel(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], dtr_policies: Optional[List[Dict]] = None, dtr_results: List = None, limit: Optional[int] = None, cursor: Optional[str] = None) -> None:
         """Process a single DTR in parallel and append result to shared list."""
-        dtr = self._process_dtr_with_retry(connector_service, counter_party_id, dtr, query_spec, limit=limit, cursor=cursor)
-        with self._lock:  # Thread-safe append to shared list
+        dtr = self._process_dtr_with_retry(connector_service, counter_party_id, dtr, query_spec, dtr_policies, limit=limit, cursor=cursor)
+        with self._list_lock:  # Thread-safe append to shared list
             dtr_results.append(dtr)
 
-    def _process_dtr_with_retry(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], max_retries: int = 2, limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
+    def _process_dtr_with_retry(self, connector_service, counter_party_id: str, dtr: Dict, query_spec: List[Dict], dtr_policies: Optional[List[Dict]] = None, max_retries: int = 2, limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
         """Process a single DTR with retry mechanism."""
         connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
         asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
-        policies = dtr.get(self.DTR_POLICIES_KEY, [])
+        
+        # Use provided policies or fall back to cached policies for automatic negotiation
+        policies_to_use = dtr_policies if dtr_policies else dtr.get(self.DTR_POLICIES_KEY, [])
         
         dtr = {
             "connectorUrl": connector_url,
@@ -659,8 +674,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             "shells": []
         }
         
-        if not policies:
-            dtr["error"] = "No policies found"
+        if not policies_to_use:
+            dtr["error"] = "No DTR policies provided and no cached policies available"
             return dtr
         
         filter_expression = connector_service.get_filter_expression(
@@ -673,7 +688,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 dataplane_url, access_token = connector_service.do_dsp(
                     counter_party_id=counter_party_id,
                     counter_party_address=connector_url,
-                    policies=policies,
+                    policies=policies_to_use,
                     filter_expression=filter_expression
                 )
                 
@@ -713,14 +728,14 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     return dtr
                 else:
                     # Delete failed connection for retry
-                    self._delete_connection(connector_service, counter_party_id, connector_url, policies, filter_expression, counter_party_id, asset_id)
+                    self._delete_connection(connector_service, counter_party_id, connector_url, policies_to_use, filter_expression, counter_party_id, asset_id)
                     
                     if attempt == max_retries:
                         dtr["error"] = f"HTTP {response.status_code} after {max_retries + 1} attempts"
                     
             except Exception as e:
                 # Delete failed connection for retry
-                self._delete_connection(connector_service, counter_party_id, connector_url, policies, filter_expression, counter_party_id, asset_id)
+                self._delete_connection(connector_service, counter_party_id, connector_url, policies_to_use, filter_expression, counter_party_id, asset_id)
                 
                 if attempt == max_retries:
                     dtr["error"] = str(e)
@@ -752,7 +767,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             try:
                 shell = self._fetch_shell_descriptor(shell_uuid, dataplane_url, access_token)
                 if shell:
-                    with self._lock:  # Thread-safe append
+                    with self._list_lock:  # Thread-safe append
                         results_list.append(shell)
             except Exception:
                 # Silently continue on error
@@ -790,7 +805,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         )
         
         # Also remove the DTR from known_dtrs to avoid retrying problematic DTRs
-        with self._lock:
+        with self._dtrs_lock:
             if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
                 dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
                 if isinstance(dtr_dict, dict) and asset_id in dtr_dict:
@@ -798,9 +813,15 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     if self.logger and self.verbose:
                         self.logger.info(f"[DTR Manager] [{bpn}] Removed failed DTR with asset ID [{asset_id}] from cache")
 
-    def discover_shell(self, counter_party_id: str, id: str) -> Dict:
+    def discover_shell(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None) -> Dict:
         """
         Discover a single digital twin shell by ID with DTR tracking and retry.
+        
+        Args:
+            counter_party_id (str): The Business Partner Number
+            id (str): The shell ID to discover
+            dtr_policies (Optional[List[Dict]]): DTR policies to use for connection negotiation.
+                                               If None, will use policies from cached DTR entries for automatic contract negotiation.
         """
         dtrs = self.get_dtrs(counter_party_id)
         if not dtrs:
@@ -815,7 +836,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         for dtr in dtrs:
             connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
             asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
-            policies = dtr.get(self.DTR_POLICIES_KEY, [])
+            
+            # Use provided policies or fall back to cached policies for automatic negotiation
+            policies_to_use = dtr_policies if dtr_policies else dtr.get(self.DTR_POLICIES_KEY, [])
             
             filter_expression = connector_service.get_filter_expression(
                 key=self.dct_type_key, operator=self.operator, value=self.dct_type
@@ -826,7 +849,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 dataplane_url, access_token = connector_service.do_dsp(
                     counter_party_id=counter_party_id,
                     counter_party_address=connector_url,
-                    policies=policies,
+                    policies=policies_to_use,
                     filter_expression=filter_expression
                 )
                 
@@ -848,13 +871,15 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
 
         return {"status": 404, "error": "Shell not found in any DTR of this counterPartyId"}
 
-    def discover_submodels(self, counter_party_id: str, id: str, governance: Optional[Dict[str, List[Dict]]]) -> Dict:
+    def discover_submodels(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[Dict[str, List[Dict]]] = None) -> Dict:
         """
         Retrieve submodel data by first discovering the shell and then fetching all submodels in parallel.
         
         Args:
             counter_party_id: The Business Partner Number
             id: The shell ID to discover
+            dtr_policies: Optional DTR policies to use for connection negotiation.
+                        If None, will use policies from cached DTR entries for automatic contract negotiation.
             governance: Optional mapping of semantic IDs to their policies. If None, only submodel 
                        descriptors are returned without actual data (status will be "governance_not_found")
             
@@ -866,7 +891,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 - dtr: DTR connection information
         """
         # Discover the shell
-        shell_result = self.discover_shell(counter_party_id, id)
+        shell_result = self.discover_shell(counter_party_id, id, dtr_policies)
         if "shell_descriptor" not in shell_result:
             return {
                 "status": "error",
@@ -937,13 +962,15 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return response
 
-    def discover_submodel(self, counter_party_id: str, id: str, governance: Optional[List[Dict]], submodel_id: str) -> Dict:
+    def discover_submodel(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[List[Dict]] = None, submodel_id: str = None) -> Dict:
         """
         Retrieve a specific submodel data by submodel ID using direct API call for faster, exact lookup.
         
         Args:
             counter_party_id: The Business Partner Number
             id: The shell ID to discover
+            dtr_policies: Optional DTR policies to use for connection negotiation.
+                        If None, will use policies from cached DTR entries for automatic contract negotiation.
             governance: Optional list of policies for the submodel. If None, only submodel 
                        descriptor is returned without actual data (status will be "governance_not_found")
             submodel_id: The specific submodel ID to search for (required)
@@ -971,7 +998,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         for dtr in dtrs:
             connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
             asset_id = dtr.get(self.DTR_ASSET_ID_KEY)
-            policies = dtr.get(self.DTR_POLICIES_KEY, [])
+            
+            # Use provided policies or fall back to cached policies for automatic negotiation
+            policies_to_use = dtr_policies if dtr_policies else dtr.get(self.DTR_POLICIES_KEY, [])
             
             filter_expression = connector_service.get_filter_expression(
                 key=self.dct_type_key, operator=self.operator, value=self.dct_type
@@ -982,7 +1011,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 dataplane_url, access_token = connector_service.do_dsp(
                     counter_party_id=counter_party_id,
                     counter_party_address=connector_url,
-                    policies=policies,
+                    policies=policies_to_use,
                     filter_expression=filter_expression
                 )
                 
@@ -1056,7 +1085,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             "dtr": None
         }
 
-    def discover_submodel_by_semantic_ids(self, counter_party_id: str, id: str, governance: Optional[List[Dict]], semantic_ids: List[Dict[str, str]]) -> Dict:
+    def discover_submodel_by_semantic_ids(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[List[Dict]] = None, semantic_ids: List[Dict[str, str]] = None) -> Dict:
         """
         Retrieve submodel data by semantic IDs. May return multiple results.
         
@@ -1065,6 +1094,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         Args:
             counter_party_id: The Business Partner Number
             id: The shell ID to discover
+            dtr_policies: Optional DTR policies to use for connection negotiation.
+                        If None, will use policies from cached DTR entries for automatic contract negotiation.
             governance: Optional list of policies for the submodel. If None, only submodel 
                        descriptor is returned without actual data (status will be "governance_not_found")
             semantic_ids: List of semantic ID objects to search for.
@@ -1080,7 +1111,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 - dtr: DTR connection information
         """
         # Discover the shell
-        shell_result = self.discover_shell(counter_party_id, id)
+        shell_result = self.discover_shell(counter_party_id, id, dtr_policies)
         if "shell_descriptor" not in shell_result:
             return {
                 "status": "error",

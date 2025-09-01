@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Grid2,
@@ -144,6 +144,9 @@ const getDtrColor = (dtrIndex: number) => {
 
 const PartsDiscovery = () => {
   const { showSidebar, hideSidebar, isVisible } = useAdditionalSidebar();
+  
+  // Ref to prevent duplicate API calls in React StrictMode
+  const partnersLoadedRef = useRef(false);
   
   const [partType, setPartType] = useState('Catalog');
   const [bpnl, setBpnl] = useState('');
@@ -277,6 +280,12 @@ const PartsDiscovery = () => {
   // Load available partners on component mount
   useEffect(() => {
     const loadPartners = async () => {
+      // Prevent duplicate calls in React StrictMode
+      if (partnersLoadedRef.current) {
+        return;
+      }
+      partnersLoadedRef.current = true;
+      
       try {
         setIsLoadingPartners(true);
         const partners = await fetchPartners();
@@ -284,6 +293,8 @@ const PartsDiscovery = () => {
       } catch (err) {
         console.error('Error loading partners:', err);
         // Don't show error for partners loading as it's not critical
+        // Reset the ref on error so it can be retried
+        partnersLoadedRef.current = false;
       } finally {
         setIsLoadingPartners(false);
       }

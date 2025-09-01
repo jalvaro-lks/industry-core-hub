@@ -152,7 +152,7 @@ class DtrConsumerPostgresMemoryManager(DtrConsumerMemoryManager):
         """
         Reload known_dtrs from the DB and restore them to memory.
         """
-        with self._lock:
+        with self._dtrs_lock:
             try:
                 loaded_dtrs = 0
                 with Session(self.engine) as session:
@@ -207,7 +207,7 @@ class DtrConsumerPostgresMemoryManager(DtrConsumerMemoryManager):
         """
         Persist current in-memory known_dtrs to the DB only if changes are detected.
         """
-        with self._lock:
+        with self._dtrs_lock:
             current_hash = hashlib.sha256(json.dumps(self.known_dtrs, sort_keys=True, default=str).encode()).hexdigest()
             if current_hash == self._last_saved_hash:
                 return

@@ -21,7 +21,15 @@
  ********************************************************************************/
 
 import axios from 'axios';
-import { getIchubBackendUrl } from '../../services/EnvironmentService';
+import { 
+  getIchubBackendUrl, 
+  getGovernanceConfig, 
+  getDtrPoliciesConfig,
+  GovernanceConfig,
+  GovernanceConstraint,
+  GovernanceRule,
+  GovernancePolicy
+} from '../../services/EnvironmentService';
 import { ApiPartData } from '../../types/product';
 import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
 import { ShellDiscoveryResponse, getNextPageCursor, getPreviousPageCursor, hasNextPage, hasPreviousPage } from './utils';
@@ -31,6 +39,203 @@ const SHARE_CATALOG_PART_BASE_PATH = '/share/catalog-part';
 const TWIN_MANAGEMENT_BASE_PATH = '/twin-management/catalog-part-twin';
 const SHELL_DISCOVERY_BASE_PATH = '/discover/shells';
 const backendUrl = getIchubBackendUrl();
+
+// Cache system with configuration change detection
+interface PolicyCache {
+  configHash: string;
+  policies: OdrlPolicy[];
+}
+
+let dtrGovernancePoliciesCache: PolicyCache | null = null;
+const governancePoliciesCache: Map<string, PolicyCache> = new Map();
+let defaultGovernancePolicyCache: PolicyCache | null = null;
+
+/**
+ * Generate a SHA-256 hash from an object for cache invalidation
+ */
+const generateConfigHash = async (config: unknown): Promise<string> => {
+  const configString = JSON.stringify(config, null, 0);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(configString);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+/**
+ * Generate DTR policies with all constraint permutations
+ */
+const generateDtrPoliciesWithPermutations = (dtrPolicies: GovernancePolicy[]): OdrlPolicy[] => {
+  const allPolicyPermutations: OdrlPolicy[] = [];
+  
+  for (const policy of dtrPolicies) {
+    // Generate permutations for each rule type
+    const permissionPermutations = generateRulesPermutations(policy.permission);
+    const prohibitionPermutations = generateRulesPermutations(policy.prohibition);
+    const obligationPermutations = generateRulesPermutations(policy.obligation);
+    
+    // Create cartesian product of all rule permutations
+    for (const permission of permissionPermutations) {
+      for (const prohibition of prohibitionPermutations) {
+        for (const obligation of obligationPermutations) {
+          allPolicyPermutations.push({
+            "odrl:permission": convertRulesToOdrl(permission),
+            "odrl:prohibition": convertRulesToOdrl(prohibition),
+            "odrl:obligation": convertRulesToOdrl(obligation)
+          });
+        }
+      }
+    }
+  }
+  
+  return allPolicyPermutations;
+};
+
+/**
+ * Generate governance policies with permutations for a specific semantic ID
+ */
+const generateGovernancePoliciesWithPermutations = async (semanticId: string, config: GovernanceConfig[]): Promise<OdrlPolicy[]> => {
+  // First, try to find a specific configuration for the semantic ID
+  const relevantConfig = config.find(cfg => cfg.semanticid === semanticId);
+  
+  if (relevantConfig) {
+    // Found specific configuration, use it
+    return generateDtrPoliciesWithPermutations(relevantConfig.policies);
+  }
+  
+  // No specific configuration found, use default policies as fallback
+  console.log(`No specific governance configuration found for semantic ID: ${semanticId}, using default policies`);
+  return await getCachedDefaultGovernancePolicies();
+};
+
+/**
+ * Generate default governance policy permutations
+ */
+const generateDefaultGovernancePolicyPermutations = (): OdrlPolicy[] => {
+  // Default policies with constraints that need permutations
+  const defaultPolicy: GovernancePolicy = {
+    strict: false,
+    permission: {
+      action: 'odrl:use',
+      LogicalConstraint: 'odrl:and',
+      constraints: [
+        {
+          leftOperand: 'cx-policy:FrameworkAgreement',
+          operator: 'odrl:eq',
+          rightOperand: 'DataExchangeGovernance:1.0'
+        },
+        {
+          leftOperand: 'cx-policy:Membership',
+          operator: 'odrl:eq',
+          rightOperand: 'active'
+        },
+        {
+          leftOperand: 'cx-policy:UsagePurpose',
+          operator: 'odrl:eq',
+          rightOperand: 'cx.core.industrycore:1'
+        }
+      ]
+    },
+    prohibition: [],
+    obligation: []
+  };
+  
+  return generateDtrPoliciesWithPermutations([defaultPolicy]);
+};
+
+/**
+ * Get cached DTR governance policies with configuration change detection
+ */
+const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
+  const currentConfig = getDtrPoliciesConfig();
+  const currentHash = await generateConfigHash(currentConfig);
+  
+  // Check if cache is valid
+  if (dtrGovernancePoliciesCache && dtrGovernancePoliciesCache.configHash === currentHash) {
+    return dtrGovernancePoliciesCache.policies;
+  }
+  
+  // Cache is invalid or doesn't exist, regenerate
+  console.log('DTR governance policies cache invalidated, regenerating...');
+  const newPolicies = generateDtrPoliciesWithPermutations(currentConfig);
+  
+  dtrGovernancePoliciesCache = {
+    configHash: currentHash,
+    policies: newPolicies
+  };
+  
+  return newPolicies;
+};
+
+/**
+ * Get cached governance policies for a specific semantic ID
+ */
+const getCachedGovernancePolicies = async (semanticId: string): Promise<OdrlPolicy[]> => {
+  const currentConfig = getGovernanceConfig();
+  const currentHash = await generateConfigHash(currentConfig);
+  
+  // Check if cache is valid for this semantic ID
+  const cached = governancePoliciesCache.get(semanticId);
+  if (cached && cached.configHash === currentHash) {
+    return cached.policies;
+  }
+  
+  // Cache is invalid or doesn't exist, regenerate
+  console.log(`Governance policies cache invalidated for semantic ID: ${semanticId}, regenerating...`);
+  const newPolicies = await generateGovernancePoliciesWithPermutations(semanticId, currentConfig);
+  
+  governancePoliciesCache.set(semanticId, {
+    configHash: currentHash,
+    policies: newPolicies
+  });
+  
+  return newPolicies;
+};
+
+/**
+ * Get cached default governance policies
+ */
+const getCachedDefaultGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
+  // Default policies don't depend on configuration, but we still cache them
+  // Use a static hash since default policies don't change based on config
+  const staticHash = 'default_v1';
+  
+  if (defaultGovernancePolicyCache && defaultGovernancePolicyCache.configHash === staticHash) {
+    return defaultGovernancePolicyCache.policies;
+  }
+  
+  console.log('Default governance policies cache invalidated, regenerating...');
+  const newPolicies = generateDefaultGovernancePolicyPermutations();
+  
+  defaultGovernancePolicyCache = {
+    configHash: staticHash,
+    policies: newPolicies
+  };
+  
+  return newPolicies;
+};
+
+// Types for ODRL policies with flexible structure
+interface OdrlConstraint {
+  "odrl:leftOperand": { "@id": string };
+  "odrl:operator": { "@id": string };
+  "odrl:rightOperand": string;
+}
+
+// Support for logical operators: "and", "or", or single constraint
+interface OdrlRule {
+  "odrl:action": { "@id": string };
+  "odrl:constraint"?: 
+    | { "odrl:and": OdrlConstraint[] }     // Multiple constraints with AND logic
+    | { "odrl:or": OdrlConstraint[] }      // Multiple constraints with OR logic  
+    | OdrlConstraint;                      // Single constraint without logical operator
+}
+
+interface OdrlPolicy {
+  "odrl:permission": OdrlRule | OdrlRule[];  // Single object when 1 rule, array when multiple
+  "odrl:prohibition": OdrlRule | OdrlRule[]; // Single object when 1 rule, array when multiple
+  "odrl:obligation": OdrlRule | OdrlRule[];  // Single object when 1 rule, array when multiple
+}
 
 // Types for Shell Discovery API requests
 export interface QuerySpecItem {
@@ -43,6 +248,7 @@ export interface ShellDiscoveryRequest {
   querySpec: QuerySpecItem[];
   limit?: number;
   cursor?: string;
+  dtrGovernance?: OdrlPolicy[];
 }
 
 export const fetchCatalogParts = async (): Promise<ApiPartData[]> => {
@@ -119,6 +325,8 @@ export const discoverShellsByType = async (
   limit?: number,
   cursor?: string
 ): Promise<ShellDiscoveryResponse> => {
+  const dtrPolicies = await convertDtrPoliciesToOdrl();
+  
   const request: ShellDiscoveryRequest = {
     counterPartyId,
     querySpec: [
@@ -127,6 +335,7 @@ export const discoverShellsByType = async (
         value: digitalTwinType
       }
     ],
+    dtrGovernance: dtrPolicies,
     ...(limit && { limit }),
     ...(cursor && { cursor })
   };
@@ -140,6 +349,8 @@ export const discoverShellsByCustomerPartId = async (
   limit?: number,
   cursor?: string
 ): Promise<ShellDiscoveryResponse> => {
+  const dtrPolicies = await convertDtrPoliciesToOdrl();
+  
   const request: ShellDiscoveryRequest = {
     counterPartyId,
     querySpec: [
@@ -148,6 +359,7 @@ export const discoverShellsByCustomerPartId = async (
         value: customerPartId
       }
     ],
+    dtrGovernance: dtrPolicies,
     ...(limit && { limit }),
     ...(cursor && { cursor })
   };
@@ -207,9 +419,12 @@ export const discoverShellsWithCustomQuery = async (
   limit?: number,
   cursor?: string
 ): Promise<ShellDiscoveryResponse> => {
+  const dtrPolicies = await convertDtrPoliciesToOdrl();
+  
   const request: ShellDiscoveryRequest = {
     counterPartyId,
     querySpec,
+    dtrGovernance: dtrPolicies,
     ...(limit && { limit }),
     ...(cursor && { cursor })
   };
@@ -221,6 +436,7 @@ export const discoverShellsWithCustomQuery = async (
 export interface SingleShellDiscoveryRequest {
   counterPartyId: string;
   id: string;
+  dtrGovernance?: OdrlPolicy[];
 }
 
 export interface SingleShellDiscoveryResponse {
@@ -286,9 +502,12 @@ export const discoverSingleShell = async (
   counterPartyId: string,
   aasId: string
 ): Promise<SingleShellDiscoveryResponse> => {
+  const dtrPolicies = await convertDtrPoliciesToOdrl();
+  
   const request: SingleShellDiscoveryRequest = {
     counterPartyId,
-    id: aasId
+    id: aasId,
+    dtrGovernance: dtrPolicies
   };
 
   const response = await axios.post<SingleShellDiscoveryResponse>(
@@ -493,26 +712,8 @@ export interface SubmodelDiscoveryRequest {
   counterPartyId: string;
   id: string;
   submodelId: string;
-  governance: Array<{
-    "odrl:permission": {
-      "odrl:action": {
-        "@id": string;
-      };
-      "odrl:constraint": {
-        "odrl:and": Array<{
-          "odrl:leftOperand": {
-            "@id": string;
-          };
-          "odrl:operator": {
-            "@id": string;
-          };
-          "odrl:rightOperand": string;
-        }>;
-      };
-    };
-    "odrl:prohibition": unknown[];
-    "odrl:obligation": unknown[];
-  }>;
+  dtrGovernance?: OdrlPolicy[];
+  governance: OdrlPolicy[];
 }
 
 export interface SubmodelDiscoveryResponse {
@@ -536,72 +737,184 @@ export interface SubmodelDiscoveryResponse {
 }
 
 /**
- * Default governance policy for PartTypeInformation semantic ID
+ * Convert constraint to ODRL format
  */
-const getDefaultGovernancePolicy = () => ([
-  {
-    "odrl:permission": {
-      "odrl:action": {
-        "@id": "odrl:use"
-      },
-      "odrl:constraint": {
-        "odrl:and": [
-          {
-            "odrl:leftOperand": {
-              "@id": "cx-policy:FrameworkAgreement"
-            },
-            "odrl:operator": {
-              "@id": "odrl:eq"
-            },
-            "odrl:rightOperand": "DataExchangeGovernance:1.0"
-          },
-          {
-            "odrl:leftOperand": {
-              "@id": "cx-policy:Membership"
-            },
-            "odrl:operator": {
-              "@id": "odrl:eq"
-            },
-            "odrl:rightOperand": "active"
-          },
-          {
-            "odrl:leftOperand": {
-              "@id": "cx-policy:UsagePurpose"
-            },
-            "odrl:operator": {
-              "@id": "odrl:eq"
-            },
-            "odrl:rightOperand": "cx.core.industrycore:1"
-          }
-        ]
-      }
-    },
-    "odrl:prohibition": [],
-    "odrl:obligation": []
-  }
-]);
+const convertConstraintToOdrl = (constraint: GovernanceConstraint): OdrlConstraint => ({
+  "odrl:leftOperand": {
+    "@id": constraint.leftOperand
+  },
+  "odrl:operator": {
+    "@id": constraint.operator
+  },
+  "odrl:rightOperand": constraint.rightOperand
+});
 
 /**
- * Get governance policy based on semantic ID
+ * Generate all permutations of an array
  */
-const getGovernancePolicyForSemanticId = (semanticId: string) => {
-  // Currently only PartTypeInformation requires specific policy
-  if (semanticId === "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation") {
-    return getDefaultGovernancePolicy();
+const generatePermutations = <T>(arr: T[]): T[][] => {
+  if (arr.length <= 1) return [arr];
+  
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i++) {
+    const current = arr[i];
+    const remaining = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    const perms = generatePermutations(remaining);
+    
+    for (const perm of perms) {
+      result.push([current, ...perm]);
+    }
   }
   
-  // For future extensibility, add more semantic ID policies here
-  // Example:
-  // if (semanticId === "other:semantic:id") {
-  //   return getOtherPolicy();
-  // }
-  
-  // Default governance policy for unknown semantic IDs
-  return getDefaultGovernancePolicy();
+  return result;
 };
 
 /**
- * Fetch a specific submodel data
+ * Generate all permutations of constraints within a rule, creating separate policies for each ordering
+ */
+const generateRulePermutations = (rule: GovernanceRule): GovernanceRule[] => {
+  if (!rule.constraints || rule.constraints.length <= 1) {
+    return [rule];
+  }
+
+  const constraintPermutations = generatePermutations(rule.constraints);
+  
+  return constraintPermutations.map(permutedConstraints => ({
+    ...rule,
+    constraints: permutedConstraints
+  }));
+};
+
+/**
+ * Generate all permutations of rules (permission, prohibition, obligation)
+ */
+const generateRulesPermutations = (rules: GovernanceRule | GovernanceRule[]): (GovernanceRule | GovernanceRule[])[] => {
+  if (Array.isArray(rules)) {
+    if (rules.length === 0) return [rules];
+    
+    // For array of rules, generate permutations for each rule
+    const rulePermutations = rules.map(generateRulePermutations);
+    
+    // Generate cartesian product of all rule permutations
+    const result: GovernanceRule[][] = [[]];
+    for (const permutations of rulePermutations) {
+      const newResult: GovernanceRule[][] = [];
+      for (const existing of result) {
+        for (const perm of permutations) {
+          newResult.push([...existing, perm]);
+        }
+      }
+      result.length = 0;
+      result.push(...newResult);
+    }
+    
+    return result;
+  } else {
+    // Single rule - generate permutations for its constraints
+    return generateRulePermutations(rules);
+  }
+};
+
+/**
+ * Create constraint structure based on logical operator and constraints
+ */
+const createConstraintStructure = (
+  constraints: GovernanceConstraint[], 
+  logicalOperator?: string
+): OdrlConstraint | { "odrl:and": OdrlConstraint[] } | { "odrl:or": OdrlConstraint[] } => {
+  const odrlConstraints = constraints.map(convertConstraintToOdrl);
+  
+  // Single constraint without logical operator
+  if (odrlConstraints.length === 1 && !logicalOperator) {
+    return odrlConstraints[0];
+  }
+  
+  // Multiple constraints with logical operators
+  if (logicalOperator === "odrl:or" || logicalOperator === "or") {
+    return { "odrl:or": odrlConstraints };
+  }
+  
+  // Default to "and" for multiple constraints
+  return { "odrl:and": odrlConstraints };
+};
+
+/**
+ * Convert rule (permission, prohibition, obligation) to ODRL format
+ */
+const convertRuleToOdrl = (
+  rule: { action: string; constraints: GovernanceConstraint[]; LogicalConstraint?: string }
+): OdrlRule => {
+  const odrlRule: OdrlRule = {
+    "odrl:action": {
+      "@id": rule.action
+    }
+  };
+
+  if (rule.constraints && rule.constraints.length > 0) {
+    odrlRule["odrl:constraint"] = createConstraintStructure(
+      rule.constraints, 
+      rule.LogicalConstraint
+    );
+  }
+
+  return odrlRule;
+};
+
+/**
+ * Convert governance rule(s) to ODRL format
+ * - Single rule -> single OdrlRule object
+ * - Multiple rules -> array of OdrlRule objects
+ */
+const convertRulesToOdrl = (rules: GovernanceRule | GovernanceRule[]): OdrlRule | OdrlRule[] => {
+  if (Array.isArray(rules)) {
+    // If it's an array, check the length
+    if (rules.length === 1) {
+      // Single item in array -> return as single object
+      return convertRuleToOdrl(rules[0]);
+    } else {
+      // Multiple items -> return as array
+      return rules.map(convertRuleToOdrl);
+    }
+  } else {
+    // Single object -> return as single object
+    return convertRuleToOdrl(rules);
+  }
+};
+
+/**
+ * Convert governance configuration to ODRL format
+ * 
+ * @param config - The governance configuration from environment variables
+ * @returns Array of ODRL policies
+ */
+/**
+ * Convert governance rule(s) to ODRL format
+ * - Single rule -> single OdrlRule object
+ * - Multiple rules -> array of OdrlRule objects
+ */
+
+/**
+ * Convert DTR policies from environment config to ODRL format with all possible constraint orderings.
+ * 
+ * For each policy, this generates separate complete policies for each possible ordering of constraints.
+ * This ensures DTR matching succeeds regardless of constraint order by providing all permutations
+ * as separate policy entries in the array.
+ * 
+ * Uses caching to avoid recalculating permutations on every request.
+ */
+const convertDtrPoliciesToOdrl = async (): Promise<OdrlPolicy[]> => {
+  return await getCachedDtrGovernancePolicies();
+};
+
+/**
+ * Get governance policy based on semantic ID from environment configuration
+ */
+const getGovernancePolicyForSemanticId = async (semanticId: string): Promise<OdrlPolicy[]> => {
+  return await getCachedGovernancePolicies(semanticId);
+};
+
+/**
+ * Fetch a specific submodel data with request cancellation and concurrency control
  */
 export const fetchSubmodel = async (
   counterPartyId: string,
@@ -609,14 +922,27 @@ export const fetchSubmodel = async (
   submodelId: string,
   semanticId?: string
 ): Promise<SubmodelDiscoveryResponse> => {
+  // Get governance policies:
+  // - If semanticId provided: try to find specific config, fallback to default if not found
+  // - If no semanticId: use default policies
   const governance = semanticId ? 
-    getGovernancePolicyForSemanticId(semanticId) : 
-    getDefaultGovernancePolicy();
+    await getGovernancePolicyForSemanticId(semanticId) : 
+    await getCachedDefaultGovernancePolicies();
+  
+  const dtrPolicies = await convertDtrPoliciesToOdrl();
+
+  // Debug logging to check governance policies
+  console.log('Submodel request governance policies:', {
+    semanticId,
+    governanceCount: governance?.length || 0,
+    governance: governance
+  });
 
   const request: SubmodelDiscoveryRequest = {
     counterPartyId,
     id: shellId,
     submodelId,
+    dtrGovernance: dtrPolicies,
     governance
   };
 

@@ -34,17 +34,23 @@ from models.services.provider.twin_management import (
     SerializedPartTwinCreate, SerializedPartTwinShareCreate
 )
 from tools.exceptions import exception_responses
+from utils.async_utils import AsyncManagerWrapper
 
 router = APIRouter(prefix="/twin-management", tags=["Twin Management"])
 twin_management_service = TwinManagementService()
 
+# Create universal async wrapper - works with any service!
+async_twin_service = AsyncManagerWrapper(twin_management_service, "TwinManagement")
+
 @router.get("/catalog-part-twin", response_model=List[CatalogPartTwinRead], responses=exception_responses)
 async def twin_management_get_catalog_part_twins(include_data_exchange_agreements: bool = False) -> List[CatalogPartTwinRead]:
-    return twin_management_service.get_catalog_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
+    # Clean, simple async call!
+    return await async_twin_service.get_catalog_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
 
 @router.get("/catalog-part-twin/{global_id}", response_model=Optional[CatalogPartTwinDetailsRead], responses=exception_responses)
 async def twin_management_get_catalog_part_twin(global_id: UUID) -> Optional[CatalogPartTwinDetailsRead]:
-    return twin_management_service.get_catalog_part_twin_details_id(global_id)
+    # Clean, simple async call!
+    return await async_twin_service.get_catalog_part_twin_details_id(global_id)
 
 @router.get("/catalog-part-twin/{manufacturer_id}/{manufacturer_part_id}", response_model=Optional[CatalogPartTwinDetailsRead], responses=exception_responses)
 async def twin_management_get_catalog_part_twin_from_manufacturer(manufacturer_id: str, manufacturer_part_id: str) -> Optional[CatalogPartTwinDetailsRead]:
