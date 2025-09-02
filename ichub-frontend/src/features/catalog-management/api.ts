@@ -24,6 +24,7 @@ import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
 import { ApiPartData } from '../../types/product';
 import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
+import { SerializedParts } from '../../types/serializedParts';
 
 const CATALOG_PART_MANAGEMENT_BASE_PATH = '/part-management/catalog-part';
 const SHARE_CATALOG_PART_BASE_PATH = '/share/catalog-part';
@@ -70,3 +71,12 @@ export const registerCatalogPartTwin = async (
   );
   return response.data;
 };
+
+// to test
+import instanceData from "../../tests/payloads/instance-data.json";
+export const fetchSerializedParts = async (): Promise<SerializedParts[]> => {
+  const rows = instanceData;
+  return rows;
+  const response = await axios.get<SerializedParts[]>(`${backendUrl}/part-management/serialized-parts`);
+  return response.data;
+}

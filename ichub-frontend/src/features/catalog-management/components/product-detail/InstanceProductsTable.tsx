@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -40,10 +40,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { visuallyHidden } from '@mui/utils';
 
-import instanceData from "../../../../tests/payloads/instance-data.json";
-import { InstanceProduct } from '../../../../types/instanceProduct';
 
-const rows = instanceData;
+import { SerializedParts } from '../../../../types/serializedParts';
+import { fetchSerializedParts } from '../../api';
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -71,7 +70,7 @@ function getComparator<Key extends keyof any>(
 
 interface HeadCell {
   disablePadding: boolean;
-  id: keyof InstanceProduct;
+  id: keyof SerializedParts;
   label: string;
   numeric: boolean;
 }
@@ -129,7 +128,7 @@ const headCells: readonly HeadCell[] = [
 
 interface InstanceProductsTableProps {
   numSelected: number;
-  onRequestSort: (event: React.MouseEvent<unknown>, property: keyof InstanceProduct) => void;
+  onRequestSort: (event: React.MouseEvent<unknown>, property: keyof SerializedParts) => void;
   onSelectAllClick: (event: React.ChangeEvent<HTMLInputElement>) => void;
   order: Order;
   orderBy: string;
@@ -140,7 +139,7 @@ function InstanceProductsTableHead(props: InstanceProductsTableProps) {
   const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort } =
     props;
   const createSortHandler =
-    (property: keyof InstanceProduct) => (event: React.MouseEvent<unknown>) => {
+    (property: keyof SerializedParts) => (event: React.MouseEvent<unknown>) => {
       onRequestSort(event, property);
     };
 
@@ -235,14 +234,29 @@ function InstanceProductsTableToolbar(props: InstanceProductsTableToolbarProps) 
 }
 export default function InstanceProductsTable() {
   const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<keyof InstanceProduct>('uuid');
+  const [orderBy, setOrderBy] = useState<keyof SerializedParts>('uuid');
   const [selected, setSelected] = useState<readonly number[]>([]);
   const [page, setPage] = useState(0);
+  const [rows, setRows] = useState<SerializedParts[]>([]);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await fetchSerializedParts();
+        console.log(data);
+        setRows(data);
+      } catch (error) {
+        console.error("Error fetching instance products:", error);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const handleRequestSort = (
     _event: React.MouseEvent<unknown>,
-    property: keyof InstanceProduct,
+    property: keyof SerializedParts,
   ) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -295,7 +309,7 @@ export default function InstanceProductsTable() {
       [...rows]
         .sort(getComparator(order, orderBy))
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage],
+    [rows, order, orderBy, page, rowsPerPage],
   );
 
   return (
