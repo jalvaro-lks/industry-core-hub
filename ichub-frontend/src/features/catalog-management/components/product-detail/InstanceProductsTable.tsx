@@ -129,7 +129,7 @@ interface InstanceProductsTableProps {
   rowCount: number;
 }
 
-function InstanceProductsTableHead(props: InstanceProductsTableProps) {
+function InstanceProductsTableHead(props: Readonly<InstanceProductsTableProps>) {
   const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort } =
     props;
   const createSortHandler =
@@ -178,7 +178,7 @@ function InstanceProductsTableHead(props: InstanceProductsTableProps) {
 interface InstanceProductsTableToolbarProps {
   numSelected: number;
 }
-function InstanceProductsTableToolbar(props: InstanceProductsTableToolbarProps) {
+function InstanceProductsTableToolbar(props: Readonly<InstanceProductsTableToolbarProps>) {
   const { numSelected } = props;
   return (
     <Toolbar
@@ -328,8 +328,6 @@ export default function InstanceProductsTable() {
                 <TableRow
                   hover
                   onClick={(event) => handleClick(event, row.id)}
-                  role="checkbox"
-                  aria-checked={isItemSelected}
                   tabIndex={-1}
                   key={row.id}
                   selected={isItemSelected}
@@ -338,6 +336,10 @@ export default function InstanceProductsTable() {
                   <TableCell padding="checkbox">
                     <Checkbox
                       checked={isItemSelected}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleClick(event, row.id)
+                      }}
                       inputProps={{
                         'aria-labelledby': labelId,
                       }}
