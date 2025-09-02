@@ -56,13 +56,7 @@ function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
 
 type Order = 'asc' | 'desc';
 
-function getComparator<Key extends keyof any>(
-  order: Order,
-  orderBy: Key,
-): (
-  a: { [key in Key]: number | string },
-  b: { [key in Key]: number | string },
-) => number {
+function getComparator( order: Order, orderBy: keyof SerializedParts,): (a: SerializedParts, b: SerializedParts) => number {
   return order === 'desc'
     ? (a, b) => descendingComparator(a, b, orderBy)
     : (a, b) => -descendingComparator(a, b, orderBy);
@@ -316,10 +310,7 @@ export default function InstanceProductsTable() {
     <Paper sx={{ width: '100%', mb: 2 }}>
       <InstanceProductsTableToolbar numSelected={selected.length} />
       <TableContainer>
-        <Table
-          aria-labelledby="tableTitle"
-          size='small'
-        >
+        <Table aria-labelledby="tableTitle" size='small'>
           <InstanceProductsTableHead
             numSelected={selected.length}
             order={order}
@@ -352,14 +343,7 @@ export default function InstanceProductsTable() {
                       }}
                     />
                   </TableCell>
-                  <TableCell
-                    component="th"
-                    id={labelId}
-                    scope="row"
-                    padding="none"
-                  >
-                    {row.uuid}
-                  </TableCell>
+                  <TableCell component="th" id={labelId} scope="row" padding="none">{row.uuid}</TableCell>
                   <TableCell align="right">{row.partInstanceId}</TableCell>
                   <TableCell align="right">{row.submodels}</TableCell>
                   <TableCell align="right">{row.status}</TableCell>
@@ -371,11 +355,7 @@ export default function InstanceProductsTable() {
               );
             })}
             {emptyRows > 0 && (
-              <TableRow
-                style={{
-                  height: 33 * emptyRows,
-                }}
-              >
+              <TableRow style={{ height: 33 * emptyRows,}} >
                 <TableCell colSpan={6} />
               </TableRow>
             )}

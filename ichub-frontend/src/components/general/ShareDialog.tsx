@@ -62,7 +62,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
     }
   }, [open, partData]);
 
-  const handleBpnlChange = (_event: any, value: string | null) => {
+  const handleBpnlChange = (_event: React.SyntheticEvent, value: string | null) => {
     setBpnl(value ??'');
     setError(false); // Clear validation error on change
     setApiErrorMessage(''); // Clear API error on change
