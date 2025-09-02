@@ -205,8 +205,9 @@ class PartManagementService():
                 raise NotFoundError(f"Catalog part '{manufacturer_id}/{manufacturer_part_id}' does not exist.")
 
             # Check if there are any serialized parts associated with this catalog part
-
-            # Delete associated partner catalog parts first
+            serialized_parts = repos.serialized_part_repository.find_by_partner_catalog_part_id(db_catalog_part.id)
+            if serialized_parts:
+                raise InvalidError(f"Cannot delete catalog part '{manufacturer_id}/{manufacturer_part_id}' because serialized parts are associated with it.")
 
             # Delete the catalog part
             repos.catalog_part_repository.delete(db_catalog_part.id)

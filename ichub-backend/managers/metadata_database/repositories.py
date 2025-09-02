@@ -264,7 +264,12 @@ class SerializedPartRepository(BaseRepository[SerializedPart]):
             SerializedPart.partner_catalog_part_id == partner_catalog_part_id).where(
             SerializedPart.part_instance_id == part_instance_id)
         return self._session.scalars(stmt).first()
-    
+
+    def find_by_partner_catalog_part_id(self, partner_catalog_part_id: int) -> List[SerializedPart]:
+        stmt = select(SerializedPart).where(
+            SerializedPart.partner_catalog_part_id == partner_catalog_part_id)
+        return self._session.scalars(stmt).all()
+
     def get_by_twin_id(
         self,
         twin_id: int,
