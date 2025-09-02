@@ -64,7 +64,7 @@ async def part_management_update_catalog_part(manufacturer_id: str, manufacturer
     return part_management_service.update_catalog_part(manufacturer_id, manufacturer_part_id, catalog_part_update)
 
 @router.delete("/catalog-part/{manufacturer_id}/{manufacturer_part_id}", responses=exception_responses)
-async def part_management_delete_catalog_part(manufacturer_id: str, manufacturer_part_id: str) -> dict:
+async def part_management_delete_catalog_part(manufacturer_id: str, manufacturer_part_id: str) -> JSONResponse:
     if part_management_service.delete_catalog_part(manufacturer_id, manufacturer_part_id):
         return JSONResponse(status_code=204, content={"description":"Deleted catalog part successfully"})
     else:
@@ -87,7 +87,7 @@ async def part_management_update_serialized_part(partner_catalog_part_id: int, p
     return part_management_service.update_serialized_part(partner_catalog_part_id, part_instance_id, serialized_part_update)
 
 @router.delete("/serialized-part/{partner_catalog_part_id}/{part_instance_id}", responses=exception_responses)
-async def part_management_delete_serialized_part(partner_catalog_part_id: int, part_instance_id: str) -> dict:
+async def part_management_delete_serialized_part(partner_catalog_part_id: int, part_instance_id: str) -> JSONResponse:
     if part_management_service.delete_serialized_part(partner_catalog_part_id, part_instance_id):
         return JSONResponse(status_code=204, content={"description":"Deleted serialized part successfully"})
     else:
