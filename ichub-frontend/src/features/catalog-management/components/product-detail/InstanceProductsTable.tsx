@@ -233,7 +233,7 @@ function InstanceProductsTableToolbar(props: Readonly<InstanceProductsTableToolb
     </Toolbar>
   );
 }
-export default function InstanceProductsTable({ part }: { part: PartType }) {
+export default function InstanceProductsTable({ part }: { part: PartType | null }) {
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<keyof SerializedParts>('customerPartId');
   const [selected, setSelected] = useState<readonly number[]>([]);
