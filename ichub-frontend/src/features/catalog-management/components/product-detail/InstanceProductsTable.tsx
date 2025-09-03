@@ -245,7 +245,11 @@ export default function InstanceProductsTable({ part }: { part: PartType }) {
     const loadData = async () => {
       try {
         const data = await fetchSerializedParts(part.manufacturerId!, part.manufacturerPartId!);
-        setRows(data);
+        const rowsWithId = data.map((row, index) => ({
+          ...row,
+          id: index,
+        }));
+        setRows(rowsWithId);
       } catch (error) {
         console.error("Error fetching instance products:", error);
       }
