@@ -51,7 +51,10 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import EmailIcon from '@mui/icons-material/Email';
 import CheckIcon from '@mui/icons-material/Check';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { fetchSubmodel, SubmodelDiscoveryResponse } from '../api';
+import { submodelAddonRegistry } from './submodel-addons/shared/registry';
+import { usTariffInformationAddon } from './submodel-addons/us-tariff-information/addon';
 
 interface SubmodelViewerProps {
   open: boolean;
@@ -72,32 +75,6 @@ interface SubmodelViewerProps {
   };
 }
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`submodel-tabpanel-${index}`}
-      aria-labelledby={`submodel-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
-
 const JsonViewer: React.FC<{ data: Record<string, unknown>; filename?: string }> = ({ data, filename = 'submodel.json' }) => {
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -113,13 +90,17 @@ const JsonViewer: React.FC<{ data: Record<string, unknown>; filename?: string }>
   const lines = jsonString.split('\n');
 
   const formatJsonWithLineNumbers = () => {
+    // Calculate the width needed for line numbers based on total lines
+    const totalLines = lines.length;
+    const lineNumberWidth = Math.max(50, (totalLines.toString().length * 8) + 16); // 8px per digit + 16px padding
+    
     return lines.map((line, index) => {
       const lineNumber = index + 1;
       return (
         <Box key={index} sx={{ display: 'flex', minHeight: '1.5rem' }}>
           <Box
             sx={{
-              width: '50px',
+              width: `${lineNumberWidth}px`,
               textAlign: 'right',
               pr: 2,
               color: '#858585', // VS Code line number color
@@ -133,7 +114,8 @@ const JsonViewer: React.FC<{ data: Record<string, unknown>; filename?: string }>
               alignItems: 'center',
               justifyContent: 'flex-end',
               minHeight: '18px', // VS Code line height
-              lineHeight: '18px'
+              lineHeight: '18px',
+              flexShrink: 0 // Prevent shrinking when content is wide
             }}
           >
             {lineNumber}
@@ -169,34 +151,58 @@ const JsonViewer: React.FC<{ data: Record<string, unknown>; filename?: string }>
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
     
-    // String values (including the quotes)
+    // Property names (keys) - strings followed by colon
     highlightedLine = highlightedLine.replace(
       /("(?:[^"\\]|\\.)*")\s*:/g, 
       '<span style="color: #9CDCFE;">$1</span>:'
     );
     
-    // String values (not keys)
+    // String values after colon (object values)
     highlightedLine = highlightedLine.replace(
       /:\s*("(?:[^"\\]|\\.)*")/g, 
       ': <span style="color: #CE9178;">$1</span>'
     );
     
-    // Numbers
+    // String values in arrays (after [ or , but not after :)
+    highlightedLine = highlightedLine.replace(
+      /(\[\s*|,\s*)("(?:[^"\\]|\\.)*")/g, 
+      '$1<span style="color: #CE9178;">$2</span>'
+    );
+    
+    // Numbers after colon (object values)
     highlightedLine = highlightedLine.replace(
       /:\s*(-?\d+\.?\d*)/g, 
       ': <span style="color: #B5CEA8;">$1</span>'
     );
     
-    // Booleans
+    // Numbers in arrays (after [ or , but not after :)
+    highlightedLine = highlightedLine.replace(
+      /(\[\s*|,\s*)(-?\d+\.?\d*)/g, 
+      '$1<span style="color: #B5CEA8;">$2</span>'
+    );
+    
+    // Booleans after colon
     highlightedLine = highlightedLine.replace(
       /:\s*(true|false)/g, 
       ': <span style="color: #569CD6;">$1</span>'
     );
     
-    // null
+    // Booleans in arrays
+    highlightedLine = highlightedLine.replace(
+      /(\[\s*|,\s*)(true|false)/g, 
+      '$1<span style="color: #569CD6;">$2</span>'
+    );
+    
+    // null after colon
     highlightedLine = highlightedLine.replace(
       /:\s*(null)/g, 
       ': <span style="color: #569CD6;">$1</span>'
+    );
+    
+    // null in arrays
+    highlightedLine = highlightedLine.replace(
+      /(\[\s*|,\s*)(null)/g, 
+      '$1<span style="color: #569CD6;">$2</span>'
     );
     
     // Brackets and braces
@@ -312,21 +318,45 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submodelData, setSubmodelData] = useState<SubmodelDiscoveryResponse | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
+  const [rightPanelTab, setRightPanelTab] = useState(0); // Separate state for right panel tabs
   const [lastLoadedSubmodelId, setLastLoadedSubmodelId] = useState<string | null>(null);
   const isFetching = useRef(false);
   const theme = useTheme();
 
   const semanticIdValue = submodel.semanticId?.keys?.[0]?.value || '';
 
-  const fetchSubmodelData = useCallback(async () => {
-    // Prevent multiple calls for the same submodel or if already fetching
-    if (lastLoadedSubmodelId === submodel.id || isFetching.current) {
+  // Register addons on component mount
+  useEffect(() => {
+    // Register US Tariff Information addon if not already registered
+    if (!submodelAddonRegistry.getAddon('us-tariff-information')) {
+      submodelAddonRegistry.register(usTariffInformationAddon as unknown as import('./submodel-addons/shared/types').VersionedSubmodelAddon);
+      console.log('Registered US Tariff Information addon');
+    }
+  }, []);
+
+  // Check if there's a specialized addon for this submodel
+  const getSpecializedAddon = useCallback(() => {
+    if (!submodelData?.submodel || !semanticIdValue) {
+      return null;
+    }
+
+    try {
+      const resolution = submodelAddonRegistry.resolve(semanticIdValue, submodelData.submodel);
+      return resolution;
+    } catch (error) {
+      console.warn('Error resolving addon for semantic ID:', semanticIdValue, error);
+      return null;
+    }
+  }, [submodelData?.submodel, semanticIdValue]);
+
+  const fetchSubmodelData = useCallback(async (forceRefresh = false) => {
+    // Prevent multiple calls for the same submodel or if already fetching, unless it's a forced refresh
+    if (!forceRefresh && (lastLoadedSubmodelId === submodel.id || isFetching.current)) {
       console.log('SubmodelViewer: Preventing duplicate API call for submodel:', submodel.id);
       return;
     }
 
-    console.log('SubmodelViewer: Fetching submodel data for:', submodel.id);
+    console.log('SubmodelViewer: Fetching submodel data for:', submodel.id, forceRefresh ? '(forced refresh)' : '');
     isFetching.current = true;
     setLoading(true);
     setError(null);
@@ -372,14 +402,73 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
-      setActiveTab(0);
+      setRightPanelTab(0);
       setError(null);
       isFetching.current = false;
     }
   }, [open]);
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+  // Auto-select specialized view when data loads (if available)
+  useEffect(() => {
+    if (submodelData?.submodel && semanticIdValue) {
+      const hasSpecializedAddon = getSpecializedAddon();
+      if (hasSpecializedAddon) {
+        setRightPanelTab(0); // Specialized view first
+      } else {
+        setRightPanelTab(0); // JSON view (will be the only tab)
+      }
+    }
+  }, [submodelData, semanticIdValue, getSpecializedAddon]);
+
+  const handleRightPanelTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setRightPanelTab(newValue);
+  };
+
+  const getRightPanelTabs = () => {
+    const tabs = [];
+    const hasSpecializedAddon = getSpecializedAddon();
+    
+    if (hasSpecializedAddon) {
+      tabs.push(
+        <Tab 
+          key="specialized"
+          label={hasSpecializedAddon.addon.name}
+          icon={<InfoIcon />} 
+          iconPosition="start"
+          sx={{ minHeight: 'auto', padding: 0, py: 1, textTransform: 'none', fontWeight: 600 }}
+        />
+      );
+    }
+    
+    tabs.push(
+      <Tab 
+        key="json"
+        label="JSON Data" 
+        icon={<DataObjectIcon />} 
+        iconPosition="start"
+        sx={{ minHeight: 'auto', py: 1, textTransform: 'none', fontWeight: 600 }}
+      />
+    );
+    
+    return tabs;
+  };
+
+  const getRightPanelContent = () => {
+    const hasSpecializedAddon = getSpecializedAddon();
+    
+    if (hasSpecializedAddon && rightPanelTab === 0) {
+      return renderSpecializedView();
+    } else if (hasSpecializedAddon && rightPanelTab === 1) {
+      return renderJsonData();
+    } else if (!hasSpecializedAddon && rightPanelTab === 0) {
+      return renderJsonData();
+    }
+    
+    return renderJsonData(); // fallback
+  };
+
+  const handleRefresh = () => {
+    fetchSubmodelData(true);
   };
 
   const handleDownloadJson = () => {
@@ -661,6 +750,48 @@ Best regards`);
     return <JsonViewer data={submodelData.submodel} filename={filename} />;
   };
 
+  const renderSpecializedView = () => {
+    if (!submodelData?.submodel) {
+      return (
+        <Alert severity="info">
+          No submodel data available.
+        </Alert>
+      );
+    }
+
+    const addonResolution = getSpecializedAddon();
+    if (!addonResolution) {
+      return (
+        <Alert severity="warning">
+          No specialized viewer found for this semantic ID.
+        </Alert>
+      );
+    }
+
+    const { addon } = addonResolution;
+    const AddonComponent = addon.component;
+
+    try {
+      return (
+        <AddonComponent
+          semanticId={semanticIdValue}
+          data={submodelData.submodel}
+          metadata={{
+            source: 'submodel-viewer',
+            lastUpdated: new Date(),
+          }}
+        />
+      );
+    } catch (error) {
+      console.error('Error rendering specialized addon:', error);
+      return (
+        <Alert severity="error">
+          Error rendering specialized view: {error instanceof Error ? error.message : 'Unknown error'}
+        </Alert>
+      );
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -673,7 +804,7 @@ Best regards`);
         }
       }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 3 }}>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pl: 3, pr:3, pt: 3 }}>
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Submodel Viewer
@@ -682,54 +813,76 @@ Best regards`);
             {submodel.idShort}
           </Typography>
         </Box>
-        <IconButton onClick={onClose}>
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title="Refresh Submodel Data">
+            <IconButton
+              onClick={handleRefresh}
+              disabled={loading}
+              sx={{
+                color: loading ? 'text.disabled' : 'primary.main',
+                backgroundColor: 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.1)'
+                },
+                transition: 'all 0.2s ease-in-out'
+              }}
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+          <IconButton onClick={onClose}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 0, height: 'calc(100vh - 120px)', overflow: 'hidden' }}>
-        <Box sx={{ display: 'flex', height: '100%' }}>
-          {/* Left side - Information */}
-          <Box sx={{ width: '40%', borderRight: `1px solid ${theme.palette.divider}`, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', height: '100%', position: 'relative' }}>
+          {/* Right side - Tabs for Specialized/JSON Views - Full Height */}
+          <Box sx={{ width: '70%', height: '100%', display: 'flex', flexDirection: 'column', position: 'absolute', right: 0, top: 0, zIndex: 1 }}>
             <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, backgroundColor: theme.palette.background.paper, flexShrink: 0 }}>
-              <Tabs
-                value={activeTab}
-                onChange={handleTabChange}
-                sx={{ minHeight: 'auto' }}
-              >
-                <Tab 
-                  label="Information" 
-                  icon={<DescriptionIcon />} 
-                  iconPosition="start"
-                  sx={{ minHeight: 'auto', py: 2, textTransform: 'none', fontWeight: 600 }}
-                />
-              </Tabs>
-            </Box>
-
-            <Box sx={{ flex: 1, overflow: 'auto', backgroundColor: theme.palette.background.default }}>
-              <TabPanel value={activeTab} index={0}>
-                {loading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : error ? (
-                  <Alert severity="error" sx={{ borderRadius: 0 }}>
-                    {error}
-                  </Alert>
-                ) : (
-                  renderSubmodelInfo()
-                )}
-              </TabPanel>
-            </Box>
-          </Box>
-
-          {/* Right side - JSON Data */}
-          <Box sx={{ width: '60%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, px: 2, py: 2, backgroundColor: theme.palette.background.paper, flexShrink: 0 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-                <DataObjectIcon color="primary" />
-                Submodel Data (JSON)
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', pl: 0, pr: 2, pt: 0, pb: 0.25 }}>
+                <Tabs
+                  value={rightPanelTab}
+                  onChange={handleRightPanelTabChange}
+                  sx={{ 
+                    minHeight: 'auto',
+                    '& .MuiTabs-indicator': {
+                      height: 2,
+                      borderRadius: 1,
+                      backgroundColor: theme.palette.primary.main,
+                    },
+                    '& .MuiTabs-flexContainer': {
+                      gap: 0.5,
+                    },
+                    '& .MuiTab-root': {
+                      minHeight: 40,
+                      minWidth: 'auto',
+                      padding: '8px 20px',
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      fontSize: '0.875rem',
+                      borderRadius: 2,
+                      color: theme.palette.text.secondary,
+                      transition: 'all 0.2s ease-in-out',
+                      '&:first-of-type': {
+                        marginLeft: 1, // Add left margin only to first tab
+                      },
+                      '&.Mui-selected': {
+                        color: theme.palette.primary.main,
+                        fontWeight: 600,
+                        backgroundColor: theme.palette.primary.light + '15',
+                      },
+                      '&:hover': {
+                        backgroundColor: theme.palette.action.hover,
+                        color: theme.palette.text.primary,
+                      }
+                    }
+                  }}
+                >
+                  {getRightPanelTabs()}
+                </Tabs>
+              </Box>
             </Box>
 
             <Box sx={{ flex: 1, overflow: 'hidden', backgroundColor: theme.palette.background.default, display: 'flex', flexDirection: 'column' }}>
@@ -743,15 +896,41 @@ Best regards`);
                 </Alert>
               ) : (
                 <Box sx={{ 
-                  flex: '0 1 auto', 
+                  flex: 1, 
                   overflow: 'hidden', 
-                  p: 2,
+                  p: getSpecializedAddon() && rightPanelTab === 0 ? 0 : 0.5,
+                  pt: getSpecializedAddon() && rightPanelTab === 0 ? 0 : 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  width: '100%'
+                  width: '100%',
+                  height: '100%'
                 }}>
-                  {renderJsonData()}
+                  {getRightPanelContent()}
                 </Box>
+              )}
+            </Box>
+          </Box>
+
+          {/* Left Panel - Submodel Information - Positioned lower */}
+          <Box sx={{ width: '30%', height: 'calc(100% - 60px)', marginTop: '60px', borderRight: `1px solid ${theme.palette.divider}`, display: 'flex', flexDirection: 'column', backgroundColor: theme.palette.background.paper }}>
+            <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, backgroundColor: theme.palette.background.paper, flexShrink: 0, px: 3, py: 1.5 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+                <DescriptionIcon color="primary" />
+                Submodel Information
+              </Typography>
+            </Box>
+
+            <Box sx={{ flex: 1, overflow: 'auto', backgroundColor: theme.palette.background.default, p: 3 }}>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : error ? (
+                <Alert severity="error" sx={{ borderRadius: 0 }}>
+                  {error}
+                </Alert>
+              ) : (
+                renderSubmodelInfo()
               )}
             </Box>
           </Box>

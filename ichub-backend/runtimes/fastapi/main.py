@@ -78,11 +78,6 @@ def start():
         import concurrent.futures
         
         # Configure asyncio's default thread pool executor globally
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.set_default_executor(
-            concurrent.futures.ThreadPoolExecutor(max_workers=worker_threads)
-        )
         logger.info(f"[ASYNCIO] Configured default thread pool - blocking calls handled automatically!")
         
         # Simple uvicorn configuration
@@ -90,17 +85,9 @@ def start():
             "app": app,
             "host": args.host,
             "port": args.port,
-            "log_level": ("debug" if args.debug else "info"),
-            "loop": "auto",
-            "access_log": True,
-            "timeout_keep_alive": timeout_keep_alive,
-            "timeout_graceful_shutdown": timeout_graceful_shutdown,
+            "log_level": ("debug" if args.debug else "info")
         }
         
-        # Only use multiple workers if explicitly configured
-        if max_workers > 1:
-            logger.warning(f"[UVICORN] Using {max_workers} workers. In-memory caches will be isolated per worker.")
-            uvicorn_config["workers"] = max_workers
         
         try:
             uvicorn.run(**uvicorn_config)

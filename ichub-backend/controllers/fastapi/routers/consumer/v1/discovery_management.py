@@ -46,17 +46,14 @@ router = APIRouter(prefix="/discover", tags=["Part Discovery Management"])
 #connection_service = ConnectionService()
 
 from dtr import dtr_manager  # Use the original manager
-from utils.async_utils import AsyncManagerWrapper
 
-# Create universal async wrapper - works with any manager!
-async_dtr = AsyncManagerWrapper(dtr_manager.consumer, "DTRConsumer")
 
 
 @router.post("/registries")
 async def discover_registries(request: DiscoverRegistriesRequest) -> Response:
     ## Check if the api key is present and if it is authenticated
     # Clean, simple async call - no manual thread pool management needed!
-    result = await async_dtr.get_dtrs(request.counter_party_id)
+    result = dtr_manager.consumer.get_dtrs(request.counter_party_id)
     return result
 
 @router.post("/shells")
@@ -81,7 +78,7 @@ async def discover_shells(search_request: DiscoverShellsRequest) -> Response:
     ]
     
     # Clean, simple async call - no manual thread pool management needed!
-    result = await async_dtr.discover_shells(
+    result = dtr_manager.consumer.discover_shells(
         counter_party_id=search_request.counter_party_id,
         query_spec=query_spec_dict,
         dtr_policies=search_request.dtr_policies,
@@ -113,7 +110,7 @@ async def discover_shell(search_request: DiscoverShellRequest) -> Response:
     """
     
     # Clean, simple async call - no manual thread pool management needed!
-    result = await async_dtr.discover_shell(
+    result = dtr_manager.consumer.discover_shell(
         counter_party_id=search_request.counter_party_id,
         id=search_request.id,
         dtr_policies=search_request.dtr_policies
@@ -196,7 +193,7 @@ async def discover_submodels(search_request: DiscoverSubmodelsDataRequest) -> Re
     """
     
     # Clean, simple async call - no manual thread pool management needed!
-    result = await async_dtr.discover_submodels(
+    result = dtr_manager.consumer.discover_submodels(
         counter_party_id=search_request.counter_party_id,
         id=search_request.id,
         dtr_policies=search_request.dtr_policies,
@@ -262,7 +259,7 @@ async def discover_submodel(search_request: DiscoverSubmodelDataRequest) -> Resp
     
     try:
         # Clean, simple async call - no manual thread pool management needed!
-        result = await async_dtr.discover_submodel(
+        result = dtr_manager.consumer.discover_submodel(
             counter_party_id=search_request.counter_party_id,
             id=search_request.id,
             dtr_policies=search_request.dtr_policies,
@@ -391,7 +388,7 @@ async def discover_submodels_by_semantic_id(search_request: DiscoverSubmodelSema
     
     try:
         # Clean, simple async call - no manual thread pool management needed!
-        result = await async_dtr.discover_submodel_by_semantic_ids(
+        result = dtr_manager.consumer.discover_submodel_by_semantic_ids(
             counter_party_id=search_request.counter_party_id,
             id=search_request.id,
             dtr_policies=search_request.dtr_policies,
