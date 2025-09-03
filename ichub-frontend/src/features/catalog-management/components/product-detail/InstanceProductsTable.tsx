@@ -214,7 +214,7 @@ function InstanceProductsTableToolbar(props: Readonly<InstanceProductsTableToolb
           id="tableTitle"
           component="div"
         >
-          Instance Products(5 of 52.0213 Digital Twins)
+          Serialized Parts
         </Typography>
       )}
       {numSelected > 0 ? (
