@@ -21,13 +21,14 @@
 ********************************************************************************/
 
 export interface SerializedParts {
-    id: number,
-    uuid: string,
+    id: number, // not in API, just for table handling
+    customerPartId: string,
+    businessPartner: {name: string, bpnl: string},
+    manufacturerId: string,
+    manufacturerPartId: string,
     partInstanceId: string,
-    submodels: number,
-    status: string,
-    type: string,
-    created: string,
-    updated: string,
-    manufacturer: string
+    name: string,
+    category: string,
+    bpns: string,
+    van: string
 }

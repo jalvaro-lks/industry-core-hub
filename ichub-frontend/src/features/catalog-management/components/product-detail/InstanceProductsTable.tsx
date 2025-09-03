@@ -43,6 +43,7 @@ import { visuallyHidden } from '@mui/utils';
 
 import { SerializedParts } from '../../../../types/serializedParts';
 import { fetchSerializedParts } from '../../api';
+import { PartType } from '../../../../types/product';
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -71,10 +72,28 @@ interface HeadCell {
 
 const headCells: readonly HeadCell[] = [
   {
-    id: 'uuid',
+    id: 'customerPartId',
     numeric: false,
     disablePadding: true,
-    label: 'UUID',
+    label: 'Customer Part ID',
+  },
+  {
+    id: 'businessPartner',
+    numeric: false,
+    disablePadding: false,
+    label: 'Business Partner',
+  },
+  {
+    id: 'manufacturerId',
+    numeric: false,
+    disablePadding: false,
+    label: 'Manufacturer ID',
+  },
+  {
+    id: 'manufacturerPartId',
+    numeric: false,
+    disablePadding: false,
+    label: 'Manufacturer Part ID',
   },
   {
     id: 'partInstanceId',
@@ -83,40 +102,28 @@ const headCells: readonly HeadCell[] = [
     label: 'Part Instance ID',
   },
   {
-    id: 'submodels',
-    numeric: true,
-    disablePadding: false,
-    label: 'Submodels',
-  },
-  {
-    id: 'status',
+    id: 'name',
     numeric: false,
     disablePadding: false,
-    label: 'Status',
+    label: 'Name',
   },
   {
-    id: 'type',
+    id: 'category',
     numeric: false,
     disablePadding: false,
-    label: 'Type',
+    label: 'Category',
   },
   {
-    id: 'created',
+    id: 'bpns',
     numeric: false,
     disablePadding: false,
-    label: 'Created at',
+    label: 'BPNS',
   },
   {
-    id: 'updated',
+    id: 'van',
     numeric: false,
     disablePadding: false,
-    label: 'Updated at',
-  },
-  {
-    id: 'manufacturer',
-    numeric: false,
-    disablePadding: false,
-    label: 'Manufacturer',
+    label: 'VAN',
   },
 ];
 
@@ -226,9 +233,9 @@ function InstanceProductsTableToolbar(props: Readonly<InstanceProductsTableToolb
     </Toolbar>
   );
 }
-export default function InstanceProductsTable() {
+export default function InstanceProductsTable({ part }: { part: PartType }) {
   const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<keyof SerializedParts>('uuid');
+  const [orderBy, setOrderBy] = useState<keyof SerializedParts>('customerPartId');
   const [selected, setSelected] = useState<readonly number[]>([]);
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<SerializedParts[]>([]);
@@ -237,8 +244,7 @@ export default function InstanceProductsTable() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const data = await fetchSerializedParts();
-        console.log(data);
+        const data = await fetchSerializedParts(part.manufacturerId!, part.manufacturerPartId!);
         setRows(data);
       } catch (error) {
         console.error("Error fetching instance products:", error);
@@ -345,14 +351,15 @@ export default function InstanceProductsTable() {
                       }}
                     />
                   </TableCell>
-                  <TableCell component="th" id={labelId} scope="row" padding="none">{row.uuid}</TableCell>
+                  <TableCell component="th" id={labelId} scope="row" padding="none">{row.customerPartId}</TableCell>
+                  <TableCell align="right">{row.businessPartner.name}</TableCell>
+                  <TableCell align="right">{row.manufacturerId}</TableCell>
+                  <TableCell align="right">{row.manufacturerPartId}</TableCell>
                   <TableCell align="right">{row.partInstanceId}</TableCell>
-                  <TableCell align="right">{row.submodels}</TableCell>
-                  <TableCell align="right">{row.status}</TableCell>
-                  <TableCell align="right">{row.type}</TableCell>
-                  <TableCell align="right">{row.created}</TableCell>
-                  <TableCell align="right">{row.updated}</TableCell>
-                  <TableCell align="right">{row.manufacturer}</TableCell>
+                  <TableCell align="right">{row.name}</TableCell>
+                  <TableCell align="right">{row.category}</TableCell>
+                  <TableCell align="right">{row.bpns}</TableCell>
+                  <TableCell align="right">{row.van}</TableCell>
                 </TableRow>
               );
             })}

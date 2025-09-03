@@ -194,7 +194,7 @@ const ProductsDetails = () => {
         </Grid2>
 
         <Grid2 size={12} className='product-table-wrapper'>
-          <InstanceProductsTable />
+          <InstanceProductsTable part={partType} />
         </Grid2>
         
         <JsonViewerDialog open={jsonDialogOpen} onClose={handleCloseJsonDialog} partData={partType} />
