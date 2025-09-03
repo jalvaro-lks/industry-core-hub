@@ -20,24 +20,33 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-export interface SerializedParts {
-    id: number, // not in API, just for table handling
-    customerPartId: string,
-    businessPartner: {name: string, bpnl: string},
-    manufacturerId: string,
-    manufacturerPartId: string,
-    partInstanceId: string,
-    name: string,
-    category: string,
-    bpns: string,
-    van: string
-}
+import { Box, Grid2 } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { fetchAllSerializedParts } from '../features/serialized-parts/api';
 
-export interface AddSerializedPartRequest {
-  businessPartnerNumber: string;
-  manufacturerId: string;
-  manufacturerPartId: string;
-  partInstanceId: string;
-  van: string;
-  customerPartId: string;
-}
+const SerializedParts = () => {
+  const [serializedParts, setSerializedParts] = useState<SerializedParts[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await fetchAllSerializedParts();
+        setSerializedParts(data);
+      } catch (error) {
+        console.error("Error fetching instance products:", error);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  return (
+    <Grid2 container direction="row">
+      <Box sx={{ p: 3, width: '100%', color: 'white'}}>
+        {serializedParts.length}
+      </Box>
+    </Grid2>
+  );
+};
+
+export default SerializedParts;

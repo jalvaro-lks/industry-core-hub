@@ -35,7 +35,7 @@ import Box from '@mui/material/Box';
 
 import { ProductDetailDialogProps } from '../../../../types/dialogViewer';
 import PageNotification from '../../../../components/general/PageNotification';
-import { addSerializedPart } from '../../api';
+import { addSerializedPart } from '../../../serialized-parts/api';
 
 const AddSerializedPartDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
     const [formData, setFormData] = useState({

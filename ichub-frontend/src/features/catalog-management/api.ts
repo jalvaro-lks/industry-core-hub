@@ -24,10 +24,8 @@ import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
 import { ApiPartData } from '../../types/product';
 import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
-import { SerializedParts, AddSerializedPartRequest } from '../../types/serializedParts';
 
 const CATALOG_PART_MANAGEMENT_BASE_PATH = '/part-management/catalog-part';
-const SERIALIZED_PART_READ_BASE_PATH = '/part-management/serialized-part';
 const SHARE_CATALOG_PART_BASE_PATH = '/share/catalog-part';
 const TWIN_MANAGEMENT_BASE_PATH = '/twin-management/catalog-part-twin';
 const backendUrl = getIchubBackendUrl();
@@ -71,27 +69,4 @@ export const registerCatalogPartTwin = async (
     twinData
   );
   return response.data;
-};
-
-export const fetchAllSerializedParts = async (): Promise<SerializedParts[]> => {
-  const response = await axios.get<SerializedParts[]>(`${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}`);
-  return response.data;
-}
-
-export const fetchSerializedParts = async (manufacturerId: string, manufacturerPartId: string ): Promise<SerializedParts[]> => {
-  const response = await axios.post<SerializedParts[]>(
-    `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}/query`,
-    {
-      manufacturerId,
-      manufacturerPartId,
-    }
-  );
-  return response.data;
-};
-
-export const addSerializedPart = async (payload: AddSerializedPartRequest ) => {
-  const response = await axios.post<SerializedParts>(
-    `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}`, payload
-  );
-  return response;
 };
