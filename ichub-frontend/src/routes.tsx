@@ -27,6 +27,7 @@ import ProductsList from './pages/ProductsList';
 import PartnersList from './pages/PartnersList';
 import ProductsDetails from './pages/ProductsDetails';
 import PartsDiscovery from "./pages/PartsDiscovery";
+import SerializedParts from "./pages/SerializedParts"
 
 export default function AppRoutes() {
   return (
@@ -41,6 +42,7 @@ export default function AppRoutes() {
           <Route path="/discover-parts" element={<PartsDiscovery />} />
           <Route path="/shared" element={<PartnersList />} />
           <Route path="/status" element={<ProductsList />} />
+          <Route path="/serialized-parts" element={<SerializedParts />} />
         </Route>
       </Routes>
     </BrowserRouter>

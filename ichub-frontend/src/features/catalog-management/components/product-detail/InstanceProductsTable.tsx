@@ -260,7 +260,7 @@ export default function InstanceProductsTable({ part }: { part: PartType | null 
     };
 
     loadData();
-  }, []);
+  }, [part]);
 
   const handleRequestSort = (
     _event: React.MouseEvent<unknown>,

@@ -36,6 +36,7 @@ import Box from '@mui/material/Box';
 import { ProductDetailDialogProps } from '../../../../types/dialogViewer';
 import PageNotification from '../../../../components/general/PageNotification';
 import { addSerializedPart } from '../../../serialized-parts/api';
+import { AxiosError } from '../../../../types/axiosError';
 
 const AddSerializedPartDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
     const [formData, setFormData] = useState({
@@ -72,7 +73,7 @@ const AddSerializedPartDialog = ({ open, onClose, partData }: ProductDetailDialo
             setTimeout(() => { window.location.reload(); }, 1500);
         } catch (err) {
             console.error("Error adding serialized part:", err);
-            const error = err as any;
+            const error = err as AxiosError;
             const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
             setNotification({
                 open: true,

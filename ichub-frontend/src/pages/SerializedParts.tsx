@@ -20,12 +20,14 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Box, Grid2 } from '@mui/material';
+import { Box, Grid2, Typography } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { fetchAllSerializedParts } from '../features/serialized-parts/api';
+import SerializedPartsTable from '../features/serialized-parts/components/SerializedPartsTable';
+import { SerializedPart } from '../features/serialized-parts/types';
 
 const SerializedParts = () => {
-  const [serializedParts, setSerializedParts] = useState<SerializedParts[]>([]);
+  const [serializedParts, setSerializedParts] = useState<SerializedPart[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -42,8 +44,13 @@ const SerializedParts = () => {
 
   return (
     <Grid2 container direction="row">
+      <Box sx={{ p: 3, mx: 'auto',  color: 'white'}} className="product-catalog title">
+        <Typography className="text">Serialized Parts</Typography>
+      </Box>
       <Box sx={{ p: 3, width: '100%', color: 'white'}}>
-        {serializedParts.length}
+        <SerializedPartsTable parts={serializedParts} onView={(part) => {
+          console.log("View part:", part);
+        }} />
       </Box>
     </Grid2>
   );
