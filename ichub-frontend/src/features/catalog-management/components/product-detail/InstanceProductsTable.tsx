@@ -242,6 +242,10 @@ export default function InstanceProductsTable({ part }: { part: PartType | null 
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
   useEffect(() => {
+    if (!part) {
+      setRows([]);
+      return;
+    }
     const loadData = async () => {
       try {
         const data = await fetchSerializedParts(part.manufacturerId!, part.manufacturerPartId!);
