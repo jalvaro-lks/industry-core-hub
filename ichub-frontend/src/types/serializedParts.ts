@@ -32,3 +32,12 @@ export interface SerializedParts {
     bpns: string,
     van: string
 }
+
+export interface AddSerializedPartRequest {
+  businessPartnerNumber: string;
+  manufacturerId: string;
+  manufacturerPartId: string;
+  partInstanceId: string;
+  van: string;
+  customerPartId: string;
+}

@@ -31,6 +31,7 @@ import ShareDropdown from "../features/catalog-management/components/product-det
 import ProductButton from "../features/catalog-management/components/product-detail/ProductButton";
 import ProductData from "../features/catalog-management/components/product-detail/ProductData";
 import JsonViewerDialog from "../features/catalog-management/components/product-detail/JsonViewerDialog";
+import AddSerializedPartDialog from "../features/catalog-management/components/product-detail/AddSerializedPartDialog";
 
 import ShareDialog from "../components/general/ShareDialog";
 import {ErrorNotFound} from "../components/general/ErrorNotFound";
@@ -55,6 +56,7 @@ const ProductsDetails = () => {
   const [partType, setPartType] = useState<PartType>();
   const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [addSerializedPartDialogOpen, setAddSerializedPartDialogOpen] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; severity: "success" | "error"; title: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sharedPartners, setSharedPartners] = useState<SharedPartner[]>([]);
@@ -110,6 +112,14 @@ const ProductsDetails = () => {
 
   const handleCloseShareDialog = () => {
     setShareDialogOpen(false);
+  };
+
+  const handleOpenAddSerializedPartDialog = () => {
+    setAddSerializedPartDialogOpen(true);
+  };
+
+  const handleCloseAddSerializedPartDialog = () => {
+    setAddSerializedPartDialogOpen(false);
   };
 
   const handleCopy = () => {
@@ -187,7 +197,7 @@ const ProductsDetails = () => {
           <ProductButton gridSize={{ lg: 4, md: 12, sm: 12 }} disabled={true} buttonText="DIGITAL PRODUCT PASSPORT v6.0.0" onClick={() => console.log("TRANSMISSION PASS v2.0.0")} />
           <ProductButton gridSize={{ lg: 4, md: 12, sm: 12 }} disabled={true} buttonText="DCM v2.0.0" onClick={() => console.log("DPP v2.0 button")} />
           <Grid2 size={{ sm: 12 }}>
-            <Button className="submodel-button" color="success" size="small" onClick={() => console.log("Add button")} fullWidth={true} style={{ padding: "5px" }}>
+            <Button className="submodel-button" color="success" size="small" onClick={handleOpenAddSerializedPartDialog} fullWidth={true} style={{ padding: "5px" }}>
               <Icon fontSize="18" iconName="Add" />
             </Button>
           </Grid2>
@@ -199,6 +209,7 @@ const ProductsDetails = () => {
         
         <JsonViewerDialog open={jsonDialogOpen} onClose={handleCloseJsonDialog} partData={partType} />
         <ShareDialog open={shareDialogOpen} onClose={handleCloseShareDialog} partData={partType} />
+        <AddSerializedPartDialog open={addSerializedPartDialogOpen} onClose={handleCloseAddSerializedPartDialog} partData={partType} />
       </Grid2>
     </>
   );

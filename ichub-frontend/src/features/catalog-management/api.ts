@@ -24,7 +24,7 @@ import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
 import { ApiPartData } from '../../types/product';
 import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
-import { SerializedParts } from '../../types/serializedParts';
+import { SerializedParts, AddSerializedPartRequest } from '../../types/serializedParts';
 
 const CATALOG_PART_MANAGEMENT_BASE_PATH = '/part-management/catalog-part';
 const SERIALIZED_PART_READ_BASE_PATH = '/part-management/serialized-part';
@@ -87,4 +87,11 @@ export const fetchSerializedParts = async (manufacturerId: string, manufacturerP
     }
   );
   return response.data;
+};
+
+export const addSerializedPart = async (payload: AddSerializedPartRequest ) => {
+  const response = await axios.post<SerializedParts>(
+    `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}`, payload
+  );
+  return response;
 };
