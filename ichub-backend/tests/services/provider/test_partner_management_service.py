@@ -18,8 +18,7 @@
 ###############################################################
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
-from typing import List
+from unittest.mock import Mock, patch
 
 from services.provider.partner_management_service import PartnerManagementService
 from models.services.provider.partner_management import (

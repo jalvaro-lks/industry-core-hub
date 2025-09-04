@@ -18,8 +18,7 @@
 ###############################################################
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
-from typing import List, Dict, Any
+from unittest.mock import Mock, patch
 
 from services.provider.part_management_service import PartManagementService
 from models.services.provider.part_management import (

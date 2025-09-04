@@ -32,7 +32,7 @@ with patch.dict('sys.modules', {
     'managers.metadata_database.repository_manager_factory': Mock(),
 }):
     from services.provider.sharing_service import SharingService
-from models.services.provider.sharing_management import SharedPartBase, ShareCatalogPart, SharedPartner
+from models.services.provider.sharing_management import ShareCatalogPart
 from models.services.provider.partner_management import BusinessPartnerRead
 from models.services.provider.twin_management import CatalogPartTwinCreate, TwinAspectCreate, TwinRead
 from models.metadata_database.provider.models import (
