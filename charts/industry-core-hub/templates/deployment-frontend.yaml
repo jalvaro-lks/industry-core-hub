@@ -68,7 +68,7 @@ spec:
             - name: PARTICIPANT_ID
               value: "{{ .Values.participantId }}"
             - name: GOVERNANCE_CONFIG
-              value: "{{ .Values.frontend.consumption.governance | toJson }}"
+              value: {{ .Values.frontend.consumption.governance | toJson | quote }}
           {{- if .Values.frontend.healthChecks.startup.enabled }}
           startupProbe:
             httpGet:

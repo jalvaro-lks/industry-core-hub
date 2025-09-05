@@ -330,17 +330,18 @@ backend:
       cpu: 250m
       memory: 512Mi
       ephemeral-storage: "2Gi"
-    # Server configuration for uvicorn workers and threads
-    server:
-      # Worker configuration
-      workers:
-        max_workers: 1                        # Single worker for optimal in-memory state
-        worker_threads: 200                   # High thread count for blocking operations
 
-      # Timeout configuration (in seconds)
-      timeouts:
-        keep_alive: 300                       # 5 minutes for DTR operations
-        graceful_shutdown: 30                 # 30 seconds for graceful shutdown
+  # Server configuration for uvicorn workers and threads
+  server:
+    # Worker configuration
+    workers:
+      max_workers: 1                        # Single worker for optimal in-memory state
+      worker_threads: 200                   # High thread count for blocking operations
+
+    # Timeout configuration (in seconds)
+    timeouts:
+      keep_alive: 300                       # 5 minutes for DTR operations
+      graceful_shutdown: 30                 # 30 seconds for graceful shutdown
 frontend:
   enabled: true
   name: "industry-core-hub-frontend"
