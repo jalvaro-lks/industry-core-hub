@@ -224,15 +224,18 @@ export function generateOdrlPolicies(
 
   for (const policy of config.policies) {
     // Process permissions
-    const permissionPolicies = processRules(policy.permission, 'permission', policy.strict);
+    const permissionRules = Array.isArray(policy.permission) ? policy.permission : [policy.permission];
+    const permissionPolicies = processRules(permissionRules, 'permission', policy.strict);
     result.push(...permissionPolicies);
 
     // Process prohibitions  
-    const prohibitionPolicies = processRules(policy.prohibition, 'prohibition', policy.strict);
+    const prohibitionRules = Array.isArray(policy.prohibition) ? policy.prohibition : [policy.prohibition];
+    const prohibitionPolicies = processRules(prohibitionRules, 'prohibition', policy.strict);
     result.push(...prohibitionPolicies);
 
     // Process obligations
-    const obligationPolicies = processRules(policy.obligation, 'obligation', policy.strict);
+    const obligationRules = Array.isArray(policy.obligation) ? policy.obligation : [policy.obligation];
+    const obligationPolicies = processRules(obligationRules, 'obligation', policy.strict);
     result.push(...obligationPolicies);
   }
 

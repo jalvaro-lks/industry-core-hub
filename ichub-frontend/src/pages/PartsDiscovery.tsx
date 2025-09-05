@@ -35,10 +35,6 @@ import {
   CircularProgress,
   Card,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Autocomplete
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
