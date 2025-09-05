@@ -31,8 +31,7 @@ import {
   Alert,
   List,
   ListItem,
-  ListItemText,
-  useTheme
+  ListItemText
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { PieChart } from '@mui/x-charts/PieChart';
@@ -46,9 +45,10 @@ import CategoryIcon from '@mui/icons-material/Category';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import GppGoodIcon from '@mui/icons-material/GppGood';
 import BusinessIcon from '@mui/icons-material/Business';
-import { SubmodelAddonProps } from '../../shared/types';
-import { SubmodelAddonWrapper } from '../../BaseComponents';
-import { UsTariffInformation } from '../types';
+import { SubmodelAddonProps } from '../shared/types';
+import { SubmodelAddonWrapper } from '../BaseAddon';
+import { UsTariffInformation } from './types';
+import { getCountryFlag } from '../utils/country-flags';
 
 /**
  * Specialized viewer component for US Tariff Information submodels
@@ -57,96 +57,6 @@ export const UsTariffInformationViewer: React.FC<SubmodelAddonProps<UsTariffInfo
   data,
   semanticId
 }) => {
-  const theme = useTheme();
-
-  // Helper function to get country flag emoji
-  const getCountryFlag = (countryCode: string): string => {
-    const flagMap: Record<string, string> = {
-      'US': '🇺🇸', 'USA': '🇺🇸', 'United States': '🇺🇸', 'United States of America': '🇺🇸',
-      'DE': '🇩🇪', 'DEU': '🇩🇪', 'Germany': '🇩🇪', 'Deutschland': '🇩🇪',
-      'CN': '🇨🇳', 'CHN': '🇨🇳', 'China': '🇨🇳', 'People\'s Republic of China': '🇨🇳',
-      'JP': '🇯🇵', 'JPN': '🇯🇵', 'Japan': '🇯🇵',
-      'KR': '🇰🇷', 'KOR': '🇰🇷', 'South Korea': '🇰🇷', 'Korea': '🇰🇷',
-      'TW': '🇹🇼', 'TWN': '🇹🇼', 'Taiwan': '🇹🇼',
-      'MX': '🇲🇽', 'MEX': '🇲🇽', 'Mexico': '🇲🇽',
-      'CA': '🇨🇦', 'CAN': '🇨🇦', 'Canada': '🇨🇦',
-      'FR': '🇫🇷', 'FRA': '🇫🇷', 'France': '🇫🇷',
-      'IT': '🇮🇹', 'ITA': '🇮🇹', 'Italy': '🇮🇹',
-      'GB': '🇬🇧', 'GBR': '🇬🇧', 'United Kingdom': '🇬🇧', 'UK': '🇬🇧', 'Britain': '🇬🇧',
-      'IN': '🇮🇳', 'IND': '🇮🇳', 'India': '🇮🇳',
-      'BR': '🇧🇷', 'BRA': '🇧🇷', 'Brazil': '🇧🇷',
-      'ES': '🇪🇸', 'ESP': '🇪🇸', 'Spain': '🇪🇸',
-      'NL': '🇳🇱', 'NLD': '🇳🇱', 'Netherlands': '🇳🇱', 'Holland': '🇳🇱',
-      'BE': '🇧🇪', 'BEL': '🇧🇪', 'Belgium': '🇧🇪',
-      'CH': '🇨🇭', 'CHE': '🇨🇭', 'Switzerland': '🇨🇭',
-      'AT': '🇦🇹', 'AUT': '🇦🇹', 'Austria': '🇦🇹',
-      'SE': '🇸🇪', 'SWE': '🇸🇪', 'Sweden': '🇸🇪',
-      'NO': '🇳🇴', 'NOR': '🇳🇴', 'Norway': '🇳🇴',
-      'DK': '🇩🇰', 'DNK': '🇩🇰', 'Denmark': '🇩🇰',
-      'FI': '🇫🇮', 'FIN': '🇫🇮', 'Finland': '🇫🇮',
-      'PL': '🇵🇱', 'POL': '🇵🇱', 'Poland': '🇵🇱',
-      'CZ': '🇨🇿', 'CZE': '🇨🇿', 'Czech Republic': '🇨🇿', 'Czechia': '🇨🇿',
-      'HU': '🇭🇺', 'HUN': '🇭🇺', 'Hungary': '🇭🇺',
-      'RO': '🇷🇴', 'ROU': '🇷🇴', 'Romania': '🇷🇴',
-      'SK': '🇸🇰', 'SVK': '🇸🇰', 'Slovakia': '🇸🇰',
-      'SI': '🇸🇮', 'SVN': '🇸🇮', 'Slovenia': '🇸🇮',
-      'HR': '🇭🇷', 'HRV': '🇭🇷', 'Croatia': '🇭🇷',
-      'BG': '🇧🇬', 'BGR': '🇧🇬', 'Bulgaria': '🇧🇬',
-      'GR': '🇬🇷', 'GRC': '🇬🇷', 'Greece': '🇬🇷',
-      'PT': '🇵🇹', 'PRT': '🇵🇹', 'Portugal': '🇵🇹',
-      'IE': '🇮🇪', 'IRL': '🇮🇪', 'Ireland': '🇮🇪',
-      'LU': '🇱🇺', 'LUX': '🇱🇺', 'Luxembourg': '🇱🇺',
-      'MT': '🇲🇹', 'MLT': '🇲🇹', 'Malta': '🇲🇹',
-      'CY': '🇨🇾', 'CYP': '🇨🇾', 'Cyprus': '🇨🇾',
-      'EE': '🇪🇪', 'EST': '🇪🇪', 'Estonia': '🇪🇪',
-      'LV': '🇱🇻', 'LVA': '🇱🇻', 'Latvia': '🇱🇻',
-      'LT': '🇱🇹', 'LTU': '🇱🇹', 'Lithuania': '🇱🇹',
-      'AU': '🇦🇺', 'AUS': '🇦🇺', 'Australia': '🇦🇺',
-      'NZ': '🇳🇿', 'NZL': '🇳🇿', 'New Zealand': '🇳🇿',
-      'SG': '🇸🇬', 'SGP': '🇸🇬', 'Singapore': '🇸🇬',
-      'MY': '🇲🇾', 'MYS': '🇲🇾', 'Malaysia': '🇲🇾',
-      'TH': '🇹🇭', 'THA': '🇹🇭', 'Thailand': '🇹🇭',
-      'VN': '🇻🇳', 'VNM': '🇻🇳', 'Vietnam': '🇻🇳',
-      'PH': '🇵🇭', 'PHL': '🇵🇭', 'Philippines': '🇵🇭',
-      'ID': '🇮🇩', 'IDN': '🇮🇩', 'Indonesia': '🇮🇩',
-      'RU': '🇷🇺', 'RUS': '🇷🇺', 'Russia': '🇷🇺', 'Russian Federation': '🇷🇺',
-      'TR': '🇹🇷', 'TUR': '🇹🇷', 'Turkey': '🇹🇷', 'Türkiye': '🇹🇷',
-      'IL': '🇮🇱', 'ISR': '🇮🇱', 'Israel': '🇮🇱',
-      'SA': '🇸🇦', 'SAU': '🇸🇦', 'Saudi Arabia': '🇸🇦',
-      'AE': '🇦🇪', 'ARE': '🇦🇪', 'UAE': '🇦🇪', 'United Arab Emirates': '🇦🇪',
-      'ZA': '🇿🇦', 'ZAF': '🇿🇦', 'South Africa': '🇿🇦',
-      'EG': '🇪🇬', 'EGY': '🇪🇬', 'Egypt': '🇪🇬',
-      'AR': '🇦🇷', 'ARG': '🇦🇷', 'Argentina': '🇦🇷',
-      'CL': '🇨🇱', 'CHL': '🇨🇱', 'Chile': '🇨🇱',
-      'CO': '🇨🇴', 'COL': '🇨🇴', 'Colombia': '🇨🇴',
-      'PE': '🇵🇪', 'PER': '🇵🇪', 'Peru': '🇵🇪',
-      'VE': '🇻🇪', 'VEN': '🇻🇪', 'Venezuela': '🇻🇪',
-    };
-    
-    // Try exact match first
-    if (flagMap[countryCode]) {
-      return flagMap[countryCode];
-    }
-    
-    // Try case-insensitive search
-    const lowerCode = countryCode.toLowerCase();
-    for (const [key, flag] of Object.entries(flagMap)) {
-      if (key.toLowerCase() === lowerCode) {
-        return flag;
-      }
-    }
-    
-    // Try partial match for longer country names
-    for (const [key, flag] of Object.entries(flagMap)) {
-      if (countryCode.toLowerCase().includes(key.toLowerCase()) || 
-          key.toLowerCase().includes(countryCode.toLowerCase())) {
-        return flag;
-      }
-    }
-    
-    return '🏳️'; // Default flag for unknown countries
-  };
-
   const formatCurrency = (value: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',

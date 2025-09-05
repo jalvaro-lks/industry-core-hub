@@ -20,29 +20,79 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { SubmodelAddonConfig, SubmodelAddonRegistry } from './types';
+import { SubmodelAddonConfig, SubmodelAddonRegistry, ParsedSemanticId } from './types';
 
 /**
- * Utility function to match semantic ID against patterns
+ * Utility function to parse semantic ID from string
  */
-function matchesPattern(semanticId: string, pattern: string): boolean {
-  // Convert wildcard pattern to regex
-  const regexPattern = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  
-  const regex = new RegExp(`^${regexPattern}$`, 'i');
-  return regex.test(semanticId);
+function parseSemanticId(semanticId: string): ParsedSemanticId | null {
+  try {
+    // Parse semantic ID format: urn:samm:org.eclipse.esmf.samm:example:1.0.0#Property
+    const match = semanticId.match(/^urn:(samm|bamm):([^:]+):([^:]+):(\d+)\.(\d+)\.(\d+)(?:#(.+))?$/);
+    
+    if (!match) {
+      return null;
+    }
+
+    const [, prefix, namespace, name, major, minor, patch, fragment] = match;
+
+    return {
+      prefix: prefix as 'samm' | 'bamm',
+      namespace,
+      name,
+      version: {
+        major: parseInt(major, 10),
+        minor: parseInt(minor, 10),
+        patch: parseInt(patch, 10)
+      },
+      fragment,
+      originalId: semanticId
+    };
+  } catch (error) {
+    console.warn('Failed to parse semantic ID:', semanticId, error);
+    return null;
+  }
 }
 
 /**
- * Default implementation of canHandle using semantic ID patterns
+ * Check if a parsed semantic ID matches the add-on's criteria
  */
-function createCanHandleFunction(patterns: string[]) {
-  return (semanticId: string): boolean => {
-    return patterns.some(pattern => matchesPattern(semanticId, pattern));
-  };
+function addonCanHandle(config: SubmodelAddonConfig, parsedSemanticId: ParsedSemanticId): boolean {
+  // Check namespace and name match
+  if (config.semanticNamespace !== parsedSemanticId.namespace || 
+      config.semanticName !== parsedSemanticId.name) {
+    return false;
+  }
+
+  // Check version compatibility
+  const version = parsedSemanticId.version;
+  const { supportedVersions } = config;
+
+  if (supportedVersions.exact) {
+    return version.major === supportedVersions.exact.major &&
+           version.minor === supportedVersions.exact.minor &&
+           version.patch === supportedVersions.exact.patch;
+  }
+
+  if (supportedVersions.min) {
+    const minVersion = supportedVersions.min;
+    if (version.major < minVersion.major ||
+        (version.major === minVersion.major && version.minor < minVersion.minor) ||
+        (version.major === minVersion.major && version.minor === minVersion.minor && version.patch < minVersion.patch)) {
+      return false;
+    }
+  }
+
+  if (supportedVersions.max) {
+    const maxVersion = supportedVersions.max;
+    if (version.major > maxVersion.major ||
+        (version.major === maxVersion.major && version.minor > maxVersion.minor) ||
+        (version.major === maxVersion.major && version.minor === maxVersion.minor && version.patch > maxVersion.patch)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -55,9 +105,10 @@ export function createSubmodelAddonRegistry(): SubmodelAddonRegistry {
     addons,
     
     register(config: SubmodelAddonConfig) {
-      // If no custom canHandle function provided, create one from patterns
-      if (!config.canHandle && config.semanticIdPatterns.length > 0) {
-        config.canHandle = createCanHandleFunction(config.semanticIdPatterns);
+      // If no custom canHandle function provided, create a default one
+      if (!config.canHandle) {
+        config.canHandle = (parsedSemanticId: ParsedSemanticId) => 
+          addonCanHandle(config, parsedSemanticId);
       }
       
       addons.set(config.id, config);
@@ -65,11 +116,22 @@ export function createSubmodelAddonRegistry(): SubmodelAddonRegistry {
     },
 
     getAddon(semanticId: string): SubmodelAddonConfig | null {
+      const parsedSemanticId = parseSemanticId(semanticId);
+      if (!parsedSemanticId) {
+        return null;
+      }
+
       const candidates = Array.from(addons.values())
-        .filter(addon => addon.canHandle(semanticId))
+        .filter(addon => addon.canHandle(parsedSemanticId))
         .sort((a, b) => b.priority - a.priority); // Sort by priority descending
 
       return candidates.length > 0 ? candidates[0] : null;
+    },
+
+    getCompatibleAddons(parsedSemanticId: ParsedSemanticId): SubmodelAddonConfig[] {
+      return Array.from(addons.values())
+        .filter(addon => addon.canHandle(parsedSemanticId))
+        .sort((a, b) => b.priority - a.priority); // Sort by priority descending
     },
 
     getAllAddons(): SubmodelAddonConfig[] {

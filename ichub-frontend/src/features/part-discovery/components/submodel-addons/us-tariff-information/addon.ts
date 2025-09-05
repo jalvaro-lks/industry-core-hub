@@ -28,7 +28,7 @@ import {
   US_TARIFF_INFORMATION_SEMANTIC_IDS,
   isUsTariffInformation,
 } from './types';
-import { UsTariffInformationViewer } from './components';
+import { UsTariffInformationViewer } from '.';
 
 /**
  * US Tariff Information submodel addon configuration
