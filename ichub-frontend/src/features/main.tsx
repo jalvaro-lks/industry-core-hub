@@ -31,6 +31,6 @@ import {
   export const features = [
     { icon: <Storefront />, path: '/catalog', disabled: false },
     { icon: <People />, path: '/partners', disabled: false },
-    { icon: <FindInPage />, path: '/discover-parts', disabled: false },
+    { icon: <FindInPage />, path: '/dataspace-discovery', disabled: false },
     { icon: <Assignment />, path: '/status', disabled: true }
   ];
