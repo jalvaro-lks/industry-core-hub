@@ -67,6 +67,8 @@ spec:
               value: "{{ .Values.frontend.env.ichubBackendUrl }}"
             - name: PARTICIPANT_ID
               value: "{{ .Values.participantId }}"
+            - name: GOVERNANCE_CONFIG
+              value: "{{ .Values.frontend.consumption.governance | toJson }}"
           {{- if .Values.frontend.healthChecks.startup.enabled }}
           startupProbe:
             httpGet:
