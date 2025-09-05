@@ -75,7 +75,7 @@ frontend:
         #   hosts:
         #     - ""
       hosts:
-        - host: &frontendUrl "frontend-ichub.int.catena-x.net"
+        - host: "frontend-ichub.int.catena-x.net"
           paths:
             - path: /(.*)
               pathType: ImplementationSpecific
@@ -86,7 +86,7 @@ backend:
   cors:
     enabled: true
     allow_origins:
-      - *frontendUrl
+      - "https://frontend-ichub.int.catena-x.net"
       - "https://backend-ichub.int.catena-x.net"
     allow_credentials: true
     allow_methods:
@@ -136,7 +136,7 @@ backend:
         oauth:
           url: "https://centralidp.int.catena-x.net/auth/"
           realm: "CX-Central"
-          client_id: "sa307"
+          client_id: "<path:industry-core-hub/data/oauth#client-id>"
           client_secret: <path:industry-core-hub/data/oauth#client-secret>
         digitalTwinRegistry:
           dct_type_key: "dct:type"
