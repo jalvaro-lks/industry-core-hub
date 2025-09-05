@@ -20,26 +20,46 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-hostname: "<<YOUR_BACKEND_HOSTNAME>>"
+hostname: "https://backend-ichub.int.catena-x.net"
 
 authorization:
   enabled: true
   apiKey: 
     key: "X-Api-Key"
-    value: <<YOUR_API_KEY>>
-# Server configuration for uvicorn workers and threads
-server:
-  # Worker configuration
-  workers:
-    max_workers: 1                        # Single worker for optimal in-memory state
-    worker_threads: 200                   # High thread count for blocking operations
-
-  # Timeout configuration (in seconds)
-  timeouts:
-    keep_alive: 300                       # 5 minutes for DTR operations
-    graceful_shutdown: 30                 # 30 seconds for graceful shutdown
-
+    value: <<example>>
 agreements:
+  - semanticid: urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation
+    usage:
+      context:
+        odrl: http://www.w3.org/ns/odrl/2/
+        cx-policy: https://w3id.org/catenax/policy/
+      permission:
+        - action: odrl:use
+          LogicalConstraint: odrl:and
+          constraints:
+            - leftOperand: cx-policy:FrameworkAgreement
+              operator: odrl:eq
+              rightOperand: DataExchangeGovernance:1.0
+            - leftOperand: cx-policy:Membership
+              operator: odrl:eq
+              rightOperand: active
+            - leftOperand: cx-policy:UsagePurpose
+              operator: odrl:eq
+              rightOperand: cx.core.industrycore:1
+      prohibition: []
+      obligation: []
+    access:
+      context:
+        odrl: http://www.w3.org/ns/odrl/2/
+        cx-policy: https://w3id.org/catenax/policy/
+      permission:
+        - action: odrl:use
+          constraints:
+            - leftOperand: cx-policy:Membership
+              operator: odrl:eq
+              rightOperand: active
+      prohibition: []
+      obligation: []
   - semanticid: urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation
     usage:
       context:
@@ -99,14 +119,14 @@ cors:
 consumer:
   discovery:
     discovery_finder:
-      url: "<<DISCOVERY_FINDER_URL>>"
+      url: "https://semantics.int.catena-x.net/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
     connector_discovery:
       key: "bpn"
     oauth:
-      url: "<<OAUTH_URL>>"
-      realm: "<<OAUTH_REALM>>"
-      client_id: "<<OAUTH_CLIENT_ID>>"
-      client_secret: "<<OAUTH_CLIENT_SECRET>>"
+      url: "https://centralidp.int.catena-x.net/auth/"
+      realm: "CX-Central"
+      client_id: "sa307"
+      client_secret: "fZItup0SGJGSpQaVbNLlJ6RBt2XvlxjJ"
     digitalTwinRegistry:
       dct_type_key: "dct:type"
       dct_type_filter:
@@ -117,9 +137,9 @@ consumer:
     dataspace:
       version: "jupiter"
     controlplane:
-      hostname: <<CONSUMER_CONTROLPLANE_HOSTNAME>>
+      hostname: https://edc-consumer-ichub-control.int.catena-x.net
       apiKeyHeader: X-Api-Key
-      apiKey: <<CONSUMER_CONTROLPLANE_API_KEY>>
+      apiKey: ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC
       managementPath: /management
       protocolPath: /api/v1/dsp
       catalogPath: /catalog
@@ -129,13 +149,13 @@ provider:
     dataspace:
       version: "jupiter"
     controlplane:
-      hostname: <<PROVIDER_CONTROLPLANE_HOSTNAME>>
+      hostname: https://edc-provider-ichub-control.int.catena-x.net
       apiKeyHeader: X-Api-Key
-      apiKey: <<PROVIDER_CONTROLPLANE_API_KEY>>
+      apiKey: ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC
       managementPath: /management
       protocolPath: /api/v1/dsp
     dataplane:
-      hostname: <<PROVIDER_DATAPLANE_HOSTNAME>>
+      hostname: https://edc-provider-ichub-dataplane.int.catena-x.net
       publicPath: "/api/public"
 
   digitalTwinRegistry:
