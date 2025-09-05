@@ -137,30 +137,30 @@ consumer:
     dataspace:
       version: "jupiter"
     controlplane:
-      hostname: https://edc-consumer-ichub-control.int.catena-x.net
-      apiKeyHeader: X-Api-Key
-      apiKey: ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC
-      managementPath: /management
-      protocolPath: /api/v1/dsp
-      catalogPath: /catalog
+      hostname: "https://edc-consumer-ichub-control.int.catena-x.net"
+      apiKeyHeader: "X-Api-Key"
+      apiKey: "ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC"
+      managementPath: "/management"
+      protocolPath: "/api/v1/dsp"
+      catalogPath: "/catalog"
 
 provider:
   connector: 
     dataspace:
       version: "jupiter"
     controlplane:
-      hostname: https://edc-provider-ichub-control.int.catena-x.net
-      apiKeyHeader: X-Api-Key
-      apiKey: ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC
-      managementPath: /management
-      protocolPath: /api/v1/dsp
+      hostname: "https://edc-provider-ichub-control.int.catena-x.net"
+      apiKeyHeader: "X-Api-Key"
+      apiKey: "ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC"
+      managementPath: "/management"
+      protocolPath: "/api/v1/dsp"
     dataplane:
-      hostname: https://edc-provider-ichub-dataplane.int.catena-x.net
+      hostname: "https://edc-provider-ichub-dataplane.int.catena-x.net"
       publicPath: "/api/public"
 
   digitalTwinRegistry:
-    hostname: https://dtr-ichub.int.catena-x.net
-    apiPath: /api/v3
+    hostname: "https://dtr-ichub.int.catena-x.net"
+    apiPath: "/api/v3"
     uri: ""
     asset_config:
       dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
@@ -170,8 +170,8 @@ provider:
     policy:
       usage:
         context:
-          odrl: http://www.w3.org/ns/odrl/2/
-          cx-policy: https://w3id.org/catenax/policy/
+          odrl: "http://www.w3.org/ns/odrl/2/"
+          cx-policy: "https://w3id.org/catenax/policy/"
         permission:
           - action: odrl:use
             LogicalConstraint: odrl:and
@@ -189,8 +189,8 @@ provider:
         obligation: []
       access:
         context:
-          odrl: http://www.w3.org/ns/odrl/2/
-          cx-policy: https://w3id.org/catenax/policy/
+          odrl: "http://www.w3.org/ns/odrl/2/"
+          cx-policy: "https://w3id.org/catenax/policy/"
         permission:
           - action: odrl:use
             constraints:
