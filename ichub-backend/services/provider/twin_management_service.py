@@ -1,7 +1,6 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 DRÄXLMAIER Group
 # (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
@@ -26,12 +25,12 @@
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
 
+from connector import connector_manager
+from dtr import dtr_provider_manager
 
 from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
-from managers.enablement_services.dtr_manager import DTRManager
-from managers.enablement_services.connector_manager import ConnectorManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from models.services.provider.part_management import SerializedPartQuery
 from models.services.provider.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
@@ -43,7 +42,6 @@ from models.services.provider.twin_management import (
     SerializedPartTwinCreate,
     SerializedPartTwinRead,
     SerializedPartTwinShareCreate,
-    SerializedPartTwinUnshareCreate,
     SerializedPartTwinDetailsRead,
     TwinRead,
     TwinAspectCreate,
@@ -139,12 +137,10 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             
-            dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
-            
             customer_part_ids = {partner_catalog_part.customer_part_id: partner_catalog_part.business_partner.bpnl 
                                     for partner_catalog_part in db_catalog_part.partner_catalog_parts}
-            
-            dtr_manager.create_or_update_shell_descriptor(
+
+            dtr_provider_manager.create_or_update_shell_descriptor(
                 global_id=db_twin.global_id,
                 aas_id=db_twin.aas_id,
                 manufacturer_id=create_input.manufacturer_id,
@@ -316,9 +312,7 @@ class TwinManagementService:
             # (if False => we need to register the twin in the DTR using the industry core SDK, then
             #  update the twin registration entity with the dtr_registered flag to True)
             if not db_twin_registration.dtr_registered:
-                dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
-                
-                dtr_manager.create_or_update_shell_descriptor_serialized_part(
+                dtr_provider_manager.create_or_update_shell_descriptor_serialized_part(
                     global_id=db_twin.global_id,
                     aas_id=db_twin.aas_id,
                     manufacturer_id=create_input.manufacturer_id,
@@ -421,70 +415,6 @@ class TwinManagementService:
                 db_business_partner=db_business_partner
             )
 
-    def part_twin_unshare(self, serialized_part_unshare_input: SerializedPartTwinUnshareCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> bool:
-
-        with RepositoryManagerFactory.create() as repo:
-
-            db_enablement_service_stack = repo.enablement_service_stack_repository.get_by_name(
-                enablement_service_stack_name,
-                join_legal_entity=True
-            )
-            if not db_enablement_service_stack:
-                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' not found.")
-
-            if db_enablement_service_stack.legal_entity.bpnl != serialized_part_unshare_input.manufacturer_id:
-                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' does not belong to the legal entity '{serialized_part_unshare_input.manufacturer_id}'.")
-            
-            dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
-
-            new_shell_descriptor, modified = dtr_manager.remove_bpn_shell_descriptor(
-                aas_id=serialized_part_unshare_input.aas_id,
-                bpns_to_remove=serialized_part_unshare_input.business_partner_number_to_unshare,
-                manufacturer_id=serialized_part_unshare_input.manufacturer_id,
-                asset_id_names_filter=serialized_part_unshare_input.asset_id_names_filter
-            )
-
-            if not modified:
-                logger.info(f"No BPN references were found to remove for shell {serialized_part_unshare_input.aas_id}.")
-                return False
-
-            # If the shell descriptor was modified, update it in the DTR
-            dtr_manager._update_shell_descriptor_with_error_handling(
-                shell_descriptor=new_shell_descriptor,
-                aas_id=serialized_part_unshare_input.aas_id,
-                manufacturer_id=serialized_part_unshare_input.manufacturer_id
-            )
-
-            # Mark the twin exchange as cancelled
-            db_twin = repo.twin_repository.find_by_aas_id(serialized_part_unshare_input.aas_id)
-            if db_twin:
-                db_business_partner = repo.business_partner_repository.get_by_bpnl(serialized_part_unshare_input.business_partner_number_to_unshare)
-                if db_business_partner:
-                    db_data_exchange_agreements = repo.data_exchange_agreement_repository.get_by_business_partner_id(db_business_partner.id)
-                    if db_data_exchange_agreements:
-                        db_data_exchange_agreement = db_data_exchange_agreements[0]
-                        db_twin_exchange = repo.twin_exchange_repository.get_by_twin_id_data_exchange_agreement_id(
-                            db_twin.id,
-                            db_data_exchange_agreement.id
-                        )
-                        if db_twin_exchange:
-                            db_twin_exchange.is_cancelled = True
-                            repo.commit()
-                        else:
-                            logger.warning(f"Twin exchange not found for twin {db_twin.id} and data exchange agreement {db_data_exchange_agreement.id}")
-                            raise NotFoundError(f"Twin exchange not found for twin {db_twin.id} and data exchange agreement {db_data_exchange_agreement.id}")
-                    else:
-                        logger.warning(f"No data exchange agreements found for business partner {serialized_part_unshare_input.business_partner_number_to_unshare}")
-                        raise NotFoundError(f"No data exchange agreements found for business partner {serialized_part_unshare_input.business_partner_number_to_unshare}")
-                else:
-                    logger.warning(f"Business partner not found: {serialized_part_unshare_input.business_partner_number_to_unshare}")
-                    raise NotFoundError(f"Business partner not found: {serialized_part_unshare_input.business_partner_number_to_unshare}")
-            else:
-                logger.warning(f"Twin not found for AAS ID: {serialized_part_unshare_input.aas_id}")
-                raise NotFoundError(f"Twin not found for AAS ID: {serialized_part_unshare_input.aas_id}")
-
-            return True
-
     def create_twin_aspect(self, twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
         """
         Create a new twin aspect for a give twin.
@@ -537,10 +467,9 @@ class TwinManagementService:
 
             ## Step 4b: Check if there is created a asset for the digital twin registry.
             
-            edc_manager = _create_connector_manager(db_enablement_service_stack.connection_settings)
-            dtr_config = ConfigManager.get_config("digitalTwinRegistry")
+            dtr_config = ConfigManager.get_config("provider.digitalTwinRegistry")
             asset_config = dtr_config.get("asset_config")
-            dtr_asset_id, _, _, _ = edc_manager.register_dtr_offer(
+            dtr_asset_id, _, _, _ = connector_manager.provider.register_dtr_offer(
                 base_dtr_url=dtr_config.get("hostname"),
                 uri=dtr_config.get("uri"),
                 api_path=dtr_config.get("apiPath"),
@@ -565,37 +494,34 @@ class TwinManagementService:
                 # Step 5b: Update the registration status to STORED
                 db_twin_aspect_registration.status = TwinAspectRegistrationStatus.STORED.value
                 repo.commit()
-
+            
+            asset_id, usage_policy_id, access_policy_id, contract_id = connector_manager.provider.register_submodel_bundle_circular_offer(
+                semantic_id=db_twin_aspect.semantic_id
+            )
             # Step 6: Handle the EDC registration
-            if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.EDC_REGISTERED.value:
-                
-                # Step 6a: Register the aspect as asset in the EDC (if necessary) only submodel bundle allowed
-                asset_id, usage_policy_id, access_policy_id, contract_id = edc_manager.register_submodel_bundle_circular_offer(
-                    semantic_id=db_twin_aspect.semantic_id
-                )
+            if asset_id and db_twin_aspect_registration.status < TwinAspectRegistrationStatus.EDC_REGISTERED.value:
 
                 # Step 6b: Update the registration status to EDC_REGISTERED
                 db_twin_aspect_registration.status = TwinAspectRegistrationStatus.EDC_REGISTERED.value
                 repo.commit()
-
+            
             # Step 7: Handle the DTR registration
-            if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:
-                dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
-                
+            if db_twin_aspect_registration.status < TwinAspectRegistrationStatus.DTR_REGISTERED.value:               
+
                 # Step 7a: Register the submodel in the DTR (if necessary)
                 try:
-                    dtr_manager.create_submodel_descriptor(
+                    dtr_provider_manager.create_submodel_descriptor(
                         aas_id=db_twin.aas_id,
                         submodel_id=db_twin_aspect.submodel_id,
                         semantic_id=db_twin_aspect.semantic_id,
-                        edc_asset_id=asset_id
-                )
+                        connector_asset_id=asset_id
+                    )
+                    # Step 7b: Update the registration status to DTR_REGISTERED only on success
+                    db_twin_aspect_registration.status = TwinAspectRegistrationStatus.DTR_REGISTERED.value
+                    repo.commit()
                 except Exception as e:
-                    logger.error("It was not possible to create the submodel descriptor")
-
-                # Step 7b: Update the registration status to DTR_REGISTERED
-                db_twin_aspect_registration.status = TwinAspectRegistrationStatus.DTR_REGISTERED.value
-                repo.commit()
+                    logger.error(f"Failed to create submodel descriptor: {e}")
+                    raise e  # Re-raise the exception to prevent twin creation from completing
 
             return TwinAspectRead(
                 semanticId=db_twin_aspect.semantic_id,
@@ -783,30 +709,6 @@ class TwinManagementService:
             else:
                 return False
 
-
-def _create_dtr_manager(connection_settings: Optional[Dict[str, Any]]) -> DTRManager:
-    """
-    Create a new instance of the DTRManager class.
-    """
-    # TODO: later we can configure the manager via the connection settings from the DB here
-    # For now we take the values from the config file
-    dtr_hostname = ConfigManager.get_config('digitalTwinRegistry.hostname')
-    dtr_uri = ConfigManager.get_config('digitalTwinRegistry.uri')
-    dtr_lookup_uri = ConfigManager.get_config('digitalTwinRegistry.lookupUri')
-    dtr_api_path = ConfigManager.get_config('digitalTwinRegistry.apiPath')
-    dtr_url = f"{dtr_hostname}{dtr_uri}"
-    dtr_lookup_url = f"{dtr_hostname}{dtr_lookup_uri}"
-
-    return DTRManager(
-        dtr_url=dtr_url, dtr_lookup_url=dtr_lookup_url,
-        api_path=str(dtr_api_path))
-
-def _create_connector_manager(connection_settings: Optional[Dict[str, Any]]) -> ConnectorManager:
-    """
-    Create a new instance of the EDCManager class.
-    """
-    # TODO: later we can configure the manager via the connection settings from the DB here
-    return ConnectorManager()
 
 def _create_submodel_service_manager(connection_settings: Optional[Dict[str, Any]]) -> SubmodelServiceManager:
     """

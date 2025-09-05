@@ -20,22 +20,5 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from managers.enablement_services.consumer import BaseConnectorConsumerManager
-    from managers.enablement_services.provider import ConnectorProviderManager
-
-class ConnectorManager:
-    consumer: "BaseConnectorConsumerManager"
-    provider: "ConnectorProviderManager"
-
-    def __init__(self, connector_consumer_manager: "BaseConnectorConsumerManager", connector_provider_manager: "ConnectorProviderManager"):
-        """
-        Initialize the ConnectorManager with consumer and provider managers.
-
-        :param connector_consumer_manager: Instance of BaseConnectorConsumerManager
-        :param connector_provider_manager: Instance of ConnectorProviderManager
-        """
-        self.consumer = connector_consumer_manager
-        self.provider = connector_provider_manager
+from .dtr_consumer_postgres_memory_manager import DtrConsumerPostgresMemoryManager
+from .dtr_consumer_sync_postgres_memory_manager import DtrConsumerSyncPostgresMemoryManager

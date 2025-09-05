@@ -20,22 +20,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from typing import TYPE_CHECKING
+"""
+Memory package for in-memory connector consumer management.
 
-if TYPE_CHECKING:
-    from managers.enablement_services.consumer import BaseConnectorConsumerManager
-    from managers.enablement_services.provider import ConnectorProviderManager
+This package provides fast in-memory caching of connector discovery information
+with time-based expiration for Business Partner Numbers (BPNs).
+"""
 
-class ConnectorManager:
-    consumer: "BaseConnectorConsumerManager"
-    provider: "ConnectorProviderManager"
+from .connector_consumer_memory_manager import ConnectorConsumerMemoryManager
 
-    def __init__(self, connector_consumer_manager: "BaseConnectorConsumerManager", connector_provider_manager: "ConnectorProviderManager"):
-        """
-        Initialize the ConnectorManager with consumer and provider managers.
-
-        :param connector_consumer_manager: Instance of BaseConnectorConsumerManager
-        :param connector_provider_manager: Instance of ConnectorProviderManager
-        """
-        self.consumer = connector_consumer_manager
-        self.provider = connector_provider_manager
+__all__ = [
+    'ConnectorConsumerMemoryManager'
+]
