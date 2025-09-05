@@ -57,7 +57,6 @@ export interface CardDecisionProps {
 export const CatalogPartsDiscovery = ({
   items,
   onClick,
-  onRegisterClick, 
   isLoading
 }: CardDecisionProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
