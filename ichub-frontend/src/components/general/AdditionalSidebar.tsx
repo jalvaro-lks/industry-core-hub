@@ -20,17 +20,34 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+import React from 'react';
+import { Box } from '@mui/material';
+import { useAdditionalSidebar } from '../../hooks/useAdditionalSidebar';
 
-import {
-    Storefront,
-    FindInPage,
-    People,
-    Assignment
-  } from '@mui/icons-material';
-  
-  export const features = [
-    { icon: <Storefront />, path: '/catalog', disabled: false },
-    { icon: <People />, path: '/partners', disabled: false },
-    { icon: <FindInPage />, path: '/discover-parts', disabled: false },
-    { icon: <Assignment />, path: '/status', disabled: true }
-  ];
+const AdditionalSidebar: React.FC = () => {
+  const { isVisible, content } = useAdditionalSidebar();
+
+  return (
+    <Box
+      sx={{
+        background: 'linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+        height: '100%',
+        borderRight: '1px solid rgba(59, 130, 246, 0.2)',
+        boxShadow: '4px 0 16px rgba(30, 58, 138, 0.1)',
+        width: isVisible ? '320px' : '0px',
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        transition: 'width 0.15s ease-out',
+        backgroundColor: '#1e3a8a', // Fallback background to prevent gap
+      }}
+    >
+      <Box sx={{ width: '320px', minWidth: '320px' }}>
+        {content}
+      </Box>
+    </Box>
+  );
+};
+
+export default AdditionalSidebar;

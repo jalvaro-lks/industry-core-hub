@@ -20,17 +20,13 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+import { useContext } from 'react';
+import { AdditionalSidebarContext } from '../contexts/AdditionalSidebarContext';
 
-import {
-    Storefront,
-    FindInPage,
-    People,
-    Assignment
-  } from '@mui/icons-material';
-  
-  export const features = [
-    { icon: <Storefront />, path: '/catalog', disabled: false },
-    { icon: <People />, path: '/partners', disabled: false },
-    { icon: <FindInPage />, path: '/discover-parts', disabled: false },
-    { icon: <Assignment />, path: '/status', disabled: true }
-  ];
+export const useAdditionalSidebar = () => {
+  const context = useContext(AdditionalSidebarContext);
+  if (!context) {
+    throw new Error('useAdditionalSidebar must be used within an AdditionalSidebarProvider');
+  }
+  return context;
+};
