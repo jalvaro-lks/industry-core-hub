@@ -36,3 +36,6 @@ dependencies:
     name: pgadmin4
     repository: https://helm.runix.net
     version: 1.25.x
+  - name: keycloak
+    repository: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
+    version: 23.0.0
