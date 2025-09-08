@@ -149,6 +149,7 @@ const PartsDiscovery = () => {
   const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
   const [availablePartners, setAvailablePartners] = useState<PartnerInstance[]>([]);
   const [isLoadingPartners, setIsLoadingPartners] = useState(false);
+  const [partnersError, setPartnersError] = useState<string | null>(null);
   const [globalAssetId, setGlobalAssetId] = useState('');
   const [customerPartId, setCustomerPartId] = useState('');
   const [manufacturerPartId, setManufacturerPartId] = useState('');
@@ -284,11 +285,15 @@ const PartsDiscovery = () => {
       
       try {
         setIsLoadingPartners(true);
+        setPartnersError(null);
         const partners = await fetchPartners();
         setAvailablePartners(partners);
       } catch (err) {
         console.error('Error loading partners:', err);
-        // Don't show error for partners loading as it's not critical
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load partners. Backend may be unavailable.';
+        setPartnersError(errorMessage);
+        // Set empty array to ensure component remains functional even when backend is down
+        setAvailablePartners([]);
         // Reset the ref on error so it can be retried
         partnersLoadedRef.current = false;
       } finally {
@@ -313,6 +318,26 @@ const PartsDiscovery = () => {
     // Clear Part Instance ID when switching to Part Type
     if (newPartType === 'Catalog') {
       setPartInstanceId('');
+    }
+  };
+
+  // Retry loading partners
+  const retryLoadPartners = async () => {
+    partnersLoadedRef.current = false;
+    setPartnersError(null);
+    
+    try {
+      setIsLoadingPartners(true);
+      const partners = await fetchPartners();
+      setAvailablePartners(partners);
+      partnersLoadedRef.current = true;
+    } catch (err) {
+      console.error('Error retrying partners load:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load partners. Backend may be unavailable.';
+      setPartnersError(errorMessage);
+      setAvailablePartners([]);
+    } finally {
+      setIsLoadingPartners(false);
     }
   };
 
@@ -1222,6 +1247,28 @@ const PartsDiscovery = () => {
                   }}
                 >
                   <Box display="flex" flexDirection="column" gap={4}>
+                    {/* Partners Loading Error Alert */}
+                    {partnersError && (
+                      <Alert 
+                        severity="warning" 
+                        action={
+                          <Button 
+                            color="inherit" 
+                            size="small" 
+                            onClick={retryLoadPartners}
+                            disabled={isLoadingPartners}
+                          >
+                            Retry
+                          </Button>
+                        }
+                        sx={{ mb: 2 }}
+                      >
+                        <Typography variant="body2">
+                          Unable to load partner list from backend. You can still enter a custom BPNL manually.
+                        </Typography>
+                      </Alert>
+                    )}
+                    
                     <Autocomplete
                       freeSolo
                       options={availablePartners}
@@ -1231,23 +1278,38 @@ const PartsDiscovery = () => {
                       }}
                       value={bpnl}
                       onChange={(_, newValue) => {
-                        if (typeof newValue === 'string') {
-                          // Custom BPNL entered
-                          setBpnl(newValue);
-                          setSelectedPartner(null);
-                        } else if (newValue) {
-                          // Partner selected from dropdown
-                          setBpnl(newValue.bpnl);
-                          setSelectedPartner(newValue);
-                        } else {
-                          // Cleared
+                        try {
+                          if (typeof newValue === 'string') {
+                            // Custom BPNL entered
+                            setBpnl(newValue);
+                            setSelectedPartner(null);
+                          } else if (newValue) {
+                            // Partner selected from dropdown
+                            setBpnl(newValue.bpnl);
+                            setSelectedPartner(newValue);
+                          } else {
+                            // Cleared
+                            setBpnl('');
+                            setSelectedPartner(null);
+                          }
+                        } catch (err) {
+                          console.error('Error in Autocomplete onChange:', err);
+                          // Fallback to safe state
                           setBpnl('');
                           setSelectedPartner(null);
                         }
                       }}
                       onInputChange={(_, newInputValue) => {
-                        setBpnl(newInputValue);
-                        if (!availablePartners.find(p => p.bpnl === newInputValue)) {
+                        try {
+                          setBpnl(newInputValue || '');
+                          // Safely check if partner exists in the array
+                          if (Array.isArray(availablePartners) && !availablePartners.find(p => p?.bpnl === newInputValue)) {
+                            setSelectedPartner(null);
+                          }
+                        } catch (err) {
+                          console.error('Error in Autocomplete onInputChange:', err);
+                          // Fallback to safe state
+                          setBpnl(newInputValue || '');
                           setSelectedPartner(null);
                         }
                       }}
@@ -1404,6 +1466,28 @@ const PartsDiscovery = () => {
                   }}
                 >
                   <Box display="flex" flexDirection="column" gap={4}>
+                    {/* Partners Loading Error Alert */}
+                    {partnersError && (
+                      <Alert 
+                        severity="warning" 
+                        action={
+                          <Button 
+                            color="inherit" 
+                            size="small" 
+                            onClick={retryLoadPartners}
+                            disabled={isLoadingPartners}
+                          >
+                            Retry
+                          </Button>
+                        }
+                        sx={{ mb: 2 }}
+                      >
+                        <Typography variant="body2">
+                          Unable to load partner list from backend. You can still enter a custom BPNL manually.
+                        </Typography>
+                      </Alert>
+                    )}
+                    
                     <Autocomplete
                       freeSolo
                       options={availablePartners}
@@ -1413,23 +1497,38 @@ const PartsDiscovery = () => {
                       }}
                       value={bpnl}
                       onChange={(_, newValue) => {
-                        if (typeof newValue === 'string') {
-                          // Custom BPNL entered
-                          setBpnl(newValue);
-                          setSelectedPartner(null);
-                        } else if (newValue) {
-                          // Partner selected from dropdown
-                          setBpnl(newValue.bpnl);
-                          setSelectedPartner(newValue);
-                        } else {
-                          // Cleared
+                        try {
+                          if (typeof newValue === 'string') {
+                            // Custom BPNL entered
+                            setBpnl(newValue);
+                            setSelectedPartner(null);
+                          } else if (newValue) {
+                            // Partner selected from dropdown
+                            setBpnl(newValue.bpnl);
+                            setSelectedPartner(newValue);
+                          } else {
+                            // Cleared
+                            setBpnl('');
+                            setSelectedPartner(null);
+                          }
+                        } catch (err) {
+                          console.error('Error in Autocomplete onChange:', err);
+                          // Fallback to safe state
                           setBpnl('');
                           setSelectedPartner(null);
                         }
                       }}
                       onInputChange={(_, newInputValue) => {
-                        setBpnl(newInputValue);
-                        if (!availablePartners.find(p => p.bpnl === newInputValue)) {
+                        try {
+                          setBpnl(newInputValue || '');
+                          // Safely check if partner exists in the array
+                          if (Array.isArray(availablePartners) && !availablePartners.find(p => p?.bpnl === newInputValue)) {
+                            setSelectedPartner(null);
+                          }
+                        } catch (err) {
+                          console.error('Error in Autocomplete onInputChange:', err);
+                          // Fallback to safe state
+                          setBpnl(newInputValue || '');
                           setSelectedPartner(null);
                         }
                       }}
