@@ -63,11 +63,11 @@ def start():
         
         logger.info(f"[CONFIG] Loaded server configuration from configuration.yml")
         
-        # Simple configuration with sensible defaults
-        max_workers = int(os.getenv("UVICORN_MAX_WORKERS") or workers_config.get("max_workers", 1))
-        worker_threads = int(os.getenv("UVICORN_WORKER_THREADS") or workers_config.get("worker_threads", 100))
-        timeout_keep_alive = int(os.getenv("UVICORN_TIMEOUT_KEEP_ALIVE") or timeouts_config.get("keep_alive", 300))
-        timeout_graceful_shutdown = int(os.getenv("UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN") or timeouts_config.get("graceful_shutdown", 30))
+        # Server configuration from configuration.yml with defaults
+        max_workers = workers_config.get("max_workers", 1)
+        worker_threads = workers_config.get("worker_threads", 100)
+        timeout_keep_alive = timeouts_config.get("keep_alive", 300)
+        timeout_graceful_shutdown = timeouts_config.get("graceful_shutdown", 30)
         
         logger.info(f"[UVICORN] Starting server with {max_workers} worker(s)")
         logger.info(f"[UVICORN] Thread pool size: {worker_threads}")
