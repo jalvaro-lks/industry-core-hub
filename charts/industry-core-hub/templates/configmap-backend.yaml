@@ -40,7 +40,18 @@ data:
       echo: {{ .Values.backend.configuration.database.echo }}
     server: {{ .Values.backend.server | toYaml | nindent 6 }}
     cors: {{ .Values.backend.cors | toYaml | nindent 6 }}
-    consumer: {{ .Values.backend.configuration.consumer | toYaml | nindent 6 }}
+    consumer:
+      discovery:
+        discovery_finder: {{ .Values.backend.configuration.consumer.discovery.discovery_finder | toYaml | nindent 10 }}
+        connector_discovery: {{ .Values.backend.configuration.consumer.discovery.connector_discovery | toYaml | nindent 10 }}
+        oauth: {{ .Values.backend.configuration.consumer.discovery.oauth | toYaml | nindent 10 }}
+        digitalTwinRegistry:
+          dct_type_key: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_key | quote }}
+          dct_type_filter:
+            operandLeft: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_filter.operandLeft | quote }}
+            operator: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_filter.operator | quote }}
+            operandRight: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_filter.operandRight | quote }}
+      connector: {{ .Values.backend.configuration.consumer.connector | toYaml | nindent 8 }}
     provider: {{ .Values.backend.configuration.provider | toYaml | nindent 6 }}
     submodel_dispatcher: {{ .Values.backend.configuration.submodel_dispatcher | toYaml | nindent 6 }}
   logging.yml: |-
