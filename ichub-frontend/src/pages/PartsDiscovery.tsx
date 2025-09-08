@@ -48,6 +48,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
+import SearchLoading from '../components/SearchLoading';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import PartsDiscoverySidebar from '../features/part-discovery/components/PartsDiscoverySidebar';
 import SerializedPartsTable from '../features/part-discovery/components/SerializedPartsTable';
@@ -188,6 +189,9 @@ const PartsDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>('');
+  const [loadingStep, setLoadingStep] = useState<number>(0);
+  const [isSearchCompleted, setIsSearchCompleted] = useState<boolean>(false);
   
   // Pagination loading states
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -341,6 +345,63 @@ const PartsDiscovery = () => {
     }
   };
 
+  // Function to update loading status with progression
+  const updateLoadingStatus = (step: number, message: string) => {
+    setLoadingStep(step);
+    setLoadingStatus(message);
+  };
+
+  // Function to start dynamic loading progress that adapts to actual response time
+  const startLoadingProgress = (bpnlValue: string) => {
+    setIsLoading(true);
+    setIsSearchCompleted(false);
+    updateLoadingStatus(1, 'Looking for known Digital Twin Registries in the Cache');
+    
+    const startTime = Date.now();
+    let currentStep = 1;
+    
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      
+      // Progress through steps based on elapsed time, but only if we're still loading
+      if (elapsed > 500 && currentStep < 2) {
+        currentStep = 2;
+        updateLoadingStatus(2, `Searching for Connectors for BPN ${bpnlValue}`);
+      } else if (elapsed > 3000 && currentStep < 3) {
+        currentStep = 3;
+        updateLoadingStatus(3, 'Searching Digital Twin Registries behind the Connectors');
+      } else if (elapsed > 5000 && currentStep < 4) {
+        currentStep = 4;
+        updateLoadingStatus(4, 'Negotiating Contracts');
+      } else if (elapsed > 8000 && currentStep < 5) {
+        currentStep = 5;
+        updateLoadingStatus(5, 'Looking for Shell Descriptors that match the search criteria');
+      } else if (elapsed > 10000 && currentStep === 5) {
+        // Show extended waiting message after 10 seconds
+        updateLoadingStatus(5, 'Taking a bit more than expected (probably still negotiating the assets ~10s)');
+      }
+    }, 500);
+    
+    // Return completion function that immediately completes the progress
+    return () => {
+      clearInterval(progressInterval);
+      console.log('🏁 Search completion triggered - showing completed state');
+      // Immediately complete all steps when API responds
+      setIsSearchCompleted(true);
+      updateLoadingStatus(5, 'Search completed successfully!');
+      // Show completion state first, then hide the loading
+      setTimeout(() => {
+        console.log('⏰ Hiding loading component');
+        setIsLoading(false);
+        // Reset completion state after loading is hidden
+        setTimeout(() => {
+          setLoadingStatus('');
+          setIsSearchCompleted(false);
+        }, 100);
+      }, 1500);
+    };
+  };
+
   // Helper function to display filters sidebar
   const handleDisplayFilters = () => {
     showSidebar(
@@ -382,9 +443,17 @@ const PartsDiscovery = () => {
     setSingleTwinResult(null);
     
     try {
-      const response = await discoverSingleShell(bpnl, singleTwinAasId.trim());
-      setSingleTwinResult(response);
-      setHasSearched(true);
+      // Start loading progress and make API call
+      const stopProgress = startLoadingProgress(bpnl);
+      
+      try {
+        const response = await discoverSingleShell(bpnl, singleTwinAasId.trim());
+        setSingleTwinResult(response);
+        setHasSearched(true);
+      } finally {
+        // Stop the loading progress when API call completes
+        stopProgress();
+      }
     } catch (err) {
       let errorMessage = 'Failed to discover digital twin';
       
@@ -407,6 +476,8 @@ const PartsDiscovery = () => {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+      setLoadingStatus('');
+      setLoadingStep(0);
     }
   };
 
@@ -630,13 +701,19 @@ const PartsDiscovery = () => {
           value: partInstanceId.trim()
         });
       }
-      
-      // Use custom query for comprehensive search
-      const response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
 
-      setCurrentResponse(response);
+      // Start loading progress and make API call
+      const stopProgress = startLoadingProgress(bpnl);
       
-      // Log the full response for debugging
+      let response;
+      try {
+        response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
+      } finally {
+        // Stop the loading progress when API call completes
+        stopProgress();
+      }
+
+      setCurrentResponse(response);      // Log the full response for debugging
       console.log('API Response:', response);
       
       // Check for any error-like fields in the response object
@@ -766,6 +843,8 @@ const PartsDiscovery = () => {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+      setLoadingStatus('');
+      setLoadingStep(0);
     }
   };
 
@@ -939,6 +1018,7 @@ const PartsDiscovery = () => {
       backgroundAttachment: 'fixed',
       overflow: 'hidden'
     }}>
+      
       {/* Compact Header - shown when search results are displayed */}
       {hasSearched && (
         <Box 
@@ -1246,30 +1326,38 @@ const PartsDiscovery = () => {
                     }
                   }}
                 >
-                  <Box display="flex" flexDirection="column" gap={4}>
-                    {/* Partners Loading Error Alert */}
-                    {partnersError && (
-                      <Alert 
-                        severity="warning" 
-                        action={
-                          <Button 
-                            color="inherit" 
-                            size="small" 
-                            onClick={retryLoadPartners}
-                            disabled={isLoadingPartners}
-                          >
-                            Retry
-                          </Button>
-                        }
-                        sx={{ mb: 2 }}
-                      >
-                        <Typography variant="body2">
-                          Unable to load partner list from backend. You can still enter a custom BPNL manually.
-                        </Typography>
-                      </Alert>
-                    )}
-                    
-                    <Autocomplete
+                  {/* Show loading component or search form */}
+                  {isLoading ? (
+                    <SearchLoading 
+                      currentStep={loadingStep} 
+                      currentStatus={loadingStatus} 
+                      bpnl={bpnl} 
+                      isCompleted={isSearchCompleted}                    />
+                  ) : (
+                    <Box display="flex" flexDirection="column" gap={4}>
+                      {/* Partners Loading Error Alert */}
+                      {partnersError && (
+                        <Alert 
+                          severity="warning" 
+                          action={
+                            <Button 
+                              color="inherit" 
+                              size="small" 
+                              onClick={retryLoadPartners}
+                              disabled={isLoadingPartners}
+                            >
+                              Retry
+                            </Button>
+                          }
+                          sx={{ mb: 2 }}
+                        >
+                          <Typography variant="body2">
+                            Unable to load partner list from backend. You can still enter a custom BPNL manually.
+                          </Typography>
+                        </Alert>
+                      )}
+                      
+                      <Autocomplete
                       freeSolo
                       options={availablePartners}
                       getOptionLabel={(option) => {
@@ -1403,7 +1491,8 @@ const PartsDiscovery = () => {
                     >
                       {isLoading ? 'Searching...' : 'Start Discovery'}
                     </Button>
-                  </Box>
+                    </Box>
+                  )}
                 </Card>
               </Box>
             )}
@@ -1465,30 +1554,38 @@ const PartsDiscovery = () => {
                     }
                   }}
                 >
-                  <Box display="flex" flexDirection="column" gap={4}>
-                    {/* Partners Loading Error Alert */}
-                    {partnersError && (
-                      <Alert 
-                        severity="warning" 
-                        action={
-                          <Button 
-                            color="inherit" 
-                            size="small" 
-                            onClick={retryLoadPartners}
-                            disabled={isLoadingPartners}
-                          >
-                            Retry
-                          </Button>
-                        }
-                        sx={{ mb: 2 }}
-                      >
-                        <Typography variant="body2">
-                          Unable to load partner list from backend. You can still enter a custom BPNL manually.
-                        </Typography>
-                      </Alert>
-                    )}
-                    
-                    <Autocomplete
+                  {/* Show loading component or search form */}
+                  {isLoading ? (
+                    <SearchLoading 
+                      currentStep={loadingStep} 
+                      currentStatus={loadingStatus} 
+                      bpnl={bpnl} 
+                      isCompleted={isSearchCompleted}                    />
+                  ) : (
+                    <Box display="flex" flexDirection="column" gap={4}>
+                      {/* Partners Loading Error Alert */}
+                      {partnersError && (
+                        <Alert 
+                          severity="warning" 
+                          action={
+                            <Button 
+                              color="inherit" 
+                              size="small" 
+                              onClick={retryLoadPartners}
+                              disabled={isLoadingPartners}
+                            >
+                              Retry
+                            </Button>
+                          }
+                          sx={{ mb: 2 }}
+                        >
+                          <Typography variant="body2">
+                            Unable to load partner list from backend. You can still enter a custom BPNL manually.
+                          </Typography>
+                        </Alert>
+                      )}
+                      
+                      <Autocomplete
                       freeSolo
                       options={availablePartners}
                       getOptionLabel={(option) => {
@@ -1650,7 +1747,8 @@ const PartsDiscovery = () => {
                     >
                       {isLoading ? 'Searching...' : 'Search Digital Twin'}
                     </Button>
-                  </Box>
+                    </Box>
+                  )}
                 </Card>
               </Box>
             )}
