@@ -26,7 +26,7 @@ authorization:
   enabled: true
   apiKey: 
     key: "X-Api-Key"
-    value: <<example>>
+    value: "<<example>>"
 agreements:
   - semanticid: urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation
     usage:
@@ -92,6 +92,7 @@ agreements:
               rightOperand: active
       prohibition: []
       obligation: []
+
 database:
   connectionString: "postgresql://user:password@localhost:5432/ichub"
   echo: false
@@ -126,7 +127,7 @@ server:
   timeouts:
     keep_alive: 300                       # 5 minutes for DTR operations
     graceful_shutdown: 30    
-    
+
 consumer:
   discovery:
     discovery_finder:
