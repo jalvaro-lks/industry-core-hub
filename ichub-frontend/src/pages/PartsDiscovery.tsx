@@ -192,6 +192,7 @@ const PartsDiscovery = () => {
   const [loadingStatus, setLoadingStatus] = useState<string>('');
   const [loadingStep, setLoadingStep] = useState<number>(0);
   const [isSearchCompleted, setIsSearchCompleted] = useState<boolean>(false);
+  const [showSearchLoading, setShowSearchLoading] = useState<boolean>(false);
   
   // Pagination loading states
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -354,6 +355,7 @@ const PartsDiscovery = () => {
   // Function to start dynamic loading progress that adapts to actual response time
   const startLoadingProgress = (bpnlValue: string) => {
     setIsLoading(true);
+    setShowSearchLoading(true);
     setIsSearchCompleted(false);
     updateLoadingStatus(1, 'Looking for known Digital Twin Registries in the Cache');
     
@@ -390,23 +392,25 @@ const PartsDiscovery = () => {
         console.log('❌ Search failed - resetting immediately');
         // For errors, reset immediately without showing completion
         setIsLoading(false);
+        setShowSearchLoading(false);
         setLoadingStatus('');
         setIsSearchCompleted(false);
       } else {
         console.log('🏁 Search completion triggered - showing completed state');
-        // For successful completion, show success state temporarily
+        // For successful completion, immediately hide button spinner but show completion state
+        setIsLoading(false); // Hide button spinner immediately
         setIsSearchCompleted(true);
         updateLoadingStatus(5, 'Search completed successfully!');
-        // Show completion state for 5 seconds so user can definitely see the full progress bar
+        // Keep the SearchLoading component visible for 3 seconds to show completion
         setTimeout(() => {
-          console.log('⏰ Hiding loading component');
-          setIsLoading(false);
-          // Reset completion state after loading is hidden
+          console.log('⏰ Hiding loading component after showing completion');
+          setShowSearchLoading(false);
+          // Reset completion state after component is hidden
           setTimeout(() => {
             setLoadingStatus('');
             setIsSearchCompleted(false);
           }, 100);
-        }, 5000); // Increased from 3000ms to 5000ms (5 seconds)
+        }, 3000); // Show completion state for 3 seconds
       }
     };
   };
@@ -491,7 +495,7 @@ const PartsDiscovery = () => {
       setError(errorMessage);
       // Note: stopProgress(true) was already called in the try-catch above
     } finally {
-      // Note: setIsLoading(false) is now handled by stopProgress
+      // Note: setIsLoading and setShowSearchLoading are now handled by stopProgress
       setLoadingStatus('');
       setLoadingStep(0);
     }
@@ -866,7 +870,7 @@ const PartsDiscovery = () => {
       setError(errorMessage);
       // Note: stopProgress(true) was already called in the API error handler above
     } finally {
-      // Note: setIsLoading(false) is now handled by stopProgress
+      // Note: setIsLoading and setShowSearchLoading are now handled by stopProgress
       setLoadingStatus('');
       setLoadingStep(0);
     }
@@ -1351,7 +1355,7 @@ const PartsDiscovery = () => {
                   }}
                 >
                   {/* Show loading component or search form */}
-                  {isLoading ? (
+                  {showSearchLoading ? (
                     <SearchLoading 
                       currentStep={loadingStep} 
                       currentStatus={loadingStatus} 
@@ -1579,7 +1583,7 @@ const PartsDiscovery = () => {
                   }}
                 >
                   {/* Show loading component or search form */}
-                  {isLoading ? (
+                  {showSearchLoading ? (
                     <SearchLoading 
                       currentStep={loadingStep} 
                       currentStatus={loadingStatus} 
