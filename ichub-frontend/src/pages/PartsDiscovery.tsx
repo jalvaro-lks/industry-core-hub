@@ -48,7 +48,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
-import SearchLoading from '../components/SearchLoading';
+import SearchLoading from '../features/part-discovery/components/SearchLoading';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import PartsDiscoverySidebar from '../features/part-discovery/components/PartsDiscoverySidebar';
 import SerializedPartsTable from '../features/part-discovery/components/SerializedPartsTable';
@@ -194,11 +194,18 @@ const PartsDiscovery = () => {
   const [searchKey, setSearchKey] = useState<number>(0); // Force SearchLoading component reset
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Cleanup timeout on component unmount
+  // AbortController for cancelling requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Cleanup timeout and abort controller on component unmount
   useEffect(() => {
+    const abortController = abortControllerRef.current;
     return () => {
       if (completionTimeoutRef.current) {
         clearTimeout(completionTimeoutRef.current);
+      }
+      if (abortController) {
+        abortController.abort();
       }
     };
   }, []);
@@ -404,6 +411,13 @@ const PartsDiscovery = () => {
   const handleCancelSearch = () => {
     console.log('🚫 Search cancelled by user');
     
+    // Abort the ongoing request
+    if (abortControllerRef.current) {
+      console.log('🛑 Aborting ongoing request');
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     // Clear completion timeout
     if (completionTimeoutRef.current) {
       clearTimeout(completionTimeoutRef.current);
@@ -459,8 +473,12 @@ const PartsDiscovery = () => {
       // Start loading progress and make API call
       const stopProgress = startLoadingProgress();
       
+      // Create AbortController for this request
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      
       try {
-        const response = await discoverSingleShell(bpnl, singleTwinAasId.trim());
+        const response = await discoverSingleShell(bpnl, singleTwinAasId.trim(), abortController.signal);
         
         console.log('✅ Valid response, setting single twin result');
         setSingleTwinResult(response);
@@ -468,11 +486,29 @@ const PartsDiscovery = () => {
         stopProgress();
       } catch (searchError) {
         console.error('❌ Single twin search error:', searchError);
+        
+        // Check if the error is due to cancellation
+        if (searchError instanceof Error && searchError.name === 'AbortError') {
+          console.log('🚫 Request was cancelled');
+          return; // Don't show error or reset state for cancelled requests
+        }
+        
         // Error - reset immediately
         stopProgress(true);
         throw searchError; // Re-throw to be caught by outer catch
+      } finally {
+        // Clear the abort controller reference when request completes
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+        }
       }
     } catch (err) {
+      // Check if the error is due to request cancellation
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('🚫 Single twin search was cancelled by user - no error shown');
+        return; // Don't show error for cancelled requests
+      }
+      
       let errorMessage = 'Failed to discover digital twin';
       
       if (err instanceof Error) {
@@ -721,14 +757,30 @@ const PartsDiscovery = () => {
       // Start loading progress and make API call
       const stopProgress = startLoadingProgress();
       
+      // Create AbortController for this request
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      
       let response;
       try {
-        response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
+        response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit, undefined, abortController.signal);
       } catch (apiError) {
         console.error('❌ Search API error:', apiError);
+        
+        // Check if the error is due to cancellation
+        if (apiError instanceof Error && apiError.name === 'AbortError') {
+          console.log('🚫 Request was cancelled');
+          return; // Don't show error or reset state for cancelled requests
+        }
+        
         // Error - reset immediately
         stopProgress(true);
         throw apiError; // Re-throw to be caught by outer catch
+      } finally {
+        // Clear the abort controller reference when request completes
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+        }
       }
 
       setCurrentResponse(response);      // Log the full response for debugging
@@ -829,6 +881,12 @@ const PartsDiscovery = () => {
 
     } catch (err) {
       console.error('Search error:', err);
+      
+      // Check if the error is due to request cancellation
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('🚫 Search was cancelled by user - no error shown');
+        return; // Don't show error for cancelled requests
+      }
       
       // Extract meaningful error message from different error types
       let errorMessage = 'Error searching for parts. Please try again.';
