@@ -381,19 +381,21 @@ const PartsDiscovery = () => {
         setIsSearchCompleted(false);
       } else {
         console.log('🏁 Search completion triggered - showing completed state');
-        // For successful completion, show completion state briefly
+        // For successful completion, show completion state briefly before changing view
         setIsLoading(false); // Hide button spinner immediately
         setIsSearchCompleted(true);
-        // Keep the SearchLoading component visible for 500ms to show completion
+        
+        // Show completion animation for 200ms, then change to results view
         completionTimeoutRef.current = setTimeout(() => {
-          console.log('⏰ Hiding loading component after showing completion');
+          console.log('⏰ Transitioning to results view after completion animation');
+          setHasSearched(true); // This triggers the view change to show results
           setShowSearchLoading(false);
           // Reset completion state after component is hidden
           setTimeout(() => {
             setIsSearchCompleted(false);
           }, 100);
           completionTimeoutRef.current = null;
-        }, 500); // Show completion state for 500ms
+        }, 200); // Show completion state for 200ms before view change
       }
     };
   };
@@ -462,8 +464,7 @@ const PartsDiscovery = () => {
         
         console.log('✅ Valid response, setting single twin result');
         setSingleTwinResult(response);
-        setHasSearched(true);
-        // Success - show completion state
+        // Success - trigger completion animation and then view change
         stopProgress();
       } catch (searchError) {
         console.error('❌ Single twin search error:', searchError);
@@ -823,10 +824,7 @@ const PartsDiscovery = () => {
         setTotalPages(Math.ceil(response.shellsFound / limit));
       }
 
-      // Mark that search has been performed successfully
-      setHasSearched(true);
-
-      // Success - show completion state
+      // Success - trigger completion animation and then view change
       stopProgress();
 
     } catch (err) {

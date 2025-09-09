@@ -164,22 +164,7 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             mb: 2,
-            transition: 'all 0.4s ease',
-            // Add a subtle bounce animation when completed
-            ...(isCompleted && {
-              animation: 'bounce 0.6s ease-in-out',
-              '@keyframes bounce': {
-                '0%, 20%, 50%, 80%, 100%': {
-                  transform: 'translateY(0)'
-                },
-                '40%': {
-                  transform: 'translateY(-4px)'
-                },
-                '60%': {
-                  transform: 'translateY(-2px)'
-                }
-              }
-            })
+            transition: 'all 0.4s ease'
           }}
         >
           {isCompleted ? 'Search Complete!' : 'Searching Digital Twins'}
