@@ -237,14 +237,17 @@ class PartManagementService():
             if catalog_part_update.materials:
                 self._manage_share_error(catalog_part_update)
 
-            # Update the catalog part fields
+            # Update the catalog part fields directly on the database object
             update_data = catalog_part_update.model_dump(exclude_unset=True, by_alias=False)
-            for field, value in update_data.items():
+            
+            # Only update fields that exist on the database model, excluding ID fields
+            excluded_fields = {'manufacturer_id', 'manufacturer_part_id', 'id', 'legal_entity_id'}
+            filtered_update_data = {k: v for k, v in update_data.items() if k not in excluded_fields}
+            
+            for field, value in filtered_update_data.items():
                 if hasattr(db_catalog_part, field):
                     setattr(db_catalog_part, field, value)
-
-            # Update the catalog part in the database
-            repos.catalog_part_repository.update(db_catalog_part)
+            
             repos.catalog_part_repository.commit()
 
             # Get the updated catalog part with status
@@ -462,14 +465,14 @@ class PartManagementService():
             if not db_serialized_part:
                 raise NotFoundError(f"Serialized part with partner catalog part ID '{partner_catalog_part_id}' and part instance ID '{part_instance_id}' does not exist.")
 
-            # Update the serialized part fields
+            # Update the serialized part fields directly on the database object
             update_data = serialized_part_update.model_dump(exclude_unset=True, by_alias=False)
+            
+            # Only update fields that exist on the database model
             for field, value in update_data.items():
                 if hasattr(db_serialized_part, field):
                     setattr(db_serialized_part, field, value)
-
-            # Update the serialized part in the database
-            repos.serialized_part_repository.update(db_serialized_part)
+            
             repos.serialized_part_repository.commit()
 
             # Return the updated serialized part
