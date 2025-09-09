@@ -25,11 +25,13 @@ import {
     Storefront,
     FindInPage,
     People,
-    Assignment
+    Assignment,
+    Dashboard
   } from '@mui/icons-material';
   
   export const features = [
     { icon: <Storefront />, path: '/catalog', disabled: false },
+    { icon: <Dashboard />, path: '/serialized-parts', disabled: false },
     { icon: <People />, path: '/shared', disabled: false },
     { icon: <FindInPage />, path: '/discover-parts', disabled: false },
     { icon: <Assignment />, path: '/status', disabled: true }

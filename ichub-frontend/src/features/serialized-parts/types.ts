@@ -20,8 +20,24 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-@forward 'CustomCardList';
-@forward 'Dialog';
-@forward 'SharedTable';
-@forward 'InstanceTable';
-@forward 'CustomDataGrid';
+export interface SerializedPart {
+    id: number, // not in API, just for table handling
+    customerPartId: string,
+    businessPartner: {name: string, bpnl: string},
+    manufacturerId: string,
+    manufacturerPartId: string,
+    partInstanceId: string,
+    name: string,
+    category: string,
+    bpns: string,
+    van: string
+}
+
+export interface AddSerializedPartRequest {
+  businessPartnerNumber: string;
+  manufacturerId: string;
+  manufacturerPartId: string;
+  partInstanceId: string;
+  van: string;
+  customerPartId: string;
+}

@@ -20,8 +20,14 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-@forward 'CustomCardList';
-@forward 'Dialog';
-@forward 'SharedTable';
-@forward 'InstanceTable';
-@forward 'CustomDataGrid';
+@use "../config/variables" as *;
+@use '../config/mixins';
+
+.custom-data-grid {
+  color: $brand-text;
+
+  * {
+    background-color: $brand-dark-gray !important;
+    color: $brand-text !important;
+  }
+}
