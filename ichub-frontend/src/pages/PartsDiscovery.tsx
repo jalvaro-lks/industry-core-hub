@@ -382,23 +382,32 @@ const PartsDiscovery = () => {
       }
     }, 500);
     
-    // Return completion function that immediately completes the progress
-    return () => {
+    // Return completion function that handles successful or failed completion
+    return (isError: boolean = false) => {
       clearInterval(progressInterval);
-      console.log('🏁 Search completion triggered - showing completed state');
-      // Immediately complete all steps when API responds
-      setIsSearchCompleted(true);
-      updateLoadingStatus(5, 'Search completed successfully!');
-      // Show completion state first, then hide the loading
-      setTimeout(() => {
-        console.log('⏰ Hiding loading component');
+      
+      if (isError) {
+        console.log('❌ Search failed - resetting immediately');
+        // For errors, reset immediately without showing completion
         setIsLoading(false);
-        // Reset completion state after loading is hidden
+        setLoadingStatus('');
+        setIsSearchCompleted(false);
+      } else {
+        console.log('🏁 Search completion triggered - showing completed state');
+        // For successful completion, show success state temporarily
+        setIsSearchCompleted(true);
+        updateLoadingStatus(5, 'Search completed successfully!');
+        // Show completion state for 5 seconds so user can definitely see the full progress bar
         setTimeout(() => {
-          setLoadingStatus('');
-          setIsSearchCompleted(false);
-        }, 100);
-      }, 1500);
+          console.log('⏰ Hiding loading component');
+          setIsLoading(false);
+          // Reset completion state after loading is hidden
+          setTimeout(() => {
+            setLoadingStatus('');
+            setIsSearchCompleted(false);
+          }, 100);
+        }, 5000); // Increased from 3000ms to 5000ms (5 seconds)
+      }
     };
   };
 
@@ -448,11 +457,17 @@ const PartsDiscovery = () => {
       
       try {
         const response = await discoverSingleShell(bpnl, singleTwinAasId.trim());
+        
+        console.log('✅ Valid response, setting single twin result');
         setSingleTwinResult(response);
         setHasSearched(true);
-      } finally {
-        // Stop the loading progress when API call completes
+        // Success - show completion state
         stopProgress();
+      } catch (searchError) {
+        console.error('❌ Single twin search error:', searchError);
+        // Error - reset immediately
+        stopProgress(true);
+        throw searchError; // Re-throw to be caught by outer catch
       }
     } catch (err) {
       let errorMessage = 'Failed to discover digital twin';
@@ -474,8 +489,9 @@ const PartsDiscovery = () => {
       }
       
       setError(errorMessage);
+      // Note: stopProgress(true) was already called in the try-catch above
     } finally {
-      setIsLoading(false);
+      // Note: setIsLoading(false) is now handled by stopProgress
       setLoadingStatus('');
       setLoadingStep(0);
     }
@@ -708,9 +724,11 @@ const PartsDiscovery = () => {
       let response;
       try {
         response = await discoverShellsWithCustomQuery(bpnl, querySpec, limit);
-      } finally {
-        // Stop the loading progress when API call completes
-        stopProgress();
+      } catch (apiError) {
+        console.error('❌ Search API error:', apiError);
+        // Error - reset immediately
+        stopProgress(true);
+        throw apiError; // Re-throw to be caught by outer catch
       }
 
       setCurrentResponse(response);      // Log the full response for debugging
@@ -743,6 +761,7 @@ const PartsDiscovery = () => {
         } else {
           setError(`Search failed: ${response.error}`);
         }
+        stopProgress(true);
         setIsLoading(false);
         return;
       }
@@ -750,6 +769,7 @@ const PartsDiscovery = () => {
       // Check if no shell descriptors were found
       if (!response.shellDescriptors || response.shellDescriptors.length === 0) {
         setError('No digital twins found for the specified criteria. Please try different search parameters.');
+        stopProgress(true);
         setIsLoading(false);
         return;
       }
@@ -807,6 +827,9 @@ const PartsDiscovery = () => {
       // Mark that search has been performed successfully
       setHasSearched(true);
 
+      // Success - show completion state
+      stopProgress();
+
     } catch (err) {
       console.error('Search error:', err);
       
@@ -841,8 +864,9 @@ const PartsDiscovery = () => {
       }
       
       setError(errorMessage);
+      // Note: stopProgress(true) was already called in the API error handler above
     } finally {
-      setIsLoading(false);
+      // Note: setIsLoading(false) is now handled by stopProgress
       setLoadingStatus('');
       setLoadingStep(0);
     }
@@ -1331,7 +1355,7 @@ const PartsDiscovery = () => {
                     <SearchLoading 
                       currentStep={loadingStep} 
                       currentStatus={loadingStatus} 
-                      bpnl={bpnl} 
+                      
                       isCompleted={isSearchCompleted}                    />
                   ) : (
                     <Box display="flex" flexDirection="column" gap={4}>
@@ -1559,7 +1583,7 @@ const PartsDiscovery = () => {
                     <SearchLoading 
                       currentStep={loadingStep} 
                       currentStatus={loadingStatus} 
-                      bpnl={bpnl} 
+                      
                       isCompleted={isSearchCompleted}                    />
                   ) : (
                     <Box display="flex" flexDirection="column" gap={4}>

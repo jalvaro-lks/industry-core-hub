@@ -27,15 +27,28 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import CloudIcon from '@mui/icons-material/Cloud';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useState, useEffect } from 'react';
 
 interface SearchLoadingProps {
   currentStep: number;
   currentStatus: string;
-  bpnl: string;
   isCompleted?: boolean;
 }
 
-const SearchLoading = ({ currentStep, currentStatus, bpnl, isCompleted = false }: SearchLoadingProps) => {
+const SearchLoading = ({ currentStep, currentStatus, isCompleted = false }: SearchLoadingProps) => {
+  const [hasShownCache, setHasShownCache] = useState(false);
+  const [startTime] = useState<number>(Date.now());
+  const [, forceUpdate] = useState(0); // Force re-renders for smooth progress
+  
+  // Messages that rotate every few seconds
+  const rotatingMessages = [
+    'Searching through the dataspace for available data...',
+    'Negotiating contracts with data providers...',
+    'Looking for shell descriptors in digital twin registries...',
+    'Establishing secure connections to data sources...',
+    'Retrieving digital twin information...',
+  ];
+  
   const steps = [
     { 
       label: 'Looking for known Digital Twin Registries in the Cache', 
@@ -62,18 +75,69 @@ const SearchLoading = ({ currentStep, currentStatus, bpnl, isCompleted = false }
       description: 'Retrieving shell descriptors...',
       icon: <DescriptionIcon />
     }
-  ];  // Calculate progress - force 100% when completed or when currentStep reaches max
-  const isSearchCompleted = isCompleted || currentStatus.includes('completed') || currentStep >= steps.length;
-  const progressValue = isSearchCompleted ? 100 : (currentStep / steps.length) * 100;
+  ];
 
-  // Debug logging
-  console.log('🔄 SearchLoading render:', {
-    isCompleted,
-    currentStatus,
-    currentStep,
-    isSearchCompleted,
-    progressValue
+  // Force re-renders for smooth progress animation
+  useEffect(() => {
+    if (!isCompleted && !currentStatus.includes('completed')) {
+      const interval = setInterval(() => {
+        forceUpdate((prev: number) => prev + 1);
+      }, 200); // Update every 200ms for smooth animation
+      
+      return () => clearInterval(interval);
+    }
+  }, [isCompleted, currentStatus]);
+
+  // Calculate progress - steadily increase to ~95% over time, never restart
+  const calculateProgress = () => {
+    // Immediately return 100% when completed - this should be instant
+    if (isCompleted || currentStatus.includes('completed')) {
+      console.log('📊 Progress set to 100% - completion detected', { isCompleted, currentStatus });
+      return 100; 
+    }
+    
+    const timeElapsed = Date.now() - startTime;
+    const baseProgress = Math.min(5 + (currentStep - 1) * 15 + (timeElapsed / 800), 95); // Gradual increase to 95%
+    return baseProgress;
+  };
+
+  const isSearchCompleted = isCompleted || currentStatus.includes('completed');
+  const progressValue = calculateProgress();
+
+  
+  // Debug log to track completion state changes - log every render when completed
+  useEffect(() => {
+    if (isSearchCompleted) {
+      console.log('🔄 SearchLoading render (COMPLETED):', {
+        isCompleted,
+        currentStatus,
+        currentStep,
+        isSearchCompleted,
+        progressValue,
+        timestamp: new Date().toISOString()
+      });
+    }
   });
+
+  // Track cache-related messages for rotation logic
+  useEffect(() => {
+    if (currentStatus.toLowerCase().includes('cache') && !hasShownCache) {
+      setHasShownCache(true);
+    }
+  }, [currentStatus, hasShownCache]);
+
+  // Get current rotating message based on time and step
+  const getCurrentMessage = () => {
+    if (isSearchCompleted) {
+      return 'Data has been successfully retrieved and is ready to display';
+    }
+    
+    const messageIndex = Math.floor((Date.now() - startTime) / 3000) % rotatingMessages.length;
+    return rotatingMessages[messageIndex];
+  };
+
+  // Determine progress bar color
+  const progressColor = isSearchCompleted ? 'success' : 'primary';
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -95,16 +159,14 @@ const SearchLoading = ({ currentStep, currentStatus, bpnl, isCompleted = false }
           {isSearchCompleted ? 'Search Complete!' : 'Searching Digital Twins'}
         </Typography>
         <Typography variant="body2" color="textSecondary">
-          {isSearchCompleted 
-            ? 'Data has been successfully retrieved and is ready to display'
-            : 'This process may take up to 10 seconds while we negotiate contracts and search the dataspace'
-          }
+          {getCurrentMessage()}
         </Typography>
       </Box>
 
       <LinearProgress 
         variant="determinate" 
         value={progressValue} 
+        color={progressColor}
         sx={{ 
           mb: 4, 
           height: 8, 
@@ -115,7 +177,13 @@ const SearchLoading = ({ currentStep, currentStatus, bpnl, isCompleted = false }
               ? 'linear-gradient(45deg, #4caf50 30%, #66bb6a 90%)'  // Green when completed
               : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading
             borderRadius: 4,
-            transition: 'transform 0.4s ease-in-out' // Smooth transition when progress jumps
+            transition: isSearchCompleted 
+              ? 'all 0.1s ease-out' // Very fast transition to completion
+              : 'transform 0.4s ease-in-out', // Smooth transition for normal progress
+            // Add a subtle glow effect when completed
+            ...(isSearchCompleted && {
+              boxShadow: '0 0 10px rgba(76, 175, 80, 0.4)'
+            })
           }
         }} 
       />
