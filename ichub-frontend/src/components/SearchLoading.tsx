@@ -20,25 +20,36 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { Box, Typography, LinearProgress, Stepper, Step, StepLabel, StepContent } from '@mui/material';
+import { Box, Typography, LinearProgress, Stepper, Step, StepLabel, StepContent, IconButton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import StorageIcon from '@mui/icons-material/Storage';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import CloudIcon from '@mui/icons-material/Cloud';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
 import { useState, useEffect } from 'react';
 
 interface SearchLoadingProps {
   currentStep: number;
   currentStatus: string;
   isCompleted?: boolean;
+  onCancel?: () => void;
 }
 
-const SearchLoading = ({ currentStep, currentStatus, isCompleted = false }: SearchLoadingProps) => {
+const SearchLoading = ({ currentStep, currentStatus, isCompleted = false, onCancel }: SearchLoadingProps) => {
   const [hasShownCache, setHasShownCache] = useState(false);
-  const [startTime] = useState<number>(Date.now());
+  const [startTime, setStartTime] = useState<number>(Date.now());
   const [, forceUpdate] = useState(0); // Force re-renders for smooth progress
+  
+  // Debug log every render to track prop changes
+  console.log('🎯 SearchLoading render:', {
+    currentStep,
+    currentStatus,
+    isCompleted,
+    hasOnCancel: !!onCancel,
+    timestamp: new Date().toISOString()
+  });
   
   // Messages that rotate every few seconds
   const rotatingMessages = [
@@ -88,6 +99,14 @@ const SearchLoading = ({ currentStep, currentStatus, isCompleted = false }: Sear
     }
   }, [isCompleted, currentStatus]);
 
+  // Reset startTime when a new search begins (step 1 and not completed)
+  useEffect(() => {
+    if (currentStep === 1 && !isCompleted && !currentStatus.includes('completed')) {
+      setStartTime(Date.now());
+      setHasShownCache(false); // Also reset cache flag for new search
+    }
+  }, [currentStep, isCompleted, currentStatus]);
+
   // Calculate progress - steadily increase to ~95% over time, never restart
   const calculateProgress = () => {
     // Immediately return 100% when completed - this should be instant
@@ -103,6 +122,15 @@ const SearchLoading = ({ currentStep, currentStatus, isCompleted = false }: Sear
 
   const isSearchCompleted = isCompleted || currentStatus.includes('completed');
   const progressValue = calculateProgress();
+  
+  // Debug log for cancel button visibility
+  console.log('🔘 Cancel button visibility check:', {
+    onCancel: !!onCancel,
+    isSearchCompleted,
+    shouldShowCancel: onCancel && !isSearchCompleted,
+    currentStep,
+    currentStatus
+  });
 
   
   // Debug log to track completion state changes - log every render when completed
@@ -140,7 +168,46 @@ const SearchLoading = ({ currentStep, currentStatus, isCompleted = false }: Sear
   const progressColor = isSearchCompleted ? 'success' : 'primary';
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', position: 'relative' }}>
+      {/* Modern cancel button - elegant and subtle */}
+      {onCancel && !isSearchCompleted && (
+        <IconButton
+          onClick={onCancel}
+          sx={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            zIndex: 10,
+            width: 32,
+            height: 32,
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+              borderColor: 'rgba(244, 67, 54, 0.2)',
+              transform: 'scale(1.05)',
+              boxShadow: '0 4px 12px rgba(244, 67, 54, 0.15)',
+              '& .cancel-icon': {
+                color: '#f44336'
+              }
+            }
+          }}
+          title="Cancel search"
+        >
+          <CloseIcon 
+            className="cancel-icon"
+            sx={{ 
+              fontSize: 18,
+              color: '#666',
+              transition: 'color 0.2s ease-in-out'
+            }} 
+          />
+        </IconButton>
+      )}
+      
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography 
           variant="h5" 

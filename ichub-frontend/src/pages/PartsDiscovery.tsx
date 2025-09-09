@@ -193,6 +193,21 @@ const PartsDiscovery = () => {
   const [loadingStep, setLoadingStep] = useState<number>(0);
   const [isSearchCompleted, setIsSearchCompleted] = useState<boolean>(false);
   const [showSearchLoading, setShowSearchLoading] = useState<boolean>(false);
+  const [searchKey, setSearchKey] = useState<number>(0); // Force SearchLoading component reset
+  const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cleanup timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current) {
+        clearTimeout(completionTimeoutRef.current);
+      }
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
   
   // Pagination loading states
   const [isLoadingNext, setIsLoadingNext] = useState(false);
@@ -354,15 +369,33 @@ const PartsDiscovery = () => {
 
   // Function to start dynamic loading progress that adapts to actual response time
   const startLoadingProgress = (bpnlValue: string) => {
+    console.log('🚀 Starting new search - resetting completion state');
+    console.log('🔍 Before reset - isSearchCompleted:', isSearchCompleted, 'loadingStatus:', loadingStatus);
+    
+    // Clear any existing completion timeout
+    if (completionTimeoutRef.current) {
+      console.log('🧹 Clearing existing completion timeout');
+      clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
+    }
+    
+    setSearchKey(prev => prev + 1); // Force SearchLoading component to reset
     setIsLoading(true);
     setShowSearchLoading(true);
     setIsSearchCompleted(false);
     updateLoadingStatus(1, 'Looking for known Digital Twin Registries in the Cache');
     
+    console.log('🔍 After reset calls - should be: isSearchCompleted: false, step: 1');
+    
     const startTime = Date.now();
     let currentStep = 1;
     
-    const progressInterval = setInterval(() => {
+    // Clear any existing progress interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+    
+    progressIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
       
       // Progress through steps based on elapsed time, but only if we're still loading
@@ -386,7 +419,10 @@ const PartsDiscovery = () => {
     
     // Return completion function that handles successful or failed completion
     return (isError: boolean = false) => {
-      clearInterval(progressInterval);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       
       if (isError) {
         console.log('❌ Search failed - resetting immediately');
@@ -402,7 +438,7 @@ const PartsDiscovery = () => {
         setIsSearchCompleted(true);
         updateLoadingStatus(5, 'Search completed successfully!');
         // Keep the SearchLoading component visible for 3 seconds to show completion
-        setTimeout(() => {
+        completionTimeoutRef.current = setTimeout(() => {
           console.log('⏰ Hiding loading component after showing completion');
           setShowSearchLoading(false);
           // Reset completion state after component is hidden
@@ -410,9 +446,34 @@ const PartsDiscovery = () => {
             setLoadingStatus('');
             setIsSearchCompleted(false);
           }, 100);
+          completionTimeoutRef.current = null;
         }, 3000); // Show completion state for 3 seconds
       }
     };
+  };
+
+  // Function to cancel ongoing search
+  const handleCancelSearch = () => {
+    console.log('🚫 Search cancelled by user');
+    
+    // Clear progress interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    
+    // Clear completion timeout
+    if (completionTimeoutRef.current) {
+      clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
+    }
+    
+    // Reset all loading states
+    setIsLoading(false);
+    setShowSearchLoading(false);
+    setLoadingStatus('');
+    setLoadingStep(0);
+    setIsSearchCompleted(false);
   };
 
   // Helper function to display filters sidebar
@@ -451,7 +512,6 @@ const PartsDiscovery = () => {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
     setSingleTwinResult(null);
     
@@ -667,7 +727,6 @@ const PartsDiscovery = () => {
       }
     }
 
-    setIsLoading(true);
     setError(null);
     // Reset pagination loading states for new search
     setIsLoadingNext(false);
@@ -1357,11 +1416,12 @@ const PartsDiscovery = () => {
                   {/* Show loading component or search form */}
                   {showSearchLoading ? (
                     <SearchLoading 
+                      key={searchKey}
                       currentStep={loadingStep} 
                       currentStatus={loadingStatus} 
-                      
-                      isCompleted={isSearchCompleted}                    />
-                  ) : (
+                      isCompleted={isSearchCompleted}
+                      onCancel={handleCancelSearch}
+                    />                  ) : (
                     <Box display="flex" flexDirection="column" gap={4}>
                       {/* Partners Loading Error Alert */}
                       {partnersError && (
@@ -1585,11 +1645,12 @@ const PartsDiscovery = () => {
                   {/* Show loading component or search form */}
                   {showSearchLoading ? (
                     <SearchLoading 
+                      key={searchKey}
                       currentStep={loadingStep} 
                       currentStatus={loadingStatus} 
-                      
-                      isCompleted={isSearchCompleted}                    />
-                  ) : (
+                      isCompleted={isSearchCompleted}
+                      onCancel={handleCancelSearch}
+                    />                  ) : (
                     <Box display="flex" flexDirection="column" gap={4}>
                       {/* Partners Loading Error Alert */}
                       {partnersError && (
