@@ -189,22 +189,16 @@ const PartsDiscovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState<string>('');
-  const [loadingStep, setLoadingStep] = useState<number>(0);
   const [isSearchCompleted, setIsSearchCompleted] = useState<boolean>(false);
   const [showSearchLoading, setShowSearchLoading] = useState<boolean>(false);
   const [searchKey, setSearchKey] = useState<number>(0); // Force SearchLoading component reset
   const completionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Cleanup timeout on component unmount
   useEffect(() => {
     return () => {
       if (completionTimeoutRef.current) {
         clearTimeout(completionTimeoutRef.current);
-      }
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
       }
     };
   }, []);
@@ -361,16 +355,9 @@ const PartsDiscovery = () => {
     }
   };
 
-  // Function to update loading status with progression
-  const updateLoadingStatus = (step: number, message: string) => {
-    setLoadingStep(step);
-    setLoadingStatus(message);
-  };
-
-  // Function to start dynamic loading progress that adapts to actual response time
-  const startLoadingProgress = (bpnlValue: string) => {
-    console.log('🚀 Starting new search - resetting completion state');
-    console.log('🔍 Before reset - isSearchCompleted:', isSearchCompleted, 'loadingStatus:', loadingStatus);
+  // Function to start loading state
+  const startLoadingProgress = () => {
+    console.log('🚀 Starting new search');
     
     // Clear any existing completion timeout
     if (completionTimeoutRef.current) {
@@ -383,71 +370,30 @@ const PartsDiscovery = () => {
     setIsLoading(true);
     setShowSearchLoading(true);
     setIsSearchCompleted(false);
-    updateLoadingStatus(1, 'Looking for known Digital Twin Registries in the Cache');
-    
-    console.log('🔍 After reset calls - should be: isSearchCompleted: false, step: 1');
-    
-    const startTime = Date.now();
-    let currentStep = 1;
-    
-    // Clear any existing progress interval
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-    
-    progressIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      
-      // Progress through steps based on elapsed time, but only if we're still loading
-      if (elapsed > 500 && currentStep < 2) {
-        currentStep = 2;
-        updateLoadingStatus(2, `Searching for Connectors for BPN ${bpnlValue}`);
-      } else if (elapsed > 3000 && currentStep < 3) {
-        currentStep = 3;
-        updateLoadingStatus(3, 'Searching Digital Twin Registries behind the Connectors');
-      } else if (elapsed > 5000 && currentStep < 4) {
-        currentStep = 4;
-        updateLoadingStatus(4, 'Negotiating Contracts');
-      } else if (elapsed > 8000 && currentStep < 5) {
-        currentStep = 5;
-        updateLoadingStatus(5, 'Looking for Shell Descriptors that match the search criteria');
-      } else if (elapsed > 10000 && currentStep === 5) {
-        // Show extended waiting message after 10 seconds
-        updateLoadingStatus(5, 'Taking a bit more than expected (probably still negotiating the assets ~10s)');
-      }
-    }, 500);
     
     // Return completion function that handles successful or failed completion
     return (isError: boolean = false) => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
-      
       if (isError) {
         console.log('❌ Search failed - resetting immediately');
         // For errors, reset immediately without showing completion
         setIsLoading(false);
         setShowSearchLoading(false);
-        setLoadingStatus('');
         setIsSearchCompleted(false);
       } else {
         console.log('🏁 Search completion triggered - showing completed state');
-        // For successful completion, immediately hide button spinner but show completion state
+        // For successful completion, show completion state briefly
         setIsLoading(false); // Hide button spinner immediately
         setIsSearchCompleted(true);
-        updateLoadingStatus(5, 'Search completed successfully!');
-        // Keep the SearchLoading component visible for 3 seconds to show completion
+        // Keep the SearchLoading component visible for 500ms to show completion
         completionTimeoutRef.current = setTimeout(() => {
           console.log('⏰ Hiding loading component after showing completion');
           setShowSearchLoading(false);
           // Reset completion state after component is hidden
           setTimeout(() => {
-            setLoadingStatus('');
             setIsSearchCompleted(false);
           }, 100);
           completionTimeoutRef.current = null;
-        }, 3000); // Show completion state for 3 seconds
+        }, 500); // Show completion state for 500ms
       }
     };
   };
@@ -455,12 +401,6 @@ const PartsDiscovery = () => {
   // Function to cancel ongoing search
   const handleCancelSearch = () => {
     console.log('🚫 Search cancelled by user');
-    
-    // Clear progress interval
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
     
     // Clear completion timeout
     if (completionTimeoutRef.current) {
@@ -471,8 +411,6 @@ const PartsDiscovery = () => {
     // Reset all loading states
     setIsLoading(false);
     setShowSearchLoading(false);
-    setLoadingStatus('');
-    setLoadingStep(0);
     setIsSearchCompleted(false);
   };
 
@@ -517,7 +455,7 @@ const PartsDiscovery = () => {
     
     try {
       // Start loading progress and make API call
-      const stopProgress = startLoadingProgress(bpnl);
+      const stopProgress = startLoadingProgress();
       
       try {
         const response = await discoverSingleShell(bpnl, singleTwinAasId.trim());
@@ -556,8 +494,6 @@ const PartsDiscovery = () => {
       // Note: stopProgress(true) was already called in the try-catch above
     } finally {
       // Note: setIsLoading and setShowSearchLoading are now handled by stopProgress
-      setLoadingStatus('');
-      setLoadingStep(0);
     }
   };
 
@@ -782,7 +718,7 @@ const PartsDiscovery = () => {
       }
 
       // Start loading progress and make API call
-      const stopProgress = startLoadingProgress(bpnl);
+      const stopProgress = startLoadingProgress();
       
       let response;
       try {
@@ -930,8 +866,6 @@ const PartsDiscovery = () => {
       // Note: stopProgress(true) was already called in the API error handler above
     } finally {
       // Note: setIsLoading and setShowSearchLoading are now handled by stopProgress
-      setLoadingStatus('');
-      setLoadingStep(0);
     }
   };
 
@@ -1417,8 +1351,7 @@ const PartsDiscovery = () => {
                   {showSearchLoading ? (
                     <SearchLoading 
                       key={searchKey}
-                      currentStep={loadingStep} 
-                      currentStatus={loadingStatus} 
+                      isLoading={isLoading}
                       isCompleted={isSearchCompleted}
                       onCancel={handleCancelSearch}
                     />                  ) : (
@@ -1646,8 +1579,7 @@ const PartsDiscovery = () => {
                   {showSearchLoading ? (
                     <SearchLoading 
                       key={searchKey}
-                      currentStep={loadingStep} 
-                      currentStatus={loadingStatus} 
+                      isLoading={isLoading}
                       isCompleted={isSearchCompleted}
                       onCancel={handleCancelSearch}
                     />                  ) : (

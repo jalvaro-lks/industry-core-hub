@@ -20,157 +20,100 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { Box, Typography, LinearProgress, Stepper, Step, StepLabel, StepContent, IconButton } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import StorageIcon from '@mui/icons-material/Storage';
-import HandshakeIcon from '@mui/icons-material/Handshake';
-import CloudIcon from '@mui/icons-material/Cloud';
-import DescriptionIcon from '@mui/icons-material/Description';
+import { Box, Typography, LinearProgress, IconButton } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import { useState, useEffect } from 'react';
 
 interface SearchLoadingProps {
-  currentStep: number;
-  currentStatus: string;
+  isLoading: boolean;
   isCompleted?: boolean;
   onCancel?: () => void;
 }
 
-const SearchLoading = ({ currentStep, currentStatus, isCompleted = false, onCancel }: SearchLoadingProps) => {
-  const [hasShownCache, setHasShownCache] = useState(false);
+const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadingProps) => {
   const [startTime, setStartTime] = useState<number>(Date.now());
-  const [, forceUpdate] = useState(0); // Force re-renders for smooth progress
+  const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0);
+  const [showFirstMessage, setShowFirstMessage] = useState<boolean>(true);
   
-  // Debug log every render to track prop changes
-  console.log('🎯 SearchLoading render:', {
-    currentStep,
-    currentStatus,
-    isCompleted,
-    hasOnCancel: !!onCancel,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Messages that rotate every few seconds
+  // Base rotating messages (shown after first message)
   const rotatingMessages = [
     'Searching through the dataspace for available data...',
     'Negotiating contracts with data providers...',
-    'Looking for shell descriptors in digital twin registries...',
+    'Connecting to digital twin registries...',
     'Establishing secure connections to data sources...',
     'Retrieving digital twin information...',
+    'Almost there, gathering results...'
   ];
   
-  const steps = [
-    { 
-      label: 'Looking for known Digital Twin Registries in the Cache', 
-      description: 'Checking cached registry information...',
-      icon: <StorageIcon />
-    },
-    { 
-      label: 'Searching for Connectors for BPN', 
-      description: 'Finding available data connectors...',
-      icon: <SearchIcon />
-    },
-    { 
-      label: 'Searching Digital Twin Registries', 
-      description: 'Locating digital twin registries...',
-      icon: <CloudIcon />
-    },
-    { 
-      label: 'Negotiating Contracts', 
-      description: 'Establishing secure connections...',
-      icon: <HandshakeIcon />
-    },
-    { 
-      label: 'Looking for Shell Descriptors', 
-      description: 'Retrieving shell descriptors...',
-      icon: <DescriptionIcon />
-    }
-  ];
-
-  // Force re-renders for smooth progress animation
+  // Extended wait message for long operations
+  const extendedWaitMessage = "It's taking a bit more than expected, probably the negotiation is being retried (approx 10s)";
+  
+  // Reset component state when loading starts
   useEffect(() => {
-    if (!isCompleted && !currentStatus.includes('completed')) {
-      const interval = setInterval(() => {
-        forceUpdate((prev: number) => prev + 1);
-      }, 200); // Update every 200ms for smooth animation
-      
-      return () => clearInterval(interval);
-    }
-  }, [isCompleted, currentStatus]);
-
-  // Reset startTime when a new search begins (step 1 and not completed)
-  useEffect(() => {
-    if (currentStep === 1 && !isCompleted && !currentStatus.includes('completed')) {
+    if (isLoading && !isCompleted) {
       setStartTime(Date.now());
-      setHasShownCache(false); // Also reset cache flag for new search
+      setCurrentMessageIndex(0);
+      setShowFirstMessage(true);
     }
-  }, [currentStep, isCompleted, currentStatus]);
+  }, [isLoading, isCompleted]);
 
-  // Calculate progress - steadily increase to ~95% over time, never restart
+  // Handle message cycling
+  useEffect(() => {
+    if (!isLoading || isCompleted) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      
+      // Show first message for 1 second, then start cycling
+      if (elapsed >= 1000 && showFirstMessage) {
+        setShowFirstMessage(false);
+        setCurrentMessageIndex(0);
+      } else if (!showFirstMessage) {
+        setCurrentMessageIndex(prev => (prev + 1) % rotatingMessages.length);
+      }
+    }, 1000); // Cycle every 1 second
+    
+    return () => clearInterval(interval);
+  }, [isLoading, isCompleted, startTime, showFirstMessage, rotatingMessages.length]);
+
+  // Calculate progress - smooth animation from 0-95% during loading, 100% on completion
   const calculateProgress = () => {
-    // Immediately return 100% when completed - this should be instant
-    if (isCompleted || currentStatus.includes('completed')) {
-      console.log('📊 Progress set to 100% - completion detected', { isCompleted, currentStatus });
-      return 100; 
-    }
+    if (isCompleted) return 100;
+    if (!isLoading) return 0;
     
-    const timeElapsed = Date.now() - startTime;
-    const baseProgress = Math.min(5 + (currentStep - 1) * 15 + (timeElapsed / 800), 95); // Gradual increase to 95%
-    return baseProgress;
+    const elapsed = Date.now() - startTime;
+    // Gradually increase to 95% over time
+    return Math.min(5 + (elapsed / 200), 95);
   };
 
-  const isSearchCompleted = isCompleted || currentStatus.includes('completed');
-  const progressValue = calculateProgress();
-  
-  // Debug log for cancel button visibility
-  console.log('🔘 Cancel button visibility check:', {
-    onCancel: !!onCancel,
-    isSearchCompleted,
-    shouldShowCancel: onCancel && !isSearchCompleted,
-    currentStep,
-    currentStatus
-  });
-
-  
-  // Debug log to track completion state changes - log every render when completed
-  useEffect(() => {
-    if (isSearchCompleted) {
-      console.log('🔄 SearchLoading render (COMPLETED):', {
-        isCompleted,
-        currentStatus,
-        currentStep,
-        isSearchCompleted,
-        progressValue,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-
-  // Track cache-related messages for rotation logic
-  useEffect(() => {
-    if (currentStatus.toLowerCase().includes('cache') && !hasShownCache) {
-      setHasShownCache(true);
-    }
-  }, [currentStatus, hasShownCache]);
-
-  // Get current rotating message based on time and step
+  // Get current message based on state
   const getCurrentMessage = () => {
-    if (isSearchCompleted) {
-      return 'Data has been successfully retrieved and is ready to display';
+    if (isCompleted) {
+      return 'Search complete!';
     }
     
-    const messageIndex = Math.floor((Date.now() - startTime) / 3000) % rotatingMessages.length;
-    return rotatingMessages[messageIndex];
+    if (showFirstMessage) {
+      return 'Looking for known registries in cache...';
+    }
+    
+    const elapsed = Date.now() - startTime;
+    
+    // Show extended wait message after 12 seconds
+    if (elapsed > 12000) {
+      return extendedWaitMessage;
+    }
+    
+    return rotatingMessages[currentMessageIndex];
   };
 
-  // Determine progress bar color
-  const progressColor = isSearchCompleted ? 'success' : 'primary';
+  const progressValue = calculateProgress();
+  const progressColor = isCompleted ? 'success' : 'primary';
 
   return (
     <Box sx={{ width: '100%', position: 'relative' }}>
-      {/* Modern cancel button - elegant and subtle */}
-      {onCancel && !isSearchCompleted && (
+      {/* Cancel button - only show during loading */}
+      {onCancel && isLoading && !isCompleted && (
         <IconButton
           onClick={onCancel}
           sx={{
@@ -208,12 +151,13 @@ const SearchLoading = ({ currentStep, currentStatus, isCompleted = false, onCanc
         </IconButton>
       )}
       
+      {/* Header section */}
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography 
           variant="h5" 
           sx={{ 
             fontWeight: 'bold',
-            background: isSearchCompleted 
+            background: isCompleted 
               ? 'linear-gradient(45deg, #4caf50 30%, #66bb6a 90%)'
               : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
             backgroundClip: 'text',
@@ -223,13 +167,14 @@ const SearchLoading = ({ currentStep, currentStatus, isCompleted = false, onCanc
             transition: 'all 0.3s ease'
           }}
         >
-          {isSearchCompleted ? 'Search Complete!' : 'Searching Digital Twins'}
+          {isCompleted ? 'Search Complete!' : 'Searching Digital Twins'}
         </Typography>
         <Typography variant="body2" color="textSecondary">
           {getCurrentMessage()}
         </Typography>
       </Box>
 
+      {/* Progress bar */}
       <LinearProgress 
         variant="determinate" 
         value={progressValue} 
@@ -240,88 +185,51 @@ const SearchLoading = ({ currentStep, currentStatus, isCompleted = false, onCanc
           borderRadius: 4,
           backgroundColor: 'rgba(25, 118, 210, 0.1)',
           '& .MuiLinearProgress-bar': {
-            background: isSearchCompleted 
+            background: isCompleted 
               ? 'linear-gradient(45deg, #4caf50 30%, #66bb6a 90%)'  // Green when completed
               : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading
             borderRadius: 4,
-            transition: isSearchCompleted 
-              ? 'all 0.1s ease-out' // Very fast transition to completion
+            transition: isCompleted 
+              ? 'all 0.3s ease-out' // Smooth transition to completion
               : 'transform 0.4s ease-in-out', // Smooth transition for normal progress
             // Add a subtle glow effect when completed
-            ...(isSearchCompleted && {
+            ...(isCompleted && {
               boxShadow: '0 0 10px rgba(76, 175, 80, 0.4)'
             })
           }
         }} 
       />
 
-      <Stepper activeStep={isSearchCompleted ? steps.length : currentStep - 1} orientation="vertical">
-        {steps.map((step, index) => {
-          const isStepCompleted = isSearchCompleted || index < currentStep;
-          const isCurrentStep = !isSearchCompleted && index === currentStep - 1;
-          
-          return (
-            <Step key={index}>
-              <StepLabel 
-                icon={step.icon}
-                sx={{
-                  '& .MuiStepIcon-root': {
-                    color: isStepCompleted ? '#4caf50' : isCurrentStep ? '#1976d2' : '#e0e0e0',
-                    fontSize: '1.5rem'
-                  }
-                }}
-              >
-                <Typography 
-                  variant="body1" 
-                  sx={{ 
-                    fontWeight: isCurrentStep ? 'bold' : 'normal',
-                    color: isCurrentStep ? '#1976d2' : isStepCompleted ? '#4caf50' : 'inherit'
-                  }}
-                >
-                  {step.label}
-                </Typography>
-              </StepLabel>
-              <StepContent>
-                <Typography variant="body2" color="textSecondary">
-                  {step.description}
-                </Typography>
-              </StepContent>
-            </Step>
-          );
-        })}
-      </Stepper>
-
-      {currentStatus && (
+      {/* Status indicator */}
+      {isCompleted && (
         <Box 
           sx={{ 
             mt: 3, 
             p: 2, 
-            backgroundColor: currentStatus.includes('completed') ? 'rgba(76, 175, 80, 0.1)' : 'rgba(25, 118, 210, 0.1)', 
+            backgroundColor: 'rgba(76, 175, 80, 0.1)', 
             borderRadius: 2,
-            border: currentStatus.includes('completed') ? '1px solid rgba(76, 175, 80, 0.3)' : 'none',
+            border: '1px solid rgba(76, 175, 80, 0.3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 1
           }}
         >
-          {currentStatus.includes('completed') && (
-            <CheckCircleIcon 
-              sx={{ 
-                color: '#4caf50', 
-                fontSize: '1.2rem' 
-              }} 
-            />
-          )}
+          <CheckCircleIcon 
+            sx={{ 
+              color: '#4caf50', 
+              fontSize: '1.2rem' 
+            }} 
+          />
           <Typography 
             variant="body2" 
             sx={{ 
-              color: currentStatus.includes('completed') ? '#4caf50' : '#1976d2',
+              color: '#4caf50',
               fontWeight: 'medium',
               textAlign: 'center'
             }}
           >
-            {currentStatus}
+            Data has been successfully retrieved and is ready to display
           </Typography>
         </Box>
       )}
