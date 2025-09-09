@@ -510,11 +510,25 @@ export const discoverSingleShell = async (
     dtrGovernance: dtrPolicies
   };
 
-  const response = await axios.post<SingleShellDiscoveryResponse>(
+  const response = await axios.post<SingleShellDiscoveryResponse | { status: number; error: string }>(
     `${backendUrl}/discover/shell`,
     request
   );
-  return response.data;
+  
+  // Check if the response contains error fields instead of valid data
+  const data = response.data;
+  if (data && typeof data === 'object' && 'status' in data && 'error' in data) {
+    const errorResponse = data as { status: number; error: string };
+    throw new Error(errorResponse.error || `Error ${errorResponse.status}: Failed to find digital twin`);
+  }
+  
+  // Validate that we have a proper shell descriptor
+  const validData = data as SingleShellDiscoveryResponse;
+  if (!validData || !validData.shell_descriptor || !validData.shell_descriptor.submodelDescriptors) {
+    throw new Error('Invalid response format: Missing shell descriptor data');
+  }
+  
+  return validData;
 };
 
 // Enhanced pagination functions that automatically extract cursors

@@ -164,12 +164,37 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             mb: 2,
-            transition: 'all 0.3s ease'
+            transition: 'all 0.4s ease',
+            // Add a subtle bounce animation when completed
+            ...(isCompleted && {
+              animation: 'bounce 0.6s ease-in-out',
+              '@keyframes bounce': {
+                '0%, 20%, 50%, 80%, 100%': {
+                  transform: 'translateY(0)'
+                },
+                '40%': {
+                  transform: 'translateY(-4px)'
+                },
+                '60%': {
+                  transform: 'translateY(-2px)'
+                }
+              }
+            })
           }}
         >
           {isCompleted ? 'Search Complete!' : 'Searching Digital Twins'}
         </Typography>
-        <Typography variant="body2" color="textSecondary">
+        <Typography 
+          variant="body2" 
+          color="textSecondary"
+          sx={{
+            transition: 'all 0.3s ease',
+            ...(isCompleted && {
+              color: '#4caf50',
+              fontWeight: 'medium'
+            })
+          }}
+        >
           {getCurrentMessage()}
         </Typography>
       </Box>
@@ -190,11 +215,12 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
               : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading
             borderRadius: 4,
             transition: isCompleted 
-              ? 'all 0.3s ease-out' // Smooth transition to completion
+              ? 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' // Smooth elastic transition to completion
               : 'transform 0.4s ease-in-out', // Smooth transition for normal progress
             // Add a subtle glow effect when completed
             ...(isCompleted && {
-              boxShadow: '0 0 10px rgba(76, 175, 80, 0.4)'
+              boxShadow: '0 0 15px rgba(76, 175, 80, 0.6)',
+              transform: 'scaleY(1.1)' // Slightly expand when complete
             })
           }
         }} 
