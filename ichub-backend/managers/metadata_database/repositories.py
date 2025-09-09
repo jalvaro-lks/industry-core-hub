@@ -211,6 +211,12 @@ class PartnerCatalogPartRepository(BaseRepository[PartnerCatalogPart]):
         )
         self.create(partner_catalog_part)
         return partner_catalog_part
+    
+    def get_by_catalog_part_id(self, catalog_part_id: int) -> List[PartnerCatalogPart]:
+        stmt = select(PartnerCatalogPart).where(
+            PartnerCatalogPart.catalog_part_id == catalog_part_id)
+        return self._session.scalars(stmt).all()
+    
     def create_or_update(self, catalog_part_id: int, business_partner_id: int, customer_part_id: str) -> PartnerCatalogPart:
         """Create or update a PartnerCatalogPart instance."""
         existing = self.get_by_catalog_part_id_business_partner_id(

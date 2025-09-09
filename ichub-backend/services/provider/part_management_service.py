@@ -204,16 +204,22 @@ class PartManagementService():
             if not db_catalog_part:
                 raise NotFoundError(f"Catalog part '{manufacturer_id}/{manufacturer_part_id}' does not exist.")
 
-            # Check if there are any serialized parts associated with this catalog part
-            serialized_parts = repos.serialized_part_repository.find_by_partner_catalog_part_id(db_catalog_part.id)
-            if serialized_parts:
-                raise InvalidError(f"Cannot delete catalog part '{manufacturer_id}/{manufacturer_part_id}' because serialized parts are associated with it.")
+            # Check if there are any serialized parts associated with this catalog part through partner catalog parts
+            partner_catalog_parts = repos.partner_catalog_part_repository.get_by_catalog_part_id(db_catalog_part.id)
+            for partner_catalog_part in partner_catalog_parts:
+                serialized_parts = repos.serialized_part_repository.find_by_partner_catalog_part_id(partner_catalog_part.id)
+                if serialized_parts:
+                    raise InvalidError(f"Cannot delete catalog part '{manufacturer_id}/{manufacturer_part_id}' because it has {len(serialized_parts)} associated serialized parts.")
+
+            # Delete associated partner catalog parts first
+            for partner_catalog_part in partner_catalog_parts:
+                repos.partner_catalog_part_repository.delete(partner_catalog_part.id)
 
             # Delete the catalog part
             repos.catalog_part_repository.delete(db_catalog_part.id)
             repos.catalog_part_repository.commit()
 
-            logger.info(f"Successfully deleted catalog part '{manufacturer_id}/{manufacturer_part_id}'")
+            logger.info(f"Successfully deleted catalog part '{manufacturer_id}/{manufacturer_part_id}' and {len(partner_catalog_parts)} associated partner catalog parts")
             return True
 
     def update_catalog_part(self, manufacturer_id: str, manufacturer_part_id: str, catalog_part_update: CatalogPartUpdate) -> CatalogPartDetailsReadWithStatus:
