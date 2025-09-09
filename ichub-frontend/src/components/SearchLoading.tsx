@@ -90,7 +90,7 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
   // Get current message based on state
   const getCurrentMessage = () => {
     if (isCompleted) {
-      return 'Search complete!';
+      return 'Preparing results for display...';
     }
     
     if (showFirstMessage) {
