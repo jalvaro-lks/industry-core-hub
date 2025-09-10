@@ -32,8 +32,12 @@ COPY package.json package-lock.json ./
 # Install dependencies with optimizations for Docker
 RUN npm ci --include=dev --ignore-scripts --prefer-offline
 
-# Copy source code
-COPY . .
+# Copy only necessary source files for better caching
+COPY src/ ./src/
+COPY public/ ./public/
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tsconfig*.json ./
 
 # Set production environment for optimized build
 ENV NODE_ENV=production
