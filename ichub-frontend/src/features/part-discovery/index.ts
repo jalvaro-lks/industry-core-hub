@@ -20,16 +20,25 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useContext } from 'react';
-import { AdditionalSidebarContext } from '../contexts/AdditionalSidebarContext';
+// Export components
+export { PaginationControls } from './components/PaginationControls';
+export { SearchModeToggle } from './components/SearchModeToggle';
+export { FilterChips } from './components/FilterChips';
+export { PartnerSearch } from './components/PartnerSearch';
+export { SingleTwinSearch } from './components/SingleTwinSearch';
+export { SearchHeader } from './components/SearchHeader';
+export { default as PartsDiscoverySidebar } from './components/PartsDiscoverySidebar';
 
-export const useAdditionalSidebar = () => {
-  const context = useContext(AdditionalSidebarContext);
-  if (!context) {
-    throw new Error('useAdditionalSidebar must be used within an AdditionalSidebarProvider');
-  }
-  return context;
-};
+// Export hooks
+export { usePartsDiscoverySearch } from './hooks/usePartsDiscoverySearch';
 
-export default useAdditionalSidebar;
+// Export types
+export * from './types';
 
+// Export utilities
+export * from './utils';
+export * from './dtr-utils';
+export * from './data-converters';
+
+// Export API
+export * from './api';

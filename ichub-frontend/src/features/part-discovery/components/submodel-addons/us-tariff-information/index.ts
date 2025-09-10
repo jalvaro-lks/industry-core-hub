@@ -18,18 +18,6 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-import { useContext } from 'react';
-import { AdditionalSidebarContext } from '../contexts/AdditionalSidebarContext';
-
-export const useAdditionalSidebar = () => {
-  const context = useContext(AdditionalSidebarContext);
-  if (!context) {
-    throw new Error('useAdditionalSidebar must be used within an AdditionalSidebarProvider');
-  }
-  return context;
-};
-
-export default useAdditionalSidebar;
-
+export { UsTariffInformationViewer } from './UsTariffInformationViewer';
