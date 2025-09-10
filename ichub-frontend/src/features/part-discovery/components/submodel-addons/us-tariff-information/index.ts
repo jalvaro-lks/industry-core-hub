@@ -18,17 +18,6 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-/// <reference types="vite/client" />
-
-declare global {
-  interface Window {
-    ENV?: {
-      GOVERNANCE_CONFIG?: string;
-      DTR_POLICIES_CONFIG?: string;
-    }
-  }
-}
-
-export {};
+export { UsTariffInformationViewer } from './UsTariffInformationViewer';

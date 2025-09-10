@@ -20,15 +20,13 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-/// <reference types="vite/client" />
-
-declare global {
-  interface Window {
-    ENV?: {
-      GOVERNANCE_CONFIG?: string;
-      DTR_POLICIES_CONFIG?: string;
-    }
-  }
-}
-
-export {};
+export { PaginationControls } from './PaginationControls';
+export { SearchModeToggle } from './SearchModeToggle';
+export { FilterChips } from './FilterChips';
+export { PartnerSearch } from './PartnerSearch';
+export { SingleTwinSearch } from './SingleTwinSearch';
+export { SearchHeader } from './SearchHeader';
+export { SingleTwinResult } from './SingleTwinResult';
+export { default as SerializedPartsTable } from './SerializedPartsTable';
+export { default as PartsDiscoverySidebar } from './PartsDiscoverySidebar';
+export { CatalogPartsDiscovery } from './catalog-parts/CatalogPartsDiscovery';

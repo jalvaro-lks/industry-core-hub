@@ -20,15 +20,25 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-/// <reference types="vite/client" />
+// Export components
+export { PaginationControls } from './components/PaginationControls';
+export { SearchModeToggle } from './components/SearchModeToggle';
+export { FilterChips } from './components/FilterChips';
+export { PartnerSearch } from './components/PartnerSearch';
+export { SingleTwinSearch } from './components/SingleTwinSearch';
+export { SearchHeader } from './components/SearchHeader';
+export { default as PartsDiscoverySidebar } from './components/PartsDiscoverySidebar';
 
-declare global {
-  interface Window {
-    ENV?: {
-      GOVERNANCE_CONFIG?: string;
-      DTR_POLICIES_CONFIG?: string;
-    }
-  }
-}
+// Export hooks
+export { usePartsDiscoverySearch } from './hooks/usePartsDiscoverySearch';
 
-export {};
+// Export types
+export * from './types';
+
+// Export utilities
+export * from './utils';
+export * from './dtr-utils';
+export * from './data-converters';
+
+// Export API
+export * from './api';
