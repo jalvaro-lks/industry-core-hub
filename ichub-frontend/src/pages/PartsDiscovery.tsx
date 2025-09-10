@@ -1146,6 +1146,7 @@ const PartsDiscovery = () => {
               onClick={() => setSearchMode('single')}
             >
               Single Twin
+              <SearchIcon sx={{ marginLeft: 1 }} />
             </Typography>
             </Box>
           </Box>

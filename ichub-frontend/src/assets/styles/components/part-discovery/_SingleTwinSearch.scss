@@ -20,41 +20,55 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-@use 'config/variables' as *;
+@use '../../config/variables' as *;
 
-@use 'components';
-@use 'pages';
-@use 'layout';
+.single-twin-search {
+  .twin-search-input {
+    margin-bottom: 16px;
 
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+    .MuiOutlinedInput-root {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: $brand-text;
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Manrope', sans-serif!important;
-    font-optical-sizing: auto;
-    font-style: normal;
-}
+      .MuiOutlinedInput-notchedOutline {
+        border-color: rgba(255, 255, 255, 0.3);
+      }
 
-.add-button{
-    border-radius: 8px!important;
-    border-color: green!important;
+      &:hover .MuiOutlinedInput-notchedOutline {
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      &.Mui-focused .MuiOutlinedInput-notchedOutline {
+        border-color: $brand-text;
+      }
+    }
+
+    .MuiInputLabel-root {
+      color: rgba(255, 255, 255, 0.7);
+
+      &.Mui-focused {
+        color: $brand-text;
+      }
+    }
+  }
+
+  .search-button {
+    background: $header-opaque-gradient-bg;
     color: $brand-text !important;
+    border-color: green;
+    border-radius: 12px !important;
+    margin-bottom: 24px;
+    padding: 10px 24px;
+    font-weight: 500;
 
     &:hover {
-        background: $green-gradient-bg!important;
-        border-color: $brand-text!important;
+      background: $blue-gradient-bg;
+      border-color: $brand-text !important;
     }
-}
 
-.back-button{
-    border-radius: 8px!important;
-    border-color: #FFA726!important;
-    color: $brand-text !important;
-
-    &:hover {
-        background: #FF9800!important;
-        border-color: $brand-text!important;
+    &:disabled {
+      opacity: 0.6;
     }
+  }
 }

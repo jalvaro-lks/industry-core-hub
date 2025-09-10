@@ -21,9 +21,10 @@
 ********************************************************************************/
 
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { StatusTag, Button, Icon } from '@catena-x/portal-shared-components';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import HelpOutlineIcon from '@mui/icons-material/Help';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Grid2 from '@mui/material/Grid2';
 
 import InstanceProductsTable from "../features/catalog-management/components/product-detail/InstanceProductsTable";
@@ -47,6 +48,7 @@ import { fetchCatalogPart } from "../features/catalog-management/api";
 import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../features/catalog-management/utils";
 
 const ProductsDetails = () => {
+  const navigate = useNavigate();
 
   const { manufacturerId, manufacturerPartId } = useParams<{
     manufacturerId: string;
@@ -63,10 +65,13 @@ const ProductsDetails = () => {
 
   useEffect(() => {
     if (!manufacturerId || !manufacturerPartId) return;
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const apiData = await fetchCatalogPart(manufacturerId, manufacturerPartId);
+        console.log(apiData)
+        // Map API data to PartInstance[]
         const mappedPart: PartType = mapApiPartDataToPartType(apiData)
         setPartType(mappedPart);
         // Just if the customer part ids are available we can see if they are shared
@@ -74,6 +79,7 @@ const ProductsDetails = () => {
             const mappedResult:SharedPartner[] = mapSharePartCustomerPartIds(mappedPart.customerPartIds)
             setSharedPartners(mappedResult)
         }
+
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -95,7 +101,26 @@ const ProductsDetails = () => {
   
   // Map API data to PartInstance[]
   if (!partType) {
-    return <ErrorNotFound icon={ReportProblemIcon} message="Product not found"/>;
+    return (
+      <Grid2 className="product-catalog" container spacing={1} direction="row">
+        <Grid2 className="flex flex-content-center" size={12} sx={{ 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: 2,
+          minHeight: '60vh'
+        }}>
+          <ErrorNotFound icon={HelpOutlineIcon} message="404 PART NOT FOUND "/>
+          <Button 
+            className="back-button" variant="outlined" size="small"
+            onClick={() => navigate('/catalog')}
+            startIcon={<ArrowBackIcon />}
+          >
+            BACK TO CATALOG
+          </Button>
+        </Grid2>
+      </Grid2>
+    );
   }
 
   const handleOpenJsonDialog = () => {
