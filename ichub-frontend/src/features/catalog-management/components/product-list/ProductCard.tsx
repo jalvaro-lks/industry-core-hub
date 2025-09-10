@@ -51,7 +51,7 @@ export interface CardDecisionProps {
   isDiscovery?: boolean;
 }
 
-export enum ButtonEvents {
+enum ButtonEvents {
   SHARE,
   MORE,
   REGISTER, 
