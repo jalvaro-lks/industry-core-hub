@@ -30,7 +30,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install dependencies with optimizations for Docker
-RUN npm ci --only=production=false --ignore-scripts --prefer-offline
+RUN npm ci --include=dev --ignore-scripts --prefer-offline
 
 # Copy source code
 COPY . .
