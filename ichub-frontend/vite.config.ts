@@ -41,6 +41,9 @@ export default defineConfig({
     // Increase chunk size warning limit to 1MB (from default 500kB)
     chunkSizeWarningLimit: 1000,
     
+    // Optimize for faster builds in Docker
+    reportCompressedSize: false, // Skip gzip size reporting for faster builds
+    
     rollupOptions: {
       output: {
         // Automatic chunking based on file patterns - no manual maintenance needed
@@ -74,8 +77,8 @@ export default defineConfig({
       }
     },
     
-    // Enable source maps for better debugging in production
-    sourcemap: true
+    // Disable source maps in production for faster builds
+    sourcemap: false
   },
   
   // Optimize dev server
@@ -94,5 +97,12 @@ export default defineConfig({
       '@mui/material',
       '@mui/icons-material'
     ]
+  },
+  
+  // Additional optimizations for Docker builds
+  esbuild: {
+    target: 'esnext',
+    // Drop console logs in production
+    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   }
 })

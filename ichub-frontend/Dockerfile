@@ -23,17 +23,22 @@
 # Stage 1: Build the React app
 FROM node:23-alpine AS builder
 
-# Copy package files and install dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
-
-# Copy the rest of the source code
-COPY . /app
-
-# Set the working directory
+# Set working directory first
 WORKDIR /app
 
-# Build the application
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+
+# Install dependencies with optimizations for Docker
+RUN npm ci --only=production=false --ignore-scripts --prefer-offline
+
+# Copy source code
+COPY . .
+
+# Set production environment for optimized build
+ENV NODE_ENV=production
+
+# Build the application with optimized settings
 RUN npm run build
 
 
