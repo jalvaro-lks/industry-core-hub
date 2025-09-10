@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2025 LKS NEXT
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -20,18 +21,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-# ================ CONSTANTS =========================
-TYPE = "@type"
 
-# ================= CONTEXTS =========================
-ODRL_CONTEXT = "http://www.w3.org/ns/odrl/2/"
-CX_POLICY_CONTEXT = "https://w3id.org/catenax/policy/"
-
-# ==================== DESCRIPTIONS =========================
-TWIN_ID_DESCRIPTION = "The ID of the associated twin."
-BUSINESS_PARTNER_ID_DESCRIPTION = "The ID of the associated business partner."
-PARENT_ORDER_NUMBER_DESCRIPTION = "The parent order number of the JIS part."
-VAN_DESCRIPTION = "The optional VAN (Vehicle Assembly Number) of the serialized part."
-
-# ==================== API VERSIONS =========================
-API_V1 = "v1"
+# Package-level variables
+__author__ = 'Eclipse Tractus-X Contributors'
+__license__ = "Apache License, Version 2.0"
