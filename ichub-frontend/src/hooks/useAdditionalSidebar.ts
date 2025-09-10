@@ -20,15 +20,15 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-/// <reference types="vite/client" />
+import { useContext } from 'react';
+import { AdditionalSidebarContext } from '../contexts/AdditionalSidebarContext';
 
-declare global {
-  interface Window {
-    ENV?: {
-      GOVERNANCE_CONFIG?: string;
-      DTR_POLICIES_CONFIG?: string;
-    }
+export const useAdditionalSidebar = () => {
+  const context = useContext(AdditionalSidebarContext);
+  if (!context) {
+    throw new Error('useAdditionalSidebar must be used within an AdditionalSidebarProvider');
   }
-}
+  return context;
+};
 
-export {};
+export default useAdditionalSidebar;
