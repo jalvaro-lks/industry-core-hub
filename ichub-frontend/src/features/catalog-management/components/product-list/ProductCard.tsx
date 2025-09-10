@@ -50,7 +50,7 @@ export interface CardDecisionProps {
   isLoading: boolean
 }
 
-export enum ButtonEvents {
+enum ButtonEvents {
   SHARE,
   MORE,
   REGISTER, 

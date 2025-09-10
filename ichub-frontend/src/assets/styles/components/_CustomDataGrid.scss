@@ -20,19 +20,14 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+@use "../config/variables" as *;
+@use '../config/mixins';
 
-import {
-    Storefront,
-    FindInPage,
-    People,
-    Assignment,
-    Dashboard
-  } from '@mui/icons-material';
-  
-  export const features = [
-    { icon: <Storefront />, path: '/catalog', disabled: false },
-    { icon: <FindInPage />, path: '/dataspace-discovery', disabled: false },
-    { icon: <Dashboard />, path: '/serialized-parts', disabled: false },
-    { icon: <People />, path: '/partners', disabled: false },
-    { icon: <Assignment />, path: '/status', disabled: true }
-  ];
+.custom-data-grid {
+  color: $brand-text;
+
+  * {
+    background-color: $brand-dark-gray !important;
+    color: $brand-text !important;
+  }
+}

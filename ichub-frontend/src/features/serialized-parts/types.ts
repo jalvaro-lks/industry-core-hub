@@ -20,19 +20,24 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+export interface SerializedPart {
+    id: number, // not in API, just for table handling
+    customerPartId: string,
+    businessPartner: {name: string, bpnl: string},
+    manufacturerId: string,
+    manufacturerPartId: string,
+    partInstanceId: string,
+    name: string,
+    category: string,
+    bpns: string,
+    van: string
+}
 
-import {
-    Storefront,
-    FindInPage,
-    People,
-    Assignment,
-    Dashboard
-  } from '@mui/icons-material';
-  
-  export const features = [
-    { icon: <Storefront />, path: '/catalog', disabled: false },
-    { icon: <FindInPage />, path: '/dataspace-discovery', disabled: false },
-    { icon: <Dashboard />, path: '/serialized-parts', disabled: false },
-    { icon: <People />, path: '/partners', disabled: false },
-    { icon: <Assignment />, path: '/status', disabled: true }
-  ];
+export interface AddSerializedPartRequest {
+  businessPartnerNumber: string;
+  manufacturerId: string;
+  manufacturerPartId: string;
+  partInstanceId: string;
+  van: string;
+  customerPartId: string;
+}

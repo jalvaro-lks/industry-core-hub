@@ -80,6 +80,8 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
       console.log('Setting bpnl to empty');
       setBpnl('');
     }
+  const handleBpnlChange = (_event: React.SyntheticEvent, value: string | null) => {
+    setBpnl(value ??'');
     setError(false); // Clear validation error on change
     setApiErrorMessage(''); // Clear API error on change
     setSuccessMessage(''); // Clear success message on change
@@ -133,14 +135,14 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errorResponse = (axiosError as any).response;
 
-      if (errorResponse) {
-        if (errorResponse.status === 422 && errorResponse.data && errorResponse.data.detail && Array.isArray(errorResponse.data.detail) && errorResponse.data.detail.length > 0) {
-          errorMessage = errorResponse.data.detail[0].msg || JSON.stringify(errorResponse.data.detail[0]) || 'Validation failed.';
-        } else if (errorResponse.data && errorResponse.data.message) {
-          errorMessage = errorResponse.data.message;
-        } else if (errorResponse.data) {
-          errorMessage = JSON.stringify(errorResponse.data);
-        }
+      if (errorResponse?.status === 422) {
+        errorMessage = errorResponse?.data?.detail?.[0]?.msg
+                      ?? JSON.stringify(errorResponse?.data?.detail?.[0])
+                      ?? 'Validation failed.';
+      } else if (errorResponse?.data?.message) {
+        errorMessage = errorResponse.data.message;
+      } else if (errorResponse?.data) {
+        errorMessage = JSON.stringify(errorResponse.data);
       }
       setApiErrorMessage(errorMessage);
     }
