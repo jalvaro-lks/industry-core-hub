@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -25,13 +26,14 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional
 from uuid import UUID
 
-from services.twin_management_service import TwinManagementService
-from models.services.twin_management import (
+from services.provider.twin_management_service import TwinManagementService
+from models.services.provider.twin_management import (
     TwinRead, TwinAspectRead, TwinAspectCreate,
     CatalogPartTwinRead, CatalogPartTwinDetailsRead,
-    CatalogPartTwinCreate, CatalogPartTwinShare,
+    CatalogPartTwinCreate, CatalogPartTwinShareCreate,
     SerializedPartTwinRead, SerializedPartTwinDetailsRead,
-    SerializedPartTwinCreate
+    SerializedPartTwinCreate, SerializedPartTwinShareCreate,
+    SerializedPartTwinUnshareCreate
 )
 from tools.exceptions import exception_responses
 
@@ -42,12 +44,12 @@ twin_management_service = TwinManagementService()
 async def twin_management_get_catalog_part_twins(include_data_exchange_agreements: bool = False) -> List[CatalogPartTwinRead]:
     return twin_management_service.get_catalog_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
 
-@router.get("/catalog-part-twin/{global_id}", response_model=List[CatalogPartTwinDetailsRead], responses=exception_responses)
-async def twin_management_get_catalog_part_twin(global_id: UUID) -> List[CatalogPartTwinDetailsRead]:
+@router.get("/catalog-part-twin/{global_id}", response_model=Optional[CatalogPartTwinDetailsRead], responses=exception_responses)
+async def twin_management_get_catalog_part_twin(global_id: UUID) -> Optional[CatalogPartTwinDetailsRead]:
     return twin_management_service.get_catalog_part_twin_details_id(global_id)
 
-@router.get("/catalog-part-twin/{manufacturerId}/{manufacturerPartId}", response_model=List[CatalogPartTwinDetailsRead], responses=exception_responses)
-async def twin_management_get_catalog_part_twin_from_manufacturer(manufacturer_id: str, manufacturer_part_id: str) -> List[CatalogPartTwinDetailsRead]:
+@router.get("/catalog-part-twin/{manufacturer_id}/{manufacturer_part_id}", response_model=Optional[CatalogPartTwinDetailsRead], responses=exception_responses)
+async def twin_management_get_catalog_part_twin_from_manufacturer(manufacturer_id: str, manufacturer_part_id: str) -> Optional[CatalogPartTwinDetailsRead]:
     return twin_management_service.get_catalog_part_twin_details(manufacturer_id, manufacturer_part_id)
 
 @router.post("/catalog-part-twin", response_model=TwinRead, responses=exception_responses)
@@ -65,7 +67,7 @@ async def twin_management_create_catalog_part_twin(
     204: {"description": "Catalog part twin already shared"},
     **exception_responses
 })
-async def twin_management_share_catalog_part_twin(catalog_part_twin_share: CatalogPartTwinShare):
+async def twin_management_share_catalog_part_twin(catalog_part_twin_share: CatalogPartTwinShareCreate):
     if twin_management_service.create_catalog_part_twin_share(catalog_part_twin_share):
         return JSONResponse(status_code=201, content={"description":"Catalog part twin shared successfully"})
     else:
@@ -86,3 +88,25 @@ async def twin_management_create_serialized_part_twin(serialized_part_twin_creat
 @router.post("/twin-aspect", response_model=TwinAspectRead, responses=exception_responses)
 async def twin_management_create_twin_aspect(twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
     return twin_management_service.create_twin_aspect(twin_aspect_create)
+
+@router.post("/serialized-part-twin/share", responses={
+    201: {"description": "Catalog part twin shared successfully"},
+    204: {"description": "Catalog part twin already shared"},
+    **exception_responses
+})
+async def twin_management_share_serialized_part_twin(serialized_part_twin_share: SerializedPartTwinShareCreate):
+    if twin_management_service.create_serialized_part_twin_share(serialized_part_twin_share):
+        return JSONResponse(status_code=201, content={"description":"Serialized part twin shared successfully"})
+    else:
+        return JSONResponse(status_code=204, content=None)
+    
+@router.post("/serialized-part-twin/unshare", responses={
+    201: {"description": "Catalog part twin unshared successfully"},
+    204: {"description": "Catalog part twin already unshared"},
+    **exception_responses
+})
+async def twin_management_unshare_serialized_part_twin(serialized_part_twin_unshare: SerializedPartTwinUnshareCreate):
+    if twin_management_service.part_twin_unshare(serialized_part_twin_unshare):
+        return JSONResponse(status_code=201, content={"description":"Serialized part twin unshared successfully"})
+    else:
+        return JSONResponse(status_code=204, content=None)

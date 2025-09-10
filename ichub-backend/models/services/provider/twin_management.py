@@ -28,9 +28,8 @@ from uuid import UUID
 from typing import Dict, Optional, List, Any
 from pydantic import BaseModel, Field
 
-from models.services.part_management import (
+from models.services.provider.part_management import (
     BatchCreate,
-    BusinessPartnerRead,
     CatalogPartBase,
     CatalogPartDetailsRead,
     JISPartCreate,
@@ -38,7 +37,7 @@ from models.services.part_management import (
     SerializedPartRead,
     SerializedPartDetailsRead,
 )
-from models.services.partner_management import DataExchangeAgreementRead
+from models.services.provider.partner_management import DataExchangeAgreementRead
 
 class TwinAspectRegistrationStatus(enum.Enum):
     """An enumeration of potential status values when a twin aspect is registered within the system"""
@@ -109,6 +108,10 @@ class TwinDetailsReadBase(BaseModel):
     registrations: Optional[Dict[str, bool]] = Field(description="A map of registration information for the digital twin in different enablement service stacks. The key is the name of the enablement service stack.", default=None)
     aspects: Optional[Dict[str, TwinAspectRead]] = Field(description="A map of aspect information for the digital twin. The key is the semantic ID of the aspect. The value is a TwinAspectRead object containing details about the aspect.", default=None)
 
+class TwinShareCreateBase(BaseModel):
+    business_partner_number: str = Field(alias="businessPartnerNumber", description="The business partner number of the business partner with which the catalog part is shared.")
+    #data_exchange_agreement_name: str = Field(alias="dataExchangeAgreementName", description="The name of the data exchange agreement under which the catalog part is shared.")
+
 class CatalogPartTwinRead(CatalogPartDetailsRead, TwinRead):
     """Represents a catalog part twin within the Digital Twin Registry."""
 
@@ -118,9 +121,8 @@ class CatalogPartTwinCreate(CatalogPartBase, TwinCreateBase):
 class CatalogPartTwinDetailsRead(CatalogPartTwinRead, TwinDetailsReadBase):
     """Represents the details of a catalog part twin within the Digital Twin Registry."""
 
-class CatalogPartTwinShare(CatalogPartBase):
-    business_partner_number: str = Field(alias="businessPartnerNumber", description="The business partner number of the business partner with which the catalog part is shared.")
-    customer_part_ids: Optional[Dict[str, BusinessPartnerRead]] = Field(alias="customerPartIds", description="The list of customer part IDs mapped to the respective Business Partners.", default={})
+class CatalogPartTwinShareCreate(CatalogPartBase, TwinShareCreateBase):
+    pass
 
 class BatchTwinCreate(BatchCreate, TwinCreateBase):
     pass
@@ -136,3 +138,13 @@ class SerializedPartTwinRead(SerializedPartRead, TwinRead):
 
 class SerializedPartTwinDetailsRead(SerializedPartDetailsRead, TwinRead, TwinDetailsReadBase):
     """Represents the details of a serialized part twin within the Digital Twin Registry."""
+
+class SerializedPartTwinShareCreate(SerializedPartBase):
+    # Hint: we don't need the TwinShareCreateBase here, because a serialized part has already a link to a single business partner
+    pass
+
+class SerializedPartTwinUnshareCreate(BaseModel):
+    aas_id: UUID = Field(alias="aasId", description="The AAS ID of the serialized part twin to unshare.")
+    business_partner_number_to_unshare: list[str] = Field(alias="businessPartnerNumberToUnshare", description="The business partner number of the business partner with which the serialized part twin should be unshared.")
+    manufacturer_id: str = Field(alias="manufacturerId", description="The manufacturer ID of the serialized part twin to unshare.")
+    asset_id_names_filter: Optional[List[str]] = Field(alias="assetIdNamesFilter", description="An optional list of asset ID names to filter the serialized part twin unshare operation. If provided, only asset IDs with names in this list will be considered for unsharing.", default=None)

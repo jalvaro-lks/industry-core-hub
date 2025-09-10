@@ -90,6 +90,10 @@ backend:
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
       echo: false
+    # Configuration for the logger settings
+    logger:
+     # Possible values: WARNING, INFO, DEBUG
+      level: "INFO"
     # -- EDC (Eclipse Dataspace Connector) configuration
     submodel_dispatcher:
       path: "./data/submodels"
@@ -405,6 +409,11 @@ postgresql:
   enabled: true
   fullnameOverride: ""
   nameOverride: ""
+  image:
+    # -- workaround to use bitnamilegacy chart for version 12.12.x till committers align on new postgresql charts
+    repository: bitnamilegacy/postgresql
+    # -- workaround to use bitnamilegacy chart for version 12.12.x till committers align on new postgresql charts
+    tag: 15.4.0-debian-11-r45
   auth:
     # -- Database name
     database: "ichub-postgres"

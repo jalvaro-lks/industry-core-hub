@@ -178,7 +178,7 @@ const PartsDiscovery = () => {
         <Grid2 container spacing={2} margin={3} justifyContent="center">
         {partType === 'Serialized' ? (
           <Grid2 size={12} className='product-table-wrapper'>
-            <InstanceProductsTable />
+            <InstanceProductsTable part={null} />
           </Grid2>
         ) : (
           <ProductCard

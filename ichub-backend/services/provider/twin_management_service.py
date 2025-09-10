@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 DRÄXLMAIER Group
 # (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
@@ -32,15 +33,17 @@ from managers.metadata_database.manager import RepositoryManagerFactory, Reposit
 from managers.enablement_services.dtr_manager import DTRManager
 from managers.enablement_services.connector_manager import ConnectorManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
-from models.services.part_management import SerializedPartQuery
-from models.services.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
-from models.services.twin_management import (
+from models.services.provider.part_management import SerializedPartQuery
+from models.services.provider.partner_management import BusinessPartnerRead, DataExchangeAgreementRead
+from models.services.provider.twin_management import (
     CatalogPartTwinRead,
     CatalogPartTwinCreate,
-    CatalogPartTwinShare,
+    CatalogPartTwinShareCreate,
     CatalogPartTwinDetailsRead,
     SerializedPartTwinCreate,
     SerializedPartTwinRead,
+    SerializedPartTwinShareCreate,
+    SerializedPartTwinUnshareCreate,
     SerializedPartTwinDetailsRead,
     TwinRead,
     TwinAspectCreate,
@@ -50,15 +53,12 @@ from models.services.twin_management import (
     TwinsAspectRegistrationMode,
     TwinDetailsReadBase,
 )
-from models.metadata_database.models import (
-    EnablementServiceStack,
-    Twin,
-)
+from models.metadata_database.provider.models import EnablementServiceStack, Twin
 from tools.exceptions import NotFoundError, NotAvailableError
 
 from managers.config.log_manager import LoggingManager
 
-from services.part_management_service import PartManagementService
+from services.provider.part_management_service import PartManagementService
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -218,7 +218,7 @@ class TwinManagementService:
             
             return result
 
-    def create_catalog_part_twin_share(self, catalog_part_share_input: CatalogPartTwinShare) -> bool:
+    def create_catalog_part_twin_share(self, catalog_part_share_input: CatalogPartTwinShareCreate) -> bool:
         
         with RepositoryManagerFactory.create() as repo:
             # Step 1: Retrieve the catalog part entity according to the catalog part data (manufacturer_id, manufacturer_part_id)
@@ -249,29 +249,12 @@ class TwinManagementService:
             if not db_twin:
                 raise NotFoundError("Twin not found.")
 
-            # Step 5: Retrieve the first data exchange agreement entity for the business partner
-            # (this will will later be replaced with an explicit mechanism choose a specific data exchange agreement)
-            db_data_exchange_agreements = repo.data_exchange_agreement_repository.get_by_business_partner_id(
-                db_business_partner.id
+            # Step 5: Create a twin exchange entity for the twin and business partner
+            return self._create_twin_exchange(
+                repo=repo,
+                db_twin=db_twin,
+                db_business_partner=db_business_partner
             )
-            if not db_data_exchange_agreements:
-                raise NotFoundError(f"No data exchange agreement found for business partner '{db_business_partner.name}'.")
-            db_data_exchange_agreement = db_data_exchange_agreements[0] # Get the first one for now
-            
-            # Step 6: Check if there is already a twin exchange entity for the twin and data exchange agreement and create it if not
-            db_twin_exchange = repo.twin_exchange_repository.get_by_twin_id_data_exchange_agreement_id(
-                db_twin.id,
-                db_data_exchange_agreement.id
-            )
-            if not db_twin_exchange:
-                db_twin_exchange = repo.twin_exchange_repository.create_new(
-                    twin_id=db_twin.id,
-                    data_exchange_agreement_id=db_data_exchange_agreement.id
-                )
-                repo.commit()
-                return True
-            else:
-                return False
 
     def create_serialized_part_twin(self, create_input: SerializedPartTwinCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> TwinRead:
         with RepositoryManagerFactory.create() as repo:
@@ -405,6 +388,103 @@ class TwinManagementService:
 
             return twin_result
     
+    def create_serialized_part_twin_share(self, serialized_part_share_input: SerializedPartTwinShareCreate) -> bool:
+        
+        with RepositoryManagerFactory.create() as repo:
+            # Step 1: Retrieve the serialized part entity according to the serialized part data (manufacturer_id, manufacturer_part_id, part_instance_id)
+            db_serialized_parts = repo.serialized_part_repository.find(
+                manufacturer_id=serialized_part_share_input.manufacturer_id,
+                manufacturer_part_id=serialized_part_share_input.manufacturer_part_id,
+                part_instance_id=serialized_part_share_input.part_instance_id,
+            )
+            if not db_serialized_parts:
+                raise NotFoundError("Serialized part not found.")
+            else:
+                db_serialized_part = db_serialized_parts[0]
+
+            # Step 2: Retrieve the business partner entity from the part
+            db_business_partner = db_serialized_part.partner_catalog_part.business_partner
+
+            # Step 3a: Consistency check if there is a twin associated with the catalog part
+            if not db_serialized_part.twin_id:
+                raise NotFoundError("Serialized part has not yet a twin associated.")
+
+            # Step 4: Retrieve the twin entity for the catalog part entity
+            db_twin = repo.twin_repository.find_by_id(db_serialized_part.twin_id)
+            if not db_twin:
+                raise NotFoundError("Twin not found.")
+
+            # Step 5: Create a twin exchange entity for the twin and business partner
+            return self._create_twin_exchange(
+                repo=repo,
+                db_twin=db_twin,
+                db_business_partner=db_business_partner
+            )
+
+    def part_twin_unshare(self, serialized_part_unshare_input: SerializedPartTwinUnshareCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> bool:
+
+        with RepositoryManagerFactory.create() as repo:
+
+            db_enablement_service_stack = repo.enablement_service_stack_repository.get_by_name(
+                enablement_service_stack_name,
+                join_legal_entity=True
+            )
+            if not db_enablement_service_stack:
+                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' not found.")
+
+            if db_enablement_service_stack.legal_entity.bpnl != serialized_part_unshare_input.manufacturer_id:
+                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' does not belong to the legal entity '{serialized_part_unshare_input.manufacturer_id}'.")
+            
+            dtr_manager = _create_dtr_manager(db_enablement_service_stack.connection_settings)
+
+            new_shell_descriptor, modified = dtr_manager.remove_bpn_shell_descriptor(
+                aas_id=serialized_part_unshare_input.aas_id,
+                bpns_to_remove=serialized_part_unshare_input.business_partner_number_to_unshare,
+                manufacturer_id=serialized_part_unshare_input.manufacturer_id,
+                asset_id_names_filter=serialized_part_unshare_input.asset_id_names_filter
+            )
+
+            if not modified:
+                logger.info(f"No BPN references were found to remove for shell {serialized_part_unshare_input.aas_id}.")
+                return False
+
+            # If the shell descriptor was modified, update it in the DTR
+            dtr_manager._update_shell_descriptor_with_error_handling(
+                shell_descriptor=new_shell_descriptor,
+                aas_id=serialized_part_unshare_input.aas_id,
+                manufacturer_id=serialized_part_unshare_input.manufacturer_id
+            )
+
+            # Mark the twin exchange as cancelled
+            db_twin = repo.twin_repository.find_by_aas_id(serialized_part_unshare_input.aas_id)
+            if db_twin:
+                db_business_partner = repo.business_partner_repository.get_by_bpnl(serialized_part_unshare_input.business_partner_number_to_unshare)
+                if db_business_partner:
+                    db_data_exchange_agreements = repo.data_exchange_agreement_repository.get_by_business_partner_id(db_business_partner.id)
+                    if db_data_exchange_agreements:
+                        db_data_exchange_agreement = db_data_exchange_agreements[0]
+                        db_twin_exchange = repo.twin_exchange_repository.get_by_twin_id_data_exchange_agreement_id(
+                            db_twin.id,
+                            db_data_exchange_agreement.id
+                        )
+                        if db_twin_exchange:
+                            db_twin_exchange.is_cancelled = True
+                            repo.commit()
+                        else:
+                            logger.warning(f"Twin exchange not found for twin {db_twin.id} and data exchange agreement {db_data_exchange_agreement.id}")
+                            raise NotFoundError(f"Twin exchange not found for twin {db_twin.id} and data exchange agreement {db_data_exchange_agreement.id}")
+                    else:
+                        logger.warning(f"No data exchange agreements found for business partner {serialized_part_unshare_input.business_partner_number_to_unshare}")
+                        raise NotFoundError(f"No data exchange agreements found for business partner {serialized_part_unshare_input.business_partner_number_to_unshare}")
+                else:
+                    logger.warning(f"Business partner not found: {serialized_part_unshare_input.business_partner_number_to_unshare}")
+                    raise NotFoundError(f"Business partner not found: {serialized_part_unshare_input.business_partner_number_to_unshare}")
+            else:
+                logger.warning(f"Twin not found for AAS ID: {serialized_part_unshare_input.aas_id}")
+                raise NotFoundError(f"Twin not found for AAS ID: {serialized_part_unshare_input.aas_id}")
+
+            return True
+
     def create_twin_aspect(self, twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
         """
         Create a new twin aspect for a give twin.
@@ -672,7 +752,38 @@ class TwinManagementService:
             return db_twin.serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl
         else:
             raise NotFoundError("Twin does not have a catalog part or serialized part associated.")
-    
+
+    @staticmethod
+    def _create_twin_exchange(
+        repo: RepositoryManager,
+        db_twin: Twin,
+        db_business_partner: BusinessPartnerRead
+    ) -> bool:
+            # Step 1: Retrieve the first data exchange agreement entity for the business partner
+            # (this will will later be replaced with an explicit mechanism choose a specific data exchange agreement)
+            db_data_exchange_agreements = repo.data_exchange_agreement_repository.get_by_business_partner_id(
+                db_business_partner.id
+            )
+            if not db_data_exchange_agreements:
+                raise NotFoundError(f"No data exchange agreement found for business partner '{db_business_partner.bpnl}'.")
+            db_data_exchange_agreement = db_data_exchange_agreements[0] # Get the first one for now
+            
+            # Step 2: Check if there is already a twin exchange entity for the twin and data exchange agreement and create it if not
+            db_twin_exchange = repo.twin_exchange_repository.get_by_twin_id_data_exchange_agreement_id(
+                db_twin.id,
+                db_data_exchange_agreement.id
+            )
+            if not db_twin_exchange:
+                db_twin_exchange = repo.twin_exchange_repository.create_new(
+                    twin_id=db_twin.id,
+                    data_exchange_agreement_id=db_data_exchange_agreement.id
+                )
+                repo.commit()
+                return True
+            else:
+                return False
+
+
 def _create_dtr_manager(connection_settings: Optional[Dict[str, Any]]) -> DTRManager:
     """
     Create a new instance of the DTRManager class.
