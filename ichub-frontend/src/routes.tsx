@@ -26,7 +26,8 @@ import MainLayout from "./layouts/MainLayout";
 import ProductsList from './pages/ProductsList';
 import PartnersList from './pages/PartnersList';
 import ProductsDetails from './pages/ProductsDetails';
-import DoubleSidebarTest from "./pages/DoubleSidebarTest";
+import PartsDiscovery from "./pages/PartsDiscovery";
+import SerializedParts from "./pages/SerializedParts"
 
 export default function AppRoutes() {
   return (
@@ -38,9 +39,10 @@ export default function AppRoutes() {
 
           {/* Here we must change the elements as we go along as we develop */}
           <Route path="/catalog" element={<ProductsList />} />
-          <Route path="/categories" element={<DoubleSidebarTest />} />
+          <Route path="/discover-parts" element={<PartsDiscovery />} />
           <Route path="/shared" element={<PartnersList />} />
           <Route path="/status" element={<ProductsList />} />
+          <Route path="/serialized-parts" element={<SerializedParts />} />
         </Route>
       </Routes>
     </BrowserRouter>

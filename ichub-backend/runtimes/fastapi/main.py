@@ -24,7 +24,6 @@ from controllers.fastapi import app as api
 from tractusx_sdk.dataspace.tools.utils import get_arguments
 from managers.config.log_manager import LoggingManager
 from tractusx_sdk.dataspace.managers import AuthManager
-
 app = api
 
 ## In memory authentication manager service
@@ -33,7 +32,7 @@ auth_manager: AuthManager
 
 def start():
     ## Load in memory data storages and authentication manager
-    global edc_service, auth_manager, logger
+    global auth_manager, logger
     
     # Initialize the server environment and get the comand line arguments
     args = get_arguments()

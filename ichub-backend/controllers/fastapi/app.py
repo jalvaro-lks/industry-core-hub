@@ -22,22 +22,24 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import FastAPI, Request, Header, Body
+from fastapi import FastAPI, Request, APIRouter, Header, Body
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
-from services.submodel_dispatcher_service import SubmodelNotSharedWithBusinessPartnerError
-
-from tools.submodel_type_util import InvalidSemanticIdError
-from tools import InvalidUUIDError
+from tools.exceptions import BaseError, ValidationError
+from tools.constants import API_V1
 
 from tractusx_sdk.dataspace.tools import op
 
-from .routers import (
+from .routers.provider.api_v1 import (
     part_management,
     partner_management,
     twin_management,
     submodel_dispatcher,
     sharing_handler
+)
+from .routers.consumer.api_v1 import (
+    connection_management
 )
 
 tags_metadata = [
@@ -60,48 +62,43 @@ tags_metadata = [
     {
         "name": "Submodel Dispatcher",
         "description": "Internal API called by EDC Data Planes or Admins in order the deliver data of of the internal used Submodel Service"
+    },
+    {
+        "name": "Open Connection Management",
+        "description": "Handles the connections from the consumer modules, for specific services like digital twin registry and data endpoints"
     }
 ]
 
 app = FastAPI(title="Industry Core Hub Backend API", version="0.0.1", openapi_tags=tags_metadata)
 
 ## Include here all the routers for the application.
-app.include_router(part_management.router)
-app.include_router(partner_management.router)
-app.include_router(twin_management.router)
-app.include_router(submodel_dispatcher.router)
-app.include_router(sharing_handler.router)
+# API Version 1
+v1_router = APIRouter(prefix=f"/{API_V1}")
+v1_router.include_router(part_management.router)
+v1_router.include_router(partner_management.router)
+v1_router.include_router(twin_management.router)
+v1_router.include_router(submodel_dispatcher.router)
+v1_router.include_router(sharing_handler.router)
+v1_router.include_router(connection_management.router)
 
-@app.exception_handler(SubmodelNotSharedWithBusinessPartnerError)
-async def submodel_not_shared_with_business_partner_exception_handler(
-        request: Request,
-        exc: SubmodelNotSharedWithBusinessPartnerError) -> JSONResponse:
-    """
-    Custom exception handler for SubmodelNotSharedWithBusinessPartnerError.
-    Returns a 403 Forbidden response with the error message.
-    """
-    return JSONResponse(status_code=403, content={"detail": str(exc)})
+# Include the API version 1 router into the main app
+app.include_router(v1_router)
 
-@app.exception_handler(InvalidSemanticIdError)
-async def invalid_semantic_id_exception_handler(
-        request: Request,
-        exc: InvalidSemanticIdError) -> JSONResponse:
-    """
-    Custom exception handler for InvalidSemanticIdError.
-    Returns a 400 Bad Request with the error message.
-    """
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-@app.exception_handler(InvalidUUIDError)
-async def invalid_uuid_error_exception_handler(
+@app.exception_handler(BaseError)
+async def base_error_exception_handler(
     request: Request,
-    exc: InvalidUUIDError) -> JSONResponse:
+    exc: BaseError) -> JSONResponse:
     """
-    Custom exception handler for InvalidUUIDError.
-    Returns a 422 Unprocessable Entity with the error message.
+    Generic exception handler for all exceptions derived from BaseError.
     """
-    return JSONResponse(status_code=422, content={"detail": str(exc)})
+    return JSONResponse(status_code=exc.status_code, content=exc.detail.model_dump())
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """
+    Exception handler for validation errors.
+    """
+    raise ValidationError(exc.errors()[0]["msg"])
 
 @app.get("/health")
 def check_health():
