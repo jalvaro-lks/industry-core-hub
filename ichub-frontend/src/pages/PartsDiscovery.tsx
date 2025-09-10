@@ -1147,31 +1147,9 @@ const PartsDiscovery = () => {
             >
               Single Twin
               <SearchIcon sx={{ marginLeft: 1 }} />
-            </Button>
-          </Grid2>
-        </Box>
-
-        {/* Parts grid */}
-        <Grid2 container spacing={2} margin={3} justifyContent="center">
-        {partType === 'Serialized' ? (
-          <Grid2 size={12} className='product-table-wrapper'>
-            <InstanceProductsTable part={null} />
-          </Grid2>
-        ) : (
-          <ProductCard
-            onClick={() => {}}
-            onShare={() => {}}
-            onMore={() => {}}
-            onRegisterClick={() => {}}
-            items={parts.slice(0, numParts).map((part) => ({
-              manufacturerId: part.manufacturerId,
-              manufacturerPartId: part.manufacturerPartId,
-              name: part.name,
-              category: part.category,
-              status: part.status,
-            }))}
-            isLoading={false}
-          />
+            </Typography>
+            </Box>
+          </Box>
         )}
 
         {/* Main Content */}
