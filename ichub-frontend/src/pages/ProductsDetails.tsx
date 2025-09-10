@@ -65,23 +65,6 @@ const ProductsDetails = () => {
 
   useEffect(() => {
     if (!manufacturerId || !manufacturerPartId) return;
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const apiData = await fetchCatalogPart(manufacturerId, manufacturerPartId);
-        const mappedPart: PartType = mapApiPartDataToPartType(apiData)
-        setPartType(mappedPart);
-        // Just if the customer part ids are available we can see if they are shared
-        if(mappedPart.customerPartIds){
-            const mappedResult:SharedPartner[] = mapSharePartCustomerPartIds(mappedPart.customerPartIds)
-            setSharedPartners(mappedResult)
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
     const fetchData = async () => {
       setIsLoading(true);

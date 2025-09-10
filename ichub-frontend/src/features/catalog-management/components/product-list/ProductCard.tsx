@@ -42,15 +42,13 @@ export interface AppContent {
 }
 
 export interface CardDecisionProps {
+  onClick: (productId: string) => void;
+  onShare: (manufacturerId: string, manufacturerPartId: string) => void;
+  onMore: (manufacturerId: string, manufacturerPartId: string) => void;
+  onRegisterClick: (manufacturerId: string, manufacturerPartId: string) => void;
   items: AppContent[];
-  onShare: (e1: string, e2: string) => void;
-  onMore: (e1: string, e2: string) => void;
-  onClick: (e: string) => void;
-  onRegisterClick?: (manufacturerId: string, manufacturerPartId: string) => void; 
-  isLoading: boolean
-}
-
-enum ButtonEvents {
+  isLoading: boolean;
+}enum ButtonEvents {
   SHARE,
   MORE,
   REGISTER, 

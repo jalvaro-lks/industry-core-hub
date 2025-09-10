@@ -194,7 +194,6 @@ const PartsDiscovery = () => {
               status: part.status,
             }))}
             isLoading={false}
-            isDiscovery={true}
           />
         )}
         </Grid2>
