@@ -154,7 +154,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         if not isinstance(dtr_dict, dict):
             return False
             
-        # O(1) lookup using asset_id as key
         return asset_id in dtr_dict
 
     def get_dtr_by_asset_id(self, bpn: str, asset_id: str) -> Optional[Dict]:
@@ -179,7 +178,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         if not isinstance(dtr_dict, dict):
             return None
             
-        # O(1) lookup using asset_id as key
         if asset_id in dtr_dict:
             return copy.deepcopy(dtr_dict[asset_id])
         
@@ -210,7 +208,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
                 dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
                 if isinstance(dtr_dict, dict) and asset_id in dtr_dict:
-                    # O(1) deletion using asset_id as key
                     del dtr_dict[asset_id]
                     if(self.logger and self.verbose):
                         remaining_dtrs = len(dtr_dict)
