@@ -66,7 +66,6 @@ export default function AppRoutes() {
             } 
           />
 
-          {/* Here we must change the elements as we go along as we develop */}
           <Route 
             path="/catalog" 
             element={
@@ -76,7 +75,7 @@ export default function AppRoutes() {
             } 
           />
           <Route 
-            path="/discover-parts" 
+            path="/dataspace-discovery" 
             element={
               <Suspense fallback={<PageLoader />}>
                 <PartsDiscovery />
@@ -84,18 +83,10 @@ export default function AppRoutes() {
             } 
           />
           <Route 
-            path="/shared" 
+            path="/partners" 
             element={
               <Suspense fallback={<PageLoader />}>
                 <PartnersList />
-              </Suspense>
-            } 
-          />
-          <Route 
-            path="/status" 
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ProductsList />
               </Suspense>
             } 
           />

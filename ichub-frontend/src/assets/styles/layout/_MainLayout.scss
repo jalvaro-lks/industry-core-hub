@@ -68,7 +68,7 @@
 .contentArea {
   padding: 0; // Remove default padding as components handle their own
   height: calc(100vh - 68.8px); /* Fixed height minus header */
-  overflow: hidden; // Prevent content area from scrolling - let components handle it
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
