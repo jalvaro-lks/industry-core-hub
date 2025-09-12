@@ -60,7 +60,7 @@ export const shareCatalogPart = async (
     manufacturerId,
     manufacturerPartId,
     businessPartnerNumber,
-    customerPartId: customerPartId && customerPartId.trim() ? customerPartId.trim() : undefined,
+    customerPartId: customerPartId?.trim() || undefined
   };
 
   const response = await axios.post<ApiPartData>(
