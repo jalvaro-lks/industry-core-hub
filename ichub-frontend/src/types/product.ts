@@ -23,29 +23,29 @@
 import { StatusVariants } from './statusVariants'
 
 export enum LengthUnit {
-  NM = "nm",
-  UM = "µm",
+  // NM = "nm",
+  // UM = "µm",
   MM = "mm",
   CM = "cm",
-  DM = "dm",
+  // DM = "dm",
   M = "m",
-  DAM = "dam",
-  HM = "hm",
-  KM = "km",
-  IN = "in",
-  FT = "ft",
-  YD = "yd",
-  MI = "mi",
+  // DAM = "dam",
+  // HM = "hm",
+  // KM = "km",
+  // IN = "in",
+  // FT = "ft",
+  // YD = "yd",
+  // MI = "mi",
 }
 
 export enum WeightUnit {
-  MG = "mg",
+  // MG = "mg",
   G = "g",
   KG = "kg",
-  T = "t",
-  LB = "lb",
-  OZ = "oz",
-  ST = "st",
+  // T = "t",
+  // LB = "lb",
+  // OZ = "oz",
+  // ST = "st",
 }
 
 
