@@ -34,6 +34,8 @@ import {
   Typography,
   Grid2,
   MenuItem,
+  Tooltip,
+  InputAdornment,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
@@ -45,6 +47,7 @@ import {
 } from "../../../../types/product";
 import { mapPartInstanceToApiPartData } from "../../../catalog-management/utils";
 import { getParticipantId } from "../../../../services/EnvironmentService";
+import { Business, Category, ConfirmationNumber, Description, DriveFileRenameOutline, Fingerprint, Percent, Scale, Science, Straighten } from "@mui/icons-material";
 
 // Define props for ProductListDialog
 interface ProductListDialogProps {
@@ -156,7 +159,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
         <CloseIcon />
       </IconButton>
       <DialogContent dividers>
-        <Typography variant="body2" mt={1} mb={2} sx={{color: "white", borderBottom: "1px solid rgba(255, 255, 255, 0.5)"}}>Main Product Information</Typography>
+        <Typography variant="body2" mt={1} mb={3} sx={{color: "white", borderBottom: "1px solid rgba(255, 255, 255, 0.5)"}}>Main Product Information</Typography>
         <Grid2 container spacing={2} mt={1}>
           <Grid2 size={{md: 4, sm: 6, xs: 12}}>
             <TextField
@@ -166,6 +169,15 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               value={getParticipantId()}
               disabled
               fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Business />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Grid2>
           <Grid2 size={{md: 4, sm: 6, xs: 12}}>
@@ -176,6 +188,15 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               value={formData.manufacturerPartId}
               onChange={(e) => handleChange("manufacturerPartId", e.target.value)}
               fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <ConfirmationNumber />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Grid2>
           <Grid2 size={{md: 4, sm: 6, xs: 12}}>
@@ -186,6 +207,15 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               value={formData.name}
               onChange={(e) => handleChange("name", e.target.value)}
               fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <DriveFileRenameOutline />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Grid2>
           <Grid2 size={{md: 4, sm: 6, xs: 12}}>
@@ -196,6 +226,15 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               value={formData.description}
               onChange={(e) => handleChange("description", e.target.value)}
               fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Description />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Grid2>
           <Grid2 size={{md: 4, sm: 6, xs: 12}}>
@@ -206,6 +245,15 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               value={formData.category}
               onChange={(e) => handleChange("category", e.target.value)}
               fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Category />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Grid2>
           <Grid2 size={{md: 4, sm: 6, xs: 12}}>
@@ -216,13 +264,22 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               value={formData.bpns}
               onChange={(e) => handleChange("bpns", e.target.value)}
               fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Fingerprint />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
           </Grid2>
         </Grid2>
 
-        <Typography variant="body2" mt={3} mb={2} sx={{color: "white", borderBottom: "1px solid rgba(255, 255, 255, 0.5)"}}>Additional Product Information</Typography>
+        <Typography variant="body2" mt={3} mb={3} sx={{color: "white", borderBottom: "1px solid rgba(255, 255, 255, 0.5)"}}>Additional Product Information</Typography>
         {formData.materials.map((mat, index) => (
-          <Grid2 container spacing={2} key={index} alignItems="center" mt={1} px={6}>
+          <Grid2 container spacing={2} key={index} alignItems="center" mt={1} px={{md: 6, sm: 0}}>
             <Grid2 size={{ xs: 7 }}>
               <TextField
                 label="Material Name"
@@ -231,6 +288,15 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 fullWidth
                 value={mat.name}
                 onChange={(e) => handleMaterialChange(index, "name", e.target.value)}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Science />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Grid2>
             <Grid2 size={{ xs: 4 }}>
@@ -242,13 +308,24 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 fullWidth
                 value={mat.share}
                 onChange={(e) => handleMaterialChange(index, "share", Number(e.target.value))}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Percent />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Grid2>
             <Grid2 size={{ xs: 1 }} display="flex" justifyContent="center">
               {index === formData.materials.length - 1 && (
-                <IconButton onClick={addMaterial} className="add-material-button">
-                  <AddIcon />
-                </IconButton>
+                <Tooltip title="Add material">
+                  <IconButton onClick={addMaterial} className="add-material-button">
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
               )}
             </Grid2>
           </Grid2>
@@ -256,15 +333,16 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
 
         <Box mt={5}></Box>
         
-        <Grid2 container spacing={2} mt={1} px={6}>
+        <Grid2 container spacing={2} mt={1} px={{md: 6, sm: 0}}>
           {(["width", "height", "length", "weight"] as const).map((field) => {
             const isWeight = field === "weight";
             const units = isWeight ? weightUnits : lengthUnits;
+            const icon = isWeight ? <Scale /> : <Straighten />;
 
             return [
-              <Grid2 size={{ xs: 4 }} key={`${field}-value`}>
+              <Grid2 size={{ md: 4, sm: 8 }} key={`${field}-value`}>
                 <TextField
-                  label={`${field} value`}
+                  label={`${field.charAt(0).toUpperCase() + field.slice(1)} value`}
                   type="number"
                   variant="outlined"
                   size="small"
@@ -273,11 +351,20 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                   onChange={(e) =>
                     handleMeasurementChange(field, "value", Number(e.target.value))
                   }
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          {icon}
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                 />
               </Grid2>,
-              <Grid2 size={{ xs: 2 }} key={`${field}-unit`}>
+              <Grid2 size={{ md: 2, sm: 4 }} key={`${field}-unit`}>
                 <TextField
-                  label={`${field} unit`}
+                  label={`${field.charAt(0).toUpperCase() + field.slice(1)} unit`}
                   select
                   variant="outlined"
                   size="small"

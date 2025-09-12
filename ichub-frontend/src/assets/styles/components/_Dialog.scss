@@ -58,8 +58,10 @@
         }
         .MuiInputLabel-shrink{
             font-weight: bold;
+            font-size: 18px;
             color: $brand-text!important;
-            background: $brand-dark!important;
+            background: $brand-dark-gray!important;
+            border-radius: 5px;
             padding: 0 10px;
         }
     }
