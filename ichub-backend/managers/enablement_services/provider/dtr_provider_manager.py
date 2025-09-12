@@ -109,7 +109,7 @@ class DtrProviderManager:
             keys=keys,
         )
 
-    def _add_or_update_asset_id(self, name:str, value:str, bpn_list:list[str], fallback_id=None):
+    def _add_or_update_asset_id(self, name:str, value:str, bpn_list:list[str], fallback_id=None, supplemental_semantic_ids=None):
         """
         Creates a SpecificAssetId using the given name and value, associated with a Reference
         built from a list of BPNs or a fallback ID.
@@ -126,9 +126,9 @@ class DtrProviderManager:
         # Generate a Reference from BPN list or fallback
         ref = self._reference_from_bpn_list(bpn_list, fallback_id=fallback_id)
         # Create a new SpecificAssetId object with the Reference
-        return SpecificAssetId(name=name, value=value, externalSubjectId=ref, supplementalSemanticIds=None)
+        return SpecificAssetId(name=name, value=value, externalSubjectId=ref, supplementalSemanticIds=supplemental_semantic_ids)
     
-    def upsert_asset_id(self, manufacturer_id:str, name:str, value:str, bpn_keys:list, specific_asset_ids:list[SpecificAssetId]) -> list[SpecificAssetId]:
+    def upsert_asset_id(self, manufacturer_id:str, name:str, value:str, bpn_keys:list, specific_asset_ids:list[SpecificAssetId], supplemental_semantic_ids=None) -> list[SpecificAssetId]:
         """
         Updates an existing SpecificAssetId in the list with new BPN references if it exists,
         or appends a new one if it does not.
@@ -157,7 +157,8 @@ class DtrProviderManager:
                 type=ReferenceTypes.EXTERNAL_REFERENCE,
                 keys=[ReferenceKey(type=ReferenceKeyTypes.GLOBAL_REFERENCE, value=bpn) for bpn in bpn_keys] or
                     [ReferenceKey(type=ReferenceKeyTypes.GLOBAL_REFERENCE, value=manufacturer_id)]
-            )
+            ),
+            supplementalSemanticIds=supplemental_semantic_ids
         ))
         return specific_asset_ids
 
@@ -233,7 +234,7 @@ class DtrProviderManager:
         if manufacturer_part_id:
             # Upsert manufacturerPartId asset ID with relevant BPN keys
             specific_asset_ids = self.upsert_asset_id(manufacturer_id, "manufacturerPartId", manufacturer_part_id, bpn_keys, specific_asset_ids)
-
+        
         # Add or update customer part IDs
         if customer_part_ids:
             specific_asset_ids = self._update_or_append_customer_part_ids(specific_asset_ids, customer_part_ids, existing_keys)
@@ -261,7 +262,7 @@ class DtrProviderManager:
 
         # Raise exception if service returned an error
         if isinstance(res, Result):
-            raise ExternalAPIError("Error creating or updating shell descriptor", res.to_json_string())
+            raise ExternalAPIError("Error creating or updating shell descriptor"+ res.to_json_string())
 
         return res
         
@@ -297,6 +298,7 @@ class DtrProviderManager:
                     type=ReferenceTypes.EXTERNAL_REFERENCE,
                     keys=ref_keys,
                 ),
+                supplementalSemanticIds=None
             )  # type: ignore
             specific_asset_ids.append(specific_manufacturer_asset_id)
 
@@ -314,6 +316,7 @@ class DtrProviderManager:
                     type=ReferenceTypes.EXTERNAL_REFERENCE,
                     keys=ref_keys,
                 ),
+                supplementalSemanticIds=None
             )  # type: ignore
             specific_asset_ids.append(digital_twin_asset_id)
 
@@ -330,6 +333,7 @@ class DtrProviderManager:
                         ),
                     ],
                 ),
+                supplementalSemanticIds=None
             )  # type: ignore
             specific_asset_ids.append(specific_manufacturer_part_asset_id)
 
@@ -388,6 +392,7 @@ class DtrProviderManager:
                         ),
                     ],
                 ),
+                supplementalSemanticIds=None
             )  # type: ignore
             specific_asset_ids.append(specific_manufacturer_part_asset_id)
 
@@ -397,6 +402,7 @@ class DtrProviderManager:
                 name="customerPartId",
                 value=customer_part_id,
                 externalSubjectId=self._reference_from_bpn_list([business_partner_number]),
+                supplementalSemanticIds=None
             )
             specific_asset_ids.append(specific_customer_part_asset_id)
 
@@ -542,7 +548,8 @@ class DtrProviderManager:
         self,
         specific_asset_ids: list[SpecificAssetId],
         customer_part_ids: Dict[str, str],
-        existing_keys: set
+        existing_keys: set,
+        supplemental_semantic_ids=None
     ) -> list[SpecificAssetId]:
         """
         Updates or appends customer part ID entries into specific_asset_ids with proper BPN references.
@@ -560,6 +567,7 @@ class DtrProviderManager:
                     name="customerPartId",
                     value=customer_part_id,
                     externalSubjectId=self._reference_from_bpn_list([bpn]),
+                    supplemental_semantic_ids=supplemental_semantic_ids
                 )
                 specific_asset_ids.append(specific_customer_part_asset_id)
         return specific_asset_ids
