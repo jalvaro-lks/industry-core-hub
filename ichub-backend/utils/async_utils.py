@@ -1,5 +1,4 @@
 #################################################################################
-#################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
