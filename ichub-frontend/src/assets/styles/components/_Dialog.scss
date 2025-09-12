@@ -89,4 +89,13 @@
             color: $brand-text !important;
         }
     }
+    .add-material-button{
+        background-color: $brand-header-blue!important;
+        color: white !important;
+    
+        &:hover {
+            background: $header-gradient-bg!important;
+            border: 2px solid $brand-text!important;
+        }
+    }
 }
