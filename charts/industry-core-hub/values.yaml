@@ -343,6 +343,9 @@ backend:
       keep_alive: 300                       # 5 minutes for DTR operations
       graceful_shutdown: 30                 # 30 seconds for graceful shutdown
 frontend:
+  env:
+    # -- industry-core-hub backend base URL
+    backendUrl: "https://<backend-hostname>"
   enabled: true
   name: "industry-core-hub-frontend"
   image:
@@ -352,9 +355,6 @@ frontend:
     tag: ""
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
-  env:
-    # -- industry-core-hub backend base URL
-    ichubBackendUrl: ""
   service:
     # -- [Service type](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) to expose the running application on a set of Pods as a network service
     type: ClusterIP
@@ -512,6 +512,11 @@ postgresql:
   enabled: true
   fullnameOverride: ""
   nameOverride: ""
+  image:
+    # -- workaround to use bitnamilegacy chart for version 12.12.x till committers align on new postgresql charts
+    repository: bitnamilegacy/postgresql
+    # -- workaround to use bitnamilegacy chart for version 12.12.x till committers align on new postgresql charts
+    tag: 15.4.0-debian-11-r45
   auth:
     # -- Database name
     database: "ichub-postgres"

@@ -1,7 +1,6 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -21,17 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .consumer import BaseDtrConsumerManager
-from .provider import DtrProviderManager
-class DtrManager:
-    consumer: BaseDtrConsumerManager
-    provider: DtrProviderManager
 
-    def __init__(self, dtr_consumer_manager: BaseDtrConsumerManager, dtr_provider_manager: DtrProviderManager):
-        """
-        Initialize the DtrManager with consumer and provider managers.
-        :param dtr_consumer_manager: Instance of BaseDtrConsumerManager
-        :param dtr_provider_manager: Instance of DtrProviderManager
-        """
-        self.consumer = dtr_consumer_manager
-        self.provider = dtr_provider_manager
+# Package-level variables
+__author__ = 'Eclipse Tractus-X Contributors'
+__license__ = "Apache License, Version 2.0"

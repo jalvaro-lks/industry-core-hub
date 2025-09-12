@@ -20,16 +20,24 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useContext } from 'react';
-import { AdditionalSidebarContext } from '../contexts/AdditionalSidebarContext';
+export interface SerializedPart {
+    id: number, // not in API, just for table handling
+    customerPartId: string,
+    businessPartner: {name: string, bpnl: string},
+    manufacturerId: string,
+    manufacturerPartId: string,
+    partInstanceId: string,
+    name: string,
+    category: string,
+    bpns: string,
+    van: string
+}
 
-export const useAdditionalSidebar = () => {
-  const context = useContext(AdditionalSidebarContext);
-  if (!context) {
-    throw new Error('useAdditionalSidebar must be used within an AdditionalSidebarProvider');
-  }
-  return context;
-};
-
-export default useAdditionalSidebar;
-
+export interface AddSerializedPartRequest {
+  businessPartnerNumber: string;
+  manufacturerId: string;
+  manufacturerPartId: string;
+  partInstanceId: string;
+  van: string;
+  customerPartId: string;
+}

@@ -52,7 +52,7 @@ pgadmin4:
 frontend: 
   env:
     # -- industry-core-hub backend base URL
-    ichubBackendUrl: "https://backend-ichub.int.catena-x.net"
+    backendUrl: "https://backend-ichub.int.catena-x.net"
   ingress:
       enabled: true
       className: "nginx"
