@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { StatusTag, Button, Icon } from '@catena-x/portal-shared-components';
 import HelpOutlineIcon from '@mui/icons-material/Help';
@@ -79,16 +79,6 @@ const ProductsDetails = () => {
             const mappedResult:SharedPartner[] = mapSharePartCustomerPartIds(mappedPart.customerPartIds)
             setSharedPartners(mappedResult)
         }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [manufacturerId, manufacturerPartId]);
 
       } catch (error) {
         console.error("Error fetching data:", error);
