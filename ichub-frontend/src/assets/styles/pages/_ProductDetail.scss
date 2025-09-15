@@ -67,7 +67,15 @@
     }
 
     .MuiChip-root span {
-        color: $brand-dark !important;
+        color: #ffffff !important;
+    }
+
+    .MuiChip-root .MuiChip-label {
+        color: #ffffff !important;
+    }
+
+    .MuiChip-root .MuiChip-icon {
+        color: #ffffff !important;
     }
   
     .cx-dropdown-menu {
@@ -112,7 +120,7 @@
 }
   
 .MuiChip-icon {
-    color: $brand-dark !important;
+    color: #ffffff !important;
 }
 
 .cx-card__decision *,

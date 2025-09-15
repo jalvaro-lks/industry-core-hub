@@ -43,8 +43,10 @@ from models.services.provider.part_management import (
     SerializedPartDelete,
     SerializedPartUpdate,
     SerializedPartDetailsRead,
+    SerializedPartDetailsReadWithStatus,
     SerializedPartQuery,
     SerializedPartRead,
+    SerializedPartReadWithStatus,
     SharingStatus,
 )
 
@@ -497,20 +499,50 @@ class PartManagementService():
                 bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
             )
 
-    def get_serialized_part_details(self, manufacturer_id: str, manufacturer_part_id: str, part_instance_id: str) -> SerializedPartDetailsRead:
+    def get_serialized_part_details(self, manufacturer_id: str, manufacturer_part_id: str, part_instance_id: str) -> SerializedPartDetailsReadWithStatus:
         """
         Retrieve a serialized part from the system.
         """
-        
-        # Logic to retrieve a serialized part
-        pass
+        with RepositoryManagerFactory.create() as repos:
+            db_serialized_parts: List[tuple[SerializedPart, int]] = repos.serialized_part_repository.find_with_status(
+                manufacturer_id=manufacturer_id,
+                manufacturer_part_id=manufacturer_part_id,
+                part_instance_id=part_instance_id
+            )
+            
+            if not db_serialized_parts:
+                raise NotFoundError(f"Serialized part not found for manufacturer_id: {manufacturer_id}, manufacturer_part_id: {manufacturer_part_id}, part_instance_id: {part_instance_id}")
+            
+            db_serialized_part, status = db_serialized_parts[0]
+            
+            return SerializedPartDetailsReadWithStatus(
+                manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
+                manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
+                name=db_serialized_part.partner_catalog_part.catalog_part.name,
+                category=db_serialized_part.partner_catalog_part.catalog_part.category,
+                bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns,
+                description=db_serialized_part.partner_catalog_part.catalog_part.description,
+                materials=db_serialized_part.partner_catalog_part.catalog_part.materials,
+                width=db_serialized_part.partner_catalog_part.catalog_part.width,
+                height=db_serialized_part.partner_catalog_part.catalog_part.height,
+                length=db_serialized_part.partner_catalog_part.catalog_part.length,
+                weight=db_serialized_part.partner_catalog_part.catalog_part.weight,
+                partInstanceId=db_serialized_part.part_instance_id,
+                customerPartId=db_serialized_part.partner_catalog_part.customer_part_id,
+                businessPartner=BusinessPartnerRead(
+                    name=db_serialized_part.partner_catalog_part.business_partner.name,
+                    bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
+                ),
+                van=db_serialized_part.van,
+                status=SharingStatus(status)
+            )
 
-    def get_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SerializedPartRead]:
+    def get_serialized_parts(self, query: SerializedPartQuery = SerializedPartQuery()) -> List[SerializedPartReadWithStatus]:
         """
         Retrieves serialized parts from the system according to given parameters.
         """
         with RepositoryManagerFactory.create() as repos:
-            db_serialized_parts: List[SerializedPart] = repos.serialized_part_repository.find(
+            db_serialized_parts: List[tuple[SerializedPart, int]] = repos.serialized_part_repository.find_with_status(
                 manufacturer_id=query.manufacturer_id,
                 manufacturer_part_id=query.manufacturer_part_id,
                 part_instance_id=query.part_instance_id,
@@ -520,9 +552,9 @@ class PartManagementService():
             )
 
             result = []
-            for db_serialized_part in db_serialized_parts:
+            for db_serialized_part, status in db_serialized_parts:
                 result.append(
-                    SerializedPartRead(
+                    SerializedPartReadWithStatus(
                         manufacturerId=db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
                         manufacturerPartId=db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
                         name=db_serialized_part.partner_catalog_part.catalog_part.name,
@@ -534,7 +566,8 @@ class PartManagementService():
                             name=db_serialized_part.partner_catalog_part.business_partner.name,
                             bpnl=db_serialized_part.partner_catalog_part.business_partner.bpnl
                         ),
-                        van=db_serialized_part.van
+                        van=db_serialized_part.van,
+                        status=SharingStatus(status)
                     )
                 )
             return result

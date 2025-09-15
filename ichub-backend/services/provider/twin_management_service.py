@@ -29,7 +29,7 @@ from uuid import UUID, uuid4
 from connector import connector_manager
 from dtr import dtr_provider_manager
 
-from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1
+from managers.submodels.submodel_document_generator import SubmodelDocumentGenerator, SEM_ID_PART_TYPE_INFORMATION_V1, SEM_ID_SERIAL_PART_V3
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory, RepositoryManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
@@ -52,7 +52,7 @@ from models.services.provider.twin_management import (
     TwinsAspectRegistrationMode,
     TwinDetailsReadBase,
 )
-from models.metadata_database.provider.models import EnablementServiceStack, Twin
+from models.metadata_database.provider.models import EnablementServiceStack, Twin, BusinessPartner
 from tools.exceptions import NotFoundError, NotAvailableError
 
 from managers.config.log_manager import LoggingManager
@@ -254,7 +254,7 @@ class TwinManagementService:
                 db_business_partner=db_business_partner
             )
 
-    def create_serialized_part_twin(self, create_input: SerializedPartTwinCreate, enablement_service_stack_name: str = 'EDC/DTR Default') -> TwinRead:
+    def create_serialized_part_twin(self, create_input: SerializedPartTwinCreate, auto_create_serial_part_aspect: bool = False, enablement_service_stack_name: str = 'EDC/DTR Default') -> TwinRead:
         with RepositoryManagerFactory.create() as repo:
             # Step 1: Retrieve the catalog part entity according to the catalog part data (manufacturer_id, manufacturer_part_id)
             db_serialized_parts = repo.serialized_part_repository.find(
@@ -267,18 +267,9 @@ class TwinManagementService:
             else:
                 db_serialized_part = db_serialized_parts[0]
 
-            # Step 2: Retrieve the enablement service stack entity from the DB according to the given name
-            # (if not there => raise error)
-            db_enablement_service_stack = repo.enablement_service_stack_repository.get_by_name(
-                enablement_service_stack_name,
-                join_legal_entity=True
-            )
-            if not db_enablement_service_stack:
-                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' not found.")
-
-            # Step 2a: Enablement service stack consistency check
-            if db_enablement_service_stack.legal_entity.bpnl != create_input.manufacturer_id:
-                raise NotFoundError(f"Enablement service stack '{enablement_service_stack_name}' does not belong to the legal entity '{create_input.manufacturer_id}'.")
+            # Step 2: Retrieve the enablement service stack entity from the DB according to the given manufacturer ID
+            # This will create one if it doesn't exist
+            db_enablement_service_stack = self.get_or_create_enablement_stack(repo=repo, manufacturer_id=create_input.manufacturer_id)
 
             # Step 3a: Load existing twin metadata from the DB (if there)
             if db_serialized_part.twin_id:
@@ -327,6 +318,28 @@ class TwinManagementService:
                 )
 
                 db_twin_registration.dtr_registered = True
+
+            ## Create serial part submodel when registering, if configured
+            # TODO: This makes our API unclean - aspect creation should not be part of twin creation - should be moved to the frontend in future
+            if auto_create_serial_part_aspect:
+                serial_part_doc = self.submodel_document_generator.generate_serial_part_v3(
+                    global_id=db_twin.global_id,
+                    manufacturer_id=create_input.manufacturer_id,
+                    manufacturer_part_id=create_input.manufacturer_part_id,
+                    customer_part_id=db_serialized_part.partner_catalog_part.customer_part_id,
+                    name=db_serialized_part.partner_catalog_part.catalog_part.name,
+                    part_instance_id=create_input.part_instance_id,
+                    van=db_serialized_part.van,
+                    bpns=db_serialized_part.partner_catalog_part.catalog_part.bpns
+                )
+
+                self.create_twin_aspect(
+                    TwinAspectCreate(
+                        globalId=db_twin.global_id,
+                        semanticId=SEM_ID_SERIAL_PART_V3,
+                        payload=serial_part_doc
+                    )
+                )
 
             return TwinRead(
                 globalId=db_twin.global_id,
@@ -685,7 +698,7 @@ class TwinManagementService:
     def _create_twin_exchange(
         repo: RepositoryManager,
         db_twin: Twin,
-        db_business_partner: BusinessPartnerRead
+        db_business_partner: BusinessPartner
     ) -> bool:
             # Step 1: Retrieve the first data exchange agreement entity for the business partner
             # (this will will later be replaced with an explicit mechanism choose a specific data exchange agreement)

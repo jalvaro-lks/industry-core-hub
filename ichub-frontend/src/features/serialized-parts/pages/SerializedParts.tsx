@@ -29,18 +29,23 @@ import { SerializedPart } from '../types';
 const SerializedParts = () => {
   const [serializedParts, setSerializedParts] = useState<SerializedPart[]>([]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchAllSerializedParts();
-        setSerializedParts(data);
-      } catch (error) {
-        console.error("Error fetching instance products:", error);
-      }
-    };
+  const loadData = async () => {
+    try {
+      const data = await fetchAllSerializedParts();
+      setSerializedParts(data);
+    } catch (error) {
+      console.error("Error fetching instance products:", error);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
+
+  const handleRefresh = () => {
+    console.log("Refreshing serialized parts data");
+    loadData();
+  };
 
   return (
     <Grid2 container direction="row">
@@ -48,9 +53,13 @@ const SerializedParts = () => {
         <Typography className="text">Serialized Parts</Typography>
       </Box>
       <Box sx={{ p: 3, width: '100%', color: 'white'}}>
-        <SerializedPartsTable parts={serializedParts} onView={(part) => {
-          console.log("View part:", part);
-        }} />
+        <SerializedPartsTable 
+          parts={serializedParts} 
+          onView={(part) => {
+            console.log("View part:", part);
+          }}
+          onRefresh={handleRefresh}
+        />
       </Box>
     </Grid2>
   );

@@ -28,25 +28,25 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Grid2 from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 
-import InstanceProductsTable from "../components/product-detail/InstanceProductsTable";
-import ShareDropdown from "../components/product-detail/ShareDropdown";
-import ProductButton from "../components/product-detail/ProductButton";
-import ProductData from "../components/product-detail/ProductData";
-import JsonViewerDialog from "../components/product-detail/JsonViewerDialog";
-import AddSerializedPartDialog from "../components/product-detail/AddSerializedPartDialog";
+import InstanceProductsTable from "../features/catalog-management/components/product-detail/InstanceProductsTable";
+import ShareDropdown from "../features/catalog-management/components/product-detail/ShareDropdown";
+import ProductButton from "../features/catalog-management/components/product-detail/ProductButton";
+import ProductData from "../features/catalog-management/components/product-detail/ProductData";
+import JsonViewerDialog from "../features/catalog-management/components/product-detail/JsonViewerDialog";
+import AddSerializedPartDialog from "../features/catalog-management/components/product-detail/AddSerializedPartDialog";
 
-import ShareDialog from "../components/shared/ShareDialog";
-import {ErrorNotFound} from "../../../components/general/ErrorNotFound";
-import LoadingSpinner from "../../../components/general/LoadingSpinner";
-import PageNotification from "../../../components/general/PageNotification";
+import ShareDialog from "../features/catalog-management/components/shared/ShareDialog";
+import {ErrorNotFound} from "../components/general/ErrorNotFound";
+import LoadingSpinner from "../components/general/LoadingSpinner";
+import PageNotification from "../components/general/PageNotification";
 
-import { PartType } from "../types/types";
-import { PRODUCT_STATUS } from "../types/shared";
+import { PartType } from "../types/product";
+import { PRODUCT_STATUS } from "../types/common";
 
-import { SharedPartner } from "../types/types"
+import { SharedPartner } from "../types/sharedPartners"
 
-import { fetchCatalogPart } from "../api";
-import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../utils/utils";
+import { fetchCatalogPart } from "../features/catalog-management/api";
+import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../features/catalog-management/utils/utils";
 
 const ProductsDetails = () => {
   const navigate = useNavigate();
@@ -224,9 +224,13 @@ const ProductsDetails = () => {
         <ProductData part={partType} sharedParts={sharedPartners} />
         
         <Grid2 container size={12} spacing={2}className="add-on-buttons">
+          <ProductButton gridSize={{ sm: 12 }} buttonText="MORE INFORMATION" onClick={handleOpenJsonDialog} />
+          <ProductButton gridSize={{ lg: 4, md: 12, sm: 12 }} disabled={true} buttonText="PCF v3.0.0" onClick={() => console.log("PCF v2.0 button")} />
+          <ProductButton gridSize={{ lg: 4, md: 12, sm: 12 }} disabled={true} buttonText="DIGITAL PRODUCT PASSPORT v6.0.0" onClick={() => console.log("TRANSMISSION PASS v2.0.0")} />
+          <ProductButton gridSize={{ lg: 4, md: 12, sm: 12 }} disabled={true} buttonText="DCM v2.0.0" onClick={() => console.log("DPP v2.0 button")} />
           <Grid2 size={{ sm: 12 }}>
             <Button className="submodel-button" color="success" size="small" onClick={handleOpenAddSerializedPartDialog} fullWidth={true} style={{ padding: "5px" }}>
-              View Submodels
+              <Icon fontSize="18" iconName="Add" />
             </Button>
           </Grid2>
         </Grid2>

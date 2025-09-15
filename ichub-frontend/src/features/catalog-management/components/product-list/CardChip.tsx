@@ -83,7 +83,7 @@ export const CardChip = ({ status, statusText }: CardChipProps) => {
         border: theme.palette.chip[border],
         height: '28px',
       }}
-      icon={statusKey==StatusVariants.shared?<PersonIcon sx={{color: '#000000', fontSize: '18px'}}/>:undefined}
+      icon={statusKey==StatusVariants.shared?<PersonIcon sx={{color: theme.palette.mode === 'dark' ? '#ffffff' : '#000000', fontSize: '18px'}}/>:undefined}
     />
   )
 }

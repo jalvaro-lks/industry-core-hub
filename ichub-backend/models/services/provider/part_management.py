@@ -134,7 +134,15 @@ class SerializedPartBase(CatalogPartBase):
 class SerializedPartRead(CatalogPartRead, SerializedPartBase, PartnerRelatedPartReadBase, CustomerPartIdBase):
     van: Optional[str] = Field(description=VAN_DESCRIPTION, default=None)
 
+class SerializedPartReadWithStatus(SerializedPartRead, StatusBase):
+    """Serialized part read model with status information."""
+    pass
+
 class SerializedPartDetailsRead(SerializedPartRead, CatalogPartDetailsRead):
+    pass
+
+class SerializedPartDetailsReadWithStatus(SerializedPartDetailsRead, StatusBase):
+    """Serialized part details read model with status information."""
     pass
 
 class SerializedPartCreate(SerializedPartBase, PartnerRelatedPartCreateBase):

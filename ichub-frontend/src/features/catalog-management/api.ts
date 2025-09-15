@@ -23,7 +23,7 @@
 import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
 import { ApiPartData } from './types/types';
-import { CatalogPartTwinCreateType, TwinReadType } from './types/twin-types';
+import { CatalogPartTwinCreateType, TwinReadType, CatalogPartTwinDetailsRead } from './types/twin-types';
 import { catalogManagementConfig } from './config';
 
 const backendUrl = getIchubBackendUrl();
@@ -81,4 +81,26 @@ export const registerCatalogPartTwin = async (
 export const createCatalogPart = async (catalogPartData: ApiPartData): Promise<ApiPartData> => {
   const response = await axios.post<ApiPartData>(`${backendUrl}${catalogManagementConfig.api.endpoints.CATALOG_PARTS}`, catalogPartData);
   return response.data;
+};
+
+export const fetchCatalogPartTwinDetails = async (
+  manufacturerId: string,
+  manufacturerPartId: string
+): Promise<CatalogPartTwinDetailsRead | null> => {
+  try {
+    console.log('Fetching catalog part twin details for:', { manufacturerId, manufacturerPartId });
+    const response = await axios.get<CatalogPartTwinDetailsRead>(
+      `${backendUrl}/twin-management/catalog-part-twin/${manufacturerId}/${manufacturerPartId}`
+    );
+    console.log('Catalog part twin details response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching catalog part twin details:', error);
+    // If the twin doesn't exist, return null instead of throwing an error
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      console.log('Catalog part twin not found (404), returning null');
+      return null;
+    }
+    throw error;
+  }
 };

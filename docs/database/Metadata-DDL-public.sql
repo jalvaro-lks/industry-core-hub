@@ -146,7 +146,8 @@ CREATE TABLE public.twin_aspect_registration (
 
 CREATE TABLE public.twin_exchange (
     twin_id integer NOT NULL,
-    data_exchange_agreement_id integer NOT NULL
+    data_exchange_agreement_id integer NOT NULL,
+    is_cancelled boolean DEFAULT false NOT NULL
 );
 
 CREATE TABLE public.twin_registration (

@@ -22,15 +22,45 @@
 
 import { UUIDTypes } from 'uuid';
 
-interface BusinessPartner {
+export interface BusinessPartner {
   name: string;
   bpnl: string;
 }
 
-interface ShareInfo {
+export interface DataExchangeContractRead {
+  semanticId: string;
+  edcUsagePolicyId: string;
+}
+
+export interface DataExchangeAgreementRead {
   businessPartner: BusinessPartner;
   name: string;
-  contracts: unknown[]; // Assuming contracts can be an array of any type for now
+  contracts: DataExchangeContractRead[];
+}
+
+export interface TwinAspectRegistration {
+  enablementServiceStackName: string;
+  status: number;
+  mode: number;
+  createdDate: string;
+  modifiedDate: string;
+}
+
+export interface TwinAspectRead {
+  semanticId: string;
+  submodelId: string;
+  registrations?: Record<string, TwinAspectRegistration>;
+  registrationStatus?: 'PLANNED' | 'STORED' | 'REGISTERED';
+  aspectUrl?: string;
+  aspectData?: unknown;
+}
+
+export interface TwinRead {
+  globalId: string;
+  dtrAasId: string;
+  createdDate: string;
+  modifiedDate: string;
+  shares?: DataExchangeAgreementRead[];
 }
 
 export interface TwinReadType {
@@ -38,7 +68,36 @@ export interface TwinReadType {
   dtrAasId: UUIDTypes;
   createdDate: string;
   modifiedDate: string;
-  shares?: ShareInfo[];
+  shares?: DataExchangeAgreementRead[];
+}
+
+export interface CatalogPartTwinDetailsRead extends TwinRead {
+  additionalContext?: Record<string, unknown>;
+  registrations?: Record<string, boolean>;
+  aspects?: Record<string, TwinAspectRead>;
+  manufacturerId: string;
+  manufacturerPartId: string;
+  name: string;
+  category?: string;
+  bpns?: string;
+  description?: string;
+  materials?: Array<{name: string; share: number}>;
+  width?: {value: number; unit: string};
+  height?: {value: number; unit: string};
+  length?: {value: number; unit: string};
+  weight?: {value: number; unit: string};
+  customerPartIds?: Record<string, BusinessPartner>;
+}
+
+export interface CatalogPartTwinDetailsReadType extends TwinReadType {
+  additionalContext?: Record<string, unknown>;
+  registrations?: Record<string, boolean>;
+  aspects?: Record<string, TwinAspectRead>;
+  manufacturerId: string;
+  manufacturerPartId: string;
+  name: string;
+  nameAtManufacturer: string;
+  classification: string;
 }
 
 export interface CatalogPartTwinCreateType {

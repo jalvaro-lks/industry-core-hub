@@ -30,7 +30,7 @@ import {
   DialogContent,
   DialogActions,
   Typography,
-  Grid,
+  Grid2,
   MenuItem,
   Button,
   IconButton,
@@ -269,12 +269,24 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             '&.Mui-focused fieldset': {
               borderColor: 'primary.main',
             }
+          },
+          '& .MuiInputLabel-root': {
+            backgroundColor: 'background.default',
+            padding: '0 8px',
+            '&.Mui-focused': {
+              color: 'primary.main',
+            },
+            '&.MuiInputLabel-shrink': {
+              backgroundColor: 'background.default',
+              padding: '0 8px',
+              transform: 'translate(14px, -9px) scale(0.75)',
+            }
           }
         }
       }}>
-        <Grid container spacing={4}>
+        <Grid2 container spacing={4}>
           {/* Manufacturer Info as Chips */}
-          <Grid item xs={12}>
+          <Grid2 size={12}>
             <Box sx={{ 
               display: 'flex', 
               flexWrap: 'wrap', 
@@ -302,10 +314,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 }}
               />
             </Box>
-          </Grid>
+          </Grid2>
 
           {/* Basic Information */}
-          <Grid item xs={12} sm={6}>
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Manufacturer Part ID"
               value={formData.manufacturerPartId}
@@ -315,9 +327,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               variant="outlined"
               size="medium"
             />
-          </Grid>
+          </Grid2>
           
-          <Grid item xs={12} sm={6}>
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Part Name"
               value={formData.name}
@@ -327,9 +339,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               variant="outlined"
               size="medium"
             />
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={12}>
+          <Grid2 size={12}>
             <TextField
               label="Description"
               value={formData.description}
@@ -340,9 +352,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               variant="outlined"
               size="medium"
             />
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={12} sm={6}>
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Category"
               value={formData.category}
@@ -351,9 +363,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               variant="outlined"
               size="medium"
             />
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={12} sm={6}>
+          <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="BPNS"
               value={formData.bpns}
@@ -362,10 +374,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               variant="outlined"
               size="medium"
             />
-          </Grid>
+          </Grid2>
 
           {/* Measurements Section - Now Before Materials */}
-          <Grid item xs={12}>
+          <Grid2 size={12}>
             <Typography variant="h6" gutterBottom sx={{ 
               mt: 3, 
               mb: 2, 
@@ -375,9 +387,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             }}>
               Measurements
             </Typography>
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={6} sm={3}>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               label="Width"
               type="number"
@@ -388,8 +400,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
             />
-          </Grid>
-          <Grid item xs={6} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               select
               label="Width Unit"
@@ -405,9 +417,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={6} sm={3}>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               label="Height"
               type="number"
@@ -418,8 +430,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
             />
-          </Grid>
-          <Grid item xs={6} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               select
               label="Height Unit"
@@ -435,9 +447,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={6} sm={3}>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               label="Length"
               type="number"
@@ -448,8 +460,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
             />
-          </Grid>
-          <Grid item xs={6} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               select
               label="Length Unit"
@@ -465,9 +477,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
+          </Grid2>
 
-          <Grid item xs={6} sm={3}>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               label="Weight"
               type="number"
@@ -478,8 +490,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
             />
-          </Grid>
-          <Grid item xs={6} sm={3}>
+          </Grid2>
+          <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               select
               label="Weight Unit"
@@ -495,10 +507,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 </MenuItem>
               ))}
             </TextField>
-          </Grid>
+          </Grid2>
 
-          {/* Materials Section with Pie Chart */}
-          <Grid item xs={12}>
+          {/* Materials Section */}
+          <Grid2 size={12}>
             <Typography variant="h6" gutterBottom sx={{ 
               mt: 4, 
               mb: 2, 
@@ -508,14 +520,14 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             }}>
               Materials
             </Typography>
-          </Grid>
+          </Grid2>
 
           {/* Materials Form and Pie Chart Side by Side */}
-          <Grid item xs={12} md={8}>
+          <Grid2 size={{ xs: 12, md: 8 }}>
             {formData.materials.map((material, index) => (
               <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={5}>
+                <Grid2 container spacing={2} alignItems="center">
+                  <Grid2 size={{ xs: 12, sm: 5 }}>
                     <TextField
                       label="Material Name"
                       value={material.name}
@@ -525,10 +537,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                       variant="outlined"
                       size="medium"
                     />
-                  </Grid>
+                  </Grid2>
                   
                   {/* Slider next to material name */}
-                  <Grid item xs={8} sm={5}>
+                  <Grid2 size={{ xs: 8, sm: 5 }}>
                     <Box sx={{ px: 1 }}>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         Share: {material.share.toFixed(1)}%
@@ -557,10 +569,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                         }}
                       />
                     </Box>
-                  </Grid>
+                  </Grid2>
 
                   {/* Action buttons */}
-                  <Grid item xs={4} sm={2}>
+                  <Grid2 size={{ xs: 4, sm: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <IconButton
                         onClick={() => setExpandedMaterial(expandedMaterial === index ? null : index)}
@@ -585,10 +597,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
-                  </Grid>
+                  </Grid2>
                   
                   {/* Collapsible exact input */}
-                  <Grid item xs={12}>
+                  <Grid2 size={12}>
                     <Collapse in={expandedMaterial === index}>
                       <Box sx={{ mt: 1, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
                         <TextField
@@ -606,8 +618,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                         </Typography>
                       </Box>
                     </Collapse>
-                  </Grid>
-                </Grid>
+                  </Grid2>
+                </Grid2>
               </Box>
             ))}
             
@@ -628,10 +640,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 size="small"
               />
             </Box>
-          </Grid>
+          </Grid2>
 
           {/* Pie Chart */}
-          <Grid item xs={12} md={4}>
+          <Grid2 size={{ xs: 12, md: 4 }}>
             <Paper sx={{ 
               p: 2, 
               backgroundColor: 'background.default',
@@ -682,8 +694,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 </Box>
               )}
             </Paper>
-          </Grid>
-        </Grid>
+          </Grid2>
+        </Grid2>
 
         {apiErrorMessage && (
           <Box sx={{ mt: 3 }}>

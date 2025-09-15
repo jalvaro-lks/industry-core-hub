@@ -23,7 +23,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@catena-x/portal-shared-components';
-import { Box, TextField, Autocomplete, Alert, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, TextField, Autocomplete, Alert, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Checkbox, FormControlLabel, Typography, Grid2 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -152,8 +152,34 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
   };
 
   return (
-    <Dialog open={open} maxWidth="xl" className="custom-dialog">
-      <DialogTitle sx={{ m: 0, p: 2 }}>
+    <Dialog 
+      open={open} 
+      maxWidth={false}
+      fullWidth
+      PaperProps={{
+        sx: {
+          backgroundColor: 'background.paper',
+          width: '40vw',
+          height: 'auto',
+          maxWidth: '40vw',
+          maxHeight: '80vh',
+          minWidth: '500px',
+          '& .MuiDialogContent-root': {
+            backgroundColor: 'background.paper',
+          }
+        }
+      }}
+    >
+      <DialogTitle 
+        sx={{ 
+          m: 0, 
+          p: 3,
+          backgroundColor: 'primary.main',
+          color: 'primary.contrastText',
+          fontSize: '1.25rem',
+          fontWeight: 600
+        }}
+      >
         Share with partner ({title})
       </DialogTitle>
       <IconButton
@@ -163,20 +189,72 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
           position: 'absolute',
           right: 8,
           top: 8,
-          color: theme.palette.grey[500],
+          color: theme.palette.primary.contrastText,
         })}
       >
         <CloseIcon />
       </IconButton>
-      <DialogContent dividers>
+      <DialogContent sx={{ 
+        p: 3, 
+        backgroundColor: 'background.paper',
+        overflow: 'auto',
+        '& .MuiTextField-root': {
+          backgroundColor: 'background.default',
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: 'background.default',
+            '& fieldset': {
+              borderColor: 'divider',
+            },
+            '&:hover fieldset': {
+              borderColor: 'primary.main',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: 'primary.main',
+            }
+          }
+        },
+        '& .MuiFormControlLabel-root': {
+          '& .MuiCheckbox-root': {
+            color: 'primary.main',
+            '&.Mui-checked': {
+              color: 'primary.main',
+            }
+          }
+        }
+      }}>
         {partnersList.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <p>No partners available. Please add partners in the Partner View to share parts.</p>
-          </Box>
+          <Grid2 container spacing={3}>
+            <Grid2 size={12}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                mb: 2, 
+                color: 'text.primary',
+                fontSize: '1.1rem',
+                fontWeight: 500
+              }}>
+                No Partners Available
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center', py: 4 }}>
+                No partners available. Please add partners in the Partner View to share parts.
+              </Typography>
+            </Grid2>
+          </Grid2>
         ) : (
-          <>
-            <p>Select a partner to share the part with</p>
-            <Box sx={{ mt: 2, mx: 'auto', maxWidth: 400 }}>
+          <Grid2 container spacing={3}>
+            <Grid2 size={12}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                mb: 2, 
+                color: 'text.primary',
+                fontSize: '1.1rem',
+                fontWeight: 500
+              }}>
+                Share Part Information
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Select a partner to share the part with
+              </Typography>
+            </Grid2>
+            
+            <Grid2 size={12}>
               <Autocomplete
                 options={partnersList}
                 getOptionLabel={(option) => `${option.name} (${option.bpnl})`}
@@ -187,78 +265,186 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
                     {...params}
                     label="Partner"
                     variant="outlined"
-                    size="small"
+                    size="medium"
                     error={error}
                     helperText={error ? 'Partner selection is required' : ''}
+                    fullWidth
                   />
                 )}
               />
-            </Box>
-            <Box sx={{ mt: 2, mx: 'auto', maxWidth: 400 }}>
-              <FormControlLabel
-                className='customer-part-id-form'
-                control={
-                  <Checkbox
-                    checked={showCustomPartId}
-                    onChange={(e) => {
-                      console.log('Checkbox changed to:', e.target.checked);
-                      setShowCustomPartId(e.target.checked);
-                    }}
-                    size="small"
-                    className='customer-part-id-checkbox'
-                  />
+            </Grid2>
+            
+            <Grid2 size={12}>
+              <Box sx={{ 
+                p: 3, 
+                backgroundColor: 'background.default', 
+                borderRadius: 2, 
+                mt: 1,
+                border: '1px solid',
+                borderColor: 'divider',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  borderColor: 'primary.light',
+                  boxShadow: '0 2px 8px rgba(25, 118, 210, 0.1)',
                 }
-                label="Add custom customer part Id"
-              />
-              {showCustomPartId && (
-                <Box sx={{ mt: 1 }}>
-                  <TextField
-                    label="Customer Part Id"
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={customPartId}
-                    onChange={(e) => setCustomPartId(e.target.value)}
-                    placeholder="Enter your custom part identifier"
-                  />
-                </Box>
-              )}
-            </Box>
-          </>
+              }}>
+                <FormControlLabel
+                  className='customer-part-id-form'
+                  sx={{
+                    alignItems: 'center', // Center align instead of flex-start
+                    '& .MuiFormControlLabel-label': {
+                      paddingLeft: '12px', // Increased left padding for better separation
+                    }
+                  }}
+                  control={
+                    <Checkbox
+                      checked={showCustomPartId}
+                      onChange={(e) => {
+                        console.log('Checkbox changed to:', e.target.checked);
+                        setShowCustomPartId(e.target.checked);
+                      }}
+                      size="small"
+                      className='customer-part-id-checkbox'
+                      sx={{
+                        p: 0.5,
+                        borderRadius: '6px',
+                        transition: 'all 0.2s ease-in-out',
+                        color: 'rgba(0, 0, 0, 0.26)', // Modern light gray for unchecked
+                        '&:hover': {
+                          backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                          transform: 'scale(1.05)',
+                        },
+                        '&.Mui-checked': {
+                          color: 'primary.main',
+                          '&:hover': {
+                            backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                          }
+                        },
+                        '& .MuiSvgIcon-root': {
+                          fontSize: 20, // Reduced from 24
+                          borderRadius: '3px',
+                          transition: 'all 0.2s ease-in-out',
+                          filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))',
+                        },
+                        // Modern unchecked state with subtle border
+                        '&:not(.Mui-checked) .MuiSvgIcon-root': {
+                          color: 'rgba(0, 0, 0, 0.54)',
+                          border: '1.5px solid rgba(0, 0, 0, 0.23)', // Thinner border
+                          borderRadius: '3px',
+                          backgroundColor: 'background.paper',
+                        },
+                        // Modern checked state with smooth animation
+                        '&.Mui-checked .MuiSvgIcon-root': {
+                          color: 'primary.main',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          filter: 'drop-shadow(0px 1px 3px rgba(25, 118, 210, 0.3))',
+                        },
+                        // Focus state for accessibility
+                        '&.Mui-focusVisible': {
+                          outline: '2px solid',
+                          outlineColor: 'primary.main',
+                          outlineOffset: '2px',
+                        }
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ 
+                      color: 'text.primary', 
+                      fontWeight: 500,
+                      fontSize: '0.9rem',
+                      letterSpacing: '0.01em',
+                      transition: 'color 0.2s ease-in-out',
+                      ml: 0.5, // Additional left margin for better spacing
+                      '&:hover': {
+                        color: 'primary.main',
+                      }
+                    }}>
+                      Add custom customer part Id
+                    </Typography>
+                  }
+                />
+                {showCustomPartId && (
+                  <Box sx={{ mt: 2 }}>
+                    <TextField
+                      label="Customer Part Id"
+                      variant="outlined"
+                      size="medium"
+                      fullWidth
+                      value={customPartId}
+                      onChange={(e) => setCustomPartId(e.target.value)}
+                      placeholder="Enter your custom part identifier"
+                    />
+                  </Box>
+                )}
+              </Box>
+            </Grid2>
+          </Grid2>
         )}
+
         {apiErrorMessage && (
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 3 }}>
             <Alert severity="error">{apiErrorMessage}</Alert>
           </Box>
         )}
         {successMessage && (
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 3 }}>
             <Alert severity="success">{successMessage}</Alert>
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button className="close-button" variant="outlined" size="small" onClick={onClose} startIcon={<CloseIcon />} >
-          <span className="close-button-content">CLOSE</span>
+      <DialogActions sx={{ 
+        p: 3, 
+        backgroundColor: 'background.paper',
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        gap: 2,
+        justifyContent: 'flex-end'
+      }}>
+        <Button 
+          onClick={onClose}
+          variant="outlined"
+          color="primary"
+          size="large"
+          sx={{
+            minWidth: '100px',
+            textTransform: 'none',
+            fontWeight: 500
+          }}
+        >
+          CLOSE
         </Button>
         {partnersList.length === 0 ? (
           <Button 
-            className="action-button" 
-            variant="contained" 
-            size="small" 
-            onClick={handleGoToPartners} 
+            onClick={handleGoToPartners}
+            variant="contained"
+            color="primary"
+            size="large"
             startIcon={<PersonAddIcon />}
+            sx={{
+              minWidth: '100px',
+              textTransform: 'none',
+              fontWeight: 500,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
           >
             Add a Partner
           </Button>
         ) : (
           <Button 
-            className="action-button" 
-            variant="contained" 
-            size="small" 
-            onClick={handleShare} 
+            onClick={handleShare}
+            variant="contained"
+            color="primary"
+            size="large"
             startIcon={<SendIcon />}
             disabled={!bpnl}
+            sx={{
+              minWidth: '100px',
+              textTransform: 'none',
+              fontWeight: 500,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}
           >
             Share
           </Button>

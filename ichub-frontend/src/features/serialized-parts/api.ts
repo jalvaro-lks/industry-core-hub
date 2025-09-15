@@ -23,8 +23,10 @@
 import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
 import { SerializedPart, AddSerializedPartRequest } from './types';
+import { SerializedPartTwinCreateType, SerializedPartTwinShareCreateType, SerializedPartTwinUnshareCreateType, TwinReadType, SerializedPartTwinRead } from './types/twin-types';
 
 const SERIALIZED_PART_READ_BASE_PATH = '/part-management/serialized-part';
+const SERIALIZED_PART_TWIN_BASE_PATH = '/twin-management/serialized-part-twin';
 const backendUrl = getIchubBackendUrl();
 
 export const fetchAllSerializedParts = async (): Promise<SerializedPart[]> => {
@@ -48,4 +50,71 @@ export const addSerializedPart = async (payload: AddSerializedPartRequest ) => {
     `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}`, payload
   );
   return response;
+};
+
+// Twin Management API Functions
+
+export const createSerializedPartTwin = async (
+  twinData: SerializedPartTwinCreateType
+): Promise<TwinReadType> => {
+  const response = await axios.post<TwinReadType>(
+    `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}`,
+    twinData
+  );
+  return response.data;
+};
+
+export const shareSerializedPartTwin = async (
+  shareData: SerializedPartTwinShareCreateType
+): Promise<void> => {
+  await axios.post(
+    `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}/share`,
+    shareData
+  );
+};
+
+export const fetchAllSerializedPartTwins = async (
+  manufacturerId?: string,
+  manufacturerPartId?: string
+): Promise<SerializedPartTwinRead[]> => {
+  const response = await axios.get<SerializedPartTwinRead[]>(
+    `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?include_data_exchange_agreements=true`
+  );
+  
+  // Filter twins by manufacturerId and manufacturerPartId if provided
+  let twins = response.data;
+  if (manufacturerId) {
+    twins = twins.filter(twin => twin.manufacturerId === manufacturerId);
+  }
+  if (manufacturerPartId) {
+    twins = twins.filter(twin => twin.manufacturerPartId === manufacturerPartId);
+  }
+  
+  return twins;
+};
+
+export const unshareSerializedPartTwin = async (
+  unshareData: SerializedPartTwinUnshareCreateType
+): Promise<void> => {
+  await axios.post(
+    `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}/unshare`,
+    unshareData
+  );
+};
+
+export const deleteSerializedPart = async (
+  partnerCatalogPartId: number,
+  partInstanceId: string
+): Promise<void> => {
+  console.log("deleteSerializedPart API called with:", { partnerCatalogPartId, partInstanceId });
+  const url = `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}/${partnerCatalogPartId}/${partInstanceId}`;
+  console.log("Delete URL:", url);
+  
+  try {
+    const response = await axios.delete(url);
+    console.log("Delete API response:", response);
+  } catch (error) {
+    console.error("Delete API error:", error);
+    throw error;
+  }
 };
