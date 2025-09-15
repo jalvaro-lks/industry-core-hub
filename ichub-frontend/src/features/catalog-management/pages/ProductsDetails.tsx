@@ -192,7 +192,7 @@ const ProductsDetails = () => {
       case PRODUCT_STATUS.PENDING:
         return <StatusTag color="declined" label="Pending" variant="filled" />;
       case PRODUCT_STATUS.SHARED:
-        return <StatusTag color="pending" label="Shared" variant="filled" />;
+        return <StatusTag color="pending" label="Shared" sx={{color: "black!important"}} variant="filled" />;
       default:
         return null;
     }

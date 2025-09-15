@@ -20,16 +20,17 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip } from '@mui/material'
-import Grid2 from '@mui/material/Grid2';
+import { Box, Grid2, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip, IconButton } from '@mui/material'
 import { Typography } from '@catena-x/portal-shared-components';
 import { PartType } from '../../types/types';
 import { PieChart } from '@mui/x-charts/PieChart';
 import WifiTetheringErrorIcon from '@mui/icons-material/WifiTetheringError';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import BusinessIcon from '@mui/icons-material/Business';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import DescriptionIcon from '@mui/icons-material/Description';
+import DeviceHubIcon from '@mui/icons-material/DeviceHub';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import UpdateIcon from '@mui/icons-material/Update';
@@ -46,6 +47,109 @@ interface ProductDataProps {
     part: PartType;
     sharedParts: SharedPartner[];
 }
+
+// Modern copyable field component
+interface CopyableFieldProps {
+    label: string;
+    value: string;
+    icon?: React.ReactNode;
+    onCopy: (value: string, fieldName: string) => void;
+    variant?: 'standard' | 'chip';
+}
+
+const CopyableField = ({ label, value, icon, onCopy, variant = 'standard' }: CopyableFieldProps) => {
+    if (variant === 'chip') {
+        return (
+            <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    {icon && <Box sx={{ color: 'primary.main', display: 'flex' }}>{icon}</Box>}
+                    <Typography variant="caption1" sx={{ 
+                        color: 'text.secondary', 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.08em',
+                        fontWeight: 600 
+                    }}>
+                        {label}
+                    </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip
+                        label={value}
+                        variant="outlined"
+                        sx={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: 'text.primary',
+                            fontFamily: 'monospace',
+                            fontSize: '0.875rem',
+                            maxWidth: 400,
+                            '& .MuiChip-label': {
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                paddingX: 2,
+                                paddingY: 0.5
+                            },
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                borderColor: 'primary.main'
+                            }
+                        }}
+                        clickable
+                        onClick={() => onCopy(value, label)}
+                    />
+                    <Tooltip title={`Copy ${label}`}>
+                        <IconButton
+                            size="small"
+                            onClick={() => onCopy(value, label)}
+                            sx={{
+                                color: 'text.secondary',
+                                '&:hover': {
+                                    color: 'primary.main',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                                }
+                            }}
+                        >
+                            <ContentCopyIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+            </Box>
+        );
+    }
+
+    return (
+        <Box sx={{ mb: 2.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                {icon && <Box sx={{ color: 'primary.main', display: 'flex' }}>{icon}</Box>}
+                <Typography variant="label3" sx={{ color: 'text.primary' }}>
+                    {label}
+                </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                <Typography variant="body1" sx={{ color: 'text.primary', flex: 1 }}>
+                    {value}
+                </Typography>
+                <Tooltip title={`Copy ${label}`}>
+                    <IconButton
+                        size="small"
+                        onClick={() => onCopy(value, label)}
+                        sx={{
+                            color: 'text.secondary',
+                            '&:hover': {
+                                color: 'primary.main',
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        }}
+                    >
+                        <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            </Box>
+            <Divider sx={{ mt: 1.5, borderColor: 'rgba(255, 255, 255, 0.08)' }} />
+        </Box>
+    );
+};
 
 const ProductData = ({ part, sharedParts }: ProductDataProps) => {
     const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(null);
@@ -107,295 +211,28 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
             {/* Header Section */}
             <Card sx={{ 
                 mb: 3, 
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98))',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                borderLeft: '4px solid #3b82f6',
-                borderRadius: 3,
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                backdropFilter: 'blur(10px)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
-                    transform: 'translateY(-2px)'
-                }
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: 2
             }}>
-                <CardContent sx={{ 
-                    p: 4,
-                    '&:last-child': {
-                        paddingBottom: 4
-                    }
-                }}>
-                    <Box sx={{ position: 'relative' }}>
-                        {/* Digital Twin IDs - Top Right Corner */}
-                        <Box sx={{ 
-                            position: 'absolute', 
-                            top: 0, 
-                            right: 0, 
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            flexWrap: 'wrap', 
-                            gap: 1, 
-                            justifyContent: 'flex-end',
-                            alignItems: 'flex-end',
-                            maxWidth: '60%'
-                        }}>
-                            {isLoadingTwin ? (
-                                <>
-                                    <Chip 
-                                        label="Loading AAS ID..." 
-                                        variant="outlined" 
-                                        size="small" 
-                                        disabled 
-                                        sx={{
-                                            '& .MuiChip-label': {
-                                                color: '#ffffff !important',
-                                                fontSize: '12px'
-                                            }
-                                        }}
-                                    />
-                                    <Chip 
-                                        label="Loading Twin ID..." 
-                                        variant="outlined" 
-                                        size="small" 
-                                        disabled 
-                                        sx={{
-                                            '& .MuiChip-label': {
-                                                color: '#ffffff !important',
-                                                fontSize: '12px'
-                                            }
-                                        }}
-                                    />
-                                </>
-                            ) : twinDetails ? (
-                                <>
-                                    {twinDetails.dtrAasId && (
-                                        <Tooltip title="Click to copy AAS ID">
-                                            <Chip
-                                                icon={<FingerprintIcon />}
-                                                label={twinDetails.dtrAasId}
-                                                variant="outlined"
-                                                size="small"
-                                                clickable
-                                                onClick={() => handleCopy(twinDetails.dtrAasId, 'AAS ID')}
-                                                sx={{
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                                    color: '#ffffff',
-                                                    fontFamily: 'monospace',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.5)'
-                                                    },
-                                                    '& .MuiChip-icon': {
-                                                        color: '#ffffff'
-                                                    },
-                                                    '& .MuiChip-label': {
-                                                        color: '#ffffff !important',
-                                                        fontSize: '11px',
-                                                        fontWeight: 500,
-                                                        fontFamily: 'monospace'
-                                                    },
-                                                    '& span': {
-                                                        color: '#ffffff !important'
-                                                    }
-                                                }}
-                                            />
-                                        </Tooltip>
-                                    )}
-                                    {twinDetails.globalId && (
-                                        <Tooltip title="Click to copy Digital Twin ID">
-                                            <Chip
-                                                icon={<AccountTreeIcon />}
-                                                label={twinDetails.globalId}
-                                                variant="outlined"
-                                                size="small"
-                                                clickable
-                                                onClick={() => handleCopy(twinDetails.globalId, 'Digital Twin ID')}
-                                                sx={{
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                                    color: '#ffffff',
-                                                    fontFamily: 'monospace',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.5)'
-                                                    },
-                                                    '& .MuiChip-icon': {
-                                                        color: '#ffffff'
-                                                    },
-                                                    '& .MuiChip-label': {
-                                                        color: '#ffffff !important',
-                                                        fontSize: '11px',
-                                                        fontWeight: 500,
-                                                        fontFamily: 'monospace'
-                                                    }
-                                                }}
-                                            />
-                                        </Tooltip>
-                                    )}
-                                    {(!twinDetails.dtrAasId && !twinDetails.globalId) && (
-                                        <Chip 
-                                            label="No Twin IDs" 
-                                            variant="outlined" 
-                                            size="small" 
-                                            sx={{ 
-                                                color: '#ffffff',
-                                                borderColor: '#ffffff',
-                                                '& .MuiChip-label': {
-                                                    color: '#ffffff !important',
-                                                    fontSize: '12px'
-                                                }
-                                            }}
-                                        />
-                                    )}
-                                </>
-                            ) : (
-                                <Chip 
-                                    label="Twin data unavailable" 
-                                    variant="outlined" 
-                                    size="small" 
-                                    sx={{ 
-                                        color: '#ffffff',
-                                        borderColor: '#ffffff',
-                                        '& .MuiChip-label': {
-                                            color: '#ffffff !important',
-                                            fontSize: '12px'
-                                        }
-                                    }}
-                                />
-                            )}
+                <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <InventoryIcon sx={{ color: 'primary.main', fontSize: 28 }} />
+                        <Box>
+                            <Typography variant="h2" sx={{ color: 'text.primary', mb: 0.5 }}>
+                                {part.name}
+                            </Typography>
+                            <Chip 
+                                label={part.category} 
+                                variant="outlined" 
+                                size="small"
+                                sx={{ 
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    borderColor: 'primary.main',
+                                    color: 'primary.main'
+                                }}
+                            />
                         </Box>
-
-                        <Grid2 container spacing={2} alignItems="center">
-                            {/* Left Side - Product Name and Manufacturer Info */}
-                            <Grid2 size={{ xs: 12, md: 8 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, pr: { xs: 0, md: 10 } }}>
-                                    <Box>
-                                        <Typography variant="h3" sx={{ 
-                                            color: '#ffffff', 
-                                            mb: 1, 
-                                            fontWeight: 700,
-                                            fontSize: '2.5rem',
-                                            letterSpacing: '-0.02em',
-                                            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
-                                        }}>
-                                            {part.name}
-                                        </Typography>
-                                        <Chip 
-                                            label={part.category} 
-                                            variant="filled" 
-                                            size="medium"
-                                            sx={{ 
-                                                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                                                color: '#ffffff',
-                                                fontWeight: 600,
-                                                fontSize: '13px',
-                                                height: 28,
-                                                borderRadius: 2,
-                                                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-                                                '& .MuiChip-label': {
-                                                    color: '#ffffff !important',
-                                                    fontSize: '13px',
-                                                    fontWeight: 500
-                                                }
-                                            }}
-                                        />
-                                    </Box>
-                                </Box>
-                                {/* Manufacturer Info Chips */}
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                                    <Tooltip title="Click to copy Manufacturer ID">
-                                        <Chip
-                                            icon={<BusinessIcon />}
-                                            label={`Manufacturer ID: ${part.manufacturerId}`}
-                                            variant="outlined"
-                                            size="small"
-                                            clickable
-                                            onClick={() => handleCopy(part.manufacturerId, 'Manufacturer ID')}
-                                            sx={{
-                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                color: '#ffffff',
-                                                fontFamily: 'monospace',
-                                                '&:hover': {
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                    borderColor: 'rgba(255, 255, 255, 0.4)'
-                                                },
-                                                '& .MuiChip-icon': {
-                                                    color: '#ffffff'
-                                                },
-                                                '& .MuiChip-label': {
-                                                    color: '#ffffff',
-                                                    fontSize: '12px',
-                                                    fontWeight: 500,
-                                                    fontFamily: 'monospace'
-                                                }
-                                            }}
-                                        />
-                                    </Tooltip>
-                                    <Tooltip title="Click to copy Manufacturer Part ID">
-                                        <Chip
-                                            icon={<InventoryIcon />}
-                                            label={`Manufacturer Part ID: ${part.manufacturerPartId}`}
-                                            variant="outlined"
-                                            size="small"
-                                            clickable
-                                            onClick={() => handleCopy(part.manufacturerPartId, 'Manufacturer Part ID')}
-                                            sx={{
-                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                color: '#ffffff',
-                                                fontFamily: 'monospace',
-                                                '&:hover': {
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                    borderColor: 'rgba(255, 255, 255, 0.4)'
-                                                },
-                                                '& .MuiChip-icon': {
-                                                    color: '#ffffff'
-                                                },
-                                                '& .MuiChip-label': {
-                                                    color: '#ffffff',
-                                                    fontSize: '12px',
-                                                    fontWeight: 500,
-                                                    fontFamily: 'monospace'
-                                                }
-                                            }}
-                                        />
-                                    </Tooltip>
-                                    {part.bpns && (
-                                        <Tooltip title="Click to copy Site of Origin">
-                                            <Chip
-                                                icon={<LocationOnIcon />}
-                                                label={`Site of Origin: ${part.bpns}`}
-                                                variant="outlined"
-                                                size="small"
-                                                clickable
-                                                onClick={() => handleCopy(part.bpns || '', 'Site of Origin (BPNS)')}
-                                                sx={{
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                    color: '#ffffff',
-                                                    fontFamily: 'monospace',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.4)'
-                                                    },
-                                                    '& .MuiChip-icon': {
-                                                        color: '#ffffff'
-                                                    },
-                                                    '& .MuiChip-label': {
-                                                        color: '#ffffff',
-                                                        fontSize: '12px',
-                                                        fontWeight: 500,
-                                                        fontFamily: 'monospace'
-                                                    }
-                                                }}
-                                            />
-                                        </Tooltip>
-                                    )}
-                                </Box>
-                            </Grid2>
-                        </Grid2>
                     </Box>
                 </CardContent>
             </Card>
@@ -404,12 +241,12 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                 {/* Left Column - Part Details */}
                 <Grid2 size={{ lg: 6, md: 12, sm: 12 }}>
                     <Card sx={{ 
-                        height: '100%',
+                        height: 'fit-content',
                         backgroundColor: 'rgba(0, 0, 0, 0.4)',
                         border: '1px solid rgba(255, 255, 255, 0.12)',
                         borderRadius: 2
                     }}>
-                        <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <CardContent sx={{ p: 3 }}>
                             <Typography variant="h6" sx={{ 
                                 color: 'text.primary', 
                                 mb: 3,
@@ -420,6 +257,29 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                                 <InfoIcon sx={{ color: 'primary.main' }} />
                                 Part Details
                             </Typography>
+
+                            <CopyableField
+                                label="Manufacturer"
+                                value={part.manufacturerId}
+                                icon={<BusinessIcon />}
+                                onCopy={handleCopy}
+                            />
+
+                            <CopyableField
+                                label="Manufacturer Part ID"
+                                value={part.manufacturerPartId}
+                                icon={<InventoryIcon />}
+                                onCopy={handleCopy}
+                            />
+
+                            {part.bpns && (
+                                <CopyableField
+                                    label="Site of Origin (BPNS)"
+                                    value={part.bpns}
+                                    icon={<LocationOnIcon />}
+                                    onCopy={handleCopy}
+                                />
+                            )}
 
                             <Box sx={{ mb: 2.5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -436,7 +296,7 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                                 </Typography>
                             </Box>
 
-                            {/* Digital Twin Timestamps */}
+                            {/* Digital Twin Information */}
                             {twinDetails && (
                                 <>
                                     <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.12)' }} />
@@ -447,12 +307,28 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                                         alignItems: 'center',
                                         gap: 1
                                     }}>
-                                        <AccessTimeIcon sx={{ color: 'primary.main' }} />
-                                        Twin Timestamps
+                                        <DeviceHubIcon sx={{ color: 'primary.main' }} />
+                                        Digital Twin Information
                                     </Typography>
 
+                                    <CopyableField
+                                        label="AAS Identifier"
+                                        value={twinDetails.dtrAasId || 'Not available'}
+                                        icon={<FingerprintIcon />}
+                                        onCopy={handleCopy}
+                                        variant="chip"
+                                    />
+
+                                    <CopyableField
+                                        label="Digital Twin ID"
+                                        value={twinDetails.globalId || 'Not available'}
+                                        icon={<AccountTreeIcon />}
+                                        onCopy={handleCopy}
+                                        variant="chip"
+                                    />
+
                                     {/* Timestamps */}
-                                    <Grid2 container spacing={2}>
+                                    <Grid2 container spacing={2} sx={{ mt: 2 }}>
                                         <Grid2 size={6}>
                                             <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: 1 }}>
                                                 <AccessTimeIcon sx={{ color: 'success.main', mb: 1 }} />
@@ -713,26 +589,12 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                 <Alert 
                     onClose={handleCloseSnackbar} 
                     severity="success" 
-                    sx={{ 
-                        width: '100%',
-                        backgroundColor: '#2e7d32',
-                        color: '#ffffff',
-                        '& .MuiAlert-icon': {
-                            color: '#ffffff'
-                        },
-                        '& .MuiAlert-message': {
-                            color: '#ffffff'
-                        },
-                        '& .MuiAlert-action button': {
-                            color: '#ffffff'
-                        }
-                    }}
+                    sx={{ width: '100%' }}
                 >
                     {copySnackbar.message}
                 </Alert>
             </Snackbar>
         </Box>
-        
     );
 };
 
