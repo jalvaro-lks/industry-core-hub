@@ -18,12 +18,10 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-import { PartType } from "./product";
+// Routing and navigation types
+export * from './routing';
 
-export interface ProductDetailDialogProps {
-    open: boolean;
-    onClose: () => void;
-    partData: PartType;  // Use PartInstance interface here
-}
+// Error handling types
+export * from './axiosError';
