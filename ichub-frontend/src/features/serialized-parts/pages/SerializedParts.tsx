@@ -22,9 +22,9 @@
 
 import { Box, Grid2, Typography } from '@mui/material';
 import { useState, useEffect } from 'react';
-import { fetchAllSerializedParts } from '../features/serialized-parts/api';
-import SerializedPartsTable from '../features/serialized-parts/components/SerializedPartsTable';
-import { SerializedPart } from '../features/serialized-parts/types';
+import { fetchAllSerializedParts } from '../api';
+import SerializedPartsTable from '../components/SerializedPartsTable';
+import { SerializedPart } from '../types';
 
 const SerializedParts = () => {
   const [serializedParts, setSerializedParts] = useState<SerializedPart[]>([]);

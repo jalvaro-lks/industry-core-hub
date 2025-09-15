@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { AASData } from './utils';
+import { AASData } from './utils/utils';
 
 export interface PartCardData {
   id: string;

@@ -20,27 +20,23 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout";
-import { getAllRoutes } from "./features/main";
+import { FindInPage } from '@mui/icons-material';
+import PartsDiscovery from './pages/PartsDiscovery';
+import { FeatureConfig } from '../../types/routing';
 
-export default function AppRoutes() {
-  const featureRoutes = getAllRoutes();
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          {featureRoutes.map((route, index) => (
-            <Route
-              key={index}
-              path={route.path}
-              index={route.index}
-              element={route.element}
-            />
-          ))}
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
-}
+export const partDiscoveryFeature: FeatureConfig = {
+  name: 'Parts Discovery',
+  icon: <FindInPage />,
+  navigationPath: '/dataspace-discovery',
+  disabled: false,
+  routes: [
+    {
+      path: '/dataspace-discovery',
+      element: <PartsDiscovery />,
+      meta: {
+        title: 'Parts Discovery',
+        description: 'Discover parts in the dataspace'
+      }
+    }
+  ]
+};

@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import type { GovernanceConfig, GovernanceConstraint, GovernanceRule } from '../services/EnvironmentService';
+import type { GovernanceConfig, GovernanceConstraint, GovernanceRule } from '../../../services/EnvironmentService';
 
 // ODRL constraint interface for API compatibility
 export interface OdrlConstraint {

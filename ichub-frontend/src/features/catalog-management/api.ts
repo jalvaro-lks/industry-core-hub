@@ -24,14 +24,12 @@ import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
 import { ApiPartData } from '../../types/product';
 import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
+import { catalogManagementConfig } from './config';
 
-const CATALOG_PART_MANAGEMENT_BASE_PATH = '/part-management/catalog-part';
-const SHARE_CATALOG_PART_BASE_PATH = '/share/catalog-part';
-const TWIN_MANAGEMENT_BASE_PATH = '/twin-management/catalog-part-twin';
 const backendUrl = getIchubBackendUrl();
 
 export const fetchCatalogParts = async (): Promise<ApiPartData[]> => {
-  const response = await axios.get<ApiPartData[]>(`${backendUrl}${CATALOG_PART_MANAGEMENT_BASE_PATH}`);
+  const response = await axios.get<ApiPartData[]>(`${backendUrl}${catalogManagementConfig.api.endpoints.CATALOG_PARTS}`);
   return response.data;
 };
 
@@ -40,7 +38,7 @@ export const fetchCatalogPart = async (
   manufacturerPartId: string
 ): Promise<ApiPartData> => {
   const response = await axios.get<ApiPartData>(
-    `${backendUrl}${CATALOG_PART_MANAGEMENT_BASE_PATH}/${manufacturerId}/${manufacturerPartId}`
+    `${backendUrl}${catalogManagementConfig.api.endpoints.CATALOG_PARTS}/${manufacturerId}/${manufacturerPartId}`
   );
   return response.data;
 };
@@ -64,7 +62,7 @@ export const shareCatalogPart = async (
   };
 
   const response = await axios.post<ApiPartData>(
-    `${backendUrl}${SHARE_CATALOG_PART_BASE_PATH}`,
+    `${backendUrl}${catalogManagementConfig.api.endpoints.SHARE_CATALOG_PART}`,
     requestBody
   );
   return response.data;
@@ -74,7 +72,7 @@ export const registerCatalogPartTwin = async (
   twinData: CatalogPartTwinCreateType
 ): Promise<TwinReadType> => {
   const response = await axios.post<TwinReadType>(
-    `${backendUrl}${TWIN_MANAGEMENT_BASE_PATH}`,
+    `${backendUrl}${catalogManagementConfig.api.endpoints.TWIN_MANAGEMENT}`,
     twinData
   );
   return response.data;

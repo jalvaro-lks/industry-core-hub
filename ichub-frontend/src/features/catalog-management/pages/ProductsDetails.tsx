@@ -28,25 +28,25 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Grid2 from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 
-import InstanceProductsTable from "../features/catalog-management/components/product-detail/InstanceProductsTable";
-import ShareDropdown from "../features/catalog-management/components/product-detail/ShareDropdown";
-import ProductButton from "../features/catalog-management/components/product-detail/ProductButton";
-import ProductData from "../features/catalog-management/components/product-detail/ProductData";
-import JsonViewerDialog from "../features/catalog-management/components/product-detail/JsonViewerDialog";
-import AddSerializedPartDialog from "../features/catalog-management/components/product-detail/AddSerializedPartDialog";
+import InstanceProductsTable from "../components/product-detail/InstanceProductsTable";
+import ShareDropdown from "../components/product-detail/ShareDropdown";
+import ProductButton from "../components/product-detail/ProductButton";
+import ProductData from "../components/product-detail/ProductData";
+import JsonViewerDialog from "../components/product-detail/JsonViewerDialog";
+import AddSerializedPartDialog from "../components/product-detail/AddSerializedPartDialog";
 
-import ShareDialog from "../components/general/ShareDialog";
-import {ErrorNotFound} from "../components/general/ErrorNotFound";
-import LoadingSpinner from "../components/general/LoadingSpinner";
-import PageNotification from "../components/general/PageNotification";
+import ShareDialog from "../../../components/general/ShareDialog";
+import {ErrorNotFound} from "../../../components/general/ErrorNotFound";
+import LoadingSpinner from "../../../components/general/LoadingSpinner";
+import PageNotification from "../../../components/general/PageNotification";
 
-import { PartType } from "../types/product";
-import { PRODUCT_STATUS } from "../types/common";
+import { PartType } from "../../../types/product";
+import { PRODUCT_STATUS } from "../../../types/common";
 
-import { SharedPartner } from "../types/sharedPartners"
+import { SharedPartner } from "../../../types/sharedPartners"
 
-import { fetchCatalogPart } from "../features/catalog-management/api";
-import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../features/catalog-management/utils";
+import { fetchCatalogPart } from "../api";
+import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../utils";
 
 const ProductsDetails = () => {
   const navigate = useNavigate();

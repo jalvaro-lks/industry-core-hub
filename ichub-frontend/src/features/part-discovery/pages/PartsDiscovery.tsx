@@ -48,25 +48,25 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
-import SearchLoading from '../features/part-discovery/components/search/SearchLoading';
-import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
-import PartsDiscoverySidebar from '../features/part-discovery/components/search/PartsDiscoverySidebar';
-import SerializedPartsTable from '../features/part-discovery/components/serialized-parts/SerializedPartsTable';
-import { SingleTwinResult } from '../features/part-discovery/components/single-twin/SingleTwinResult';
-import { useAdditionalSidebar } from '../hooks/useAdditionalSidebar';
+import SearchLoading from '../components/search/SearchLoading';
+import { CatalogPartsDiscovery } from '../components/catalog-parts/CatalogPartsDiscovery';
+import PartsDiscoverySidebar from '../components/search/PartsDiscoverySidebar';
+import SerializedPartsTable from '../components/serialized-parts/SerializedPartsTable';
+import { SingleTwinResult } from '../components/single-twin/SingleTwinResult';
+import { useAdditionalSidebar } from '../../../hooks/useAdditionalSidebar';
 import { 
   discoverShellsWithCustomQuery,
   discoverSingleShell,
   ShellDiscoveryPaginator,
   SingleShellDiscoveryResponse 
-} from '../features/part-discovery/api';
+} from '../api';
 import { 
   ShellDiscoveryResponse, 
   AASData,
   getAASDataSummary
-} from '../features/part-discovery/utils';
-import { fetchPartners } from '../features/partner-management/api';
-import { PartnerInstance } from '../types/partner';
+} from '../utils/utils';
+import { fetchPartners } from '../../partner-management/api';
+import { PartnerInstance } from '../../../types/partner';
 
 interface PartCardData {
   id: string;

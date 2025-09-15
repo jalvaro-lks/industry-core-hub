@@ -20,27 +20,23 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout";
-import { getAllRoutes } from "./features/main";
+import { People } from '@mui/icons-material';
+import PartnersList from './pages/PartnersList';
+import { FeatureConfig } from '../../types/routing';
 
-export default function AppRoutes() {
-  const featureRoutes = getAllRoutes();
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          {featureRoutes.map((route, index) => (
-            <Route
-              key={index}
-              path={route.path}
-              index={route.index}
-              element={route.element}
-            />
-          ))}
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
-}
+export const partnerManagementFeature: FeatureConfig = {
+  name: 'Partner Management',
+  icon: <People />,
+  navigationPath: '/partners',
+  disabled: false,
+  routes: [
+    {
+      path: '/partners',
+      element: <PartnersList />,
+      meta: {
+        title: 'Partners',
+        description: 'Manage business partners'
+      }
+    }
+  ]
+};

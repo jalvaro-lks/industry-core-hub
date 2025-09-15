@@ -22,16 +22,16 @@
 
 import { useState, useEffect, useMemo } from "react";
 //import { useNavigate } from "react-router-dom";
-import { PartnerInstance } from "../types/partner";
+import { PartnerInstance } from "../../../types/partner";
 import TablePagination from '@mui/material/TablePagination';
 import { Typography, Grid2, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
-import { PartnerCard } from "../features/partner-management/components/partners-list/PartnerCard";
-import CreatePartnerDialog from "../features/partner-management/components/general/CreatePartnerDialog";
-import { fetchPartners } from '../features/partner-management/api';
-import {ErrorNotFound} from "../components/general/ErrorNotFound";
-import LoadingSpinner from "../components/general/LoadingSpinner";
+import { PartnerCard } from "../components/partners-list/PartnerCard";
+import CreatePartnerDialog from "../components/general/CreatePartnerDialog";
+import { fetchPartners } from '../api';
+import {ErrorNotFound} from "../../../components/general/ErrorNotFound";
+import LoadingSpinner from "../../../components/general/LoadingSpinner";
 
 const PartnersList = () => {
   const [partnerList, setPartnerList] = useState<PartnerInstance[]>([]);

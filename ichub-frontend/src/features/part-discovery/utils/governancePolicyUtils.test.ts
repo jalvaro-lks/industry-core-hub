@@ -22,7 +22,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { generateOdrlPolicies, getGovernancePolicyForSemanticId, getDefaultGovernancePolicy } from '../utils/governancePolicyUtils';
-import type { GovernanceConfig } from '../services/EnvironmentService';
+import type { GovernanceConfig } from '../../../services/EnvironmentService';
 
 describe('Governance Policy Utils', () => {
   const mockConfig: GovernanceConfig[] = [

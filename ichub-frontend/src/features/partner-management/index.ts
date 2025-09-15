@@ -20,27 +20,14 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainLayout from "./layouts/MainLayout";
-import { getAllRoutes } from "./features/main";
+// Export pages
+export * from './pages';
 
-export default function AppRoutes() {
-  const featureRoutes = getAllRoutes();
+// Export routes
+export * from './routes';
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          {featureRoutes.map((route, index) => (
-            <Route
-              key={index}
-              path={route.path}
-              index={route.index}
-              element={route.element}
-            />
-          ))}
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
-}
+// Export API
+export * from './api';
+
+// Export configuration
+export * from './config';

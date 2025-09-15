@@ -20,13 +20,19 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+// Export pages
+export * from './pages';
+
+// Export routes
+export * from './routes';
+
 // Export components
 export { PaginationControls } from './components/search-result/PaginationControls';
-export { SearchModeToggle } from './components/SearchModeToggle';
-export { FilterChips } from './components/FilterChips';
-export { PartnerSearch } from './components/PartnerSearch';
+export { SearchModeToggle } from './components/search/SearchModeToggle';
+export { FilterChips } from './components/search-result/FilterChips';
+export { PartnerSearch } from './components/search/PartnerSearch';
 export { SingleTwinSearch } from './components/single-twin/SingleTwinSearch';
-export { SearchHeader } from './components/SearchHeader';
+export { SearchHeader } from './components/search-result/SearchHeader';
 export { default as PartsDiscoverySidebar } from './components/search/PartsDiscoverySidebar';
 
 // Export hooks
@@ -36,9 +42,12 @@ export { usePartsDiscoverySearch } from './hooks/usePartsDiscoverySearch';
 export * from './types';
 
 // Export utilities
-export * from './utils';
-export * from './dtr-utils';
-export * from './data-converters';
+export * from './utils/utils';
+export * from './utils/dtr-utils';
+export * from './utils/data-converters';
 
 // Export API
 export * from './api';
+
+// Export configuration
+export * from './config';

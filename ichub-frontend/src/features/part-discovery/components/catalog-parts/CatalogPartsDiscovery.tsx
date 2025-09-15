@@ -32,7 +32,7 @@ import { DiscoveryCardChip } from "./DiscoveryCardChip";
 import { StatusVariants } from "../../../../types/statusVariants";
 import { ErrorNotFound } from "../../../../components/general/ErrorNotFound";
 import LoadingSpinner from "../../../../components/general/LoadingSpinner";
-import { AASData } from "../../../part-discovery/utils";
+import { AASData } from "../../utils/utils";
 
 export interface AppContent {
   id?: string;

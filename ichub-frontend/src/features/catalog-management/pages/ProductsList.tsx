@@ -22,17 +22,17 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ProductCard } from "../features/catalog-management/components/product-list/ProductCard";
-import { PartType, ApiPartData } from "../types/product";
+import { ProductCard } from "../components/product-list/ProductCard";
+import { PartType, ApiPartData } from "../../../types/product";
 import TablePagination from "@mui/material/TablePagination";
 import { Typography, Grid2, Box } from "@mui/material"; // Removed Paper
 import { Button, PageSnackbar } from "@catena-x/portal-shared-components";
 import AddIcon from "@mui/icons-material/Add";
-import ShareDialog from "../components/general/ShareDialog";
-import CreateProductListDialog from "../features/partner-management/components/general/CreateProductListDialog";
-import { fetchCatalogParts, registerCatalogPartTwin } from "../features/catalog-management/api";
-import { mapApiPartDataToPartType } from "../features/catalog-management/utils";
-import { CatalogPartTwinCreateType } from "../types/twin";
+import ShareDialog from "../../../components/general/ShareDialog";
+import CreateProductListDialog from "../../partner-management/components/general/CreateProductListDialog";
+import { fetchCatalogParts, registerCatalogPartTwin } from "../api";
+import { mapApiPartDataToPartType } from "../utils";
+import { CatalogPartTwinCreateType } from "../../../types/twin";
 
 const ProductsList = () => {
   const [carParts, setCarParts] = useState<PartType[]>([]);

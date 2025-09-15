@@ -3,7 +3,10 @@
  *
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
- * See the NOTICE file(s) distributed with this work for additional
+ * See the NOTICE file(s) distributed with this workexport const getAllCatalogParts = async (): Promise<ApiPartData[]> => {
+  const response = await axios.get<ApiPartData[]>(`${backendUrl}${partDiscoveryConfig.api.endpoints.CATALOG_PART_MANAGEMENT}`);
+  return response.data;
+}; additional
  * information regarding copyright ownership.
  *
  * This program and the accompanying materials are made available under the
@@ -22,9 +25,7 @@
 
 import axios from 'axios';
 import { 
-  getIchubBackendUrl, 
-  getGovernanceConfig, 
-  getDtrPoliciesConfig,
+  getIchubBackendUrl,
   GovernanceConfig,
   GovernanceConstraint,
   GovernanceRule,
@@ -32,12 +33,10 @@ import {
 } from '../../services/EnvironmentService';
 import { ApiPartData } from '../../types/product';
 import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
-import { ShellDiscoveryResponse, getNextPageCursor, getPreviousPageCursor, hasNextPage, hasPreviousPage } from './utils';
+import { ShellDiscoveryResponse, getNextPageCursor, getPreviousPageCursor, hasNextPage, hasPreviousPage } from './utils/utils';
+import { partDiscoveryConfig } from './config';
 
-const CATALOG_PART_MANAGEMENT_BASE_PATH = '/part-management/catalog-part';
-const SHARE_CATALOG_PART_BASE_PATH = '/share/catalog-part';
-const TWIN_MANAGEMENT_BASE_PATH = '/twin-management/catalog-part-twin';
-const SHELL_DISCOVERY_BASE_PATH = '/discover/shells';
+// Use configuration for API endpoints
 const backendUrl = getIchubBackendUrl();
 
 // Cache system with configuration change detection
@@ -147,7 +146,7 @@ const generateDefaultGovernancePolicyPermutations = (): OdrlPolicy[] => {
  * Get cached DTR governance policies with configuration change detection
  */
 const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
-  const currentConfig = getDtrPoliciesConfig();
+  const currentConfig = partDiscoveryConfig.governance.getDtrPoliciesConfig();
   const currentHash = await generateConfigHash(currentConfig);
   
   // Check if cache is valid
@@ -171,7 +170,7 @@ const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
  * Get cached governance policies for a specific semantic ID
  */
 const getCachedGovernancePolicies = async (semanticId: string): Promise<OdrlPolicy[]> => {
-  const currentConfig = getGovernanceConfig();
+  const currentConfig = partDiscoveryConfig.governance.getGovernanceConfig();
   const currentHash = await generateConfigHash(currentConfig);
   
   // Check if cache is valid for this semantic ID
@@ -252,7 +251,7 @@ export interface ShellDiscoveryRequest {
 }
 
 export const fetchCatalogParts = async (): Promise<ApiPartData[]> => {
-  const response = await axios.get<ApiPartData[]>(`${backendUrl}${CATALOG_PART_MANAGEMENT_BASE_PATH}`);
+  const response = await axios.get<ApiPartData[]>(`${backendUrl}${partDiscoveryConfig.api.endpoints.CATALOG_PART_MANAGEMENT}`);
   return response.data;
 };
 
@@ -261,7 +260,7 @@ export const fetchCatalogPart = async (
   manufacturerPartId: string
 ): Promise<ApiPartData> => {
   const response = await axios.get<ApiPartData>(
-    `${backendUrl}${CATALOG_PART_MANAGEMENT_BASE_PATH}/${manufacturerId}/${manufacturerPartId}`
+    `${backendUrl}${partDiscoveryConfig.api.endpoints.CATALOG_PART_MANAGEMENT}/${manufacturerId}/${manufacturerPartId}`
   );
   return response.data;
 };
@@ -285,7 +284,7 @@ export const shareCatalogPart = async (
   };
 
   const response = await axios.post<ApiPartData>(
-    `${backendUrl}${SHARE_CATALOG_PART_BASE_PATH}`,
+    `${backendUrl}${partDiscoveryConfig.api.endpoints.SHARE_CATALOG_PART}`,
     requestBody
   );
   return response.data;
@@ -295,7 +294,7 @@ export const registerCatalogPartTwin = async (
   twinData: CatalogPartTwinCreateType
 ): Promise<TwinReadType> => {
   const response = await axios.post<TwinReadType>(
-    `${backendUrl}${TWIN_MANAGEMENT_BASE_PATH}`,
+    `${backendUrl}${partDiscoveryConfig.api.endpoints.TWIN_MANAGEMENT}`,
     twinData
   );
   return response.data;
@@ -311,7 +310,7 @@ export const discoverShells = async (
   signal?: AbortSignal
 ): Promise<ShellDiscoveryResponse> => {
   const response = await axios.post<ShellDiscoveryResponse>(
-    `${backendUrl}${SHELL_DISCOVERY_BASE_PATH}`,
+    `${backendUrl}${partDiscoveryConfig.api.endpoints.SHELL_DISCOVERY}`,
     request,
     { signal }
   );
