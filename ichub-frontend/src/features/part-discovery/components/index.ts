@@ -27,7 +27,7 @@ export { FilterChips } from './search-result/FilterChips';
 // Search components
 export { SearchModeToggle } from './search/SearchModeToggle';
 export { PartnerSearch } from './search/PartnerSearch';
-export { SearchHeader } from './search/SearchHeader';
+export { SearchHeader } from './search-result/SearchHeader';
 export { default as SearchLoading } from './search/SearchLoading';
 export { default as ErrorBoundary } from './search/ErrorBoundary';
 export { default as PartsDiscoverySidebar } from './search/PartsDiscoverySidebar';
