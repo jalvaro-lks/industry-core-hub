@@ -23,19 +23,37 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "industry-core-hub.fullname.backend" . }}-config
+  name: {{ .Release.Name }}-config
   labels:
     {{- include "industry-core-hub.backend.labels" . | nindent 4 }}
 data:
   configuration.yml: |-
+    hostname: {{ include "industry-core-hub.ingressUrl" . | quote }}
     authorization:
       enabled: {{ .Values.backend.configuration.authorization.enabled }}
       apiKey: 
         key: {{ .Values.backend.configuration.authorization.apiKey.key | quote }}
         value: {{ .Values.backend.configuration.authorization.apiKey.value | quote }}
+    agreements: {{ .Values.backend.configuration.agreements | toYaml | nindent 6 }}
     database:
       connectionString: {{ include "industry-core-hub.postgresql.dsn" . | quote }}
       echo: {{ .Values.backend.configuration.database.echo }}
+    server: {{ .Values.backend.server | toYaml | nindent 6 }}
+    cors: {{ .Values.backend.cors | toYaml | nindent 6 }}
+    consumer:
+      discovery:
+        discovery_finder: {{ .Values.backend.configuration.consumer.discovery.discovery_finder | toYaml | nindent 10 }}
+        connector_discovery: {{ .Values.backend.configuration.consumer.discovery.connector_discovery | toYaml | nindent 10 }}
+        oauth: {{ .Values.backend.configuration.consumer.discovery.oauth | toYaml | nindent 10 }}
+        digitalTwinRegistry:
+          dct_type_key: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_key | quote }}
+          dct_type_filter:
+            operandLeft: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_filter.operandLeft | quote }}
+            operator: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_filter.operator | quote }}
+            operandRight: {{ .Values.backend.configuration.consumer.discovery.digitalTwinRegistry.dct_type_filter.operandRight | quote }}
+      connector: {{ .Values.backend.configuration.consumer.connector | toYaml | nindent 8 }}
+    provider: {{ .Values.backend.configuration.provider | toYaml | nindent 6 }}
+    submodel_dispatcher: {{ .Values.backend.configuration.submodel_dispatcher | toYaml | nindent 6 }}
   logging.yml: |-
     version: 1
     disable_existing_loggers: False
@@ -73,6 +91,6 @@ data:
         propagate: no
 
     root:
-      level: INFO
+      level: {{ .Values.backend.configuration.logger.level | quote }}
       handlers: [console, file]
 {{- end -}}

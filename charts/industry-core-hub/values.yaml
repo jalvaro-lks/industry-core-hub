@@ -27,6 +27,8 @@ nameOverride: ""
 fullnameOverride: ""
 replicaCount: 1
 
+participantId: ""
+
 # -- Backend configuration
 backend:
   enabled: true
@@ -44,9 +46,55 @@ backend:
     type: ClusterIP
     portService: 8000
     portContainer: 8000
-
+  cors:
+    enabled: true
+    allow_origins:
+      - "https://<frontend-hostname>"  # Production frontend URL
+    allow_credentials: true
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+      - "PATCH"
+    allow_headers:
+      - "*"
   # -- Backend configuration, changes to these values will be reflected in the configuration.yml file.
   configuration:
+    agreements:
+      - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
+        usage:
+          context:
+            odrl: http://www.w3.org/ns/odrl/2/
+            cx-policy: https://w3id.org/catenax/policy/
+          permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+          prohibition: []
+          obligation: []
+        access:
+          context:
+            odrl: http://www.w3.org/ns/odrl/2/
+            cx-policy: https://w3id.org/catenax/policy/
+          permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+          prohibition: []
+          obligation: []
     authorization:
       enabled: true
       apiKey:
@@ -54,7 +102,98 @@ backend:
         value: "<<example>>"
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
-      echo: true
+      echo: false
+    # Configuration for the logger settings
+    logger:
+     # Possible values: WARNING, INFO, DEBUG
+      level: "INFO"
+    # -- Consumer configuration
+    consumer:
+      discovery:
+        discovery_finder:
+          url: "https://<discovery-finder-url>/api/v1.0/administration/connectors/discovery/search"
+        connector_discovery:
+          key: "bpn"
+        oauth:
+          url: "https://<central-idp-url>/auth/"
+          realm: "<realm>"
+          client_id: "<client-id>"
+          client_secret: "<client-secret>"
+        digitalTwinRegistry:
+          dct_type_key: "dct:type"
+          dct_type_filter:
+            operandLeft: "'http://purl.org/dc/terms/type'.'@id'"
+            operator: "="
+            operandRight: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+      connector:
+        dataspace:
+          version: "jupiter"
+        controlplane:
+          hostname: "https://<edc-consumer-control-hostname>"
+          apiKeyHeader: "X-Api-Key"
+          apiKey: "<consumer-edc-api-key>"
+          managementPath: "/management"
+          protocolPath: "/api/v1/dsp"
+          catalogPath: "/catalog"
+    # -- Provider configuration
+    provider:
+      connector:
+        dataspace:
+          version: "jupiter"
+        controlplane:
+          hostname: "https://<edc-provider-control-hostname>"
+          apiKeyHeader: "X-Api-Key"
+          apiKey: "<provider-edc-api-key>"
+          managementPath: "/management"
+          protocolPath: "/api/v1/dsp"
+        dataplane:
+          hostname: "https://<edc-provider-dataplane-hostname>"
+          publicPath: "/api/public"
+      digitalTwinRegistry:
+        hostname: "https://<dtr-hostname>"
+        apiPath: "/api/v3"
+        uri: ""
+        asset_config:
+          dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+          # existing_asset_id: <registry-asset> # -- In case an existing DTR asset wants to be used specify here the id, otherwise it will be created based on the url, if it not exists it will be created
+        lookup:
+          uri: ""
+        policy:
+          usage:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                LogicalConstraint: odrl:and
+                constraints:
+                  - leftOperand: cx-policy:FrameworkAgreement
+                    operator: odrl:eq
+                    rightOperand: DataExchangeGovernance:1.0
+                  - leftOperand: cx-policy:Membership
+                    operator: odrl:eq
+                    rightOperand: active
+                  - leftOperand: cx-policy:UsagePurpose
+                    operator: odrl:eq
+                    rightOperand: cx.core.digitalTwinRegistry:1
+            prohibition: []
+            obligation: []
+          access:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                constraints:
+                  - leftOperand: cx-policy:Membership
+                    operator: odrl:eq
+                    rightOperand: active
+            prohibition: []
+            obligation: []
+    # -- EDC (Eclipse Dataspace Connector) configuration
+    submodel_dispatcher:
+      path: "./data/submodels"
+      apiPath: "/submodel-dispatcher"
 
   podAnnotations: {}
 
@@ -104,11 +243,11 @@ backend:
       # -- Restrict a Container's Syscalls with seccomp
       type: RuntimeDefault
     # -- Runs all processes within a pod with a special uid
-    runAsUser: 1000
+    runAsUser: 10000
     # -- Processes within a pod will belong to this guid
-    runAsGroup: 3000
+    runAsGroup: 10001
     # -- The owner for volumes and any files created within volumes will belong to this guid
-    fsGroup: 3000
+    fsGroup: 10001
 
    # The [container security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container) defines privilege and access control settings for a Container within a pod
   securityContext:
@@ -132,17 +271,32 @@ backend:
   # -- specifies volume mounts for the backend deployment
   volumeMounts:
     - name: data-volume
-      mountPath: /dataspace-sdk/data
+      mountPath: /industry-core-hub/data
+      subPath: data
     - name: logs-volume
-      mountPath: /dataspace-sdk/logs
+      mountPath: /industry-core-hub/logs
+      subPath: logs
     - name: backend-config-configmap
-      mountPath: /tmp/config/
-    - name: tmp
-      mountPath: /tmp
+      mountPath: /industry-core-hub/config
+    - name: tmpfs
+      mountPath: /industry-core-hub/tmp
 
-  # -- additional volume claims for the containers
-  additionalVolumes: []
-
+  # -- volume claims for the containers
+  volumes:
+    # -- persist the backend configuration
+    - name: backend-config-configmap
+      configMap:
+        name: "{{ .Release.Name }}-config"
+    # -- persist the backend data directories
+    - name: logs-volume
+      persistentVolumeClaim:
+        claimName: "{{ .Release.Name }}-pvc-logs-backend"
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: "{{ .Release.Name }}-pvc-data-backend"
+    # -- temporary file system mount
+    - name: tmpfs
+      emptyDir: {}
   # -- Persistance configuration for the backend
   persistence:
     # -- Create a PVC to persist storage (if disabled, data and logs will not be persisted)
@@ -177,7 +331,21 @@ backend:
       memory: 512Mi
       ephemeral-storage: "2Gi"
 
+  # Server configuration for uvicorn workers and threads
+  server:
+    # Worker configuration
+    workers:
+      max_workers: 1                        # Single worker for optimal in-memory state
+      worker_threads: 200                   # High thread count for blocking operations
+
+    # Timeout configuration (in seconds)
+    timeouts:
+      keep_alive: 300                       # 5 minutes for DTR operations
+      graceful_shutdown: 30                 # 30 seconds for graceful shutdown
 frontend:
+  env:
+    # -- industry-core-hub backend base URL
+    backendUrl: "https://<backend-hostname>"
   enabled: true
   name: "industry-core-hub-frontend"
   image:
@@ -187,10 +355,6 @@ frontend:
     tag: ""
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
-  env:
-    # -- industry-core-hub backend base URL
-    ichubBackendUrl: ""
-
   service:
     # -- [Service type](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) to expose the running application on a set of Pods as a network service
     type: ClusterIP
@@ -200,6 +364,58 @@ frontend:
   podAnnotations: {}
 
   podLabels: {}
+
+  consumption:
+    digitalTwinRegistry:
+      policies:
+        - permission:
+          - action: odrl:use
+            LogicalConstraint: odrl:and
+            constraints:
+              - leftOperand: cx-policy:FrameworkAgreement
+                operator: odrl:eq
+                rightOperand: DataExchangeGovernance:1.0
+              - leftOperand: cx-policy:Membership
+                operator: odrl:eq
+                rightOperand: active
+              - leftOperand: cx-policy:UsagePurpose
+                operator: odrl:eq
+                rightOperand: cx.core.digitalTwinRegistry:1
+          prohibition: []
+          obligation: []
+          strict: false
+    governance:
+      - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
+        policies:
+          - strict: false  # -- Enable here the permutations of constraints (order not matters)
+            permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+          - strict: true  # -- Disable here the permutations of constraints (order matters)
+            permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+            prohibition: []
+            obligation: []
 
   healthChecks:
     startup:
@@ -296,6 +512,11 @@ postgresql:
   enabled: true
   fullnameOverride: ""
   nameOverride: ""
+  image:
+    # -- workaround to use bitnamilegacy chart for version 12.12.x till committers align on new postgresql charts
+    repository: bitnamilegacy/postgresql
+    # -- workaround to use bitnamilegacy chart for version 12.12.x till committers align on new postgresql charts
+    tag: 15.4.0-debian-11-r45
   auth:
     # -- Database name
     database: "ichub-postgres"
@@ -320,7 +541,7 @@ postgresql:
     initdb:
       scriptsConfigMap: "{{ .Release.Name }}-cm-postgres"
     extraEnvVars:
-      - name: "ICHUB_PASSWORD"
+      - name: "DATABASE_PASSWORD"
         valueFrom:
           secretKeyRef:
             name: "{{ .Values.auth.existingSecret }}"

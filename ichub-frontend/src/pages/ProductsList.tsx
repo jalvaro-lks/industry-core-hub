@@ -22,152 +22,207 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import carPartsData from "../tests/payloads/sample-data.json";
-import { ProductCard } from "../components/general/ProductCard";
-import { PartInstance } from "../types/product";
-import TablePagination from '@mui/material/TablePagination';
-import { Typography, IconButton,Grid2 } from '@mui/material';
-import { StatusVariants } from "../components/general/CardChip";
-import { Menu as MenuIcon } from '@mui/icons-material';
-import { styled } from '@mui/material/styles';
-import Sidebar from '../features/CatalogManagement/components/sideBar/SideBar';
-import {Drawer} from '../shared/hooks/drawer';
+import { ProductCard } from "../features/catalog-management/components/product-list/ProductCard";
+import { PartType, ApiPartData } from "../types/product";
+import TablePagination from "@mui/material/TablePagination";
+import { Typography, Grid2, Box } from "@mui/material"; // Removed Paper
+import { Button, PageSnackbar } from "@catena-x/portal-shared-components";
+import AddIcon from "@mui/icons-material/Add";
 import ShareDialog from "../components/general/ShareDialog";
-
+import CreateProductListDialog from "../features/partner-management/components/general/CreateProductListDialog";
+import { fetchCatalogParts, registerCatalogPartTwin } from "../features/catalog-management/api";
+import { mapApiPartDataToPartType } from "../features/catalog-management/utils";
+import { CatalogPartTwinCreateType } from "../types/twin";
 
 const ProductsList = () => {
-  const [carParts, setCarParts] = useState<PartInstance[]>([]);
+  const [carParts, setCarParts] = useState<PartType[]>([]);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [selectedPart, setSelectedPart] = useState<PartInstance | null>(null);
-  const [initialCarParts, setInitialCarParts] = useState<PartInstance[]>([]);
+  const [selectedPart, setSelectedPart] = useState<PartType | null>(null);
+  const [initialCarParts, setInitialCarParts] = useState<PartType[]>([]);
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
   const navigate = useNavigate();
-  const drawerWidth = 140;
-  const { isOpen, openDrawer, closeDrawer } = Drawer();
-
-  // Typing for the styled components
-  const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{ open: boolean }>(
-    ({ theme, open }) => ({
-      flexGrow: 1,
-      padding: theme.spacing(3),
-      transition: theme.transitions.create('margin', {
-        easing: theme.transitions.easing.sharp,
-        duration: theme.transitions.duration.leavingScreen,
-      }),
-      marginLeft: `-${drawerWidth}px`,
-      ...(open && {
-        transition: theme.transitions.create('margin', {
-          easing: theme.transitions.easing.easeOut,
-          duration: theme.transitions.duration.enteringScreen,
-        }),
-        marginLeft: 0,
-      }),
-    })
-  );
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' >('success');
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleChangePage = (
     _event: React.MouseEvent<HTMLButtonElement> | null,
-    newPage: number,
+    newPage: number
   ) => {
     setPage(newPage);
   };
 
-  useEffect(() => {
-    const mappedCarParts = carPartsData.map((part) => ({
-      ...part,
-      status: part.status as StatusVariants,
-    }));
-    setCarParts(mappedCarParts);
-    // Define the async function inside useEffect
-    const fetchData = async () => {
-      try {
-        const data = carPartsData;  // Resolve the promise
-        setCarParts(data);
-        setInitialCarParts(data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-    fetchData();  // Call the async function
-  }, []);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const apiData: ApiPartData[] = await fetchCatalogParts();
 
-  const handleButtonClick = (part: string) => {
-    navigate(`/product/${part}`);  // Navigate to the details page
+      // Map API data to PartInstance[]
+      const mappedCarParts: PartType[] = apiData.map((part) =>
+        mapApiPartDataToPartType(part)
+      );
+
+      mappedCarParts.reverse(); // Reverse the order of the array
+
+      setCarParts(mappedCarParts);
+      setInitialCarParts(mappedCarParts);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleShareDialog = (uuid: string) => {
-    const part = visibleRows.find(p => p.uuid === uuid);
+  useEffect(() => {
+    fetchData(); // Call the async function
+  }, []);
+
+  const handleButtonClick = (partId: string) => {
+    navigate(`/product/${partId}`); // Navigate to the details page
+  };
+
+  const handleShareDialog = (
+    manufacturerId: string,
+    manufacturerPartId: string
+  ) => {
+    const part = visibleRows.find(
+      (p) =>
+        p.manufacturerId === manufacturerId &&
+        p.manufacturerPartId === manufacturerPartId
+    ); // Use carParts directly as visibleRows is a slice
     if (part) {
-      console.log('Share dialog for part:', part);
+      console.log("Share dialog for part:", part);
       setSelectedPart(part);
       setShareDialogOpen(true);
     } else {
-      console.warn('Part not found for UUID:', uuid);
+      console.warn(
+        "Part not found for manufacturerId:",
+        manufacturerId,
+        ", manufacturerPartId:",
+        manufacturerPartId
+      );
     }
   };
-  
-  const handleMore = (itemId: string) => {
-    console.log('More options for item with id:', itemId);
+
+  const handleMore = (manufacturerId: string, manufacturerPartId: string) => {
+    console.log(
+      "More options for item with manufacturerId:",
+      manufacturerId,
+      "manufacturerPartId:",
+      manufacturerPartId
+    );
     // More options logic
   };
 
-  const visibleRows = useMemo(
-    () => {
-      return [...carParts].slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-    },
-    [page, rowsPerPage, carParts],
-  );
+  const handleRegisterPart = async (manufacturerId: string, manufacturerPartId: string) => {
+    try {
+      const twinToCreate: CatalogPartTwinCreateType = {
+        manufacturerId,
+        manufacturerPartId,
+      };
+      await registerCatalogPartTwin(twinToCreate);
+      setSnackbarMessage("Part twin registered successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      fetchData();
+    } catch (error) {
+      console.error("Error registering part twin:", error);
+      setSnackbarMessage("Failed to register part twin!");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    }
+  };
+
+  const visibleRows = useMemo(() => {
+    return [...carParts].slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+  }, [page, rowsPerPage, carParts]);
+
+  const handleOpenCreateDialog = () => {
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleCloseCreateDialog = () => {
+    setIsCreateDialogOpen(false);
+  };
+
+  const handleSaveCatalogPart = () => {
+    handleCloseCreateDialog();
+    fetchData(); // Refresh the list after saving
+    console.log("Catalog part saved, refreshing list...");
+  };
 
   return (
-    <>
-    <Grid2 size={{md: 2}}  className="padding-trb">
-      <Sidebar isOpen={isOpen} onClose={closeDrawer}/>
-    </Grid2>
-    <Grid2 size={{md: isOpen ? 10 : 12}} className={ `${isOpen} ? 'padding-twenty  product-catalog flex flex-content-center' : ' product-catalog flex flex-content-center'`} container spacing={1}>
-      <Grid2 size={{ md:12}} className="flex flex-content-center" >
-        <IconButton color="primary" aria-label="open drawer" onClick={openDrawer} edge="start" sx={{ mr: 2, ...(isOpen && { display: 'none' }) }} >
-          <MenuIcon />
-        </IconButton>
-        <Typography className="text">
-          Catalog Parts
-        </Typography>
-      </Grid2>
-
-      <Grid2 className="flex flex-content-center"  size={{ md: 12 }}>
-      <Main open={isOpen}>
-        <ProductCard
-          onClick={(itemId: any) => handleButtonClick(itemId)}
-          onShare={(itemId: any) => handleShareDialog(itemId)}
-          onMore={handleMore}
-          items={visibleRows.map((part) => ({
-            uuid: part.uuid,
-            name: part.name,
-            class: part.class,
-            status: part.status as StatusVariants,
-          }))}
-        />
-          </Main>
-      </Grid2>
-      <Grid2 size={{ md: 12}}  className="flex flex-content-center pagination-text">
-        <TablePagination
-          rowsPerPageOptions={[10]}
-          component="div"
-          count={initialCarParts.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-        />
-      </Grid2>
-    </Grid2>
-    {selectedPart && (
-      <ShareDialog
-        open={shareDialogOpen}
-        onClose={() => setShareDialogOpen(false)}
-        partData={selectedPart}
+    <Box sx={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", p: 3 }}>
+      <PageSnackbar
+        open={snackbarOpen}
+        onCloseNotification={() => setSnackbarOpen(false)}
+        severity={snackbarSeverity}
+        description={snackbarMessage}
+        autoClose={true}
       />
-    )}
-    </>
+      <Grid2 container direction="column" alignItems="center" sx={{ mb: 3 }}>
+        <Grid2 className="product-catalog title flex flex-content-center">
+          <Typography className="text">Catalog Parts</Typography>
+        </Grid2>
+      </Grid2>
+      <Grid2 size={12} container justifyContent="flex-end" marginRight={6} marginBottom={2}>
+        <Button className="add-button" variant="outlined" size="small" onClick={handleOpenCreateDialog} startIcon={<AddIcon />} >Create Catalog Part</Button>
+      </Grid2>
+      
+      {/* Main content area that grows and positions content naturally */}
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", pt: 2 }}>
+        <Grid2 className="product-catalog" container spacing={1} direction="row">
+          <Grid2 className="flex flex-content-center" size={12}>
+            <ProductCard
+              onClick={handleButtonClick}
+              onShare={handleShareDialog}
+              onMore={handleMore}
+              onRegisterClick={handleRegisterPart}
+              items={visibleRows.map((part) => ({
+                manufacturerId: part.manufacturerId,
+                manufacturerPartId: part.manufacturerPartId,
+                name: part.name,
+                category: part.category,
+                status: part.status,
+              }))}
+              isLoading={isLoading}
+            />
+          </Grid2>
+
+          {/* Pagination pushed to bottom */}
+          <Grid2 size={12} className="flex flex-content-center" sx={{ mt: "auto", pt: 3 }}>
+            <TablePagination
+              rowsPerPageOptions={[rowsPerPage]}
+              component="div"
+              count={initialCarParts.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              className="product-list-pagination"
+            />
+          </Grid2>
+          {selectedPart && (
+            <ShareDialog
+              open={shareDialogOpen}
+              onClose={() => setShareDialogOpen(false)}
+              partData={selectedPart}
+            />
+          )}
+        </Grid2>
+      </Box>
+
+      <CreateProductListDialog
+        open={isCreateDialogOpen}
+        onClose={handleCloseCreateDialog}
+        onSave={handleSaveCatalogPart}
+      />
+    </Box>
   );
 };
 

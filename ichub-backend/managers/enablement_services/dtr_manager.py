@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -20,38 +21,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from typing import Dict
-from uuid import UUID
+from .consumer import BaseDtrConsumerManager
+from .provider import DtrProviderManager
+class DtrManager:
+    consumer: BaseDtrConsumerManager
+    provider: DtrProviderManager
 
-class DTRManager:
-    
-    def __init__(self, dtr_url: str = 'http://localhost:8443', dtr_username: str = 'username', dtr_password: str = 'password'):
-        self.dtr_url = dtr_url
-        self.dtr_username = dtr_username
-        self.dtr_password = dtr_password
-        self.dtr_client = None
-
-
-    def create_shell_descriptor(self, aas_id: UUID, global_id: UUID, manufacturer_id: str, manufacturer_part_id: str,
-                      customer_part_ids: Dict[str, str], part_category: str):
+    def __init__(self, dtr_consumer_manager: BaseDtrConsumerManager, dtr_provider_manager: DtrProviderManager):
         """
-        Registers a twin in the DTR.
+        Initialize the DtrManager with consumer and provider managers.
+        :param dtr_consumer_manager: Instance of BaseDtrConsumerManager
+        :param dtr_provider_manager: Instance of DtrProviderManager
         """
-        print("===============================")
-        print("==== Digital Twin Registry ====")
-        print("===============================")
-        print(f"Registering twin with global_id={global_id}, aas_id={aas_id}, "
-              f"manufacturer_id={manufacturer_id}, manufacturer_part_id={manufacturer_part_id}, "
-              f"customer_part_ids={customer_part_ids}, part_category={part_category}")
-        print()
-
-    def create_submodel_descriptor(self, aas_id: UUID, submodel_id: UUID, semantic_id: str):
-        """
-        Creates a submodel descriptor in the DTR.
-        """
-        print("===============================")
-        print("==== Digital Twin Registry ====")
-        print("===============================")
-        print(f"Creating submodel descriptor with aas_id={aas_id}, submodel_id={submodel_id}, "
-              f"semantic_id={semantic_id}")
-        print()
+        self.consumer = dtr_consumer_manager
+        self.provider = dtr_provider_manager

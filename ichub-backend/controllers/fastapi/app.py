@@ -22,25 +22,38 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from typing import List, Optional
-from uuid import UUID
-
-from pydantic import BaseModel, Field
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request, APIRouter, Header, Body
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+import os
 
-from services.part_management_service import PartManagementService
-from services.partner_management_service import PartnerManagementService
-from services.twin_management_service import TwinManagementService
-from models.services.part_management import CatalogPartBase, CatalogPartRead, CatalogPartCreate
-from models.services.partner_management import BusinessPartnerRead, BusinessPartnerCreate, DataExchangeAgreementRead
-from models.services.twin_management import TwinRead, TwinAspectRead, TwinAspectCreate, CatalogPartTwinRead, CatalogPartTwinDetailsRead, CatalogPartTwinCreate, CatalogPartTwinShare
+from tools.exceptions import BaseError, ValidationError
+from tools.constants import API_V1
+from managers.config.config_manager import ConfigManager
+
+from tractusx_sdk.dataspace.tools import op
+
+from .routers.provider.v1 import (
+    part_management,
+    partner_management,
+    twin_management,
+    submodel_dispatcher,
+    sharing_handler
+)
+from .routers.consumer.v1 import (
+    connection_management,
+    discovery_management
+)
 
 tags_metadata = [
     {
         "name": "Part Management",
         "description": "Management of part metadata - including catalog parts, serialized parts, JIS parts and batches"
+    },
+    {
+        "name": "Sharing Functionality",
+        "description": "Sharing functionality for catalog part twins - including sharing of parts with business partners and automatic generation of digital twins and submodels"
     },
     {
         "name": "Partner Management",
@@ -52,66 +65,118 @@ tags_metadata = [
     },
     {
         "name": "Submodel Dispatcher",
-        "description": "Internal API called by EDC Data Planes in order the deliver data of of the internall used Submodel Service"
+        "description": "Internal API called by EDC Data Planes or Admins in order the deliver data of of the internal used Submodel Service"
+    },
+    {
+        "name": "Open Connection Management",
+        "description": "Handles the connections from the consumer modules, for specific services like digital twin registry and data endpoints"
+    },
+    {
+        "name": "Part Discovery Management",
+        "description": "Management of the discovery of parts, searching for digital twins and digital twins registries"
     }
 ]
 
 app = FastAPI(title="Industry Core Hub Backend API", version="0.0.1", openapi_tags=tags_metadata)
 
-part_management_service = PartManagementService()
-partner_management_service = PartnerManagementService()
-twin_management_service = TwinManagementService()
+# Configure CORS middleware based on environment and configuration
+def get_cors_origins():
+    """Get CORS origins from environment variables and configuration."""
+    # Start with default localhost origins for development
+    default_origins = [
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # React dev server
+        "http://localhost:8080",  # Alternative frontend port
+        "http://127.0.0.1:5173",  # Alternative localhost notation
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080",
+    ]
+    
+    # Add origins from environment variables (for container deployments)
+    env_origins = []
+    
+    # Check for CORS_ORIGINS environment variable (comma-separated)
+    cors_origins_env = os.getenv("CORS_ORIGINS")
+    if cors_origins_env:
+        env_origins.extend([origin.strip() for origin in cors_origins_env.split(",")])
+    
+    # Check for individual frontend URL environment variable
+    frontend_url = os.getenv("FRONTEND_URL")
+    if frontend_url:
+        env_origins.append(frontend_url)
+    
+    # Try to get origins from configuration file
+    try:
+        config = ConfigManager.get_config()
+        if config and "cors" in config and "allow_origins" in config["cors"]:
+            config_origins = config["cors"]["allow_origins"]
+            if isinstance(config_origins, list):
+                env_origins.extend(config_origins)
+    except Exception:
+        # If config loading fails, continue with defaults
+        pass
+    
+    # Combine all origins and remove duplicates
+    all_origins = list(set(default_origins + env_origins))
+    
+    # In production, you might want to be more restrictive
+    if os.getenv("ENVIRONMENT") == "production":
+        # Filter out localhost origins in production
+        all_origins = [origin for origin in all_origins if not ("localhost" in origin or "127.0.0.1" in origin)]
+    
+    return all_origins
 
-@app.get("/part-management/catalog-part/{manufacturer_id}/{manufacturer_part_id}", response_model=CatalogPartRead, tags=["Part Management"])
-async def part_management_get_catalog_part(manufacturer_id: str, manufacturer_part_id: str) -> Optional[CatalogPartRead]:
-    return part_management_service.get_catalog_part(manufacturer_id, manufacturer_part_id)
+# Check if CORS is enabled (default to True for development)
+cors_enabled = os.getenv("CORS_ENABLED", "true").lower() == "true"
 
-@app.get("/part-management/catalog-part", response_model=List[CatalogPartRead], tags=["Part Management"])
-async def part_management_get_catalog_parts() -> List[CatalogPartRead]:
-    return part_management_service.get_catalog_parts()
+if cors_enabled:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["*"],
+    )
 
-@app.post("/part-management/catalog-part", response_model=CatalogPartRead, tags=["Part Management"])
-async def part_management_create_catalog_part(catalog_part_create: CatalogPartCreate) -> CatalogPartRead:
-    return part_management_service.create_catalog_part(catalog_part_create)
+## Include here all the routers for the application.
+# API Version 1
+v1_router = APIRouter(prefix=f"/{API_V1}")
+v1_router.include_router(part_management.router)
+v1_router.include_router(partner_management.router)
+v1_router.include_router(twin_management.router)
+v1_router.include_router(submodel_dispatcher.router)
+v1_router.include_router(sharing_handler.router)
+v1_router.include_router(connection_management.router)
+v1_router.include_router(discovery_management.router)
 
-@app.get("/partner-management/business-partner", response_model=List[BusinessPartnerRead], tags=["Partner Management"])
-async def partner_management_get_business_partners() -> List[BusinessPartnerRead]:
-    return partner_management_service.list_business_partners()
+# Include the API version 1 router into the main app
+app.include_router(v1_router)
 
-@app.get("/partner-management/business-partner/{business_partner_number}", response_model=Optional[BusinessPartnerRead], tags=["Partner Management"])
-async def partner_management_get_business_partner(business_partner_number: str) -> Optional[BusinessPartnerRead]:
-    return partner_management_service.get_business_partner(business_partner_number)
+@app.exception_handler(BaseError)
+async def base_error_exception_handler(
+    request: Request,
+    exc: BaseError) -> JSONResponse:
+    """
+    Generic exception handler for all exceptions derived from BaseError.
+    """
+    return JSONResponse(status_code=exc.status_code, content=exc.detail.model_dump())
 
-@app.post("/partner-management/business-partner", response_model=BusinessPartnerRead, tags=["Partner Management"])
-async def partner_management_create_business_partner(business_partner_create: BusinessPartnerCreate) -> BusinessPartnerRead:
-    return partner_management_service.create_business_partner(business_partner_create)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """
+    Exception handler for validation errors.
+    """
+    raise ValidationError(exc.errors()[0]["msg"])
 
-@app.get("/partner-management/business-partner/{business_partner_number}/data-exchange-agreement", response_model=List[DataExchangeAgreementRead], tags=["Partner Management"])
-async def partner_management_get_data_exchange_agreements(business_partner_number: str) -> List[DataExchangeAgreementRead]:
-    return partner_management_service.get_data_exchange_agreements(business_partner_number)
+@app.get("/health")
+def check_health():
+    """
+    Retrieves health information from the server
 
-@app.get("/twin-management/catalog-part-twin", response_model=List[CatalogPartTwinRead], tags=["Twin Management"])
-async def twin_management_get_catalog_part_twins(include_data_exchange_agreements: bool = False) -> List[CatalogPartTwinRead]:
-    return twin_management_service.get_catalog_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
-
-@app.get("/twin-management/catalog-part-twin/{global_id}", response_model=List[CatalogPartTwinDetailsRead], tags=["Twin Management"])
-async def twin_management_get_catalog_part_twin(global_id: UUID) -> List[CatalogPartTwinDetailsRead]:
-    return twin_management_service.get_catalog_part_twin_details(global_id)
-
-@app.post("/twin-management/catalog-part-twin", response_model=TwinRead, tags=["Twin Management"])
-async def twin_management_create_catalog_part_twin(catalog_part_twin_create: CatalogPartTwinCreate) -> TwinRead:
-    return twin_management_service.create_catalog_part_twin(catalog_part_twin_create)
-
-@app.post("/twin-management/catalog-part-twin/share", responses={
-    201: {"description": "Catalog part twin shared successfully"},
-    204: {"description": "Catalog part twin already shared"}
-}, tags=["Twin Management"])
-async def twin_management_share_catalog_part_twin(catalog_part_twin_share: CatalogPartTwinShare):
-    if twin_management_service.create_catalog_part_twin_share(catalog_part_twin_share):
-        return JSONResponse(status_code=201, content={"description":"Catalog part twin shared successfully"})
-    else:
-        return JSONResponse(status_code=204, content={"description":"Catalog part twin already shared"})
-
-@app.post("/twin-management/twin-aspect", response_model=TwinAspectRead, tags=["Twin Management"])
-async def twin_management_create_twin_aspect(twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
-    return twin_management_service.create_twin_aspect(twin_aspect_create)
+    Returns:
+        response: :obj:`status, timestamp`
+    """
+    return {
+        "status": "RUNNING",
+        "timestamp": op.timestamp() 
+    }

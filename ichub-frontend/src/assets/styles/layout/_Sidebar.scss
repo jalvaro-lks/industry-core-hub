@@ -31,6 +31,7 @@
     flex-direction: column;
     align-items: center;
     padding: 10px 0;
+    z-index: 1000000;
   }
   
   .iconButton {
@@ -46,6 +47,13 @@
     &.active,
     &:hover {
       opacity: 1;
+    }
+    
+    &.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+      cursor: default;
+      color: #6b6b6b;
     }
   }
   

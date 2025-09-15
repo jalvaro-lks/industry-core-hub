@@ -18,17 +18,74 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-export interface PartInstance {
-    uuid: string,
-    name: string,
-    status: string,
-    manufacturer: string,
-    manufacturerPartId: string,
-    class: string,
-    description: string,
-    image: string
-    created: string
-    updated: string
+import { StatusVariants } from './statusVariants'
+
+export enum LengthUnit {
+  // NM = "nm",
+  // UM = "µm",
+  MM = "mm",
+  CM = "cm",
+  // DM = "dm",
+  M = "m",
+  // DAM = "dam",
+  // HM = "hm",
+  // KM = "km",
+  // IN = "in",
+  // FT = "ft",
+  // YD = "yd",
+  // MI = "mi",
 }
+
+export enum WeightUnit {
+  // MG = "mg",
+  G = "g",
+  KG = "kg",
+  // T = "t",
+  // LB = "lb",
+  // OZ = "oz",
+  // ST = "st",
+}
+
+
+export interface Measurement<U> {
+  value: number;
+  unit: U;
+}
+
+export type LengthMeasurement = Measurement<LengthUnit>;
+export type WeightMeasurement = Measurement<WeightUnit>;
+
+export interface Material {
+  name: string;
+  share: number; // Percentage, 0-100
+}
+
+export interface PartType {
+  manufacturerId: string;
+  manufacturerPartId: string;
+  name: string;
+  status?: StatusVariants;
+  description?: string;
+  category?: string;
+  materials: Material[];
+  bpns?: string;
+  width?: LengthMeasurement;
+  height?: LengthMeasurement;
+  length?: LengthMeasurement;
+  weight?: WeightMeasurement;
+  customerPartIds?: Record<string, { name: string; bpnl: string }>; // e.g., { "CUSTOMER_BPNL_XYZ": { name: "BMW", bpnl: "BPNL00000003CRHK" } }
+}
+
+
+export interface DiscoveryPartType {
+    manufacturerId: string;
+    manufacturerPartId: string;
+    customerPartId: string,
+    id: string,
+    globalAssetId: string,
+}
+export type ApiPartData = Omit<PartType, 'status'> & {
+  status: number; // Status from API is a number
+};

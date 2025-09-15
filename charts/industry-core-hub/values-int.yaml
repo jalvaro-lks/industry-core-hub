@@ -21,13 +21,14 @@
 ---
 ## For being used in the Integration ArgoCD test environment from the Catena-X Association
 
+participantId : "<path:industry-core-hub/data/edc-provider#bpn>"
+
 postgresql:
   auth:
     ## Root password override
     password: <path:industry-core-hub/data/db#rootPass>
     ## Industry Core User Password
     ichubPassword: <path:industry-core-hub/data/db#ichubPass>
-    
 # -- pgAdmin4 configuration
 pgadmin4:
   enabled: true
@@ -48,3 +49,195 @@ pgadmin4:
        - secretName: "pgadmin-ichub.int.catena-x.net-tls"
          hosts:
            - "pgadmin-ichub.int.catena-x.net" 
+frontend: 
+  env:
+    # -- industry-core-hub backend base URL
+    backendUrl: "https://backend-ichub.int.catena-x.net"
+  ingress:
+      enabled: true
+      className: "nginx"
+      ## Optional annotations when using the nginx ingress class
+      annotations:
+       cert-manager.io/cluster-issuer: letsencrypt-prod
+       nginx.ingress.kubernetes.io/rewrite-target: "/$1"
+       nginx.ingress.kubernetes.io/use-regex: "true"
+       nginx.ingress.kubernetes.io/enable-cors: "true"
+      #   # -- Provide CORS allowed origin.
+      #   nginx.ingress.kubernetes.io/cors-allow-origin: "https://*.example.org"
+      # -- Ingress TLS configuration
+      tls:
+       - secretName: "frontend-ichub.int.catena-x.net-tls"
+         hosts:
+           - "frontend-ichub.int.catena-x.net" 
+        # # -- Provide tls secret.
+        # - secretName: ""
+        #   # -- Provide host for tls secret.
+        #   hosts:
+        #     - ""
+      hosts:
+        - host: "frontend-ichub.int.catena-x.net"
+          paths:
+            - path: /(.*)
+              pathType: ImplementationSpecific
+              backend:
+                service: "frontend"
+                port: 8080
+backend:
+  cors:
+    enabled: true
+    allow_origins:
+      - "https://frontend-ichub.int.catena-x.net"
+      - "https://backend-ichub.int.catena-x.net"
+    allow_credentials: true
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+      - "PATCH"
+    allow_headers:
+      - "*"
+  # -- Persistance configuration for the backend
+  persistence:
+    # -- Create a PVC to persist storage (if disabled, data and logs will not be persisted)
+    enabled: true
+    data:
+      # -- Enable data persistence
+      enabled: true
+      # -- Storage size for data
+      size: 1Gi
+      # -- Access mode for data volume
+      accessMode: ReadWriteOnce
+      # -- Storage class for data volume
+      storageClass: "default"
+    logs:
+      # -- Enable logs persistence
+      enabled: true
+      # -- Storage size for logs
+      size: 1Gi
+      # -- Access mode for logs volume
+      accessMode: ReadWriteOnce
+      # -- Storage class for logs volume
+      storageClass: "default"
+  configuration:
+    authorization:
+      enabled: true
+      apiKey:
+        key: "X-Api-Key"
+        value: <path:industry-core-hub/data/backend#apiKey>
+    # -- Consumer configuration
+    consumer:
+      discovery:
+        discovery_finder:
+          url: "https://semantics.int.catena-x.net/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
+        connector_discovery:
+          key: "bpn"
+        oauth:
+          url: "https://centralidp.int.catena-x.net/auth/"
+          realm: "CX-Central"
+          client_id: "sa307"
+          client_secret: <path:industry-core-hub/data/oauth#client-secret>
+        digitalTwinRegistry:
+          dct_type_key: "dct:type"
+          dct_type_filter:
+            operandLeft: "'http://purl.org/dc/terms/type'.'@id'"
+            operator: "="
+            operandRight: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+      connector:
+        dataspace:
+          version: "jupiter"
+        controlplane:
+          hostname: "https://edc-consumer-ichub-control.int.catena-x.net"
+          apiKeyHeader: "X-Api-Key"
+          apiKey: <path:industry-core-hub/data/edc-consumer#authKey>
+          managementPath: "/management"
+          protocolPath: "/api/v1/dsp"
+          catalogPath: "/catalog"
+    # -- Provider configuration  
+    provider:
+      connector: 
+        dataspace:
+          version: "jupiter"
+        controlplane:
+          hostname: "https://edc-provider-ichub-control.int.catena-x.net"
+          apiKeyHeader: "X-Api-Key"
+          apiKey: <path:industry-core-hub/data/edc-provider#authKey>
+          managementPath: "/management"
+          protocolPath: "/api/v1/dsp"
+        dataplane:
+          hostname: "https://edc-provider-ichub-dataplane.int.catena-x.net"
+          publicPath: "/api/public"
+      digitalTwinRegistry:
+        hostname: "https://dtr-ichub.int.catena-x.net"
+        apiPath: "/api/v3"
+        uri: ""
+        asset_config:
+          dct_type: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
+        lookup:
+          uri: ""
+        policy:
+          usage:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                LogicalConstraint: odrl:and
+                constraints:
+                  - leftOperand: cx-policy:FrameworkAgreement
+                    operator: odrl:eq
+                    rightOperand: DataExchangeGovernance:1.0
+                  - leftOperand: cx-policy:Membership
+                    operator: odrl:eq
+                    rightOperand: active
+                  - leftOperand: cx-policy:UsagePurpose
+                    operator: odrl:eq
+                    rightOperand: cx.core.digitalTwinRegistry:1
+            prohibition: []
+            obligation: []
+          access:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                constraints:
+                  - leftOperand: cx-policy:Membership
+                    operator: odrl:eq
+                    rightOperand: active
+            prohibition: []
+            obligation: []
+    submodel_dispatcher:
+      path: "./data/submodels"
+      apiPath: "/submodel-dispatcher"
+  ingress:
+      enabled: true
+      className: "nginx"
+      ## Optional annotations when using the nginx ingress class
+      annotations:
+       cert-manager.io/cluster-issuer: letsencrypt-prod
+      #   nginx.ingress.kubernetes.io/rewrite-target: "/$1"
+      #   nginx.ingress.kubernetes.io/use-regex: "true"
+       nginx.ingress.kubernetes.io/enable-cors: "true"
+      #   # -- Provide CORS allowed origin.
+       nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend-ichub.int.catena-x.net, *"
+       nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+      # -- Ingress TLS configuration
+      tls:
+       - secretName: "backend-ichub.int.catena-x.net-tls"
+         hosts:
+           - "backend-ichub.int.catena-x.net" 
+        # # -- Provide tls secret.
+        # - secretName: ""
+        #   # -- Provide host for tls secret.
+        #   hosts:
+        #     - ""
+      hosts:
+      - host: "backend-ichub.int.catena-x.net"
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service: "backend"
+              port: 8000
