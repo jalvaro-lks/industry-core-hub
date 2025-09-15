@@ -66,7 +66,7 @@ import {
   getAASDataSummary
 } from '../utils/utils';
 import { fetchPartners } from '../../partner-management/api';
-import { PartnerInstance } from '../../../types/partner';
+import { PartnerInstance } from '../../partner-management/types/types';
 
 interface PartCardData {
   id: string;

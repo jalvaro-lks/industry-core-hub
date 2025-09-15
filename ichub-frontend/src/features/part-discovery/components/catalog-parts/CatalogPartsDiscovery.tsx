@@ -29,7 +29,6 @@ import { Box, Typography, IconButton, Button, Tooltip, Menu } from "@mui/materia
 import { useState } from "react";
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { DiscoveryCardChip } from "./DiscoveryCardChip";
-import { StatusVariants } from "../../../../types/statusVariants";
 import { ErrorNotFound } from "../../../../components/general/ErrorNotFound";
 import LoadingSpinner from "../../../../components/general/LoadingSpinner";
 import { AASData } from "../../utils/utils";
@@ -40,7 +39,6 @@ export interface AppContent {
   manufacturerPartId: string;
   name?: string;
   category?: string;
-  status?: StatusVariants;
   dtrIndex?: number; // DTR index for display
   shellId?: string; // Shell ID (AAS ID) for display
   idShort?: string; // idShort for display
@@ -144,11 +142,8 @@ export const CatalogPartsDiscovery = ({
             >
               <Box className="custom-card-header">
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <DiscoveryCardChip 
-                    status={item.status} 
-                    statusText={item.status} 
+                  <DiscoveryCardChip
                     dtrIndex={item.dtrIndex}
-                    useDtrDisplay={item.dtrIndex !== undefined}
                   />
                 </Box>
 

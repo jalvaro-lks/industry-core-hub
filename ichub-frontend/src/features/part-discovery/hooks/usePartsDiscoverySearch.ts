@@ -38,7 +38,7 @@ import {
   SearchFilters, 
   PartType, 
   PaginationSettings 
-} from '../types';
+} from '../types/types';
 
 export const usePartsDiscoverySearch = () => {
   // Results and pagination

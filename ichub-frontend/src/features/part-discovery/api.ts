@@ -31,8 +31,8 @@ import {
   GovernanceRule,
   GovernancePolicy
 } from '../../services/EnvironmentService';
-import { ApiPartData } from '../../types/product';
-import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
+import { ApiPartData } from './types/types';
+import { CatalogPartTwinCreateType, TwinReadType } from './types/types';
 import { ShellDiscoveryResponse, getNextPageCursor, getPreviousPageCursor, hasNextPage, hasPreviousPage } from './utils/utils';
 import { partDiscoveryConfig } from './config';
 

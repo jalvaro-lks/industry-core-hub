@@ -39,7 +39,7 @@ export { default as PartsDiscoverySidebar } from './components/search/PartsDisco
 export { usePartsDiscoverySearch } from './hooks/usePartsDiscoverySearch';
 
 // Export types
-export * from './types';
+export * from './types/types';
 
 // Export utilities
 export * from './utils/utils';
