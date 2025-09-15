@@ -233,7 +233,7 @@ function InstanceProductsTableToolbar(props: Readonly<InstanceProductsTableToolb
     </Toolbar>
   );
 }
-export default function InstanceProductsTable({ part }: { part: PartType | null }) {
+export default function InstanceProductsTable({ part }: { readonly part: PartType | null }) {
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<keyof SerializedPart>('customerPartId');
   const [selected, setSelected] = useState<readonly number[]>([]);
@@ -248,7 +248,7 @@ export default function InstanceProductsTable({ part }: { part: PartType | null 
     }
     const loadData = async () => {
       try {
-        const data = await fetchSerializedParts(part.manufacturerId!, part.manufacturerPartId!);
+        const data = await fetchSerializedParts(part.manufacturerId, part.manufacturerPartId);
         const rowsWithId = data.map((row, index) => ({
           ...row,
           id: index,

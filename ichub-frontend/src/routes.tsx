@@ -44,7 +44,6 @@ export default function AppRoutes() {
             element={<ProductsDetails />} 
           />
 
-          {/* Here we must change the elements as we go along as we develop */}
           <Route 
             path="/catalog" 
             element={<ProductsList />} 
@@ -56,10 +55,6 @@ export default function AppRoutes() {
           <Route 
             path="/partners" 
             element={<PartnersList />} 
-          />
-          <Route 
-            path="/status" 
-            element={<ProductsList />} 
           />
           <Route 
             path="/serialized-parts" 
