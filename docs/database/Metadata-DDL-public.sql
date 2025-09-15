@@ -89,7 +89,8 @@ CREATE TABLE public.catalog_part (
 CREATE TABLE public.data_exchange_agreement (
     id integer NOT NULL,
     name character varying NOT NULL,
-    business_partner_id integer NOT NULL
+    business_partner_id integer NOT NULL,
+    is_cancelled boolean DEFAULT false NOT NULL
 );
 
 CREATE TABLE public.data_exchange_contract (

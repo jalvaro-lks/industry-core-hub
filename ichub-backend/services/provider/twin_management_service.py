@@ -132,6 +132,7 @@ class TwinManagementService:
                     enablement_service_stack_id=db_enablement_service_stack.id
                 )
                 repo.commit()
+                repo.refresh(db_twin_registration)
 
             # Step 6: Check the dtr_registered flag on the twin registration entity
             # (if True => we can skip the operation from here on => nothing to do)

@@ -592,6 +592,8 @@ class DtrProviderManager:
                 # If BPN already present, skip update and log warning
                 logger.warning(f"Customer part ID '{customer_part_id}' already shared with BPN '{bpn}'. Skipping update.")
                 continue
+            if len(sa_id.supplemental_semantic_ids) == 0:
+                sa_id.supplemental_semantic_ids = None
             # Append new BPN to existing reference
             sa_id.external_subject_id.keys.append(
                 ReferenceKey(type=ReferenceKeyTypes.GLOBAL_REFERENCE, value=bpn)
