@@ -48,11 +48,11 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
-import SearchLoading from '../features/part-discovery/components/SearchLoading';
+import SearchLoading from '../features/part-discovery/components/search/SearchLoading';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
-import PartsDiscoverySidebar from '../features/part-discovery/components/PartsDiscoverySidebar';
+import PartsDiscoverySidebar from '../features/part-discovery/components/search/PartsDiscoverySidebar';
 import SerializedPartsTable from '../features/part-discovery/components/SerializedPartsTable';
-import { SingleTwinResult } from '../features/part-discovery/components/SingleTwinResult';
+import { SingleTwinResult } from '../features/part-discovery/components/single-twin/SingleTwinResult';
 import { useAdditionalSidebar } from '../hooks/useAdditionalSidebar';
 import { 
   discoverShellsWithCustomQuery,

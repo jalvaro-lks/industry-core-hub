@@ -21,13 +21,13 @@
 ********************************************************************************/
 
 // Export components
-export { PaginationControls } from './components/PaginationControls';
+export { PaginationControls } from './components/search-result/PaginationControls';
 export { SearchModeToggle } from './components/SearchModeToggle';
 export { FilterChips } from './components/FilterChips';
 export { PartnerSearch } from './components/PartnerSearch';
-export { SingleTwinSearch } from './components/SingleTwinSearch';
+export { SingleTwinSearch } from './components/single-twin/SingleTwinSearch';
 export { SearchHeader } from './components/SearchHeader';
-export { default as PartsDiscoverySidebar } from './components/PartsDiscoverySidebar';
+export { default as PartsDiscoverySidebar } from './components/search/PartsDiscoverySidebar';
 
 // Export hooks
 export { usePartsDiscoverySearch } from './hooks/usePartsDiscoverySearch';

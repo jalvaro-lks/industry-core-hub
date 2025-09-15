@@ -26,6 +26,7 @@ import { StatusTag, Button, Icon } from '@catena-x/portal-shared-components';
 import HelpOutlineIcon from '@mui/icons-material/Help';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Grid2 from '@mui/material/Grid2';
+import Box from '@mui/material/Box';
 
 import InstanceProductsTable from "../features/catalog-management/components/product-detail/InstanceProductsTable";
 import ShareDropdown from "../features/catalog-management/components/product-detail/ShareDropdown";
@@ -198,10 +199,16 @@ const ProductsDetails = () => {
   };
 
   return (
-    <>
+    <Box sx={{ 
+      width: "100%", 
+      height: "100%", 
+      display: "flex", 
+      flexDirection: "column",
+      overflow: "auto" // Enable scrolling when content overflows
+    }}>
       <PageNotification notification={notification} />
 
-      <Grid2 container className="productDetail">
+      <Grid2 container className="productDetail" sx={{ flexGrow: 1 }}>
         <Grid2 size={4} display="flex" justifyContent="start">
           {getStatusTag(partType.status ?? PRODUCT_STATUS.DRAFT)}
         </Grid2>
@@ -236,7 +243,7 @@ const ProductsDetails = () => {
         <ShareDialog open={shareDialogOpen} onClose={handleCloseShareDialog} partData={partType} />
         <AddSerializedPartDialog open={addSerializedPartDialogOpen} onClose={handleCloseAddSerializedPartDialog} partData={partType} />
       </Grid2>
-    </>
+    </Box>
   );
 }
 

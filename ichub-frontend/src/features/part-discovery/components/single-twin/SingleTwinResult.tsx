@@ -47,7 +47,7 @@ import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import SecurityIcon from '@mui/icons-material/Security';
 import LockIcon from '@mui/icons-material/Lock';
-import { SubmodelViewer } from './SubmodelViewer';
+import { SubmodelViewer } from '../submodel/SubmodelViewer';
 
 interface SingleTwinResultProps {
   counterPartyId: string;
