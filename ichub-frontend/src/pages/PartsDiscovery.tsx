@@ -51,7 +51,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import SearchLoading from '../features/part-discovery/components/search/SearchLoading';
 import { CatalogPartsDiscovery } from '../features/part-discovery/components/catalog-parts/CatalogPartsDiscovery';
 import PartsDiscoverySidebar from '../features/part-discovery/components/search/PartsDiscoverySidebar';
-import SerializedPartsTable from '../features/part-discovery/components/SerializedPartsTable';
+import SerializedPartsTable from '../features/part-discovery/components/serialized-parts/SerializedPartsTable';
 import { SingleTwinResult } from '../features/part-discovery/components/single-twin/SingleTwinResult';
 import { useAdditionalSidebar } from '../hooks/useAdditionalSidebar';
 import { 
