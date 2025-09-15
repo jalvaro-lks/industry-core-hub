@@ -35,18 +35,18 @@ import ProductData from "../components/product-detail/ProductData";
 import JsonViewerDialog from "../components/product-detail/JsonViewerDialog";
 import AddSerializedPartDialog from "../components/product-detail/AddSerializedPartDialog";
 
-import ShareDialog from "../../../components/general/ShareDialog";
+import ShareDialog from "../components/shared/ShareDialog";
 import {ErrorNotFound} from "../../../components/general/ErrorNotFound";
 import LoadingSpinner from "../../../components/general/LoadingSpinner";
 import PageNotification from "../../../components/general/PageNotification";
 
-import { PartType } from "../../../types/product";
-import { PRODUCT_STATUS } from "../../../types/common";
+import { PartType } from "../types/types";
+import { PRODUCT_STATUS } from "../types/shared";
 
-import { SharedPartner } from "../../../types/sharedPartners"
+import { SharedPartner } from "../types/types"
 
 import { fetchCatalogPart } from "../api";
-import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../utils";
+import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../utils/utils";
 
 const ProductsDetails = () => {
   const navigate = useNavigate();

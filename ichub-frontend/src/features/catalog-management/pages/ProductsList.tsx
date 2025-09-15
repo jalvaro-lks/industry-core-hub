@@ -23,16 +23,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProductCard } from "../components/product-list/ProductCard";
-import { PartType, ApiPartData } from "../../../types/product";
+import { PartType, ApiPartData } from "../types/types";
 import TablePagination from "@mui/material/TablePagination";
 import { Typography, Grid2, Box } from "@mui/material"; // Removed Paper
 import { Button, PageSnackbar } from "@catena-x/portal-shared-components";
 import AddIcon from "@mui/icons-material/Add";
-import ShareDialog from "../../../components/general/ShareDialog";
-import CreateProductListDialog from "../../partner-management/components/general/CreateProductListDialog";
+import ShareDialog from "../components/shared/ShareDialog";
+import CreateProductListDialog from "../components/product-list/CreateProductListDialog";
 import { fetchCatalogParts, registerCatalogPartTwin } from "../api";
-import { mapApiPartDataToPartType } from "../utils";
-import { CatalogPartTwinCreateType } from "../../../types/twin";
+import { mapApiPartDataToPartType } from "../utils/utils";
+import { CatalogPartTwinCreateType } from "../types/twin-types";
 
 const ProductsList = () => {
   const [carParts, setCarParts] = useState<PartType[]>([]);

@@ -32,5 +32,10 @@ export * from './api';
 // Export configuration
 export * from './config';
 
+// Export types
+export * from './types/types';
+export * from './types/twin-types';
+export * from './types/dialog-types';
+
 // Export utilities
-export * from './utils';
+export * from './utils/utils';

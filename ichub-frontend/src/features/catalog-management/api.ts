@@ -22,8 +22,8 @@
 
 import axios from 'axios';
 import { getIchubBackendUrl } from '../../services/EnvironmentService';
-import { ApiPartData } from '../../types/product';
-import { CatalogPartTwinCreateType, TwinReadType } from '../../types/twin';
+import { ApiPartData } from './types/types';
+import { CatalogPartTwinCreateType, TwinReadType } from './types/twin-types';
 import { catalogManagementConfig } from './config';
 
 const backendUrl = getIchubBackendUrl();
@@ -75,5 +75,10 @@ export const registerCatalogPartTwin = async (
     `${backendUrl}${catalogManagementConfig.api.endpoints.TWIN_MANAGEMENT}`,
     twinData
   );
+  return response.data;
+};
+
+export const createCatalogPart = async (catalogPartData: ApiPartData): Promise<ApiPartData> => {
+  const response = await axios.post<ApiPartData>(`${backendUrl}${catalogManagementConfig.api.endpoints.CATALOG_PARTS}`, catalogPartData);
   return response.data;
 };
