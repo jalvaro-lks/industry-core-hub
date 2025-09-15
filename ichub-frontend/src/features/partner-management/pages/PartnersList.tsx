@@ -22,7 +22,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 //import { useNavigate } from "react-router-dom";
-import { PartnerInstance } from "../../../types/partner";
+import { PartnerInstance } from "../types/types";
 import TablePagination from '@mui/material/TablePagination';
 import { Typography, Grid2, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';

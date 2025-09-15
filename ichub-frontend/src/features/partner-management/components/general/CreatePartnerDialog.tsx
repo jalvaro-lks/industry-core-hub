@@ -26,7 +26,7 @@ import { Box, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogAction
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import { PartnerDialogProps } from '../../../../types/partnerDialogViewer';
+import { PartnerDialogProps } from '../../types/dialog-types';
 import { createPartner } from '../../api';
 
 const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDialogProps) => {
