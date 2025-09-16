@@ -22,7 +22,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { StatusTag, Button, Icon } from '@catena-x/portal-shared-components';
+import { Button, Icon } from '@catena-x/portal-shared-components';
+import { CardChip } from "../components/product-list/CardChip";
+import { StatusVariants } from "../types/types";
 import HelpOutlineIcon from '@mui/icons-material/Help';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Grid2 from '@mui/material/Grid2';
@@ -34,6 +36,7 @@ import ProductButton from "../components/product-detail/ProductButton";
 import ProductData from "../components/product-detail/ProductData";
 import JsonViewerDialog from "../components/product-detail/JsonViewerDialog";
 import AddSerializedPartDialog from "../components/product-detail/AddSerializedPartDialog";
+import SubmodelsGridDialog from "../components/product-detail/SubmodelsGridDialog";
 
 import ShareDialog from "../components/shared/ShareDialog";
 import {ErrorNotFound} from "../../../components/general/ErrorNotFound";
@@ -42,10 +45,11 @@ import PageNotification from "../../../components/general/PageNotification";
 
 import { PartType } from "../types/types";
 import { PRODUCT_STATUS } from "../types/shared";
+import { CatalogPartTwinDetailsRead } from "../types/twin-types";
 
 import { SharedPartner } from "../types/types"
 
-import { fetchCatalogPart } from "../api";
+import { fetchCatalogPart, fetchCatalogPartTwinDetails } from "../api";
 import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../utils/utils";
 
 const ProductsDetails = () => {
@@ -60,9 +64,11 @@ const ProductsDetails = () => {
   const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [addSerializedPartDialogOpen, setAddSerializedPartDialogOpen] = useState(false);
+  const [submodelsGridDialogOpen, setSubmodelsGridDialogOpen] = useState(false);
   const [notification, setNotification] = useState<{ open: boolean; severity: "success" | "error"; title: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sharedPartners, setSharedPartners] = useState<SharedPartner[]>([]);
+  const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(null);
 
   useEffect(() => {
     if (!manufacturerId || !manufacturerPartId) return;
@@ -79,6 +85,17 @@ const ProductsDetails = () => {
         if(mappedPart.customerPartIds){
             const mappedResult:SharedPartner[] = mapSharePartCustomerPartIds(mappedPart.customerPartIds)
             setSharedPartners(mappedResult)
+        }
+        
+        // Fetch twin details
+        try {
+          console.log('Fetching twin details for part:', manufacturerId, manufacturerPartId);
+          const twinData = await fetchCatalogPartTwinDetails(manufacturerId, manufacturerPartId);
+          console.log('Twin data received:', twinData);
+          setTwinDetails(twinData);
+        } catch (twinError) {
+          console.error('Error fetching twin details:', twinError);
+          setTwinDetails(null);
         }
 
       } catch (error) {
@@ -148,6 +165,14 @@ const ProductsDetails = () => {
     setAddSerializedPartDialogOpen(false);
   };
 
+  const handleOpenSubmodelsGridDialog = () => {
+    setSubmodelsGridDialogOpen(true);
+  };
+
+  const handleCloseSubmodelsGridDialog = () => {
+    setSubmodelsGridDialogOpen(false);
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(productId)
       .then(() => {
@@ -184,18 +209,31 @@ const ProductsDetails = () => {
 
     
   const getStatusTag = (status: string) => {
+    let statusVariant: StatusVariants;
+    
     switch (status.toLowerCase()) {
       case PRODUCT_STATUS.REGISTERED:
-        return <StatusTag color="confirmed" label="Registered" variant="outlined" />;
+        statusVariant = StatusVariants.registered;
+        break;
       case PRODUCT_STATUS.DRAFT:
-        return <StatusTag color="label" label="Draft" variant="outlined" />;
+        statusVariant = StatusVariants.draft;
+        break;
       case PRODUCT_STATUS.PENDING:
-        return <StatusTag color="declined" label="Pending" variant="filled" />;
+        statusVariant = StatusVariants.pending;
+        break;
       case PRODUCT_STATUS.SHARED:
-        return <StatusTag color="pending" label="Shared" sx={{color: "black!important"}} variant="filled" />;
+        statusVariant = StatusVariants.shared;
+        break;
       default:
-        return null;
+        statusVariant = StatusVariants.draft;
+        break;
     }
+    
+    return <CardChip 
+      status={statusVariant} 
+      statusText={statusVariant} 
+      className={statusVariant === StatusVariants.shared ? 'shared-status-chip' : undefined}
+    />;
   };
 
   return (
@@ -221,11 +259,11 @@ const ProductsDetails = () => {
           <ShareDropdown handleCopy={handleCopy} handleDownload={handleDownload} handleShare={handleOpenShareDialog} />
         </Grid2>
 
-        <ProductData part={partType} sharedParts={sharedPartners} />
+        <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} />
         
         <Grid2 container size={12} spacing={2}className="add-on-buttons">
           <Grid2 size={{ sm: 12 }}>
-            <Button className="submodel-button" color="success" size="small" onClick={handleOpenAddSerializedPartDialog} fullWidth={true} style={{ padding: "5px" }}>
+            <Button className="submodel-button" color="success" size="small" onClick={handleOpenSubmodelsGridDialog} fullWidth={true} style={{ padding: "5px" }}>
               View Submodels
             </Button>
           </Grid2>
@@ -238,6 +276,12 @@ const ProductsDetails = () => {
         <JsonViewerDialog open={jsonDialogOpen} onClose={handleCloseJsonDialog} partData={partType} />
         <ShareDialog open={shareDialogOpen} onClose={handleCloseShareDialog} partData={partType} />
         <AddSerializedPartDialog open={addSerializedPartDialogOpen} onClose={handleCloseAddSerializedPartDialog} partData={partType} />
+        <SubmodelsGridDialog 
+          open={submodelsGridDialogOpen} 
+          onClose={handleCloseSubmodelsGridDialog} 
+          twinDetails={twinDetails}
+          partName={partType?.name}
+        />
       </Grid2>
     </Box>
   );

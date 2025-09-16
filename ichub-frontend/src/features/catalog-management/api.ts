@@ -26,6 +26,10 @@ import { ApiPartData } from './types/types';
 import { CatalogPartTwinCreateType, TwinReadType, CatalogPartTwinDetailsRead } from './types/twin-types';
 import { catalogManagementConfig } from './config';
 
+interface SubmodelContent {
+  [key: string]: unknown;
+}
+
 const backendUrl = getIchubBackendUrl();
 
 export const fetchCatalogParts = async (): Promise<ApiPartData[]> => {
@@ -101,6 +105,22 @@ export const fetchCatalogPartTwinDetails = async (
       console.log('Catalog part twin not found (404), returning null');
       return null;
     }
+    throw error;
+  }
+};
+
+export const fetchSubmodelContent = async (semanticId: string, submodelId: string): Promise<SubmodelContent> => {
+  try {
+    const encodedSemanticId = encodeURIComponent(semanticId);
+    const response = await axios.get(
+      `${backendUrl}/submodel-dispatcher/${encodedSemanticId}/${submodelId}/submodel`
+    );
+    if (!response.data) {
+      throw new Error(`Failed to fetch submodel content! {${semanticId}, ${submodelId}}`);
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching submodel content:', error);
     throw error;
   }
 };

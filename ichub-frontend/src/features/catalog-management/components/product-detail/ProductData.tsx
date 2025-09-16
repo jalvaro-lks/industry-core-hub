@@ -38,6 +38,8 @@ import InfoIcon from '@mui/icons-material/Info';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { SharedPartner } from '../../types/types';
 import SharedTable from './SharedTable';
+import SubmodelViewer from './SubmodelViewer';
+import DarkSubmodelViewer from './DarkSubmodelViewer';
 import { useEffect, useState } from 'react';
 import { fetchCatalogPartTwinDetails } from '../../api';
 import { CatalogPartTwinDetailsRead } from '../../types/twin-types';
@@ -45,14 +47,38 @@ import { CatalogPartTwinDetailsRead } from '../../types/twin-types';
 interface ProductDataProps {
     part: PartType;
     sharedParts: SharedPartner[];
+    twinDetails?: CatalogPartTwinDetailsRead | null;
 }
 
-const ProductData = ({ part, sharedParts }: ProductDataProps) => {
-    const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(null);
+const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: ProductDataProps) => {
+    const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(propTwinDetails || null);
     const [isLoadingTwin, setIsLoadingTwin] = useState(false);
     const [copySnackbar, setCopySnackbar] = useState({ open: false, message: '' });
+    
+    // Submodel viewer dialog state
+    const [submodelViewerOpen, setSubmodelViewerOpen] = useState(false);
+    const [selectedSubmodel, setSelectedSubmodel] = useState<{
+        id: string;
+        idShort: string;
+        semanticId: {
+            type: string;
+            keys: Array<{
+                type: string;
+                value: string;
+            }>;
+        };
+    } | null>(null);
+    const [selectedSubmodelId, setSelectedSubmodelId] = useState<string>('');
+    const [selectedSemanticId, setSelectedSemanticId] = useState<string>('');
 
     useEffect(() => {
+        // If twin details are provided as prop, use them
+        if (propTwinDetails) {
+            setTwinDetails(propTwinDetails);
+            return;
+        }
+
+        // Otherwise, fetch them (for backward compatibility)
         const fetchTwinData = async () => {
             if (part.manufacturerId && part.manufacturerPartId) {
                 setIsLoadingTwin(true);
@@ -71,7 +97,7 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
         };
 
         fetchTwinData();
-    }, [part.manufacturerId, part.manufacturerPartId]);
+    }, [part.manufacturerId, part.manufacturerPartId, propTwinDetails]);
 
     const handleCopy = async (text: string, fieldName: string) => {
         try {
@@ -99,6 +125,59 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
             });
         } catch {
             return 'Invalid date';
+        }
+    };
+
+    const getStatusLabel = (status: number): { label: string; color: string } => {
+        switch (status) {
+            case 1:
+                return { label: 'Created', color: '#2196f3' }; // Blue
+            case 2:
+                return { label: 'Available', color: '#ff9800' }; // Orange
+            case 3:
+                return { label: 'Registered', color: '#4caf50' }; // Green
+            default:
+                return { label: 'Unknown', color: '#757575' }; // Gray
+        }
+    };
+
+    const parseSemanticId = (semanticId: string) => {
+        try {
+            // Extract URN parts
+            const parts = semanticId.split(':');
+            if (parts.length >= 7) {
+                const namespace = parts.slice(0, 6).join(':');
+                const modelPart = parts[6];
+                const version = parts[7] || '1.0.0';
+                
+                // Convert model part to readable name
+                const modelName = modelPart
+                    .split(/(?=[A-Z])/)
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')
+                    .trim();
+                
+                return {
+                    namespace,
+                    name: modelName || modelPart,
+                    version,
+                    fullUrn: semanticId
+                };
+            }
+            
+            return {
+                namespace: semanticId,
+                name: 'Unknown Model',
+                version: '1.0.0',
+                fullUrn: semanticId
+            };
+        } catch (error) {
+            return {
+                namespace: semanticId,
+                name: 'Invalid URN',
+                version: '1.0.0',
+                fullUrn: semanticId
+            };
         }
     };
 
@@ -437,69 +516,97 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                             </Box>
 
                             {/* Digital Twin Timestamps */}
-                            {twinDetails && (
-                                <>
-                                    <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.12)' }} />
-                                    <Typography variant="h6" sx={{ 
-                                        color: 'text.primary', 
-                                        mb: 3,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1
-                                    }}>
-                                        <AccessTimeIcon sx={{ color: 'primary.main' }} />
-                                        Twin Timestamps
-                                    </Typography>
+                            <>
+                                <Divider sx={{ my: 3, borderColor: 'rgba(255, 255, 255, 0.12)' }} />
+                                <Typography variant="h6" sx={{ 
+                                    color: 'text.primary', 
+                                    mb: 3,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1
+                                }}>
+                                    <AccessTimeIcon sx={{ color: 'primary.main' }} />
+                                    Twin Timestamps
+                                </Typography>
 
-                                    {/* Timestamps */}
-                                    <Grid2 container spacing={2}>
-                                        <Grid2 size={6}>
-                                            <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: 1 }}>
-                                                <AccessTimeIcon sx={{ color: 'success.main', mb: 1 }} />
-                                                <Typography variant="caption1" sx={{ 
-                                                    color: 'text.secondary',
-                                                    display: 'block',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.08em',
-                                                    mb: 1
-                                                }}>
-                                                    Created
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: 'text.primary' }}>
-                                                    {isLoadingTwin 
-                                                        ? 'Loading...' 
-                                                        : twinDetails?.createdDate 
-                                                            ? formatDate(twinDetails.createdDate)
-                                                            : 'Not available'
-                                                    }
-                                                </Typography>
-                                            </Box>
-                                        </Grid2>
-                                        <Grid2 size={6}>
-                                            <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: 1 }}>
-                                                <UpdateIcon sx={{ color: 'warning.main', mb: 1 }} />
-                                                <Typography variant="caption1" sx={{ 
-                                                    color: 'text.secondary',
-                                                    display: 'block',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.08em',
-                                                    mb: 1
-                                                }}>
-                                                    Updated
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: 'text.primary' }}>
-                                                    {isLoadingTwin 
-                                                        ? 'Loading...' 
-                                                        : twinDetails?.modifiedDate 
-                                                            ? formatDate(twinDetails.modifiedDate)
-                                                            : 'Not available'
-                                                    }
-                                                </Typography>
-                                            </Box>
-                                        </Grid2>
+                                {/* Timestamps */}
+                                <Grid2 container spacing={2}>
+                                    <Grid2 size={6}>
+                                        <Box sx={{ 
+                                            textAlign: 'center', 
+                                            p: 2, 
+                                            backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+                                            borderRadius: 2,
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            backdropFilter: 'blur(20px)',
+                                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                border: '1px solid rgba(255, 255, 255, 0.25)',
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)'
+                                            }
+                                        }}>
+                                            <AccessTimeIcon sx={{ color: 'success.main', mb: 1 }} />
+                                            <Typography variant="caption1" sx={{ 
+                                                color: 'text.secondary',
+                                                display: 'block',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.08em',
+                                                mb: 1
+                                            }}>
+                                                Created
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.primary' }}>
+                                                {isLoadingTwin 
+                                                    ? 'Loading...' 
+                                                    : twinDetails?.createdDate 
+                                                        ? formatDate(twinDetails.createdDate)
+                                                        : 'Not yet created'
+                                                }
+                                            </Typography>
+                                        </Box>
                                     </Grid2>
-                                </>
-                            )}
+                                    <Grid2 size={6}>
+                                        <Box sx={{ 
+                                            textAlign: 'center', 
+                                            p: 2, 
+                                            backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+                                            borderRadius: 2,
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            backdropFilter: 'blur(20px)',
+                                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                border: '1px solid rgba(255, 255, 255, 0.25)',
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)'
+                                            }
+                                        }}>
+                                            <UpdateIcon sx={{ color: 'warning.main', mb: 1 }} />
+                                            <Typography variant="caption1" sx={{ 
+                                                color: 'text.secondary',
+                                                display: 'block',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.08em',
+                                                mb: 1
+                                            }}>
+                                                Updated
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.primary' }}>
+                                                {isLoadingTwin 
+                                                    ? 'Loading...' 
+                                                    : twinDetails?.modifiedDate 
+                                                        ? formatDate(twinDetails.modifiedDate)
+                                                        : 'Not yet created'
+                                                }
+                                            </Typography>
+                                        </Box>
+                                    </Grid2>
+                                </Grid2>
+                            </>
                         </CardContent>
                     </Card>
                 </Grid2>
@@ -703,6 +810,28 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                 </Grid2>
             </Grid2>
 
+            {/* Submodels Section */}
+            {twinDetails && (
+                <Card sx={{ 
+                    mt: 3,
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: 2
+                }}>
+                    <CardContent sx={{ p: 3 }}>
+                        <SubmodelViewer 
+                            twinDetails={twinDetails} 
+                            onViewFullDetails={(submodel, submodelId, semanticId) => {
+                                setSelectedSubmodel(submodel);
+                                setSelectedSubmodelId(submodelId);
+                                setSelectedSemanticId(semanticId);
+                                setSubmodelViewerOpen(true);
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Copy notification snackbar */}
             <Snackbar
                 open={copySnackbar.open}
@@ -731,6 +860,17 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                     {copySnackbar.message}
                 </Alert>
             </Snackbar>
+
+            {/* Submodel Viewer Dialog */}
+            {selectedSubmodel && (
+                <DarkSubmodelViewer
+                    open={submodelViewerOpen}
+                    onClose={() => setSubmodelViewerOpen(false)}
+                    submodel={selectedSubmodel}
+                    submodelId={selectedSubmodelId}
+                    semanticId={selectedSemanticId}
+                />
+            )}
         </Box>
         
     );

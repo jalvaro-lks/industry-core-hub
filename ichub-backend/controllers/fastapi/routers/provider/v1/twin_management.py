@@ -88,8 +88,8 @@ async def twin_management_get_serialized_part_twin(global_id: UUID) -> Optional[
     return twin_management_service.get_serialized_part_twin_details(global_id)
 
 @router.post("/serialized-part-twin", response_model=TwinRead, responses=exception_responses)
-async def twin_management_create_serialized_part_twin(serialized_part_twin_create: SerializedPartTwinCreate) -> TwinRead:
-    return twin_management_service.create_serialized_part_twin(serialized_part_twin_create)
+async def twin_management_create_serialized_part_twin(serialized_part_twin_create: SerializedPartTwinCreate, auto_create_serial_part: bool = Query(True, alias="autoCreatePartTypeInformation", description="Automatically create part type information submodel if not present.")) -> TwinRead:
+    return twin_management_service.create_serialized_part_twin(serialized_part_twin_create, auto_create_serial_part)
 
 @router.post("/twin-aspect", response_model=TwinAspectRead, responses=exception_responses)
 async def twin_management_create_twin_aspect(twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
