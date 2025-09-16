@@ -402,19 +402,21 @@ class PartManagementService():
             )
 
             # Partner catalog part not existing: check if we auto-generate
+            if not db_partner_catalog_part and not auto_generate_partner_part:
+                raise NotFoundError("No shared partner catalog part found for the given catalog part and business partner.")
+
             if not db_partner_catalog_part:
-                if auto_generate_partner_part and serialized_part_create.customer_part_id:
-                    # Create a new partner catalog part with the customer part ID
-                    db_partner_catalog_part = repos.partner_catalog_part_repository.create_new(
-                        business_partner_id=db_business_partner.id,
-                        catalog_part_id=db_catalog_part.id,
-                        customer_part_id=serialized_part_create.customer_part_id
-                    )
-                else:
-                    raise NotFoundError("No partner catalog part found for the given catalog part and business partner.")
+                if not serialized_part_create.customer_part_id:
+                    serialized_part_create.customer_part_id = f"{serialized_part_create.manufacturer_part_id}-{db_business_partner.bpnl}"
+                # Create a new partner catalog part with the customer part ID
+                db_partner_catalog_part = repos.partner_catalog_part_repository.create_new(
+                    business_partner_id=db_business_partner.id,
+                    catalog_part_id=db_catalog_part.id,
+                    customer_part_id=serialized_part_create.customer_part_id
+                )
             
-            # Partner catalog part exists            
-            elif serialized_part_create.customer_part_id and db_partner_catalog_part.customer_part_id != serialized_part_create.customer_part_id:
+            # Partner catalog part exists, make a control if the customer part id matches (if provided)            
+            if serialized_part_create.customer_part_id and db_partner_catalog_part.customer_part_id != serialized_part_create.customer_part_id:
                 # If the customer part ID is provided and does not match, raise an error
                 raise InvalidError(f"Customer part ID '{serialized_part_create.customer_part_id}' does not match existing partner catalog part with ID '{db_partner_catalog_part.customer_part_id}'.")
 

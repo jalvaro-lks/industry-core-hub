@@ -57,39 +57,39 @@ class SubmodelServiceManager:
         self.file_system.write(submodel_path,payload)
         self.logger.info(f"Submodel with id=[{submodel_id}] and semanticId=[{semantic_id}] uploaded successfully.")
 
-    def get_twin_aspect_document(self, global_id: UUID, semantic_id: str) -> Dict[str, Any]:
+    def get_twin_aspect_document(self, submodel_id: UUID, semantic_id: str) -> Dict[str, Any]:
         """Get a submodel from the service."""
         # Implementation for retrieving a submodel
-        if not isinstance(global_id, UUID):
+        if not isinstance(submodel_id, UUID):
             try:
-                global_id = UUID(global_id)
+                submodel_id = UUID(submodel_id)
             except ValueError:
-                raise InvalidError(f"Invalid UUID: {global_id}")
+                raise InvalidError(f"Invalid UUID: {submodel_id}")
         sha256_semantic_id = sha256(semantic_id.encode()).hexdigest()
-        self.logger.info(f"Retrieving submodel with Global ID: {global_id}")
+        self.logger.info(f"Retrieving submodel with Global ID: {submodel_id}")
         self.logger.debug(f"Semantic ID: {semantic_id}")
         self.logger.debug(f"SHA256 Semantic ID: {sha256_semantic_id}")
 
-        file_path = f"{sha256_semantic_id}/{global_id}.json"
+        file_path = f"{sha256_semantic_id}/{submodel_id}.json"
         if not self.file_system.exists(file_path):
             self.logger.error(f"Submodel file not found: {file_path}")
             raise NotFoundError(f"Submodel file not found: {file_path}")
         content = self.file_system.read(file_path)
         return content
 
-    def delete_twin_aspect_document(self, global_id: UUID, semantic_id: str) -> None:
+    def delete_twin_aspect_document(self, submodel_id: UUID, semantic_id: str) -> None:
         """Delete a submodel from the service."""
-        if not isinstance(global_id, UUID):
+        if not isinstance(submodel_id, UUID):
             try:
-                global_id = UUID(global_id)
+                submodel_id = UUID(submodel_id)
             except ValueError:
-                raise InvalidError(f"Invalid UUID: {global_id}")
+                raise InvalidError(f"Invalid UUID: {submodel_id}")
         sha256_semantic_id = sha256(semantic_id.encode()).hexdigest()
-        self.logger.info(f"Deleting submodel with Global ID: {global_id}")
+        self.logger.info(f"Deleting submodel with Global ID: {submodel_id}")
         self.logger.debug(f"Semantic ID: {semantic_id}")
         self.logger.debug(f"SHA256 Semantic ID: {sha256_semantic_id}")
         
-        file_path = f"{sha256_semantic_id}/{global_id}.json"
+        file_path = f"{sha256_semantic_id}/{submodel_id}.json"
         if self.file_system.exists(file_path):
             self.file_system.delete(file_path)
             self.logger.info("Submodel deleted successfully.")
