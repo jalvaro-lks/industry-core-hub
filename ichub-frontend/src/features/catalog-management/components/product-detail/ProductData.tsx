@@ -726,9 +726,18 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                                             <Box sx={{ 
                                                 textAlign: 'center', 
                                                 p: 1.5, 
-                                                backgroundColor: 'rgba(255, 255, 255, 0.02)', 
-                                                borderRadius: 1,
-                                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                                                backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+                                                borderRadius: 2,
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                backdropFilter: 'blur(20px)',
+                                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)'
+                                                }
                                             }}>
                                                 <Typography variant="caption1" sx={{ 
                                                     color: 'text.secondary',
@@ -746,9 +755,18 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                                             <Box sx={{ 
                                                 textAlign: 'center', 
                                                 p: 1.5, 
-                                                backgroundColor: 'rgba(255, 255, 255, 0.02)', 
-                                                borderRadius: 1,
-                                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                                                backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+                                                borderRadius: 2,
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                backdropFilter: 'blur(20px)',
+                                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)'
+                                                }
                                             }}>
                                                 <Typography variant="caption1" sx={{ 
                                                     color: 'text.secondary',
@@ -766,9 +784,18 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                                             <Box sx={{ 
                                                 textAlign: 'center', 
                                                 p: 1.5, 
-                                                backgroundColor: 'rgba(255, 255, 255, 0.02)', 
-                                                borderRadius: 1,
-                                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                                                backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+                                                borderRadius: 2,
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                backdropFilter: 'blur(20px)',
+                                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)'
+                                                }
                                             }}>
                                                 <Typography variant="caption1" sx={{ 
                                                     color: 'text.secondary',
@@ -786,9 +813,18 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                                             <Box sx={{ 
                                                 textAlign: 'center', 
                                                 p: 1.5, 
-                                                backgroundColor: 'rgba(255, 255, 255, 0.02)', 
-                                                borderRadius: 1,
-                                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                                                backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+                                                borderRadius: 2,
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                backdropFilter: 'blur(20px)',
+                                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)'
+                                                }
                                             }}>
                                                 <Typography variant="caption1" sx={{ 
                                                     color: 'text.secondary',

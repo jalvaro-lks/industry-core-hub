@@ -272,10 +272,16 @@ class DtrProviderManager:
         asset_kind_enum = None
         if asset_kind:
             try:
-                # AssetKind enum values are typically uppercase
-                asset_kind_enum = AssetKind(asset_kind.upper())
+                # AssetKind enum values are in proper case (Instance, Type, NotApplicable)
+                # First try the exact value, then try title case
+                if asset_kind in [e.value for e in AssetKind]:
+                    asset_kind_enum = AssetKind(asset_kind)
+                else:
+                    # Try title case for common variations
+                    asset_kind_title = asset_kind.title()
+                    asset_kind_enum = AssetKind(asset_kind_title)
             except ValueError:
-                logger.warning(f"Invalid asset_kind value: {asset_kind}.")
+                logger.warning(f"Invalid asset_kind value: {asset_kind}. Valid values are: {[e.value for e in AssetKind]}")
         
         # Construct the BPN list from customer_part_ids and ensure manufacturer_id is included
         bpn_list = list(customer_part_ids.values()) if customer_part_ids else []

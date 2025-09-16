@@ -27,6 +27,13 @@ import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import AddIcon from '@mui/icons-material/Add';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -60,6 +67,26 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
   const [twinSharingId, setTwinSharingId] = useState<number | null>(null);
   const [twinUnsharingId, setTwinUnsharingId] = useState<number | null>(null);
   const [partDeletingId, setPartDeletingId] = useState<number | null>(null);
+  const [errorSnackbar, setErrorSnackbar] = useState({ open: false, message: '' });
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean;
+    row: SerializedPartWithStatus | null;
+  }>({ open: false, row: null });
+
+  // Helper function to show error messages
+  const showError = (message: string) => {
+    setErrorSnackbar({ open: true, message });
+  };
+
+  // Show delete confirmation dialog
+  const showDeleteConfirmation = (row: SerializedPartWithStatus) => {
+    setDeleteConfirmDialog({ open: true, row });
+  };
+
+  // Close delete confirmation dialog
+  const closeDeleteConfirmation = () => {
+    setDeleteConfirmDialog({ open: false, row: null });
+  };
 
   // Determine twin status based on twin data
   const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string } => {
@@ -152,6 +179,22 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       setRows(rowsWithStatus);
     } catch (error) {
       console.error("Error creating twin:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to register twin. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Registration failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Registration failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Registration failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setTwinCreatingId(null);
     }
@@ -187,6 +230,22 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       setRows(rowsWithStatus);
     } catch (error) {
       console.error("Error sharing twin:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to share twin. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Sharing failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Sharing failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Sharing failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setTwinSharingId(null);
     }
@@ -238,6 +297,22 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       setRows(rowsWithStatus);
     } catch (error) {
       console.error("Error unsharing twin:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to unshare twin. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Unsharing failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Unsharing failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Unsharing failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setTwinUnsharingId(null);
     }
@@ -249,6 +324,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     
     if (!part || row.id === undefined || row.id === null) {
       console.error("No part or row ID found for deletion");
+      showError("Unable to delete: invalid part data");
       return;
     }
     
@@ -276,8 +352,27 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
 
       setRows(rowsWithStatus);
       console.log("Data refreshed after deletion");
+      
+      // Close the confirmation dialog
+      closeDeleteConfirmation();
     } catch (error) {
       console.error("Error deleting serialized part:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to delete part. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Deletion failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Deletion failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Deletion failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setPartDeletingId(null);
     }
@@ -288,7 +383,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     {
       field: 'twinStatus',
       headerName: 'Status',
-      width: 100,
+      width: 140,
       headerAlign: 'center',
       align: 'center',
       renderCell: (params) => (
@@ -381,7 +476,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
                 size="small"
                 onClick={() => {
                   console.log("Delete button clicked - registered state");
-                  handleDeleteSerializedPart(row);
+                  showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}
                 sx={{
@@ -449,7 +544,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
                 size="small"
                 onClick={() => {
                   console.log("Delete button clicked - shared state");
-                  handleDeleteSerializedPart(row);
+                  showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}
                 sx={{
@@ -922,6 +1017,154 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
         open={addDialogOpen}
         onClose={handleCloseAddDialog}
       /> */}
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={errorSnackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setErrorSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setErrorSnackbar(prev => ({ ...prev, open: false }))}
+          severity="error"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {errorSnackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmDialog.open}
+        onClose={closeDeleteConfirmation}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            background: 'rgba(35, 35, 38, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4)',
+          }
+        }}
+      >
+        <DialogTitle id="delete-dialog-title" sx={{ 
+          pb: 1,
+          pt: 3,
+          px: 3,
+          color: 'white',
+          fontSize: '1.5rem',
+          fontWeight: 600,
+        }}>
+          Delete Serialized Part
+        </DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <DialogContentText id="delete-dialog-description" sx={{ 
+            color: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '1rem',
+            mb: 2
+          }}>
+            Are you sure you want to delete this serialized part?
+          </DialogContentText>
+          {deleteConfirmDialog.row && (
+            <Box sx={{ 
+              mt: 2,
+              p: 2,
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}>
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.9)',
+                mb: 1,
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ fontWeight: 600 }}>Part Instance ID:</span>
+                <span>{deleteConfirmDialog.row.partInstanceId}</span>
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.9)',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ fontWeight: 600 }}>Manufacturer ID:</span>
+                <span>{deleteConfirmDialog.row.manufacturerId}</span>
+              </Typography>
+            </Box>
+          )}
+          <Typography variant="body2" sx={{ 
+            mt: 2,
+            color: '#f44336',
+            fontWeight: 500,
+            textAlign: 'center',
+            p: 1,
+            borderRadius: '8px',
+            background: 'rgba(244, 67, 54, 0.1)',
+            border: '1px solid rgba(244, 67, 54, 0.2)',
+          }}>
+            ⚠️ This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ 
+          p: 3,
+          pt: 1,
+          gap: 2,
+        }}>
+          <Button 
+            onClick={closeDeleteConfirmation}
+            variant="outlined"
+            sx={{
+              color: 'rgba(255, 255, 255, 0.8)',
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: '10px',
+              px: 3,
+              py: 1,
+              fontWeight: 500,
+              '&:hover': {
+                color: 'rgba(255, 255, 255, 0.9)',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                background: 'rgba(255, 255, 255, 0.05)',
+              }
+            }}
+          >
+            CANCEL
+          </Button>
+          <Button 
+            onClick={() => {
+              if (deleteConfirmDialog.row) {
+                handleDeleteSerializedPart(deleteConfirmDialog.row);
+              }
+            }}
+            variant="contained"
+            disabled={partDeletingId !== null}
+            sx={{
+              background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)',
+              color: 'white',
+              borderRadius: '10px',
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              boxShadow: '0 4px 16px rgba(211, 47, 47, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%)',
+                boxShadow: '0 6px 20px rgba(211, 47, 47, 0.4)',
+              },
+              '&:disabled': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.3)',
+              }
+            }}
+          >
+            {partDeletingId === deleteConfirmDialog.row?.id ? 'DELETING...' : 'DELETE'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

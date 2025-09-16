@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Box,
     Card,
@@ -29,7 +29,8 @@ import {
     Grid2,
     Chip,
     Tooltip,
-    Button
+    Button,
+    IconButton
 } from '@mui/material';
 import {
     Schema as SchemaIcon,
@@ -37,7 +38,9 @@ import {
     DataObject as DataObjectIcon,
     AccessTime as AccessTimeIcon,
     Update as UpdateIcon,
-    Tag as TagIcon
+    Tag as TagIcon,
+    ChevronLeft as ChevronLeftIcon,
+    ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { CatalogPartTwinDetailsRead } from '../../types/twin-types';
 
@@ -57,6 +60,23 @@ interface SubmodelViewerProps {
 }
 
 const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFullDetails }) => {
+    const [currentStartIndex, setCurrentStartIndex] = useState(0);
+    const submodelsPerPage = 3;
+    const submodelEntries = Object.entries(twinDetails.aspects || {});
+    const totalSubmodels = submodelEntries.length;
+    const showCarousel = totalSubmodels > 3;
+
+    const handlePrevious = () => {
+        setCurrentStartIndex(prev => Math.max(0, prev - submodelsPerPage));
+    };
+
+    const handleNext = () => {
+        setCurrentStartIndex(prev => Math.min(totalSubmodels - submodelsPerPage, prev + submodelsPerPage));
+    };
+
+    const visibleSubmodels = showCarousel 
+        ? submodelEntries.slice(currentStartIndex, currentStartIndex + submodelsPerPage)
+        : submodelEntries;
 
     const getStatusLabel = (status: number): { label: string; color: string } => {
         switch (status) {
@@ -111,7 +131,7 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
         }
     };
 
-    if (!twinDetails.aspects || Object.keys(twinDetails.aspects).length === 0) {
+    if (!twinDetails?.aspects || Object.keys(twinDetails.aspects).length === 0) {
         return (
             <Card sx={{
                 backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -133,19 +153,75 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
 
     return (
         <Box sx={{ width: '100%' }}>
-            <Typography variant="h6" sx={{ 
-                color: 'text.primary', 
-                mb: 3,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1
+            <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: 3 
             }}>
-                <SchemaIcon sx={{ color: 'primary.main' }} />
-                Digital Twin Submodels ({Object.keys(twinDetails.aspects).length})
-            </Typography>
+                <Typography variant="h6" sx={{ 
+                    color: 'text.primary',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                }}>
+                    <SchemaIcon sx={{ color: 'primary.main' }} />
+                    Digital Twin Submodels ({totalSubmodels})
+                </Typography>
+                
+                {showCarousel && (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', mr: 1 }}>
+                            {currentStartIndex + 1}-{Math.min(currentStartIndex + submodelsPerPage, totalSubmodels)} of {totalSubmodels}
+                        </Typography>
+                        <IconButton
+                            onClick={handlePrevious}
+                            disabled={currentStartIndex === 0}
+                            size="small"
+                            sx={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                color: 'white',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                                '&:disabled': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                }
+                            }}
+                        >
+                            <ChevronLeftIcon />
+                        </IconButton>
+                        <IconButton
+                            onClick={handleNext}
+                            disabled={currentStartIndex + submodelsPerPage >= totalSubmodels}
+                            size="small"
+                            sx={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                color: 'white',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                },
+                                '&:disabled': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    color: 'rgba(255, 255, 255, 0.3)',
+                                }
+                            }}
+                        >
+                            <ChevronRightIcon />
+                        </IconButton>
+                    </Box>
+                )}
+            </Box>
 
-            <Grid2 container spacing={2}>
-                {Object.entries(twinDetails.aspects).map(([semanticId, aspect]) => {
+            <Box sx={{ 
+                overflow: 'hidden',
+                transition: 'all 0.3s ease-in-out'
+            }}>
+                <Grid2 container spacing={2} sx={{
+                    transition: 'transform 0.3s ease-in-out'
+                }}>
+                    {visibleSubmodels.map(([semanticId, aspect]) => {
                     const registration = aspect.registrations ? Object.values(aspect.registrations)[0] : undefined;
 
                     return (
@@ -322,7 +398,8 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
                         </Grid2>
                     );
                 })}
-            </Grid2>
+                </Grid2>
+            </Box>
         </Box>
     );
 };
