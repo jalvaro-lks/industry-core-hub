@@ -231,13 +231,7 @@ const ProductsDetails = () => {
         break;
     }
 
-    // If twin details indicate a successful DTR registration, show Registered optimistically
-    if (twinDetails?.registrations) {
-      const anyRegistered = Object.values(twinDetails.registrations).some((isRegistered) => !!isRegistered);
-      if (anyRegistered) {
-        statusVariant = StatusVariants.registered;
-      }
-    }
+    // Note: No optimistic fallback here. The chip reflects exactly the backend-provided status.
     
     return <CardChip 
       status={statusVariant} 
