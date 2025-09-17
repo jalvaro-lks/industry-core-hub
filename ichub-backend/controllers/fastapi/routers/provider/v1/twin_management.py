@@ -80,8 +80,41 @@ async def twin_management_share_catalog_part_twin(catalog_part_twin_share: Catal
         return JSONResponse(status_code=204, content={"description":"Catalog part twin already shared"})
 
 @router.get("/serialized-part-twin", response_model=List[SerializedPartTwinRead], responses=exception_responses)
-async def twin_management_get_all_serialized_part_twins(include_data_exchange_agreements: bool = False) -> List[SerializedPartTwinRead]:
-    return twin_management_service.get_serialized_part_twins(include_data_exchange_agreements=include_data_exchange_agreements)
+async def twin_management_get_all_serialized_part_twins(
+    include_data_exchange_agreements: bool = False,
+    manufacturerId: Optional[str] = None,
+    manufacturerPartId: Optional[str] = None,
+    customerPartId: Optional[str] = None,
+    partInstanceId: Optional[str] = None,
+    van: Optional[str] = None,
+    businessPartnerNumber: Optional[str] = None
+) -> List[SerializedPartTwinRead]:
+    from models.services.provider.part_management import SerializedPartQuery
+    
+    # Create a dynamic query object using all provided filter parameters
+    query_data = {}
+    
+    # Map API parameter names to Pydantic field aliases
+    filter_mapping = {
+        "manufacturerId": manufacturerId,
+        "manufacturerPartId": manufacturerPartId,
+        "customerPartId": customerPartId,
+        "partInstanceId": partInstanceId,
+        "van": van,
+        "businessPartnerNumber": businessPartnerNumber
+    }
+    
+    # Only include non-None values in the query
+    for field_name, value in filter_mapping.items():
+        if value is not None:
+            query_data[field_name] = value
+    
+    query = SerializedPartQuery(**query_data)
+    
+    return twin_management_service.get_serialized_part_twins(
+        serialized_part_query=query,
+        include_data_exchange_agreements=include_data_exchange_agreements
+    )
 
 @router.get("/serialized-part-twin/{global_id}", response_model=Optional[SerializedPartTwinDetailsRead], responses=exception_responses)
 async def twin_management_get_serialized_part_twin(global_id: UUID) -> Optional[SerializedPartTwinDetailsRead]:

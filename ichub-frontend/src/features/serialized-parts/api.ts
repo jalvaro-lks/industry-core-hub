@@ -29,6 +29,14 @@ const SERIALIZED_PART_READ_BASE_PATH = '/part-management/serialized-part';
 const SERIALIZED_PART_TWIN_BASE_PATH = '/twin-management/serialized-part-twin';
 const backendUrl = getIchubBackendUrl();
 
+// Simple cache for twins to avoid redundant API calls
+const twinsCache = new Map<string, { data: SerializedPartTwinRead[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const getCacheKey = (manufacturerId?: string, manufacturerPartId?: string) => {
+  return `${manufacturerId || 'all'}-${manufacturerPartId || 'all'}`;
+};
+
 export const fetchAllSerializedParts = async (): Promise<SerializedPart[]> => {
   const response = await axios.get<SerializedPart[]>(`${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}`);
   return response.data;
@@ -77,20 +85,39 @@ export const fetchAllSerializedPartTwins = async (
   manufacturerId?: string,
   manufacturerPartId?: string
 ): Promise<SerializedPartTwinRead[]> => {
-  const response = await axios.get<SerializedPartTwinRead[]>(
-    `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?include_data_exchange_agreements=true`
-  );
+  // Check cache first
+  const cacheKey = getCacheKey(manufacturerId, manufacturerPartId);
+  const cached = twinsCache.get(cacheKey);
+  const now = Date.now();
   
-  // Filter twins by manufacturerId and manufacturerPartId if provided
-  let twins = response.data;
+  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+    console.log('Returning cached twins data for:', cacheKey);
+    return cached.data;
+  }
+  
+  // Build query parameters to filter on the server side
+  const params = new URLSearchParams();
+  params.append('include_data_exchange_agreements', 'true');
+  
   if (manufacturerId) {
-    twins = twins.filter(twin => twin.manufacturerId === manufacturerId);
+    params.append('manufacturerId', manufacturerId);
   }
   if (manufacturerPartId) {
-    twins = twins.filter(twin => twin.manufacturerPartId === manufacturerPartId);
+    params.append('manufacturerPartId', manufacturerPartId);
   }
   
-  return twins;
+  console.log('Fetching twins from API for:', cacheKey);
+  const response = await axios.get<SerializedPartTwinRead[]>(
+    `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?${params.toString()}`
+  );
+  
+  // Cache the result
+  twinsCache.set(cacheKey, {
+    data: response.data,
+    timestamp: now
+  });
+  
+  return response.data;
 };
 
 export const unshareSerializedPartTwin = async (

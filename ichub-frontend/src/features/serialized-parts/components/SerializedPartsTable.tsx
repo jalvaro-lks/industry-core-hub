@@ -35,7 +35,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import IosShare from '@mui/icons-material/IosShare';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { SerializedPart } from '../types';
 import { SerializedPartTwinRead } from '../types/twin-types';
 import { createSerializedPartTwin, shareSerializedPartTwin, unshareSerializedPartTwin, deleteSerializedPart, fetchAllSerializedPartTwins } from '../api';
@@ -61,6 +61,23 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   const [twinUnsharingId, setTwinUnsharingId] = useState<number | null>(null);
   const [partDeletingId, setPartDeletingId] = useState<number | null>(null);
 
+  // Helper function to fetch twins for all unique parts in the table
+  const fetchTwinsForParts = useCallback(async (): Promise<SerializedPartTwinRead[]> => {
+    const uniqueParts = Array.from(
+      new Set(parts.map(p => `${p.manufacturerId}-${p.manufacturerPartId}`))
+    ).map(key => {
+      const [manufacturerId, manufacturerPartId] = key.split('-');
+      return { manufacturerId, manufacturerPartId };
+    });
+
+    const allTwins: SerializedPartTwinRead[] = [];
+    for (const { manufacturerId, manufacturerPartId } of uniqueParts) {
+      const twins = await fetchAllSerializedPartTwins(manufacturerId, manufacturerPartId);
+      allTwins.push(...twins);
+    }
+    return allTwins;
+  }, [parts]);
+
   // Determine twin status based on twin data
   const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string } => {
     const twin = twins.find(
@@ -83,12 +100,12 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   useEffect(() => {
     const loadTwinData = async () => {
       try {
-        // Fetch all twins to determine status
-        const twins = await fetchAllSerializedPartTwins();
+        // Fetch twins for the specific parts being displayed
+        const allTwins = await fetchTwinsForParts();
         
         // Merge serialized parts with twin status
         const rowsWithStatus = parts.map((serializedPart, index) => {
-          const { status, globalId } = determineTwinStatus(serializedPart, twins);
+          const { status, globalId } = determineTwinStatus(serializedPart, allTwins);
           return {
             ...serializedPart,
             id: serializedPart.id || index,
@@ -115,7 +132,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     };
 
     loadTwinData();
-  }, [parts]);
+  }, [parts, fetchTwinsForParts]);
 
   const handleCreateTwin = async (row: SerializedPartWithStatus) => {
     setTwinCreatingId(row.id);
@@ -126,10 +143,11 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         partInstanceId: row.partInstanceId,
       });
       
-      // Refresh twin data after successful creation
-      const twins = await fetchAllSerializedPartTwins();
+      // Refresh twin data after successful creation - reload all twins for this table
+      const allTwins = await fetchTwinsForParts();
+      
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, twins);
+        const { status, globalId } = determineTwinStatus(serializedPart, allTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
@@ -159,7 +177,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful share
-      const twins = await fetchAllSerializedPartTwins();
+      const twins = await fetchTwinsForParts();
       const rowsWithStatus = parts.map((serializedPart, index) => {
         const { status, globalId } = determineTwinStatus(serializedPart, twins);
         return {
@@ -185,7 +203,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     setTwinUnsharingId(row.id);
     try {
       // Find the twin to get the AAS ID
-      const twins = await fetchAllSerializedPartTwins();
+      const twins = await fetchTwinsForParts();
       const twin = twins.find(
         (t) => t.manufacturerId === row.manufacturerId &&
                t.manufacturerPartId === row.manufacturerPartId &&
@@ -207,7 +225,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful unshare
-      const updatedTwins = await fetchAllSerializedPartTwins();
+      const updatedTwins = await fetchTwinsForParts();
       const rowsWithStatus = parts.map((serializedPart, index) => {
         const { status, globalId } = determineTwinStatus(serializedPart, updatedTwins);
         return {
@@ -243,7 +261,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       console.log("Delete API call successful");
       
       // Refresh data after successful deletion
-      const twins = await fetchAllSerializedPartTwins();
+      const twins = await fetchTwinsForParts();
       const rowsWithStatus = parts.map((serializedPart, index) => {
         const { status, globalId } = determineTwinStatus(serializedPart, twins);
         return {
