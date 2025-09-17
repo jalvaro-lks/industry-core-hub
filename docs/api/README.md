@@ -4,11 +4,14 @@ Different API Collection for the Industry Core Hub Project.
 All the API Collection have been develop with the [Bruno](https://www.usebruno.com/) open source tool.
 
 ## Backend API
-The Backend API is divided in four different fouldrs.
+The Backend API is divided in seven different folders.
 * **Part Management**: Management of part metadata - including catalog parts, serialized parts, JIS parts and batches.
 * **Partner Management**: Management of master data around business partners - including business partners, data exchange agreements and contracts.
 * **Twin Management**: Management of how product information can be managed and shared.
-* **Submodel Dispatcher**: Internal API called by EDC Data Planes in order the deliver data of of the internall used Submodel Service
+* **Submodel Dispatcher**: Internal API called by EDC Data Planes or Admins in order the deliver data of of the internal used Submodel Service.
+* **Sharing Functionality**: Sharing functionality for catalog part twins - including sharing of parts with business partners and automatic generation of digital twins and submodels.
+* **Open Connection Management**: Handles the connections from the consumer modules, for specific services like digital twin registry and data endpoints.
+* **Part Discovery Management**: Management of the discovery of parts, searching for digital twins and digital twins registries.
 
 > **Note**
 >
