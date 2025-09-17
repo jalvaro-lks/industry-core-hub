@@ -27,6 +27,14 @@ import {
   IconButton,
   Tooltip,
   Button,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import ViewListIcon from '@mui/icons-material/ViewList';
@@ -56,27 +64,63 @@ interface SerializedPartsTableProps {
 
 const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) => {
   const [rows, setRows] = useState<SerializedPartWithStatus[]>([]);
+  const [allTwins, setAllTwins] = useState<SerializedPartTwinRead[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true); // For initial data load
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false); // For refresh operations
   const [twinCreatingId, setTwinCreatingId] = useState<number | null>(null);
   const [twinSharingId, setTwinSharingId] = useState<number | null>(null);
   const [twinUnsharingId, setTwinUnsharingId] = useState<number | null>(null);
   const [partDeletingId, setPartDeletingId] = useState<number | null>(null);
+  const [errorSnackbar, setErrorSnackbar] = useState({ open: false, message: '' });
+  const [successSnackbar, setSuccessSnackbar] = useState({ open: false, message: '' });
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean;
+    row: SerializedPartWithStatus | null;
+  }>({ open: false, row: null });
 
-  // Helper function to fetch twins for all unique parts in the table
-  const fetchTwinsForParts = useCallback(async (): Promise<SerializedPartTwinRead[]> => {
-    const uniqueParts = Array.from(
-      new Set(parts.map(p => `${p.manufacturerId}-${p.manufacturerPartId}`))
-    ).map(key => {
-      const [manufacturerId, manufacturerPartId] = key.split('-');
-      return { manufacturerId, manufacturerPartId };
-    });
+  // Helper function to show error messages
+  const showError = (message: string) => {
+    setErrorSnackbar({ open: true, message });
+  };
 
-    const allTwins: SerializedPartTwinRead[] = [];
-    for (const { manufacturerId, manufacturerPartId } of uniqueParts) {
-      const twins = await fetchAllSerializedPartTwins(manufacturerId, manufacturerPartId);
-      allTwins.push(...twins);
+  // Helper function to show success messages
+  const showSuccess = (message: string) => {
+    setSuccessSnackbar({ open: true, message });
+  };
+
+  // Show delete confirmation dialog
+  const showDeleteConfirmation = (row: SerializedPartWithStatus) => {
+    setDeleteConfirmDialog({ open: true, row });
+  };
+
+  // Close delete confirmation dialog
+  const closeDeleteConfirmation = () => {
+    setDeleteConfirmDialog({ open: false, row: null });
+  };
+
+  // Fetch twins only once and cache them in state
+  const fetchTwinsOnce = useCallback(async (): Promise<SerializedPartTwinRead[]> => {
+    console.log('Fetching all twins for general serialized parts view (once)');
+    try {
+      const twins = await fetchAllSerializedPartTwins();
+      setAllTwins(twins);
+      return twins;
+    } catch (error) {
+      console.error('Error fetching all twins:', error);
+      return [];
     }
-    return allTwins;
-  }, [parts]);
+  }, []); // No dependencies - this function should be stable
+
+  // Helper function to get relevant twins from cached data
+  const getRelevantTwins = useCallback((twins: SerializedPartTwinRead[]): SerializedPartTwinRead[] => {
+    return twins.filter(twin => 
+      parts.some(part => 
+        twin.manufacturerId === part.manufacturerId &&
+        twin.manufacturerPartId === part.manufacturerPartId &&
+        twin.partInstanceId === part.partInstanceId
+      )
+    );
+  }, [parts]); // Only depend on parts
 
   // Determine twin status based on twin data
   const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string } => {
@@ -100,12 +144,20 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   useEffect(() => {
     const loadTwinData = async () => {
       try {
-        // Fetch twins for the specific parts being displayed
-        const allTwins = await fetchTwinsForParts();
+        // Only fetch if we don't have cached twins or parts changed
+        let twins = allTwins;
+        if (twins.length === 0) {
+          console.log('Fetching all twins for general serialized parts view (initial load)');
+          setIsInitialLoading(true);
+          twins = await fetchTwinsOnce();
+        }
+        
+        // Get relevant twins for current parts
+        const relevantTwins = getRelevantTwins(twins);
         
         // Merge serialized parts with twin status
         const rowsWithStatus = parts.map((serializedPart, index) => {
-          const { status, globalId } = determineTwinStatus(serializedPart, allTwins);
+          const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
           return {
             ...serializedPart,
             id: serializedPart.id || index,
@@ -128,11 +180,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           businessPartnerBpnl: serializedPart.businessPartner.bpnl,
         }));
         setRows(rowsWithoutStatus);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
 
     loadTwinData();
-  }, [parts, fetchTwinsForParts]);
+  }, [parts, allTwins, fetchTwinsOnce, getRelevantTwins]);
 
   const handleCreateTwin = async (row: SerializedPartWithStatus) => {
     setTwinCreatingId(row.id);
@@ -143,11 +197,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         partInstanceId: row.partInstanceId,
       });
       
-      // Refresh twin data after successful creation - reload all twins for this table
-      const allTwins = await fetchTwinsForParts();
+      // Refresh twin data after successful creation - re-fetch all twins to get the new one
+      console.log('Refreshing twins after twin creation');
+      const updatedTwins = await fetchTwinsOnce();
+      const relevantTwins = getRelevantTwins(updatedTwins);
       
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, allTwins);
+        const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
@@ -158,8 +214,27 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         };
       });
       setRows(rowsWithStatus);
+      
+      // Show success message
+      showSuccess('Twin registered successfully!');
     } catch (error) {
       console.error("Error creating twin:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to register twin. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Registration failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Registration failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Registration failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setTwinCreatingId(null);
     }
@@ -177,9 +252,12 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful share
-      const twins = await fetchTwinsForParts();
+      console.log('Refreshing twins after twin sharing');
+      const updatedTwins = await fetchTwinsOnce();
+      const relevantTwins = getRelevantTwins(updatedTwins);
+      
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, twins);
+        const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
@@ -190,8 +268,27 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         };
       });
       setRows(rowsWithStatus);
+      
+      // Show success message
+      showSuccess('Twin shared successfully!');
     } catch (error) {
       console.error("Error sharing twin:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to share twin. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Sharing failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Sharing failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Sharing failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setTwinSharingId(null);
     }
@@ -202,10 +299,10 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     
     setTwinUnsharingId(row.id);
     try {
-      // Find the twin to get the AAS ID
-      const twins = await fetchTwinsForParts();
-      const twin = twins.find(
-        (t) => t.manufacturerId === row.manufacturerId &&
+      // Find the twin to get the AAS ID from cached twins
+      const relevantTwins = getRelevantTwins(allTwins);
+      const twin = relevantTwins.find(
+        (t: SerializedPartTwinRead) => t.manufacturerId === row.manufacturerId &&
                t.manufacturerPartId === row.manufacturerPartId &&
                t.partInstanceId === row.partInstanceId
       );
@@ -216,7 +313,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       }
 
       // Get all business partner numbers that the twin is currently shared with
-      const businessPartnerNumbers = twin.shares?.map(share => share.businessPartner.bpnl) || [];
+      const businessPartnerNumbers = twin.shares?.map((share) => share.businessPartner.bpnl) || [];
 
       await unshareSerializedPartTwin({
         aasId: twin.dtrAasId.toString(),
@@ -225,9 +322,12 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful unshare
-      const updatedTwins = await fetchTwinsForParts();
+      console.log('Refreshing twins after twin unsharing');
+      const updatedTwins = await fetchTwinsOnce();
+      const updatedRelevantTwins = getRelevantTwins(updatedTwins);
+      
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, updatedTwins);
+        const { status, globalId } = determineTwinStatus(serializedPart, updatedRelevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
@@ -238,15 +338,35 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         };
       });
       setRows(rowsWithStatus);
+      
+      // Show success message
+      showSuccess('Twin unshared successfully!');
     } catch (error) {
       console.error("Error unsharing twin:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to unshare twin. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Unsharing failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Unsharing failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Unsharing failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setTwinUnsharingId(null);
     }
   };
 
+  // Perform the actual deletion after confirmation
   const handleDeleteSerializedPart = async (row: SerializedPartWithStatus) => {
-    console.log("Delete button clicked for row:", row);
+    console.log("Delete confirmed for row:", row);
     console.log("Row ID:", row.id, "Part Instance ID:", row.partInstanceId);
     
     if (row.id === undefined || row.id === null) {
@@ -261,9 +381,12 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       console.log("Delete API call successful");
       
       // Refresh data after successful deletion
-      const twins = await fetchTwinsForParts();
+      console.log('Refreshing twins after part deletion');
+      const updatedTwins = await fetchTwinsOnce();
+      const relevantTwins = getRelevantTwins(updatedTwins);
+      
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, twins);
+        const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
@@ -275,8 +398,30 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       setRows(rowsWithStatus);
       console.log("Data refreshed after deletion");
+      
+      // Show success message
+      showSuccess('Serialized part deleted successfully!');
+      
+      // Close the confirmation dialog
+      closeDeleteConfirmation();
     } catch (error) {
       console.error("Error deleting serialized part:", error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to delete part. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Deletion failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Deletion failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Deletion failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
     } finally {
       setPartDeletingId(null);
     }
@@ -284,12 +429,46 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
   const handleRefresh = async () => {
     console.log('Refresh button clicked');
-    // Trigger the parent to refresh the serialized parts data
-    if (onRefresh) {
-      console.log('Calling onRefresh callback to fetch fresh serialized parts');
-      onRefresh();
-    } else {
-      console.warn('No onRefresh callback provided');
+    
+    // Set refresh loading state (doesn't show overlay)
+    setIsRefreshing(true);
+    
+    try {
+      // Refresh twins data first
+      console.log('Refreshing twins data');
+      await fetchTwinsOnce();
+      console.log('Twins data refreshed successfully');
+      
+      // Trigger the parent to refresh the serialized parts data
+      if (onRefresh) {
+        console.log('Calling onRefresh callback to fetch fresh serialized parts');
+        onRefresh();
+      } else {
+        console.warn('No onRefresh callback provided');
+      }
+      
+      // Show success message
+      showSuccess('Data refreshed successfully!');
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to refresh data. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Refresh failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Refresh failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Refresh failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      showError(errorMessage);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -316,7 +495,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     {
       field: 'twinStatus',
       headerName: 'Status',
-      width: 100,
+      width: 140,
       headerAlign: 'center',
       align: 'center',
       renderCell: (params) => (
@@ -410,7 +589,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                 size="small"
                 onClick={() => {
                   console.log("Delete button clicked - registered state");
-                  handleDeleteSerializedPart(row);
+                  showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}
                 sx={{
@@ -478,7 +657,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                 size="small"
                 onClick={() => {
                   console.log("Delete button clicked - shared state");
-                  handleDeleteSerializedPart(row);
+                  showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}
                 sx={{
@@ -551,7 +730,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     {
       field: 'category',
       headerName: 'Category',
-      width: 100,
+      width: 140,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
           <Typography 
@@ -755,8 +934,9 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
             
             <Button
               variant="contained"
-              startIcon={<RefreshIcon />}
+              startIcon={isRefreshing ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <RefreshIcon />}
               onClick={handleRefresh}
+              disabled={isRefreshing}
               sx={{ 
                 background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
                 borderRadius: '10px',
@@ -768,10 +948,15 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                   transform: 'translateY(-1px)',
                   boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
                 },
+                '&:disabled': {
+                  background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                  opacity: 0.7,
+                  transform: 'none',
+                },
                 transition: 'all 0.2s ease-in-out',
               }}
             >
-              Refresh
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           </Box>
         </Box>
@@ -953,7 +1138,33 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                 },
               },
             }}
+            loading={isInitialLoading}
             slots={{
+              loadingOverlay: () => (
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  height: '100%',
+                  gap: 3,
+                  p: 4,
+                }}>
+                  <CircularProgress 
+                    size={60} 
+                    sx={{ 
+                      color: '#1976d2',
+                      mb: 2,
+                    }} 
+                  />
+                  <Typography variant="h6" sx={{ color: 'rgb(248, 249, 250)', fontWeight: 600 }}>
+                    Loading twins data...
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(248, 249, 250, 0.6)', textAlign: 'center', maxWidth: 300 }}>
+                    Fetching twin information for serialized parts
+                  </Typography>
+                </Box>
+              ),
               noRowsOverlay: () => (
                 <Box sx={{ 
                   display: 'flex', 
@@ -988,6 +1199,171 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           />
         </Box>
       </Paper>
+      
+      {/* Error Snackbar */}
+      <Snackbar
+        open={errorSnackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setErrorSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setErrorSnackbar(prev => ({ ...prev, open: false }))}
+          severity="error"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {errorSnackbar.message}
+        </Alert>
+      </Snackbar>
+      
+      {/* Success Snackbar */}
+      <Snackbar
+        open={successSnackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSuccessSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSuccessSnackbar(prev => ({ ...prev, open: false }))}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {successSnackbar.message}
+        </Alert>
+      </Snackbar>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmDialog.open}
+        onClose={closeDeleteConfirmation}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            background: 'rgba(35, 35, 38, 0.95)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4)',
+          }
+        }}
+      >
+        <DialogTitle id="delete-dialog-title" sx={{ 
+          pb: 1,
+          pt: 3,
+          px: 3,
+          color: 'white',
+          fontSize: '1.5rem',
+          fontWeight: 600,
+        }}>
+          Delete Serialized Part
+        </DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <DialogContentText id="delete-dialog-description" sx={{ 
+            color: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '1rem',
+            mb: 2
+          }}>
+            Are you sure you want to delete this serialized part?
+          </DialogContentText>
+          {deleteConfirmDialog.row && (
+            <Box sx={{ 
+              mt: 2,
+              p: 2,
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}>
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.9)',
+                mb: 1,
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ fontWeight: 600 }}>Part Instance ID:</span>
+                <span>{deleteConfirmDialog.row.partInstanceId}</span>
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: 'rgba(255, 255, 255, 0.9)',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{ fontWeight: 600 }}>Manufacturer ID:</span>
+                <span>{deleteConfirmDialog.row.manufacturerId}</span>
+              </Typography>
+            </Box>
+          )}
+          <Typography variant="body2" sx={{ 
+            mt: 2,
+            color: '#f44336',
+            fontWeight: 500,
+            textAlign: 'center',
+            p: 1,
+            borderRadius: '8px',
+            background: 'rgba(244, 67, 54, 0.1)',
+            border: '1px solid rgba(244, 67, 54, 0.2)',
+          }}>
+            ⚠️ This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ 
+          p: 3,
+          pt: 1,
+          gap: 2,
+        }}>
+          <Button 
+            onClick={closeDeleteConfirmation}
+            variant="outlined"
+            sx={{
+              color: 'rgba(255, 255, 255, 0.8)',
+              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: '10px',
+              px: 3,
+              py: 1,
+              fontWeight: 500,
+              '&:hover': {
+                color: 'rgba(255, 255, 255, 0.9)',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                background: 'rgba(255, 255, 255, 0.05)',
+              }
+            }}
+          >
+            CANCEL
+          </Button>
+          <Button 
+            onClick={() => {
+              if (deleteConfirmDialog.row) {
+                handleDeleteSerializedPart(deleteConfirmDialog.row);
+              }
+            }}
+            variant="contained"
+            disabled={partDeletingId !== null}
+            sx={{
+              background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)',
+              color: 'white',
+              borderRadius: '10px',
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              boxShadow: '0 4px 16px rgba(211, 47, 47, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%)',
+                boxShadow: '0 6px 20px rgba(211, 47, 47, 0.4)',
+              },
+              '&:disabled': {
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.3)',
+              }
+            }}
+          >
+            {partDeletingId === deleteConfirmDialog.row?.id ? 'DELETING...' : 'DELETE'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
@@ -46,7 +46,7 @@ import { SerializedPart } from '../../../serialized-parts/types';
 import { SerializedPartTwinRead } from '../../../serialized-parts/types/twin-types';
 import { fetchSerializedParts } from '../../../serialized-parts/api';
 import { createSerializedPartTwin, shareSerializedPartTwin, unshareSerializedPartTwin, deleteSerializedPart } from '../../../serialized-parts/api';
-import { fetchAllSerializedPartTwins } from '../../../serialized-parts/api';
+import { fetchSerializedPartTwinsForCatalogPart } from '../../../serialized-parts/api';
 import { PartType, StatusVariants } from '../../types/types';
 import { SerializedPartStatusChip } from './SerializedPartStatusChip';
 
@@ -62,6 +62,9 @@ interface InstanceProductsTableProps {
 }
 
 export default function InstanceProductsTable({ part, onAddClick }: Readonly<InstanceProductsTableProps>) {
+  // Ref to prevent duplicate API calls in React StrictMode
+  const dataLoadedRef = useRef(false);
+  
   const [rows, setRows] = useState<SerializedPartWithStatus[]>([]);
   const [twinCreatingId, setTwinCreatingId] = useState<number | null>(null);
   const [twinSharingId, setTwinSharingId] = useState<number | null>(null);
@@ -110,14 +113,22 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
   useEffect(() => {
     if (!part) {
       setRows([]);
+      dataLoadedRef.current = false; // Reset ref when part changes
       return;
     }
+    
     const loadData = async () => {
+      // Prevent duplicate calls in React StrictMode
+      if (dataLoadedRef.current) {
+        return;
+      }
+      dataLoadedRef.current = true;
+      
       try {
         // Fetch both serialized parts and twins
         const [serializedParts, twins] = await Promise.all([
           fetchSerializedParts(part.manufacturerId, part.manufacturerPartId),
-          fetchAllSerializedPartTwins(part.manufacturerId, part.manufacturerPartId)
+          fetchSerializedPartTwinsForCatalogPart(part.manufacturerId, part.manufacturerPartId)
         ]);
 
         // Merge serialized parts with twin status
@@ -135,6 +146,8 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
         console.log('Loaded instance products:', rowsWithStatus);
       } catch (error) {
         console.error("Error fetching instance products:", error);
+        // Reset ref on error so it can be retried
+        dataLoadedRef.current = false;
       }
     };
 
@@ -163,7 +176,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       // Refresh data after successful creation
       const [serializedParts, twins] = await Promise.all([
         fetchSerializedParts(part.manufacturerId, part.manufacturerPartId),
-        fetchAllSerializedPartTwins(part.manufacturerId, part.manufacturerPartId)
+        fetchSerializedPartTwinsForCatalogPart(part.manufacturerId, part.manufacturerPartId)
       ]);
 
       const rowsWithStatus = serializedParts.map((serializedPart, index) => {
@@ -214,7 +227,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       // Refresh data after successful share
       const [serializedParts, twins] = await Promise.all([
         fetchSerializedParts(part.manufacturerId, part.manufacturerPartId),
-        fetchAllSerializedPartTwins(part.manufacturerId, part.manufacturerPartId)
+        fetchSerializedPartTwinsForCatalogPart(part.manufacturerId, part.manufacturerPartId)
       ]);
 
       const rowsWithStatus = serializedParts.map((serializedPart, index) => {
@@ -257,7 +270,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     setTwinUnsharingId(row.id);
     try {
       // Find the twin to get the AAS ID
-      const twins = await fetchAllSerializedPartTwins(part.manufacturerId, part.manufacturerPartId);
+      const twins = await fetchSerializedPartTwinsForCatalogPart(part.manufacturerId, part.manufacturerPartId);
       const twin = twins.find(
         (t) => t.manufacturerId === row.manufacturerId &&
                t.manufacturerPartId === row.manufacturerPartId &&
@@ -281,7 +294,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       // Refresh data after successful unshare
       const [serializedParts, updatedTwins] = await Promise.all([
         fetchSerializedParts(part.manufacturerId, part.manufacturerPartId),
-        fetchAllSerializedPartTwins(part.manufacturerId, part.manufacturerPartId)
+        fetchSerializedPartTwinsForCatalogPart(part.manufacturerId, part.manufacturerPartId)
       ]);
 
       const rowsWithStatus = serializedParts.map((serializedPart, index) => {
@@ -337,7 +350,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       // Refresh data after successful deletion
       const [serializedParts, twins] = await Promise.all([
         fetchSerializedParts(part.manufacturerId, part.manufacturerPartId),
-        fetchAllSerializedPartTwins(part.manufacturerId, part.manufacturerPartId)
+        fetchSerializedPartTwinsForCatalogPart(part.manufacturerId, part.manufacturerPartId)
       ]);
 
       const rowsWithStatus = serializedParts.map((serializedPart, index) => {

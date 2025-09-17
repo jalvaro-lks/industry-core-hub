@@ -30,8 +30,8 @@ import { FeatureConfig, NavigationItem } from '../types/routing';
 // Import all feature configurations
 export const allFeatures: FeatureConfig[] = [
   catalogManagementFeature,
-  partDiscoveryFeature,
   serializedPartsFeature,
+  partDiscoveryFeature,
   partnerManagementFeature,
   // Add placeholder for status feature (disabled)
   {
