@@ -52,9 +52,10 @@ export const fetchSerializedParts = async (manufacturerId: string, manufacturerP
   return response.data;
 };
 
-export const addSerializedPart = async (payload: AddSerializedPartRequest ) => {
+export const addSerializedPart = async (payload: AddSerializedPartRequest, autoGenerate: boolean = false) => {
   const response = await axios.post<SerializedPart>(
-    `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}`, payload
+    `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}?autoGenerateCatalogPart=${autoGenerate}`, 
+    payload
   );
   return response;
 };

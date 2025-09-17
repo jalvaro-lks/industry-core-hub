@@ -21,6 +21,7 @@
 ********************************************************************************/
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@catena-x/portal-shared-components';
 
 import Dialog from '@mui/material/Dialog';
@@ -51,7 +52,12 @@ interface AddSerializedPartDialogProps {
     onSuccess?: () => void;
 }const AddSerializedPartDialog = ({ open, onClose, onSuccess }: AddSerializedPartDialogProps) => {
     const manufacturerId = getParticipantId();
+    const navigate = useNavigate();
     console.log('Manufacturer ID from getParticipantId():', manufacturerId);
+    
+    // Step management for three-step process
+    const [currentStep, setCurrentStep] = useState<'serialized-part' | 'choice' | 'catalog-part'>('serialized-part');
+    
     const [formData, setFormData] = useState({
         businessPartnerNumber: '',
         manufacturerId: manufacturerId,
@@ -59,6 +65,13 @@ interface AddSerializedPartDialogProps {
         partInstanceId: '',
         van: '',
         customerPartId: '',
+    });
+
+    // Catalog part form data for second step
+    const [catalogPartData, setCatalogPartData] = useState({
+        name: '',
+        category: '',
+        bpns: '',
     });
 
     const [showVanField, setShowVanField] = useState(false);
@@ -89,6 +102,7 @@ interface AddSerializedPartDialogProps {
     useEffect(() => {
         if (open) {
             // Reset form when opening dialog
+            setCurrentStep('serialized-part');
             setFormData({
                 businessPartnerNumber: '',
                 manufacturerId: manufacturerId,
@@ -97,12 +111,18 @@ interface AddSerializedPartDialogProps {
                 van: '',
                 customerPartId: '',
             });
+            setCatalogPartData({
+                name: '',
+                category: '',
+                bpns: '',
+            });
             setShowVanField(false);
             setShowCustomerPartIdField(false);
             setSelectedPartner(null);
             setNotification(null);
         } else if (!open) {
             // Reset form when closing dialog
+            setCurrentStep('serialized-part');
             setFormData({
                 businessPartnerNumber: '',
                 manufacturerId: manufacturerId,
@@ -110,6 +130,11 @@ interface AddSerializedPartDialogProps {
                 partInstanceId: '',
                 van: '',
                 customerPartId: '',
+            });
+            setCatalogPartData({
+                name: '',
+                category: '',
+                bpns: '',
             });
             setShowVanField(false);
             setShowCustomerPartIdField(false);
@@ -121,7 +146,7 @@ interface AddSerializedPartDialogProps {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await addSerializedPart(formData);
+            await addSerializedPart(formData, false); // First try without auto-generation
             setNotification({
                 open: true,
                 severity: 'success',
@@ -141,10 +166,65 @@ interface AddSerializedPartDialogProps {
             console.error("Error adding serialized part:", err);
             const error = err as AxiosError;
             const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
+            
+            // Check if this is a catalog part not found error
+            if (errorMessage.includes('Catalog part') && errorMessage.includes('not found')) {
+                // Switch to choice step first
+                setCurrentStep('choice');
+                setNotification({
+                    open: true,
+                    severity: 'error',
+                    title: 'Catalog part not found. How would you like to create it?',
+                });
+            } else {
+                // Other errors
+                setNotification({
+                    open: true,
+                    severity: 'error',
+                    title: `Failed to create serialized part: ${errorMessage}`,
+                });
+            }
+            setTimeout(() => setNotification(null), 6000);
+        }
+    };
+
+    const handleCatalogPartSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            // Merge serialized part data with catalog part data for auto-generation
+            const completeFormData = {
+                ...formData,
+                // Include catalog part details for auto-generation
+                name: catalogPartData.name,
+                category: catalogPartData.category,
+                bpns: catalogPartData.bpns,
+            };
+            
+            // Now try with auto-generation enabled
+            await addSerializedPart(completeFormData, true);
+            setNotification({
+                open: true,
+                severity: 'success',
+                title: 'Catalog part and serialized part created successfully',
+            });
+            
+            // Call onSuccess callback to refresh the table
+            if (onSuccess) {
+                onSuccess();
+            }
+            
+            // Close dialog after short delay
+            setTimeout(() => {
+                onClose();
+            }, 1500);
+        } catch (err) {
+            console.error("Error creating catalog part and serialized part:", err);
+            const error = err as AxiosError;
+            const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
             setNotification({
                 open: true,
                 severity: 'error',
-                title: `Failed to create serialized part: ${errorMessage}`,
+                title: `Failed to create catalog part: ${errorMessage}`,
             });
             setTimeout(() => setNotification(null), 6000);
         }
@@ -175,7 +255,11 @@ interface AddSerializedPartDialogProps {
                     fontWeight: 600
                 }}
             >
-                Add a serialized part
+                {currentStep === 'serialized-part' 
+                    ? 'Add a serialized part' 
+                    : currentStep === 'choice'
+                    ? 'Choose catalog part creation method'
+                    : 'Create catalog part'}
             </DialogTitle>
             <IconButton
                 aria-label="close"
@@ -222,168 +306,290 @@ interface AddSerializedPartDialogProps {
                     }
                 }
             }}>
-                <Grid container spacing={3}>
-                    <Grid item xs={12}>
-                        <Box sx={{ 
-                            display: 'flex', 
-                            flexWrap: 'wrap', 
-                            gap: 1.5,
-                            mb: 1
-                        }}>
-                            <Chip
-                                label={`Manufacturer ID: ${formData.manufacturerId}`}
-                                variant="filled"
-                                color="secondary"
-                                size="medium"
-                                sx={{
-                                    backgroundColor: 'secondary.main',
-                                    color: 'secondary.contrastText',
-                                    maxWidth: '100%',
-                                    '& .MuiChip-label': {
-                                        fontSize: '0.875rem',
-                                        px: 1,
-                                        fontWeight: 500,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        maxWidth: '300px'
-                                    }
-                                }}
-                            />
-                        </Box>
-                    </Grid>
-                    
-                    <Grid item xs={12}>
-                        <TextField
-                            label="Manufacturer Part ID"
-                            value={formData.manufacturerPartId}
-                            onChange={(e) => setFormData({ ...formData, manufacturerPartId: e.target.value })}
-                            fullWidth
-                            required
-                            variant="outlined"
-                            size="medium"
-                        />
-                    </Grid>
-                    
-                    <Grid item xs={12}>
-                        <Typography variant="h6" gutterBottom sx={{ 
-                            mt: 0, 
-                            mb: 1, 
-                            color: 'text.primary',
-                            fontSize: '1.1rem',
-                            fontWeight: 500
-                        }}>
-                            Sharing Partner
-                        </Typography>
-                        <Autocomplete
-                            value={selectedPartner}
-                            onChange={(_, newValue) => {
-                                setSelectedPartner(newValue);
-                                setFormData({ 
-                                    ...formData, 
-                                    businessPartnerNumber: newValue?.bpnl || '' 
-                                });
-                            }}
-                            options={partners}
-                            getOptionLabel={(option) => `${option.name} (${option.bpnl})`}
-                            isOptionEqualToValue={(option, value) => option.bpnl === value?.bpnl}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Sharing Partner"
-                                    required
-                                    variant="outlined"
+                {currentStep === 'serialized-part' ? (
+                    // Step 1: Serialized Part Form
+                    <Grid container spacing={3}>
+                        <Grid item xs={12}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexWrap: 'wrap', 
+                                gap: 1.5,
+                                mb: 1
+                            }}>
+                                <Chip
+                                    label={`Manufacturer ID: ${formData.manufacturerId}`}
+                                    variant="filled"
+                                    color="secondary"
                                     size="medium"
+                                    sx={{
+                                        backgroundColor: 'secondary.main',
+                                        color: 'secondary.contrastText',
+                                        maxWidth: '100%',
+                                        '& .MuiChip-label': {
+                                            fontSize: '0.875rem',
+                                            px: 1,
+                                            fontWeight: 500,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            maxWidth: '300px'
+                                        }
+                                    }}
                                 />
-                            )}
-                            renderOption={(props, option) => (
-                                <li {...props} key={option.bpnl}>
-                                    <Box>
-                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                            {option.name}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {option.bpnl}
-                                        </Typography>
-                                    </Box>
-                                </li>
-                            )}
-                            fullWidth
-                        />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                        <TextField
-                            label="Part Instance ID"
-                            value={formData.partInstanceId}
-                            onChange={(e) => setFormData({ ...formData, partInstanceId: e.target.value })}
-                            fullWidth
-                            required
-                            variant="outlined"
-                            size="medium"
-                        />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                        <Box sx={{ mt: 2 }}>
+                            </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Manufacturer Part ID"
+                                value={formData.manufacturerPartId}
+                                onChange={(e) => setFormData({ ...formData, manufacturerPartId: e.target.value })}
+                                fullWidth
+                                required
+                                variant="outlined"
+                                size="medium"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12}>
                             <Typography variant="h6" gutterBottom sx={{ 
-                                mb: 2, 
+                                mt: 0, 
+                                mb: 1, 
                                 color: 'text.primary',
                                 fontSize: '1.1rem',
                                 fontWeight: 500
                             }}>
-                                Optional Fields
+                                Sharing Partner
                             </Typography>
-                            
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={showVanField}
-                                        onChange={(e) => setShowVanField(e.target.checked)}
-                                        color="primary"
+                            <Autocomplete
+                                value={selectedPartner}
+                                onChange={(_, newValue) => {
+                                    setSelectedPartner(newValue);
+                                    setFormData({ 
+                                        ...formData, 
+                                        businessPartnerNumber: newValue?.bpnl || '' 
+                                    });
+                                }}
+                                options={partners}
+                                getOptionLabel={(option) => `${option.name} (${option.bpnl})`}
+                                isOptionEqualToValue={(option, value) => option.bpnl === value?.bpnl}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Select Sharing Partner"
+                                        required
+                                        variant="outlined"
+                                        size="medium"
                                     />
-                                }
-                                label="Include VAN field"
-                                sx={{ mb: 2, color: 'text.primary' }}
+                                )}
+                                renderOption={(props, option) => (
+                                    <li {...props} key={option.bpnl}>
+                                        <Box>
+                                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                                {option.name}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {option.bpnl}
+                                            </Typography>
+                                        </Box>
+                                    </li>
+                                )}
+                                fullWidth
                             />
-                            
-                            {showVanField && (
-                                <TextField
-                                    label="VAN"
-                                    value={formData.van}
-                                    onChange={(e) => setFormData({ ...formData, van: e.target.value })}
-                                    fullWidth
-                                    variant="outlined"
-                                    size="medium"
-                                    sx={{ mb: 2 }}
+                        </Grid>
+
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Part Instance ID"
+                                value={formData.partInstanceId}
+                                onChange={(e) => setFormData({ ...formData, partInstanceId: e.target.value })}
+                                fullWidth
+                                required
+                                variant="outlined"
+                                size="medium"
+                            />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="h6" gutterBottom sx={{ 
+                                    mb: 2, 
+                                    color: 'text.primary',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 500
+                                }}>
+                                    Optional Fields
+                                </Typography>
+                                
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={showVanField}
+                                            onChange={(e) => setShowVanField(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Include VAN field"
+                                    sx={{ mb: 2, color: 'text.primary' }}
                                 />
-                            )}
-                            
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={showCustomerPartIdField}
-                                        onChange={(e) => setShowCustomerPartIdField(e.target.checked)}
-                                        color="primary"
+                                
+                                {showVanField && (
+                                    <TextField
+                                        label="VAN"
+                                        value={formData.van}
+                                        onChange={(e) => setFormData({ ...formData, van: e.target.value })}
+                                        fullWidth
+                                        variant="outlined"
+                                        size="medium"
+                                        sx={{ mb: 2 }}
                                     />
-                                }
-                                label="Include Customer Part ID field"
-                                sx={{ mb: 2, color: 'text.primary' }}
-                            />
-                            
-                            {showCustomerPartIdField && (
-                                <TextField
-                                    label="Customer Part ID"
-                                    value={formData.customerPartId}
-                                    onChange={(e) => setFormData({ ...formData, customerPartId: e.target.value })}
-                                    fullWidth
-                                    variant="outlined"
-                                    size="medium"
+                                )}
+                                
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={showCustomerPartIdField}
+                                            onChange={(e) => setShowCustomerPartIdField(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Include Customer Part ID field"
+                                    sx={{ mb: 2, color: 'text.primary' }}
                                 />
-                            )}
-                        </Box>
+                                
+                                {showCustomerPartIdField && (
+                                    <TextField
+                                        label="Customer Part ID"
+                                        value={formData.customerPartId}
+                                        onChange={(e) => setFormData({ ...formData, customerPartId: e.target.value })}
+                                        fullWidth
+                                        variant="outlined"
+                                        size="medium"
+                                    />
+                                )}
+                            </Box>
+                        </Grid>
                     </Grid>
-                </Grid>
+                ) : currentStep === 'choice' ? (
+                    // Step 2: Choice Step - How to create catalog part
+                    <Grid container spacing={3}>
+                        <Grid item xs={12}>
+                            <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
+                                The catalog part <strong>{formData.manufacturerId}/{formData.manufacturerPartId}</strong> was not found. 
+                                How would you like to create it?
+                            </Typography>
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    size="large"
+                                    onClick={() => setCurrentStep('catalog-part')}
+                                    sx={{
+                                        p: 2,
+                                        textAlign: 'left',
+                                        justifyContent: 'flex-start',
+                                        textTransform: 'none',
+                                        border: '2px solid',
+                                        borderColor: 'divider',
+                                        '&:hover': {
+                                            borderColor: 'primary.main',
+                                            backgroundColor: 'primary.light',
+                                        }
+                                    }}
+                                >
+                                    <Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                            Quick Creation
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Create catalog part here with basic details (name, category, bpns)
+                                        </Typography>
+                                    </Box>
+                                </Button>
+                                
+                                <Button
+                                    variant="outlined"
+                                    size="large"
+                                    onClick={() => {
+                                        // Close dialog and navigate to catalog parts view
+                                        onClose();
+                                        navigate('/catalog');
+                                    }}
+                                    sx={{
+                                        p: 2,
+                                        textAlign: 'left',
+                                        justifyContent: 'flex-start',
+                                        textTransform: 'none',
+                                        border: '2px solid',
+                                        borderColor: 'divider',
+                                        '&:hover': {
+                                            borderColor: 'primary.main',
+                                            backgroundColor: 'primary.light',
+                                        }
+                                    }}
+                                >
+                                    <Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                            Detailed Creation
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Go to catalog parts view to create with full details and then return
+                                        </Typography>
+                                    </Box>
+                                </Button>
+                            </Box>
+                        </Grid>
+                    </Grid>
+                ) : (
+                    // Step 3: Catalog Part Form
+                    <Grid container spacing={3}>
+                        <Grid item xs={12}>
+                            <Typography variant="body1" sx={{ mb: 2, color: 'text.secondary' }}>
+                                The catalog part <strong>{formData.manufacturerId}/{formData.manufacturerPartId}</strong> was not found. 
+                                Please provide the required details to create it.
+                            </Typography>
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Name"
+                                value={catalogPartData.name}
+                                onChange={(e) => setCatalogPartData({ ...catalogPartData, name: e.target.value })}
+                                fullWidth
+                                required
+                                variant="outlined"
+                                size="medium"
+                                helperText="The name for the catalog part"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                            <TextField
+                                label="Category"
+                                value={catalogPartData.category}
+                                onChange={(e) => setCatalogPartData({ ...catalogPartData, category: e.target.value })}
+                                fullWidth
+                                variant="outlined"
+                                size="medium"
+                                helperText="Optional category for the catalog part"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12}>
+                            <TextField
+                                label="BPNS"
+                                value={catalogPartData.bpns}
+                                onChange={(e) => setCatalogPartData({ ...catalogPartData, bpns: e.target.value })}
+                                fullWidth
+                                variant="outlined"
+                                size="medium"
+                                helperText="Optional Business Partner Number Site"
+                            />
+                        </Grid>
+                    </Grid>
+                )}
             </DialogContent>
             <DialogActions sx={{ 
                 p: 3, 
@@ -406,20 +612,66 @@ interface AddSerializedPartDialogProps {
                 >
                     Cancel
                 </Button>
-                <Button 
-                    onClick={handleSubmit}
-                    variant="contained"
-                    color="primary"
-                    size="large"
-                    sx={{
-                        minWidth: '100px',
-                        textTransform: 'none',
-                        fontWeight: 500,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}
-                >
-                    Save
-                </Button>
+                {currentStep === 'serialized-part' ? (
+                    <Button 
+                        onClick={handleSubmit}
+                        variant="contained"
+                        color="primary"
+                        size="large"
+                        sx={{
+                            minWidth: '100px',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        Save
+                    </Button>
+                ) : currentStep === 'choice' ? (
+                    <Button 
+                        onClick={() => setCurrentStep('serialized-part')}
+                        variant="outlined"
+                        color="secondary"
+                        size="large"
+                        sx={{
+                            minWidth: '100px',
+                            textTransform: 'none',
+                            fontWeight: 500
+                        }}
+                    >
+                        Back
+                    </Button>
+                ) : (
+                    <>
+                        <Button 
+                            onClick={() => setCurrentStep('choice')}
+                            variant="outlined"
+                            color="secondary"
+                            size="large"
+                            sx={{
+                                minWidth: '100px',
+                                textTransform: 'none',
+                                fontWeight: 500
+                            }}
+                        >
+                            Back
+                        </Button>
+                        <Button 
+                            onClick={handleCatalogPartSubmit}
+                            variant="contained"
+                            color="primary"
+                            size="large"
+                            sx={{
+                                minWidth: '140px',
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            Create & Save
+                        </Button>
+                    </>
+                )}
             </DialogActions>
         </Dialog>
     )

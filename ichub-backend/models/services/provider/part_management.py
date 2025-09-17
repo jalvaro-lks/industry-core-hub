@@ -77,7 +77,7 @@ class CatalogPartReadWithStatus(CatalogPartRead, StatusBase):
 
 class CatalogPartDetailsRead(CatalogPartRead):
     description: Optional[str] = Field(description="The decription of the part.", default=None)
-    materials: Optional[List[Material]] = Field(description="List of materials, e.g. [{'name':'aluminum','share':'20'}]", default=[])
+    materials: Optional[List[Material]] = Field(description="List of materials, e.g. [{'name':'aluminum','share':20.5}, {'name':'steel','share':75.25}]", default=[])
     width: Optional[Measurement] = Field(description="The width of the part.", default=None)
     height: Optional[Measurement] = Field(description="The height of the part.", default=None)
     length: Optional[Measurement] = Field(description="The length of the part.", default=None)
