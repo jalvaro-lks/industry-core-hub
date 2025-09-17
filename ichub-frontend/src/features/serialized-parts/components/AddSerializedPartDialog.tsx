@@ -30,6 +30,9 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
+import SpeedIcon from '@mui/icons-material/Speed';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -38,6 +41,8 @@ import Checkbox from '@mui/material/Checkbox';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import Autocomplete from '@mui/material/Autocomplete';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 
 import PageNotification from '../../../components/general/PageNotification';
 import { addSerializedPart } from '../api';
@@ -481,64 +486,156 @@ interface AddSerializedPartDialogProps {
                         </Grid>
                         
                         <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <Button
-                                    variant="outlined"
-                                    size="large"
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                {/* Quick Creation Card */}
+                                <Card
                                     onClick={() => setCurrentStep('catalog-part')}
                                     sx={{
-                                        p: 2,
-                                        textAlign: 'left',
-                                        justifyContent: 'flex-start',
-                                        textTransform: 'none',
-                                        border: '2px solid',
-                                        borderColor: 'divider',
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.08) 0%, rgba(66, 165, 245, 0.05) 100%)',
+                                        border: '2px solid transparent',
+                                        borderRadius: 3,
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        overflow: 'hidden',
                                         '&:hover': {
-                                            borderColor: 'primary.main',
-                                            backgroundColor: 'primary.light',
+                                            border: '2px solid #1976d2',
+                                            background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.12) 0%, rgba(66, 165, 245, 0.08) 100%)',
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 12px 32px rgba(25, 118, 210, 0.15)',
+                                        },
+                                        '&::before': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: 4,
+                                            background: 'linear-gradient(90deg, #1976d2 0%, #42a5f5 100%)',
                                         }
                                     }}
                                 >
-                                    <Box>
-                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                            Quick Creation
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Create catalog part here with basic details (name, category, bpns)
-                                        </Typography>
-                                    </Box>
-                                </Button>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Box sx={{
+                                                width: 56,
+                                                height: 56,
+                                                borderRadius: '16px',
+                                                background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
+                                            }}>
+                                                <SpeedIcon sx={{ color: 'white', fontSize: 28 }} />
+                                            </Box>
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="h6" sx={{ 
+                                                    fontWeight: 600, 
+                                                    mb: 0.5,
+                                                    color: 'text.primary',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 1
+                                                }}>
+                                                    Quick Creation
+                                                    <Chip 
+                                                        label="Recommended" 
+                                                        size="small" 
+                                                        sx={{ 
+                                                            backgroundColor: '#1976d2',
+                                                            color: 'white',
+                                                            fontSize: '11px',
+                                                            height: 20
+                                                        }} 
+                                                    />
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                    Create catalog part here with basic details (name, category, bpns)
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: 0.5,
+                                                    color: '#1976d2',
+                                                    fontWeight: 500
+                                                }}>
+                                                    Fast & Simple <ArrowForwardIcon sx={{ fontSize: 14 }} />
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
                                 
-                                <Button
-                                    variant="outlined"
-                                    size="large"
+                                {/* Detailed Creation Card */}
+                                <Card
                                     onClick={() => {
-                                        // Close dialog and navigate to catalog parts view
                                         onClose();
                                         navigate('/catalog');
                                     }}
                                     sx={{
-                                        p: 2,
-                                        textAlign: 'left',
-                                        justifyContent: 'flex-start',
-                                        textTransform: 'none',
-                                        border: '2px solid',
-                                        borderColor: 'divider',
+                                        position: 'relative',
+                                        cursor: 'pointer',
+                                        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.08) 0%, rgba(129, 199, 132, 0.05) 100%)',
+                                        border: '2px solid transparent',
+                                        borderRadius: 3,
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        overflow: 'hidden',
                                         '&:hover': {
-                                            borderColor: 'primary.main',
-                                            backgroundColor: 'primary.light',
+                                            border: '2px solid #4caf50',
+                                            background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.12) 0%, rgba(129, 199, 132, 0.08) 100%)',
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 12px 32px rgba(76, 175, 80, 0.15)',
+                                        },
+                                        '&::before': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: 4,
+                                            background: 'linear-gradient(90deg, #4caf50 0%, #81c784 100%)',
                                         }
                                     }}
                                 >
-                                    <Box>
-                                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                            Detailed Creation
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Go to catalog parts view to create with full details and then return
-                                        </Typography>
-                                    </Box>
-                                </Button>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Box sx={{
+                                                width: 56,
+                                                height: 56,
+                                                borderRadius: '16px',
+                                                background: 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                boxShadow: '0 4px 16px rgba(76, 175, 80, 0.3)',
+                                            }}>
+                                                <SettingsIcon sx={{ color: 'white', fontSize: 28 }} />
+                                            </Box>
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="h6" sx={{ 
+                                                    fontWeight: 600, 
+                                                    mb: 0.5,
+                                                    color: 'text.primary'
+                                                }}>
+                                                    Detailed Creation
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                    Go to catalog parts view to create with full details and then return
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: 0.5,
+                                                    color: '#4caf50',
+                                                    fontWeight: 500
+                                                }}>
+                                                    Full Control <ArrowForwardIcon sx={{ fontSize: 14 }} />
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
                             </Box>
                         </Grid>
                     </Grid>

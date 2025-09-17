@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip } from '@mui/material'
+import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip, IconButton } from '@mui/material'
 import Grid2 from '@mui/material/Grid2';
 import { Typography } from '@catena-x/portal-shared-components';
 import { PartType, StatusVariants } from '../../types/types';
@@ -37,24 +37,26 @@ import ShareIcon from '@mui/icons-material/Share';
 import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { SharedPartner } from '../../types/types';
 import SharedTable from './SharedTable';
 import SubmodelViewer from './SubmodelViewer';
 import DarkSubmodelViewer from './DarkSubmodelViewer';
 import { useEffect, useState } from 'react';
-import { fetchCatalogPartTwinDetails } from '../../api';
-import { CatalogPartTwinDetailsRead } from '../../types/twin-types';
+import { fetchCatalogPartTwinDetails, registerCatalogPartTwin } from '../../api';
+import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '../../types/twin-types';
 
 interface ProductDataProps {
     part: PartType;
     sharedParts: SharedPartner[];
     twinDetails?: CatalogPartTwinDetailsRead | null;
+    onPartUpdated?: () => void; // Callback to refresh part data after twin registration
 }
 
-const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: ProductDataProps) => {
+const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUpdated }: ProductDataProps) => {
     const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(propTwinDetails || null);
     const [isLoadingTwin, setIsLoadingTwin] = useState(false);
-    const [copySnackbar, setCopySnackbar] = useState({ open: false, message: '' });
+    const [copySnackbar, setCopySnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
     
     // Submodel viewer dialog state
     const [submodelViewerOpen, setSubmodelViewerOpen] = useState(false);
@@ -71,6 +73,46 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
     } | null>(null);
     const [selectedSubmodelId, setSelectedSubmodelId] = useState<string>('');
     const [selectedSemanticId, setSelectedSemanticId] = useState<string>('');
+
+    const handleRegisterTwin = async () => {
+        try {
+            const twinToCreate: CatalogPartTwinCreateType = {
+                manufacturerId: part.manufacturerId,
+                manufacturerPartId: part.manufacturerPartId,
+            };
+            await registerCatalogPartTwin(twinToCreate);
+            // Show success message immediately
+            setCopySnackbar({ open: true, message: 'Part twin registered successfully!', severity: 'success' });
+
+            // Delay refresh so the snackbar is visible before re-rendering content
+            setTimeout(async () => {
+                // Refetch twin details to update the UI
+                if (part.manufacturerId && part.manufacturerPartId) {
+                    setIsLoadingTwin(true);
+                    try {
+                        const twinData = await fetchCatalogPartTwinDetails(part.manufacturerId, part.manufacturerPartId);
+                        setTwinDetails(twinData);
+                    } catch (error) {
+                        console.error('Error fetching updated twin details:', error);
+                    } finally {
+                        setIsLoadingTwin(false);
+                    }
+                }
+
+                // Call the parent callback to refresh the part data and update status
+                try {
+                    if (onPartUpdated) {
+                        onPartUpdated();
+                    }
+                } catch (err) {
+                    console.error('Error in onPartUpdated callback:', err);
+                }
+            }, 1000);
+        } catch (error) {
+            console.error("Error registering part twin:", error);
+            setCopySnackbar({ open: true, message: 'Failed to register part twin!', severity: 'error' });
+        }
+    };
 
     useEffect(() => {
         // If twin details are provided as prop, use them
@@ -103,15 +145,15 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
     const handleCopy = async (text: string, fieldName: string) => {
         try {
             await navigator.clipboard.writeText(text);
-            setCopySnackbar({ open: true, message: `${fieldName} copied to clipboard!` });
+            setCopySnackbar({ open: true, message: `${fieldName} copied to clipboard!`, severity: 'success' });
         } catch (error) {
             console.error('Failed to copy:', error);
-            setCopySnackbar({ open: true, message: `Failed to copy ${fieldName}` });
+            setCopySnackbar({ open: true, message: `Failed to copy ${fieldName}`, severity: 'error' });
         }
     };
 
     const handleCloseSnackbar = () => {
-        setCopySnackbar({ open: false, message: '' });
+        setCopySnackbar({ open: false, message: '', severity: 'success' });
     };
 
     const formatDate = (dateString: string) => {
@@ -129,58 +171,7 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
         }
     };
 
-    const getStatusLabel = (status: number): { label: string; color: string } => {
-        switch (status) {
-            case 1:
-                return { label: 'Created', color: '#2196f3' }; // Blue
-            case 2:
-                return { label: 'Available', color: '#ff9800' }; // Orange
-            case 3:
-                return { label: 'Registered', color: '#4caf50' }; // Green
-            default:
-                return { label: 'Unknown', color: '#757575' }; // Gray
-        }
-    };
-
-    const parseSemanticId = (semanticId: string) => {
-        try {
-            // Extract URN parts
-            const parts = semanticId.split(':');
-            if (parts.length >= 7) {
-                const namespace = parts.slice(0, 6).join(':');
-                const modelPart = parts[6];
-                const version = parts[7] || '1.0.0';
-                
-                // Convert model part to readable name
-                const modelName = modelPart
-                    .split(/(?=[A-Z])/)
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(' ')
-                    .trim();
-                
-                return {
-                    namespace,
-                    name: modelName || modelPart,
-                    version,
-                    fullUrn: semanticId
-                };
-            }
-            
-            return {
-                namespace: semanticId,
-                name: 'Unknown Model',
-                version: '1.0.0',
-                fullUrn: semanticId
-            };
-        } catch (error) {
-            return {
-                namespace: semanticId,
-                name: 'Invalid URN',
-                version: '1.0.0',
-                fullUrn: semanticId
-            };
-        }
-    };
+    // Removed unused helpers (getStatusLabel, parseSemanticId)
 
     return (
         <Box sx={{ width: '100%', p: 2 }}>
@@ -219,6 +210,26 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                             alignItems: 'flex-end',
                             maxWidth: '60%'
                         }}>
+                            {/* Register Twin Button - Only show if status is draft */}
+                            {(part.status === StatusVariants.draft || part.status === StatusVariants.pending) && (
+                                <Tooltip title="Register part twin" arrow>
+                                    <IconButton
+                                        onClick={handleRegisterTwin}
+                                        sx={{
+                                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                            color: '#3b82f6',
+                                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                                borderColor: 'rgba(59, 130, 246, 0.5)'
+                                            },
+                                            marginBottom: 1
+                                        }}
+                                    >
+                                        <CloudUploadIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
                             {isLoadingTwin ? (
                                 <>
                                     <Chip 
@@ -903,22 +914,10 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             >
                 <Alert 
-                    onClose={handleCloseSnackbar} 
-                    severity="success" 
-                    sx={{ 
-                        width: '100%',
-                        backgroundColor: '#2e7d32',
-                        color: '#ffffff',
-                        '& .MuiAlert-icon': {
-                            color: '#ffffff'
-                        },
-                        '& .MuiAlert-message': {
-                            color: '#ffffff'
-                        },
-                        '& .MuiAlert-action button': {
-                            color: '#ffffff'
-                        }
-                    }}
+                    onClose={handleCloseSnackbar}
+                    variant="filled"
+                    severity={copySnackbar.severity}
+                    sx={{ width: '100%' }}
                 >
                     {copySnackbar.message}
                 </Alert>

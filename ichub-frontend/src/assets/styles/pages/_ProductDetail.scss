@@ -35,8 +35,8 @@
         color: $brand-text !important;
     }
 
-    // Force override for shared status chip with higher specificity
-    &.productDetail .shared-status-chip {
+    // Force override for black status chip with higher specificity
+    &.productDetail .black-status-chip {
       color: #000000 !important;
       
       &, & *, & .MuiChip-label, & .MuiSvgIcon-root {

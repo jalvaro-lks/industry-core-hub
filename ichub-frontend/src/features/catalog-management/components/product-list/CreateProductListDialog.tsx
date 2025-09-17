@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   TextField,
@@ -71,7 +71,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
     name: "",
     description: "",
     category: "",
-    materials: [{ name: "", share: 100 }],
+    materials: [],
     bpns: "",
     width: { value: 0, unit: LengthUnit.MM },
     height: { value: 0, unit: LengthUnit.MM },
@@ -82,6 +82,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
   const [successMessage, setSuccessMessage] = useState("");
   const [apiErrorMessage, setApiErrorMessage] = useState("");
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -91,7 +92,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
         name: "",
         description: "",
         category: "",
-        materials: [{ name: "", share: 100 }],
+        materials: [],
         bpns: "",
         width: { value: 0, unit: LengthUnit.MM },
         height: { value: 0, unit: LengthUnit.MM },
@@ -176,26 +177,29 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
   };
 
   const removeMaterial = (index: number) => {
-    if (formData.materials.length > 1) {
-      const newMaterials = formData.materials.filter((_, i) => i !== index);
-      setFormData((prev) => ({ ...prev, materials: newMaterials }));
-    }
+    const newMaterials = formData.materials.filter((_, i) => i !== index);
+    setFormData((prev) => ({ ...prev, materials: newMaterials }));
   };
 
+  const getNamedMaterials = () => formData.materials.filter((m) => m.name && m.name.trim());
   const getTotalShare = () => {
-    return formData.materials.reduce((sum, mat) => sum + mat.share, 0);
+    const named = getNamedMaterials();
+    return named.reduce((sum, mat) => sum + mat.share, 0);
   };
 
   const handleSave = async () => {
+    const namedMaterials = getNamedMaterials();
     const totalShare = getTotalShare();
-    if (Math.abs(totalShare - 100) > 0.01) {
-      setApiErrorMessage("Material shares must add up to 100%");
+    // Enforce 100% only if materials were provided
+    if (namedMaterials.length > 0 && Math.abs(totalShare - 100) > 0.01) {
+      setApiErrorMessage("Material shares must add up to 100% when materials are provided");
       return;
     }
 
     const payload = {
       ...formData,
       manufacturerId: getParticipantId(),
+      materials: namedMaterials,
     };
 
     try {
@@ -218,6 +222,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
         }
       }
       setApiErrorMessage(errorMessage);
+      // Ensure the error is visible by scrolling to the top of the dialog content
+      setTimeout(() => {
+        contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 0);
     }
   };
 
@@ -252,7 +260,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
         Create New Catalog Part
       </DialogTitle>
       
-      <DialogContent sx={{ 
+      <DialogContent ref={contentRef} sx={{ 
         p: 3, 
         backgroundColor: 'background.paper',
         overflow: 'auto',
@@ -284,6 +292,28 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
           }
         }
       }}>
+        {/* Top-of-dialog alerts */}
+        {apiErrorMessage && (
+          <Alert 
+            severity="error" 
+            variant="filled" 
+            onClose={() => setApiErrorMessage("")}
+            sx={{ mb: 2, mt: 2, position: 'sticky', top: 0, zIndex: 1 }}
+          >
+            {apiErrorMessage}
+          </Alert>
+        )}
+        {successMessage && (
+          <Alert 
+            severity="success" 
+            variant="filled" 
+            onClose={() => setSuccessMessage("")}
+            sx={{ mb: 2, mt: 2, position: 'sticky', top: 0, zIndex: 1 }}
+          >
+            {successMessage}
+          </Alert>
+        )}
+
         <Grid2 container spacing={4}>
           {/* Manufacturer Info as Chips */}
           <Grid2 size={12}>
@@ -291,7 +321,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               display: 'flex', 
               flexWrap: 'wrap', 
               gap: 1.5,
-              mb: 1
+              mt: 2
             }}>
               <Chip
                 label={`Manufacturer ID: ${manufacturerId}`}
@@ -586,13 +616,9 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                       </IconButton>
                       <IconButton
                         onClick={() => removeMaterial(index)}
-                        disabled={formData.materials.length === 1}
                         color="error"
                         size="small"
-                        sx={{ 
-                          visibility: formData.materials.length === 1 ? 'hidden' : 'visible',
-                          padding: '4px',
-                        }}
+                        sx={{ padding: '4px' }}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -635,7 +661,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               
               <Chip
                 label={`Total: ${getTotalShare().toFixed(1)}%`}
-                color={Math.abs(getTotalShare() - 100) < 0.01 ? "success" : "warning"}
+                color={getNamedMaterials().length === 0 ? "default" : (Math.abs(getTotalShare() - 100) < 0.01 ? "success" : "warning")}
                 variant="filled"
                 size="small"
               />
@@ -697,16 +723,6 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
           </Grid2>
         </Grid2>
 
-        {apiErrorMessage && (
-          <Box sx={{ mt: 3 }}>
-            <Alert severity="error">{apiErrorMessage}</Alert>
-          </Box>
-        )}
-        {successMessage && (
-          <Box sx={{ mt: 3 }}>
-            <Alert severity="success">{successMessage}</Alert>
-          </Box>
-        )}
       </DialogContent>
       
       <DialogActions sx={{ 
@@ -735,7 +751,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
           variant="contained"
           color="primary"
           size="large"
-          disabled={Math.abs(getTotalShare() - 100) > 0.01}
+          disabled={getNamedMaterials().length > 0 && Math.abs(getTotalShare() - 100) > 0.01}
           sx={{
             minWidth: '100px',
             textTransform: 'none',

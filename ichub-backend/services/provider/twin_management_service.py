@@ -72,6 +72,14 @@ class TwinManagementService:
     def __init__(self):
         self.submodel_document_generator = SubmodelDocumentGenerator()
 
+    @staticmethod
+    def _none_if_empty(value: Optional[str]) -> Optional[str]:
+        """Return None if the given string is None, empty, or whitespace-only; otherwise the trimmed string."""
+        if value is None:
+            return None
+        trimmed = str(value).strip()
+        return trimmed if trimmed else None
+
     def get_or_create_enablement_stack(self, repo: RepositoryManager, manufacturer_id: str) -> EnablementServiceStack:
         """
         Retrieve or create an EnablementServiceStack for the given manufacturer ID.
@@ -149,6 +157,13 @@ class TwinManagementService:
             elif db_catalog_part.name:
                 _id_short = db_catalog_part.name
 
+            # Normalize empty category to None for asset_type
+            asset_type_value = None
+            if db_catalog_part and getattr(db_catalog_part, 'category', None):
+                _cat = str(db_catalog_part.category).strip()
+                if _cat:
+                    asset_type_value = _cat
+
             dtr_provider_manager.create_or_update_shell_descriptor(
                 global_id=db_twin.global_id,
                 aas_id=db_twin.aas_id,
@@ -159,11 +174,12 @@ class TwinManagementService:
                 manufacturer_id=create_input.manufacturer_id,
                 manufacturer_part_id=create_input.manufacturer_part_id,
                 customer_part_ids=customer_part_ids,
-                asset_type=db_catalog_part.category if db_catalog_part else None,
+                asset_type=asset_type_value,
                 digital_twin_type=CATALOG_DIGITAL_TWIN_TYPE
             )
 
             db_twin_registration.dtr_registered = True
+            repo.commit()
             
             ## Create part type information submodel when registering, if configured
             # TODO: This makes our API unclean - aspect creation should not be part of twin creation - should be moved to the frontend in future
@@ -213,7 +229,7 @@ class TwinManagementService:
                     manufacturerId=db_catalog_part.legal_entity.bpnl,
                     manufacturerPartId=db_catalog_part.manufacturer_part_id,
                     name=db_catalog_part.name,
-                    category=db_catalog_part.category,
+                    category=TwinManagementService._none_if_empty(db_catalog_part.category),
                     bpns=db_catalog_part.bpns,
                     customerPartIds={partner_catalog_part.customer_part_id: BusinessPartnerRead(
                         name=partner_catalog_part.business_partner.name,
@@ -325,6 +341,13 @@ class TwinManagementService:
                 
             customer_part_ids = {db_serialized_part.partner_catalog_part.customer_part_id: db_serialized_part.partner_catalog_part.business_partner.bpnl}
                                     
+            # Normalize empty category to None for asset_type
+            asset_type_value = None
+            if db_catalog_part and getattr(db_catalog_part, 'category', None):
+                _cat = str(db_catalog_part.category).strip()
+                if _cat:
+                    asset_type_value = _cat
+
             dtr_provider_manager.create_or_update_shell_descriptor(
                 global_id=db_twin.global_id,
                 aas_id=db_twin.aas_id,
@@ -335,13 +358,14 @@ class TwinManagementService:
                 manufacturer_id=create_input.manufacturer_id,
                 manufacturer_part_id=create_input.manufacturer_part_id,
                 customer_part_ids=customer_part_ids,
-                asset_type=db_catalog_part.category if db_catalog_part else None,
+                asset_type=asset_type_value,
                 digital_twin_type=INSTANCE_DIGITAL_TWIN_TYPE,
                 van=db_serialized_part.van,
                 part_instance_id=create_input.part_instance_id
             )
 
             db_twin_registration.dtr_registered = True
+            repo.commit()
 
             ## Create serial part submodel when registering, if configured
             # TODO: This makes our API unclean - aspect creation should not be part of twin creation - should be moved to the frontend in future
@@ -618,7 +642,7 @@ class TwinManagementService:
                 manufacturerId=db_catalog_part.legal_entity.bpnl,
                 manufacturerPartId=db_catalog_part.manufacturer_part_id,
                 name=db_catalog_part.name,
-                category=db_catalog_part.category,
+                category=TwinManagementService._none_if_empty(db_catalog_part.category),
                 bpns=db_catalog_part.bpns,
                 additionalContext=db_twin.additional_context,
                 customerPartIds={partner_catalog_part.customer_part_id: BusinessPartnerRead(
@@ -644,7 +668,7 @@ class TwinManagementService:
             "manufacturerId": db_serialized_part.partner_catalog_part.catalog_part.legal_entity.bpnl,
             "manufacturerPartId": db_serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id,
             "name": db_serialized_part.partner_catalog_part.catalog_part.name,
-            "category": db_serialized_part.partner_catalog_part.catalog_part.category,
+            "category": TwinManagementService._none_if_empty(db_serialized_part.partner_catalog_part.catalog_part.category),
             "bpns": db_serialized_part.partner_catalog_part.catalog_part.bpns,
             "customerPartId": db_serialized_part.partner_catalog_part.customer_part_id,
             "businessPartner": BusinessPartnerRead(

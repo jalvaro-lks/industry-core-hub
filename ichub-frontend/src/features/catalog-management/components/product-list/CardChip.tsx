@@ -54,9 +54,10 @@ const statusStyles: Record<StatusVariants | 'default', ChipStyle> = {
     border: 'borderDraft',
   },
   [StatusVariants.pending]: {
-    color: 'inReview',
-    backgroundColor: 'bgInReview',
-    border: 'inReview',
+    // Use dark text on white background as requested
+    color: 'black',
+    backgroundColor: 'registered', // registered maps to pure white in palette.chip
+    border: 'none',
   },
   default: {
     color: 'default',

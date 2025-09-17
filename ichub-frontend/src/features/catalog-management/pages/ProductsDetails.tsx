@@ -3,7 +3,11 @@
  *
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
- * See the NOTICE file(s) distributed with this work for additional
+ * See the NOTICE file(s) distributed with this work for add        </Grid2>
+
+        <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} onPartUpdated={fetchData} />
+        
+        <Grid2 container size={12} spacing={2}className="add-on-buttons">al
  * information regarding copyright ownership.
  *
  * This program and the accompanying materials are made available under the
@@ -20,7 +24,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Icon } from '@catena-x/portal-shared-components';
 import { CardChip } from "../components/product-list/CardChip";
@@ -32,7 +36,7 @@ import Box from '@mui/material/Box';
 
 import InstanceProductsTable from "../components/product-detail/InstanceProductsTable";
 import ShareDropdown from "../components/product-detail/ShareDropdown";
-import ProductButton from "../components/product-detail/ProductButton";
+// Removed unused ProductButton import
 import ProductData from "../components/product-detail/ProductData";
 import JsonViewerDialog from "../components/product-detail/JsonViewerDialog";
 import AddSerializedPartDialog from "../components/product-detail/AddSerializedPartDialog";
@@ -70,43 +74,43 @@ const ProductsDetails = () => {
   const [sharedPartners, setSharedPartners] = useState<SharedPartner[]>([]);
   const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!manufacturerId || !manufacturerPartId) return;
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const apiData = await fetchCatalogPart(manufacturerId, manufacturerPartId);
-        console.log(apiData)
-        // Map API data to PartInstance[]
-        const mappedPart: PartType = mapApiPartDataToPartType(apiData)
-        setPartType(mappedPart);
-        // Just if the customer part ids are available we can see if they are shared
-        if(mappedPart.customerPartIds){
-            const mappedResult:SharedPartner[] = mapSharePartCustomerPartIds(mappedPart.customerPartIds)
-            setSharedPartners(mappedResult)
-        }
-        
-        // Fetch twin details
-        try {
-          console.log('Fetching twin details for part:', manufacturerId, manufacturerPartId);
-          const twinData = await fetchCatalogPartTwinDetails(manufacturerId, manufacturerPartId);
-          console.log('Twin data received:', twinData);
-          setTwinDetails(twinData);
-        } catch (twinError) {
-          console.error('Error fetching twin details:', twinError);
-          setTwinDetails(null);
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
+    
+    setIsLoading(true);
+    try {
+      const apiData = await fetchCatalogPart(manufacturerId, manufacturerPartId);
+      console.log(apiData)
+      // Map API data to PartInstance[]
+      const mappedPart: PartType = mapApiPartDataToPartType(apiData)
+      setPartType(mappedPart);
+      // Just if the customer part ids are available we can see if they are shared
+      if(mappedPart.customerPartIds){
+          const mappedResult:SharedPartner[] = mapSharePartCustomerPartIds(mappedPart.customerPartIds)
+          setSharedPartners(mappedResult)
       }
-    };
+      
+      // Fetch twin details
+      try {
+        console.log('Fetching twin details for part:', manufacturerId, manufacturerPartId);
+        const twinData = await fetchCatalogPartTwinDetails(manufacturerId, manufacturerPartId);
+        console.log('Twin data received:', twinData);
+        setTwinDetails(twinData);
+      } catch (twinError) {
+        console.error('Error fetching twin details:', twinError);
+        setTwinDetails(null);
+      }
 
-    fetchData();
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [manufacturerId, manufacturerPartId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if(!manufacturerId || !manufacturerPartId){
     return <div>Product not found</div>; 
@@ -141,9 +145,7 @@ const ProductsDetails = () => {
     );
   }
 
-  const handleOpenJsonDialog = () => {
-    setJsonDialogOpen(true);
-  };
+  // Removed unused handler: Json dialog is controlled elsewhere
 
   const handleCloseJsonDialog = () => {
     setJsonDialogOpen(false);
@@ -228,11 +230,19 @@ const ProductsDetails = () => {
         statusVariant = StatusVariants.draft;
         break;
     }
+
+    // If twin details indicate a successful DTR registration, show Registered optimistically
+    if (twinDetails?.registrations) {
+      const anyRegistered = Object.values(twinDetails.registrations).some((isRegistered) => !!isRegistered);
+      if (anyRegistered) {
+        statusVariant = StatusVariants.registered;
+      }
+    }
     
     return <CardChip 
       status={statusVariant} 
       statusText={statusVariant} 
-      className={statusVariant === StatusVariants.shared ? 'shared-status-chip' : undefined}
+      className={(statusVariant === StatusVariants.shared) || (statusVariant === StatusVariants.pending) ? 'black-status-chip' : undefined}
     />;
   };
 
@@ -259,7 +269,7 @@ const ProductsDetails = () => {
           <ShareDropdown handleCopy={handleCopy} handleDownload={handleDownload} handleShare={handleOpenShareDialog} />
         </Grid2>
 
-        <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} />
+  <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} onPartUpdated={fetchData} />
         
         <Grid2 container size={12} spacing={2}className="add-on-buttons">
           <Grid2 size={{ sm: 12 }}>

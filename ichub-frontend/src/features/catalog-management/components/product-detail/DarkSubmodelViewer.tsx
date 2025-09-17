@@ -316,7 +316,7 @@ const DarkSubmodelViewer: React.FC<DarkSubmodelViewerProps> = ({
                     flexDirection: 'column'
                 }}>
                     {/* Submodel Information Header */}
-                    <Paper sx={{ p: 2, mb: 3, backgroundColor: alpha('#90caf9', 0.1) }}>
+                    <Paper sx={{ p: 2, mb: 3, mt: 2, backgroundColor: alpha('#90caf9', 0.1) }}>
                         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <InfoIcon />
                             {submodel.idShort}

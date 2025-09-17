@@ -52,9 +52,10 @@ const getStatusStyle = (status: StatusVariants): ChipStyle => {
       };
     case StatusVariants.pending:
       return {
-        color: 'rgb(143, 128, 19)',
-        backgroundColor: 'rgba(245, 239, 213, 0.9)', // More visible yellow background
-        border: 'none',
+        // Dark text on white background per design request
+        color: 'rgb(33, 33, 33)',
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        border: '1px solid rgba(220, 220, 220, 0.9)',
       };
     case StatusVariants.draft:
       return {
