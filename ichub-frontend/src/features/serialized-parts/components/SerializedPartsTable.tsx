@@ -43,12 +43,14 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import IosShare from '@mui/icons-material/IosShare';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useState, useCallback } from 'react';
 import { SerializedPart } from '../types';
 import { SerializedPartTwinRead } from '../types/twin-types';
 import { createSerializedPartTwin, shareSerializedPartTwin, unshareSerializedPartTwin, deleteSerializedPart, fetchAllSerializedPartTwins } from '../api';
 import { StatusVariants } from '../../catalog-management/types/types';
 import { SerializedPartStatusChip } from '../../catalog-management/components/product-detail/SerializedPartStatusChip';
+import AddSerializedPartDialog from './AddSerializedPartDialog';
 
 // Extended SerializedPart interface to include twin status
 interface SerializedPartWithStatus extends SerializedPart {
@@ -77,6 +79,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     open: boolean;
     row: SerializedPartWithStatus | null;
   }>({ open: false, row: null });
+  const [addDialogOpen, setAddDialogOpen] = useState<boolean>(false);
 
   // Helper function to show error messages
   const showError = (message: string) => {
@@ -96,6 +99,16 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   // Close delete confirmation dialog
   const closeDeleteConfirmation = () => {
     setDeleteConfirmDialog({ open: false, row: null });
+  };
+
+  // Handle opening the Add Serialized Part dialog
+  const handleAddClick = () => {
+    setAddDialogOpen(true);
+  };
+
+  // Handle closing the Add Serialized Part dialog
+  const handleCloseAddDialog = () => {
+    setAddDialogOpen(false);
   };
 
   // Fetch twins only once and cache them in state
@@ -931,6 +944,26 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddClick}
+              sx={{ 
+                background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                borderRadius: '10px',
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              Add Serialized Part
+            </Button>
             
             <Button
               variant="contained"
@@ -1364,6 +1397,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Serialized Part Dialog */}
+      <AddSerializedPartDialog
+        open={addDialogOpen}
+        onClose={handleCloseAddDialog}
+        onSuccess={handleRefresh}
+      />
     </Box>
   );
 };

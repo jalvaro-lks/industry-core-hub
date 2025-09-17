@@ -594,9 +594,26 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       },
     },
     {
+      field: 'partInstanceId',
+      headerName: 'Part Instance ID',
+      width: 400,
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Typography
+          variant="body2"
+          sx={{ 
+            color: 'rgb(248, 249, 250) !important',
+            fontSize: '0.875rem',
+          }}
+        >
+          {params.value || ''}
+        </Typography>
+      ),
+    },
+    {
       field: 'customerPartId',
       headerName: 'Customer Part ID',
-      width: 200,
+      width: 300,
       headerAlign: 'center',
       renderCell: (params) => (
         <Typography
@@ -624,57 +641,6 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
           }}
         >
           {params.row.businessPartner?.name || ''}
-        </Typography>
-      ),
-    },
-    {
-      field: 'partInstanceId',
-      headerName: 'Part Instance ID',
-      width: 200,
-      headerAlign: 'center',
-      renderCell: (params) => (
-        <Typography
-          variant="body2"
-          sx={{ 
-            color: 'rgb(248, 249, 250) !important',
-            fontSize: '0.875rem',
-          }}
-        >
-          {params.value || ''}
-        </Typography>
-      ),
-    },
-    {
-      field: 'name',
-      headerName: 'Name',
-      width: 150,
-      headerAlign: 'center',
-      renderCell: (params) => (
-        <Typography
-          variant="body2"
-          sx={{ 
-            color: '#000000 !important',
-            fontSize: '0.875rem',
-          }}
-        >
-          {params.value || ''}
-        </Typography>
-      ),
-    },
-    {
-      field: 'category',
-      headerName: 'Category',
-      width: 140,
-      headerAlign: 'center',
-      renderCell: (params) => (
-        <Typography
-          variant="body2"
-          sx={{ 
-            color: '#000000 !important',
-            fontSize: '0.875rem',
-          }}
-        >
-          {params.value || ''}
         </Typography>
       ),
     },

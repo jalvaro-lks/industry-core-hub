@@ -148,6 +148,9 @@ class SerializedPartDetailsReadWithStatus(SerializedPartDetailsRead, StatusBase)
 class SerializedPartCreate(SerializedPartBase, PartnerRelatedPartCreateBase):
     van: Optional[str] = Field(description=VAN_DESCRIPTION, default=None)
     customer_part_id: Optional[str] = Field(alias="customerPartId", description="The customer part ID of the part.", default=None)
+    name: Optional[str] = Field(description="The name of the part.", default=None)
+    category: Optional[str] = Field(description="The category of the part.", default=None)
+    bpns: Optional[str] = Field(description="The site number (BPNS) the part is produced", default=None)
 
 class SerializedPartDelete(SerializedPartBase, PartnerRelatedPartCreateBase):
     pass

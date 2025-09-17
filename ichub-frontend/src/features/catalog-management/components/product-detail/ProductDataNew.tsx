@@ -22,9 +22,10 @@
 
 import { Box, Grid2, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip, IconButton } from '@mui/material'
 import { Typography } from '@catena-x/portal-shared-components';
-import { PartType } from '../../types/types';
+import { PartType, StatusVariants } from '../../types/types';
 import { PieChart } from '@mui/x-charts/PieChart';
 import WifiTetheringErrorIcon from '@mui/icons-material/WifiTetheringError';
+import WarningIcon from '@mui/icons-material/Warning';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import BusinessIcon from '@mui/icons-material/Business';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -222,16 +223,18 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                             <Typography variant="h2" sx={{ color: 'text.primary', mb: 0.5 }}>
                                 {part.name}
                             </Typography>
-                            <Chip 
-                                label={part.category} 
-                                variant="outlined" 
-                                size="small"
-                                sx={{ 
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    borderColor: 'primary.main',
-                                    color: 'primary.main'
-                                }}
-                            />
+                            {part.category && part.category.trim() && (
+                                <Chip 
+                                    label={part.category} 
+                                    variant="outlined" 
+                                    size="small"
+                                    sx={{ 
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        borderColor: 'primary.main',
+                                        color: 'primary.main'
+                                    }}
+                                />
+                            )}
                         </Box>
                     </Box>
                 </CardContent>
@@ -400,6 +403,30 @@ const ProductData = ({ part, sharedParts }: ProductDataProps) => {
                                 <ShareIcon sx={{ color: 'primary.main' }} />
                                 Shared With
                             </Typography>
+                            
+                            {/* Warning for parts with customer IDs but not yet shared */}
+                            {part.customerPartIds && Object.keys(part.customerPartIds).length > 0 && 
+                             part.status !== StatusVariants.shared && (
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 2,
+                                    p: 2,
+                                    mb: 3,
+                                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                                    borderRadius: 1,
+                                    border: '1px solid rgba(255, 152, 0, 0.3)'
+                                }}>
+                                    <WarningIcon sx={{ color: '#ff9800', fontSize: 20 }} />
+                                    <Typography variant="body2" sx={{ 
+                                        color: '#ff9800',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        This part is still not shared, but has already an existing customer part ID prepared for sharing.
+                                    </Typography>
+                                </Box>
+                            )}
                             
                             {sharedParts.length > 0 ? (
                                 <SharedTable sharedParts={sharedParts} />

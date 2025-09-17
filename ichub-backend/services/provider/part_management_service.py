@@ -394,7 +394,7 @@ class PartManagementService():
                 raise NotFoundError(f"Business partner with BPNL '{serialized_part_create.business_partner_number}' does not exist. Please create it first.")
 
             # Find the catalog part by its manufacturer ID and part ID
-            _, db_catalog_part = self._find_catalog_part(repos, serialized_part_create.manufacturer_id, serialized_part_create.manufacturer_part_id, auto_generate_catalog_part)
+            _, db_catalog_part = self._find_catalog_part(repos, serialized_part_create.manufacturer_id, serialized_part_create.manufacturer_part_id, serialized_part_create.name, serialized_part_create.category, serialized_part_create.bpns, auto_generate_catalog_part)
 
             # Get the partner catalog part for the given catalog part and business partner
             db_partner_catalog_part = repos.partner_catalog_part_repository.get_by_catalog_part_id_business_partner_id(
@@ -675,6 +675,9 @@ class PartManagementService():
     def _find_catalog_part(repos: RepositoryManager, 
         manufacturer_id: str, 
         manufacturer_part_id: str,
+        name: Optional[str] = None,
+        category: Optional[str] = None,
+        bpns: Optional[str] = None,
         auto_generate: bool = False
     ) -> Tuple[LegalEntity, CatalogPart]:
         """
@@ -695,9 +698,9 @@ class PartManagementService():
                 db_catalog_part = CatalogPart(
                     legal_entity_id=db_legal_entity.id,
                     manufacturer_part_id=manufacturer_part_id,
-                    name=f"Auto-generated part manufacturerPartId",
-                    category=None,  # Default category can be set later
-                    bpns=None,  # Default BPNS can be set later
+                    name=name if name else manufacturer_part_id,  # Default name to part ID if not provided
+                    category=category,  # Default category can be set later
+                    bpns=bpns,  # Default BPNS can be set later
                 )
                 repos.catalog_part_repository.create(db_catalog_part)
                 repos.catalog_part_repository.commit()

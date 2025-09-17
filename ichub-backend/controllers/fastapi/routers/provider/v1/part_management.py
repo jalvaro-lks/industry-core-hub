@@ -79,7 +79,7 @@ async def part_management_query_serialized_parts(query: SerializedPartQuery) -> 
     return part_management_service.get_serialized_parts(query)
 
 @router.post("/serialized-part", response_model=SerializedPartRead, responses=exception_responses)
-async def part_management_create_serialized_part(serialized_part_create: SerializedPartCreate,  auto_generate_catalog_part: bool = Query(True, alias="autoGenerateCatalogPart", description="Automatically create the catalog part for this serialized part"), auto_generate_partner_part: bool = Query(True, alias="autoGeneratePartnerPart", description="Automatically create a catalog partner part")) -> SerializedPartRead:
+async def part_management_create_serialized_part(serialized_part_create: SerializedPartCreate,  auto_generate_catalog_part: bool = Query(False, alias="autoGenerateCatalogPart", description="Automatically create the catalog part for this serialized part"), auto_generate_partner_part: bool = Query(True, alias="autoGeneratePartnerPart", description="Automatically create a catalog partner part")) -> SerializedPartRead:
     return part_management_service.create_serialized_part(serialized_part_create, auto_generate_catalog_part=auto_generate_catalog_part, auto_generate_partner_part=auto_generate_partner_part)
 
 @router.put("/serialized-part/{partner_catalog_part_id}/{part_instance_id}", response_model=SerializedPartRead, responses=exception_responses)

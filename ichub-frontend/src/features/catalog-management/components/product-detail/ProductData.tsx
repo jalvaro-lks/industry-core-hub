@@ -23,7 +23,7 @@
 import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip } from '@mui/material'
 import Grid2 from '@mui/material/Grid2';
 import { Typography } from '@catena-x/portal-shared-components';
-import { PartType } from '../../types/types';
+import { PartType, StatusVariants } from '../../types/types';
 import { PieChart } from '@mui/x-charts/PieChart';
 import WifiTetheringErrorIcon from '@mui/icons-material/WifiTetheringError';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -35,6 +35,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import UpdateIcon from '@mui/icons-material/Update';
 import ShareIcon from '@mui/icons-material/Share';
 import InfoIcon from '@mui/icons-material/Info';
+import WarningIcon from '@mui/icons-material/Warning';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { SharedPartner } from '../../types/types';
 import SharedTable from './SharedTable';
@@ -360,25 +361,27 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                                         }}>
                                             {part.name}
                                         </Typography>
-                                        <Chip 
-                                            label={part.category} 
-                                            variant="filled" 
-                                            size="medium"
-                                            sx={{ 
-                                                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                                                color: '#ffffff',
-                                                fontWeight: 600,
-                                                fontSize: '13px',
-                                                height: 28,
-                                                borderRadius: 2,
-                                                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-                                                '& .MuiChip-label': {
-                                                    color: '#ffffff !important',
+                                        {part.category && part.category.trim() && (
+                                            <Chip 
+                                                label={part.category} 
+                                                variant="filled" 
+                                                size="medium"
+                                                sx={{ 
+                                                    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                                                    color: '#ffffff',
+                                                    fontWeight: 600,
                                                     fontSize: '13px',
-                                                    fontWeight: 500
-                                                }
-                                            }}
-                                        />
+                                                    height: 28,
+                                                    borderRadius: 2,
+                                                    boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                                                    '& .MuiChip-label': {
+                                                        color: '#ffffff !important',
+                                                        fontSize: '13px',
+                                                        fontWeight: 500
+                                                    }
+                                                }}
+                                            />
+                                        )}
                                     </Box>
                                 </Box>
                                 {/* Manufacturer Info Chips */}
@@ -631,6 +634,30 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails }: Produc
                                 <ShareIcon sx={{ color: 'primary.main' }} />
                                 Shared With
                             </Typography>
+                            
+                            {/* Warning for parts with customer IDs but not yet shared */}
+                            {part.customerPartIds && Object.keys(part.customerPartIds).length > 0 && 
+                             part.status !== StatusVariants.shared && (
+                                <Box sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 2,
+                                    p: 2,
+                                    mb: 3,
+                                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                                    borderRadius: 1,
+                                    border: '1px solid rgba(255, 152, 0, 0.3)'
+                                }}>
+                                    <WarningIcon sx={{ color: '#ff9800', fontSize: 20 }} />
+                                    <Typography variant="body2" sx={{ 
+                                        color: '#ff9800',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        This part is still not shared, but has already an existing customer part ID prepared for sharing.
+                                    </Typography>
+                                </Box>
+                            )}
                             
                             {sharedParts.length > 0 ? (
                                 <SharedTable sharedParts={sharedParts} />
