@@ -25,7 +25,9 @@ export interface AASData {
   displayName: string[];
   globalAssetId: string;
   id: string;
-  idShort?: string; // Optional idShort field
+  idShort?: string;
+  assetKind?: string;  // Optional idShort field
+  assetType?: string; // Asset type from shell descriptor
   specificAssetIds: SpecificAssetId[];
   submodelDescriptors: SubmodelDescriptor[];
 }

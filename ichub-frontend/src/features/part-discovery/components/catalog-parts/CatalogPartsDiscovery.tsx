@@ -189,9 +189,22 @@ export const CatalogPartsDiscovery = ({
               </Box>
               <Box className="custom-card-content">
                 <Typography variant="h5">
-                  {name}
+                  {(() => {
+                    // Try to get displayName from rawTwinData first
+                    if (item.rawTwinData?.displayName && Array.isArray(item.rawTwinData.displayName) && item.rawTwinData.displayName.length > 0) {
+                      // Check if displayName is an array of objects with text property
+                      const displayNameEntry = item.rawTwinData.displayName[0];
+                      if (typeof displayNameEntry === 'object' && displayNameEntry !== null && 'text' in displayNameEntry) {
+                        return (displayNameEntry as { text: string }).text;
+                      }
+                      // Otherwise treat as simple string
+                      return displayNameEntry as string;
+                    }
+                    // Fallback to current name logic
+                    return name;
+                  })()}
                 </Typography>
-                {(item.idShort || item.shellId) && (
+                {(item.rawTwinData?.assetType || item.idShort || item.shellId) && (
                   <Typography 
                     variant="caption" 
                     sx={{ 
@@ -209,7 +222,28 @@ export const CatalogPartsDiscovery = ({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {item.idShort || item.shellId}
+                    {item.rawTwinData?.assetType || item.idShort || item.shellId}
+                  </Typography>
+                )}
+                {(item.rawTwinData?.idShort) && (
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      fontFamily: 'monospace', 
+                      fontSize: '0.7rem',
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      display: 'block',
+                      mt: 0.5,
+                      mb: 0.5,
+                      wordBreak: 'break-all',
+                      lineHeight: 1.1,
+                      maxHeight: '15px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {item.rawTwinData.idShort}
                   </Typography>
                 )}
                 <br></br>

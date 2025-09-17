@@ -446,6 +446,8 @@ export interface SingleShellDiscoveryResponse {
     description: unknown[];
     displayName: unknown[];
     globalAssetId: string;
+    assetKind?: string; // Asset kind (Instance, Type, NotApplicable)
+    assetType?: string; // Asset type from shell descriptor
     id: string;
     idShort: string;
     specificAssetIds: Array<{
