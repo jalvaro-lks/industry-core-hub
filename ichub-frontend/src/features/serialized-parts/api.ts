@@ -29,6 +29,9 @@ const SERIALIZED_PART_READ_BASE_PATH = '/part-management/serialized-part';
 const SERIALIZED_PART_TWIN_BASE_PATH = '/twin-management/serialized-part-twin';
 const backendUrl = getIchubBackendUrl();
 
+// Track if twin endpoint is available to avoid repeated 404 calls
+let twinEndpointUnavailable = false;
+
 // Create axios instance with caching configuration for GET requests
 const cacheableAxios = axios.create({
   headers: {
@@ -129,6 +132,13 @@ export const fetchAllSerializedPartTwins = async (): Promise<SerializedPartTwinR
       console.warn('Backend URL not configured, returning empty twins list');
       return [];
     }
+
+    // If we already know the endpoint is unavailable, don't make the request
+    if (twinEndpointUnavailable) {
+      console.log('Twin endpoint known to be unavailable, skipping request');
+      return [];
+    }
+    
     // Fetch all twins without any filters using browser caching
     const params = new URLSearchParams();
     params.append('include_data_exchange_agreements', 'true');
@@ -139,7 +149,21 @@ export const fetchAllSerializedPartTwins = async (): Promise<SerializedPartTwinR
     );
     
     return Array.isArray(response.data) ? response.data : [];
-  } catch (error) {
+  } catch (error: unknown) {
+    // Handle 404 specifically - endpoint might not be available
+    if (axios.isAxiosError(error) && error?.response?.status === 404) {
+      console.warn('Twin management endpoint not found (404). This feature may not be available in this backend version.');
+      twinEndpointUnavailable = true; // Remember that this endpoint is not available
+      return [];
+    }
+    
+    // Handle other 4xx errors
+    if (axios.isAxiosError(error) && error?.response?.status && error.response.status >= 400 && error.response.status < 500) {
+      console.warn(`Twin management endpoint returned ${error.response.status}. Feature may not be available.`);
+      twinEndpointUnavailable = true; // Remember that this endpoint is not available
+      return [];
+    }
+    
     console.error('Failed to fetch serialized part twins:', error);
     return []; // Return empty array instead of throwing
   }

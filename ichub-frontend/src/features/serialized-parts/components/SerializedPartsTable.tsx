@@ -165,8 +165,14 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           twins = await fetchTwinsOnce();
         }
         
-        // Get relevant twins for current parts
-        const relevantTwins = getRelevantTwins(twins);
+        // Get relevant twins for current parts (call directly, don't use the callback)
+        const relevantTwins = twins.filter(twin => 
+          parts.some(part => 
+            twin.manufacturerId === part.manufacturerId &&
+            twin.manufacturerPartId === part.manufacturerPartId &&
+            twin.partInstanceId === part.partInstanceId
+          )
+        );
         
         // Merge serialized parts with twin status
         const rowsWithStatus = parts.map((serializedPart, index) => {
@@ -200,7 +206,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
     loadTwinData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parts, allTwins, getRelevantTwins]); // fetchTwinsOnce excluded - it's a stable function with no dependencies
+  }, [parts, allTwins]); // Only depend on the actual data, not the derived functions
 
   const handleCreateTwin = async (row: SerializedPartWithStatus) => {
     setTwinCreatingId(row.id);
