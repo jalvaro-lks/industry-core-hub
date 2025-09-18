@@ -21,7 +21,7 @@
 ********************************************************************************/
 
 import { Box, Grid2, Typography, Alert, CircularProgress } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchAllSerializedParts } from '../api';
 import SerializedPartsTable from '../components/SerializedPartsTable';
 import { SerializedPart } from '../types';
@@ -32,7 +32,7 @@ const SerializedParts = () => {
   const [error, setError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
-  const loadData = async (isRetry: boolean = false) => {
+  const loadData = useCallback(async (isRetry: boolean = false) => {
     try {
       if (isRetry) {
         setIsRetrying(true);
@@ -60,16 +60,16 @@ const SerializedParts = () => {
       setIsLoading(false);
       setIsRetrying(false);
     }
-  };
+  }, []); // No dependencies - this function should be stable
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     console.log("Refreshing serialized parts data");
     loadData(true);
-  };
+  }, [loadData]);
 
   return (
     <Grid2 container direction="row">
