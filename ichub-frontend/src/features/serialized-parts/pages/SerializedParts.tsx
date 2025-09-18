@@ -41,7 +41,16 @@ const SerializedParts = () => {
       }
       setError(null);
       
-      const data = await fetchAllSerializedParts();
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+      });
+      
+      const data = await Promise.race([
+        fetchAllSerializedParts(),
+        timeoutPromise
+      ]);
+      
       setSerializedParts(data || []);
       
       // If we got empty data, show a warning but don't treat it as an error
@@ -57,6 +66,7 @@ const SerializedParts = () => {
       );
       setSerializedParts([]); // Ensure we have an empty array
     } finally {
+      // Always clear loading states, even on error
       setIsLoading(false);
       setIsRetrying(false);
     }

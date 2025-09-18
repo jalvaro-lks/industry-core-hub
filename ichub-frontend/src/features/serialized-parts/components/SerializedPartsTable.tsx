@@ -115,11 +115,22 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   const fetchTwinsOnce = useCallback(async (): Promise<SerializedPartTwinRead[]> => {
     console.log('Fetching all twins for general serialized parts view (once)');
     try {
-      const twins = await fetchAllSerializedPartTwins();
+      // Add timeout to prevent infinite loading on twin requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Twin request timeout after 15 seconds')), 15000);
+      });
+      
+      const twins = await Promise.race([
+        fetchAllSerializedPartTwins(),
+        timeoutPromise
+      ]);
+      
       setAllTwins(twins);
       return twins;
     } catch (error) {
       console.error('Error fetching all twins:', error);
+      // Always return empty array and clear loading state on any error
+      setAllTwins([]);
       return [];
     }
   }, []); // No dependencies - this function should be stable
@@ -162,7 +173,24 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         if (twins.length === 0) {
           console.log('Fetching all twins for general serialized parts view (initial load)');
           setIsInitialLoading(true);
-          twins = await fetchTwinsOnce();
+          
+          // Add timeout for the entire twin loading process
+          const timeoutPromise = new Promise<SerializedPartTwinRead[]>((_, reject) => {
+            setTimeout(() => {
+              console.warn('Twin data loading timed out after 20 seconds, proceeding without twin data');
+              reject(new Error('Twin loading timeout'));
+            }, 20000);
+          });
+          
+          try {
+            twins = await Promise.race([
+              fetchTwinsOnce(),
+              timeoutPromise
+            ]);
+          } catch {
+            console.warn('Twin loading timed out, showing parts without twin status');
+            twins = [];
+          }
         }
         
         // Get relevant twins for current parts (call directly, don't use the callback)
@@ -200,6 +228,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         }));
         setRows(rowsWithoutStatus);
       } finally {
+        // ALWAYS clear loading state, even on timeout or error
         setIsInitialLoading(false);
       }
     };
