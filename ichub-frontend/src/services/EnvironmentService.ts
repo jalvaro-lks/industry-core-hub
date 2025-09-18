@@ -49,22 +49,12 @@ export const isRequireHttpsUrlPattern = () =>
   import.meta.env.VITE_REQUIRE_HTTPS_URL_PATTERN !== 'false';
 
 export const getIchubBackendUrl = () => {
-  const backendUrl = (import.meta as any).env.VITE_ICHUB_BACKEND_URL;
+  // First try to get from window.ENV (runtime injection via Helm charts), then fallback to build-time env
+  const backendUrl = window?.ENV?.ICHUB_BACKEND_URL || 
+                     import.meta.env.VITE_ICHUB_BACKEND_URL;
   
-  // If no backend URL is configured, try to infer it from current URL
   if (!backendUrl) {
-    const currentUrl = window.location.origin;
-    // Replace frontend URL with backend URL pattern
-    if (currentUrl.includes('frontend-ichub')) {
-      return currentUrl.replace('frontend-ichub', 'backend-ichub');
-    }
-    // For local development, default to localhost:8000
-    if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
-      return 'http://localhost:8000';
-    }
-    // Fallback to current origin (this might not work but better than empty string)
-    console.warn('VITE_ICHUB_BACKEND_URL not configured, using inferred backend URL');
-    return currentUrl;
+    console.warn('ICHUB_BACKEND_URL not configured. Ensure environment variable is set via Helm chart or build configuration.');
   }
   
   return backendUrl;
