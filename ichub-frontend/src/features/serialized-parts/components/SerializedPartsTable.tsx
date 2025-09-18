@@ -167,6 +167,14 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
   useEffect(() => {
     const loadTwinData = async () => {
+      // Don't fetch twin data if there are no parts to display
+      if (!parts || parts.length === 0) {
+        console.log('No parts to display, skipping twin data fetch');
+        setRows([]);
+        setIsInitialLoading(false);
+        return;
+      }
+
       try {
         // Only fetch if we don't have cached twins or parts changed
         let twins = allTwins;
@@ -483,10 +491,14 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     setIsRefreshing(true);
     
     try {
-      // Refresh twins data first
-      console.log('Refreshing twins data');
-      await fetchTwinsOnce();
-      console.log('Twins data refreshed successfully');
+      // Only refresh twins data if there are parts to work with
+      if (parts && parts.length > 0) {
+        console.log('Refreshing twins data');
+        await fetchTwinsOnce();
+        console.log('Twins data refreshed successfully');
+      } else {
+        console.log('No parts available, skipping twin refresh');
+      }
       
       // Trigger the parent to refresh the serialized parts data
       if (onRefresh) {
