@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Box, Grid2, Typography } from '@mui/material';
+import { Box, Grid2, Typography, Alert, CircularProgress } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { fetchAllSerializedParts } from '../api';
 import SerializedPartsTable from '../components/SerializedPartsTable';
@@ -28,13 +28,37 @@ import { SerializedPart } from '../types';
 
 const SerializedParts = () => {
   const [serializedParts, setSerializedParts] = useState<SerializedPart[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
-  const loadData = async () => {
+  const loadData = async (isRetry: boolean = false) => {
     try {
+      if (isRetry) {
+        setIsRetrying(true);
+      } else {
+        setIsLoading(true);
+      }
+      setError(null);
+      
       const data = await fetchAllSerializedParts();
-      setSerializedParts(data);
+      setSerializedParts(data || []);
+      
+      // If we got empty data, show a warning but don't treat it as an error
+      if (!data || data.length === 0) {
+        console.warn('No serialized parts returned from backend');
+      }
     } catch (error) {
-      console.error("Error fetching instance products:", error);
+      console.error("Error fetching serialized parts:", error);
+      setError(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to load serialized parts. Please check backend connectivity.'
+      );
+      setSerializedParts([]); // Ensure we have an empty array
+    } finally {
+      setIsLoading(false);
+      setIsRetrying(false);
     }
   };
 
@@ -44,7 +68,7 @@ const SerializedParts = () => {
 
   const handleRefresh = () => {
     console.log("Refreshing serialized parts data");
-    loadData();
+    loadData(true);
   };
 
   return (
@@ -53,13 +77,63 @@ const SerializedParts = () => {
         <Typography className="text">Serialized Parts</Typography>
       </Box>
       <Box sx={{ p: 3, width: '100%', color: 'white'}}>
-        <SerializedPartsTable 
-          parts={serializedParts} 
-          onView={(part) => {
-            console.log("View part:", part);
-          }}
-          onRefresh={handleRefresh}
-        />
+        {/* Error State */}
+        {error && (
+          <Alert 
+            severity="error" 
+            sx={{ mb: 2, backgroundColor: 'rgba(244, 67, 54, 0.1)', color: 'white' }}
+            action={
+              <button 
+                onClick={() => loadData(true)} 
+                disabled={isRetrying}
+                style={{ 
+                  background: 'none', 
+                  border: '1px solid white', 
+                  color: 'white', 
+                  padding: '4px 8px', 
+                  borderRadius: '4px',
+                  cursor: isRetrying ? 'not-allowed' : 'pointer',
+                  opacity: isRetrying ? 0.6 : 1
+                }}
+              >
+                {isRetrying ? 'Retrying...' : 'Retry'}
+              </button>
+            }
+          >
+            {error}
+          </Alert>
+        )}
+
+        {/* Loading State */}
+        {isLoading && !error && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <CircularProgress sx={{ color: 'white' }} />
+            <Typography sx={{ ml: 2, color: 'white' }}>Loading serialized parts...</Typography>
+          </Box>
+        )}
+
+        {/* Data State */}
+        {!isLoading && !error && (
+          <SerializedPartsTable 
+            parts={serializedParts} 
+            onView={(part) => {
+              console.log("View part:", part);
+            }}
+            onRefresh={handleRefresh}
+          />
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && serializedParts.length === 0 && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography sx={{ color: 'white', mb: 2 }}>
+              No serialized parts found
+            </Typography>
+            <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
+              The backend may be unavailable or there are no parts to display
+            </Typography>
+          </Box>
+        )}
       </Box>
     </Grid2>
   );
