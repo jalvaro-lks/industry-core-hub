@@ -35,14 +35,12 @@
         margin-bottom: 20px!important;
         border-radius: 5px;
         color: $brand-text;
-        width: 360px;
         min-width: 280px;
 
         .custom-card {
             display: flex;
             flex-direction: column;
             width: auto;
-            height: 100%!important; // Add this line to set a fixed height;
             justify-content: space-between;
             cursor: pointer;
             background: $brand-dark !important;

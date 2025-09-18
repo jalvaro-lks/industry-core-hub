@@ -199,7 +199,8 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     };
 
     loadTwinData();
-  }, [parts, allTwins, fetchTwinsOnce, getRelevantTwins]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parts, allTwins, getRelevantTwins]); // fetchTwinsOnce excluded - it's a stable function with no dependencies
 
   const handleCreateTwin = async (row: SerializedPartWithStatus) => {
     setTwinCreatingId(row.id);
