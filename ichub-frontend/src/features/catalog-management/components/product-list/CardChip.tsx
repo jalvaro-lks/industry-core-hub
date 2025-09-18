@@ -84,7 +84,7 @@ export const CardChip = ({ status, statusText, className }: CardChipProps) => {
         backgroundColor: theme.palette.chip[backgroundColor],
         borderRadius: '4px',
         border: theme.palette.chip[border],
-        height: '28px',
+        height: '32px',
         ...(statusKey === StatusVariants.shared && {
           '&, & *': {
             color: '#000000 !important',

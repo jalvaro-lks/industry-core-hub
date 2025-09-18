@@ -122,7 +122,7 @@ export const CatalogPartsDiscovery = ({
 
   return (
     <>
-      <Box className="custom-cards-list">
+      <Box className="catalog-parts-cards-list">
       {isLoading && (
         <LoadingSpinner />
       )}
@@ -133,21 +133,55 @@ export const CatalogPartsDiscovery = ({
         const name = item.name ?? "";
         const productId = item.manufacturerId + "/" + item.manufacturerPartId;
         return (
-          <Box key={productId} className="custom-card-box">
+          <Box key={productId} className="catalog-parts-card-box">
             <Box
-              className="custom-card"
-              sx={{
-                height: "220px"
-              }}
+              className="catalog-parts-card"
+              onClick={() => onClick(productId)}
+              sx={{ position: 'relative' }}
             >
-              <Box className="custom-card-header">
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <DiscoveryCardChip
-                    dtrIndex={item.dtrIndex}
-                  />
+              <Box className="catalog-parts-card-header">
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <Box sx={{ flexShrink: 0 }}>
+                    <DiscoveryCardChip
+                      dtrIndex={item.dtrIndex}
+                    />
+                  </Box>
+                  {/* Shell ID display with truncation and tooltip */}
+                  {item.shellId && (
+                    <Tooltip title={`${item.shellId}`} arrow placement="top">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontFamily: 'Monaco, "Lucida Console", monospace',
+                          fontSize: '0.68rem',
+                          color: 'rgba(255, 255, 255, 0.65)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          cursor: 'help',
+                          minWidth: 0,
+                          flex: 1,
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
+                          letterSpacing: '0.05px',
+                          fontWeight: 400,
+                          maxWidth: '180px',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {(() => {
+                          // Extended truncation for header display with wider cards
+                          const shellId = item.shellId;
+                          if (shellId.length <= 28) return shellId;
+                          // Show first 18 characters and last 8 for better UUID recognition
+                          return `${shellId.substring(0, 16)}...${shellId.substring(shellId.length - 8)}`;
+                        })()}
+                      </Typography>
+                    </Tooltip>
+                  )}
                 </Box>
 
-                <Box className="custom-card-header-buttons">                  
+                <Box className="catalog-parts-card-header-buttons">                  
                   {item.rawTwinData && (
                     <Tooltip title="Download Twin Data" arrow>
                       <IconButton
@@ -187,8 +221,9 @@ export const CatalogPartsDiscovery = ({
                   </Tooltip>
                 </Box>
               </Box>
-              <Box className="custom-card-content">
-                <Typography variant="h5">
+              <Box className="catalog-parts-card-content">
+                {/* Title Section */}
+                <Typography variant="h5" sx={{ lineHeight: 1.2, minHeight: '40px', display: 'flex', alignItems: 'flex-start' }}>
                   {(() => {
                     // Try to get displayName from rawTwinData first
                     if (item.rawTwinData?.displayName && Array.isArray(item.rawTwinData.displayName) && item.rawTwinData.displayName.length > 0) {
@@ -204,54 +239,173 @@ export const CatalogPartsDiscovery = ({
                     return name;
                   })()}
                 </Typography>
-                {(item.rawTwinData?.assetType || item.idShort || item.shellId) && (
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontFamily: 'monospace', 
-                      fontSize: '0.7rem',
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      display: 'block',
-                      mt: 0.5,
-                      mb: 0.5,
-                      wordBreak: 'break-all',
-                      lineHeight: 1.1,
-                      maxHeight: '15px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {item.rawTwinData?.assetType || item.idShort || item.shellId}
-                  </Typography>
-                )}
-                {(item.rawTwinData?.idShort) && (
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontFamily: 'monospace', 
-                      fontSize: '0.7rem',
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      display: 'block',
-                      mt: 0.5,
-                      mb: 0.5,
-                      wordBreak: 'break-all',
-                      lineHeight: 1.1,
-                      maxHeight: '15px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {item.rawTwinData.idShort}
-                  </Typography>
-                )}
-                <br></br>
-                <Typography variant="label2">
-                  {item.category}
-                </Typography>
+
+                {/* Identifiers Section with Optimized Layout */}
+                <Box className="id-section" sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 0 }}>
+                  {(() => {
+                    // Smart truncation optimized for wider card
+                    const truncateId = (id: string, maxLength: number = 40) => {
+                      if (!id || id.length <= maxLength) return id;
+                      const startLength = Math.floor((maxLength - 3) / 2);
+                      const endLength = maxLength - 3 - startLength;
+                      return `${id.substring(0, startLength)}...${id.substring(id.length - endLength)}`;
+                    };
+
+                    // Collect all identifiers to display with improved logic
+                    const identifiers = [];
+
+                    // ID Short - primary technical identifier
+                    if (item.idShort) {
+                      identifiers.push({
+                        label: "ID Short",
+                        value: item.idShort,
+                        priority: 1
+                      });
+                    }
+
+                    // Manufacturer Part ID (high priority business identifier)
+                    if (item.manufacturerPartId) {
+                      identifiers.push({
+                        label: "Manufacturer Part ID",
+                        value: item.manufacturerPartId,
+                        priority: 2
+                      });
+                    }
+
+                    // Customer Part ID (high priority business identifier)
+                    if (item.category) {
+                      identifiers.push({
+                        label: "Customer Part ID",
+                        value: item.category,
+                        priority: 3
+                      });
+                    }
+
+                    // ID Short (from rawTwinData or direct property) - Show after Customer Part ID
+                    const idShort = item.idShort || item.rawTwinData?.idShort;
+                    if (idShort) {
+                      identifiers.push({
+                        label: "ID Short",
+                        value: idShort,
+                        priority: 4 // Lower priority than Customer Part ID
+                      });
+                    }
+
+                    // Sort by priority and ensure top 3 are shown
+                    const displayIdentifiers = identifiers
+                      .sort((a, b) => a.priority - b.priority)
+                      .slice(0, 3); // Show max 3 to fit in compact space
+
+                    return (
+                      <>
+                        {displayIdentifiers.map((identifier, index) => (
+                          <Box key={`${identifier.label}-${index}`} sx={{ minHeight: '36px' }}>
+                            <Typography 
+                              className="info-label"
+                              sx={{ 
+                                fontSize: '0.65rem',
+                                color: 'rgba(255, 255, 255, 0.45)',
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.8px',
+                                marginBottom: '3px',
+                                display: 'block'
+                              }}
+                            >
+                              {identifier.label}
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                fontFamily: 'Monaco, "Lucida Console", monospace',
+                                fontSize: identifier.priority <= 2 ? '0.76rem' : '0.74rem',
+                                color: identifier.priority <= 2 ? 'rgba(255, 255, 255, 0.87)' : 'rgba(255, 255, 255, 0.75)',
+                                lineHeight: 1.3,
+                                fontWeight: identifier.priority <= 2 ? 500 : 400,
+                                letterSpacing: '0.1px',
+                                cursor: 'help',
+                                wordBreak: 'break-word',
+                                display: 'block'
+                              }}
+                              title={`${identifier.label}: ${identifier.value}`}
+                            >
+                              {truncateId(identifier.value)}
+                            </Typography>
+                          </Box>
+                        ))}
+
+                        {/* Fallback if no identifiers */}
+                        {displayIdentifiers.length === 0 && (
+                          <Box sx={{ minHeight: '36px' }}>
+                            <Typography className="info-label">
+                              Identifier
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                fontSize: '0.72rem',
+                                color: 'rgba(255, 255, 255, 0.4)',
+                                fontStyle: 'italic',
+                                lineHeight: 1.4,
+                                display: 'block'
+                              }}
+                            >
+                              Not available
+                            </Typography>
+                          </Box>
+                        )}
+                      </>
+                    );
+                  })()}
+                </Box>
               </Box>
-              <Box className="custom-card-button-box">
+              <Box className="catalog-parts-card-button-box" sx={{ pb: "0!important" }}>
+                {/* Asset Type Banner above VIEW button */}
+                {(() => {
+                  const assetType = item.rawTwinData?.assetType || item.rawTwinData?.assetKind;
+                  return assetType ? (
+                    <Box 
+                      sx={{ 
+                        mb: 0, // No distance to button
+                        mx: -2, // Extend beyond card padding to reach edges
+                        display: 'flex', 
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        background: 'linear-gradient(90deg, rgba(79, 172, 254, 0.15) 0%, rgba(79, 172, 254, 0.08) 100%)',
+                        borderTop: '1px solid rgba(79, 172, 254, 0.2)',
+                        borderBottom: '1px solid rgba(79, 172, 254, 0.2)',
+                        py: 0.8,
+                        position: 'relative'
+                      }}
+                    >
+                      <Tooltip title={`Asset Type: ${assetType}`} arrow placement="top">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.65rem',
+                            color: 'rgba(79, 172, 254, 0.9)',
+                            fontWeight: 600,
+                            letterSpacing: '0.4px',
+                            textTransform: 'uppercase',
+                            lineHeight: 1.2,
+                            cursor: 'help',
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '280px'
+                          }}
+                        >
+                          {(() => {
+                            // Smart truncation for full-width banner
+                            if (assetType.length <= 30) return assetType;
+                            return `${assetType.substring(0, 27)}...`;
+                          })()}
+                        </Typography>
+                      </Tooltip>
+                    </Box>
+                  ) : null;
+                })()}
                 <Button 
                   variant="contained" 
                   size="small" 
@@ -292,7 +446,7 @@ export const CatalogPartsDiscovery = ({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '8px 16px',
+              padding: '4px 16px',
               cursor: 'pointer',
               backgroundColor: copySuccess ? '#4caf50 !important' : 'transparent',
               transition: 'background-color 0.3s ease',
@@ -336,7 +490,7 @@ export const CatalogPartsDiscovery = ({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '8px 16px',
+              padding: '4px 16px',
               cursor: 'pointer',
               '&:hover': {
                 backgroundColor: '#f5f5f5'

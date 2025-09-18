@@ -34,8 +34,14 @@ export enum PRODUCT_STATUS {
 // Generic product options - shared across features  
 export enum PRODUCT_OPTIONS {
     COPY = "Copy unique ID",
-    DOWNLOAD = "Download",
+    COPY_AAS_ID = "Copy AAS ID",
+    DOWNLOAD = "Download JSON",
     SHARE = "Share with partner",
+    EDIT = "Edit product",
+    DELETE = "Delete product",
+    EXPORT = "Export data",
+    VIEW_DETAILS = "View full details",
+    REGISTER = "Register Twin",
 }
 
 // Re-export feature-specific types for backward compatibility

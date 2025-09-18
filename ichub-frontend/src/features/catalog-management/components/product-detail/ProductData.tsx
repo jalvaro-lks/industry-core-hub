@@ -258,7 +258,37 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                                     />
                                 </>
                             ) : twinDetails ? (
-                                <>
+                                <> {twinDetails.globalId && (
+                                        <Tooltip title="Click to copy Global Asset ID">
+                                            <Chip
+                                                icon={<AccountTreeIcon />}
+                                                label={twinDetails.globalId}
+                                                variant="outlined"
+                                                size="small"
+                                                clickable
+                                                onClick={() => handleCopy(twinDetails.globalId, 'Global Asset ID')}
+                                                sx={{
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                    color: '#ffffff',
+                                                    fontFamily: 'monospace',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                        borderColor: 'rgba(255, 255, 255, 0.5)'
+                                                    },
+                                                    '& .MuiChip-icon': {
+                                                        color: '#ffffff'
+                                                    },
+                                                    '& .MuiChip-label': {
+                                                        color: '#ffffff !important',
+                                                        fontSize: '11px',
+                                                        fontWeight: 500,
+                                                        fontFamily: 'monospace'
+                                                    }
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    )}
                                     {twinDetails.dtrAasId && (
                                         <Tooltip title="Click to copy AAS ID">
                                             <Chip
@@ -288,37 +318,6 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                                                     },
                                                     '& span': {
                                                         color: '#ffffff !important'
-                                                    }
-                                                }}
-                                            />
-                                        </Tooltip>
-                                    )}
-                                    {twinDetails.globalId && (
-                                        <Tooltip title="Click to copy Digital Twin ID">
-                                            <Chip
-                                                icon={<AccountTreeIcon />}
-                                                label={twinDetails.globalId}
-                                                variant="outlined"
-                                                size="small"
-                                                clickable
-                                                onClick={() => handleCopy(twinDetails.globalId, 'Digital Twin ID')}
-                                                sx={{
-                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                                                    color: '#ffffff',
-                                                    fontFamily: 'monospace',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                                        borderColor: 'rgba(255, 255, 255, 0.5)'
-                                                    },
-                                                    '& .MuiChip-icon': {
-                                                        color: '#ffffff'
-                                                    },
-                                                    '& .MuiChip-label': {
-                                                        color: '#ffffff !important',
-                                                        fontSize: '11px',
-                                                        fontWeight: 500,
-                                                        fontFamily: 'monospace'
                                                     }
                                                 }}
                                             />

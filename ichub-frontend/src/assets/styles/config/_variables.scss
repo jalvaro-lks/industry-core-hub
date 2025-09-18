@@ -36,6 +36,8 @@ $opaque-gradient-start: rgb(0, 42, 126);
 $opaque-gradient-end: rgb(0, 108, 167);
 $header-opaque-gradient-bg: linear-gradient(180deg, $opaque-gradient-start 0%, $opaque-gradient-end 100%);
 
+$gradient-blue-light: linear-gradient(135deg, rgb(25, 118, 210) 0%, rgb(66, 165, 245) 100%);
+
 // Green gradient background
 $gradient-green-start: rgba(0, 80, 40, 0.83);
 $gradient-green-end: rgba(0, 180, 100, 0.57);

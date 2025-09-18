@@ -1868,7 +1868,7 @@ const PartsDiscovery = () => {
                 )}
                 {/* Discovery Mode Results */}
                 {currentResponse && searchMode === 'discovery' && (
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} sx={{ px: 2, flexShrink: 0 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ px: 2, flexShrink: 0 }}>
                     {/* Left Side - Part Type Indicator + Active Filters */}
                     <Box 
                       display="flex" 

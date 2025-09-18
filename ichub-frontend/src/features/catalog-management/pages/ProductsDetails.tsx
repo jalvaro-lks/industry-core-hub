@@ -3,11 +3,7 @@
  *
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
- * See the NOTICE file(s) distributed with this work for add        </Grid2>
-
-        <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} onPartUpdated={fetchData} />
-        
-        <Grid2 container size={12} spacing={2}className="add-on-buttons">al
+ * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
  *
  * This program and the accompanying materials are made available under the
@@ -26,7 +22,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button } from '@mui/material';
+import { Button, Snackbar, Alert } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { CardChip } from "../components/product-list/CardChip";
 import { StatusVariants } from "../types/types";
@@ -46,7 +42,6 @@ import SubmodelsGridDialog from "../components/product-detail/SubmodelsGridDialo
 import ShareDialog from "../components/shared/ShareDialog";
 import {ErrorNotFound} from "../../../components/general/ErrorNotFound";
 import LoadingSpinner from "../../../components/general/LoadingSpinner";
-import PageNotification from "../../../components/general/PageNotification";
 
 import { PartType } from "../types/types";
 import { PRODUCT_STATUS } from "../types/shared";
@@ -116,7 +111,6 @@ const ProductsDetails = () => {
   if(!manufacturerId || !manufacturerPartId){
     return <div>Product not found</div>; 
   }
-  const productId = manufacturerId + "/" + manufacturerPartId
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -176,41 +170,10 @@ const ProductsDetails = () => {
     setSubmodelsGridDialogOpen(false);
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(productId)
-      .then(() => {
-        setNotification({
-          open: true,
-          severity: "success",
-          title: "PartInstanceID copied to clipboard",
-        });
-        setTimeout(() => setNotification(null), 3000);
-      })
-      .catch((error) => {
-        setNotification({
-          open: true,
-          severity: "error",
-          title: "Failed to copy PartInstanceID",
-        });
-        setTimeout(() => setNotification(null), 3000);
-        console.error("Failed to copy text: ", error);
-      });
+  const handleCloseNotification = () => {
+    setNotification(null);
   };
 
-  const handleDownload = () => {
-    const fileName = partType.name.toLowerCase().replace(/\s+/g, "-") + ".txt";
-    const blob = new Blob([productId], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-    
   const getStatusTag = (status: string) => {
     let statusVariant: StatusVariants;
     
@@ -249,19 +212,23 @@ const ProductsDetails = () => {
       flexDirection: "column",
       overflow: "auto" // Enable scrolling when content overflows
     }}>
-      <PageNotification notification={notification} />
-
       <Grid2 container className="productDetail" sx={{ flexGrow: 1 }}>
-        <Grid2 size={4} display="flex" justifyContent="start">
+        <Grid2 size={4} display="flex" justifyContent="start" alignItems="center">
           {getStatusTag(partType.status ?? PRODUCT_STATUS.DRAFT)}
         </Grid2>
-        <Grid2 size={4} display="flex" justifyContent="center">
+        <Grid2 size={4} display="flex" justifyContent="center" alignItems="center">
           <Button size="small" onClick={() => console.log("DCM v2.0 button")} className="update-button" endIcon={<EditIcon />}>            
               <span className="update-button-content">UPDATE</span>            
           </Button>
         </Grid2>
-        <Grid2 size={4} display="flex" justifyContent="end">
-          <ShareDropdown handleCopy={handleCopy} handleDownload={handleDownload} handleShare={handleOpenShareDialog} />
+        <Grid2 size={4} display="flex" justifyContent="end" alignItems="center">
+          <ShareDropdown 
+            partData={partType} 
+            twinDetails={twinDetails} 
+            handleShare={handleOpenShareDialog}
+            onNotification={setNotification}
+            onRefresh={fetchData}
+          />
         </Grid2>
 
   <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} onPartUpdated={fetchData} />
@@ -288,6 +255,23 @@ const ProductsDetails = () => {
           partName={partType?.name}
         />
       </Grid2>
+
+      {/* Copy notification snackbar */}
+      <Snackbar
+        open={notification?.open || false}
+        autoHideDuration={3000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification}
+          variant="filled"
+          severity={notification?.severity || 'success'}
+          sx={{ width: '100%' }}
+        >
+          {notification?.title}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

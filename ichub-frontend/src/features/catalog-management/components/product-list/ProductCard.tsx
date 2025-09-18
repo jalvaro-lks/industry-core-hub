@@ -94,6 +94,7 @@ export const ProductCard = ({
       {items.map((item) => {
         const name = item.name ?? "";
         const productId = item.manufacturerId + "/" + item.manufacturerPartId;
+        const categoryLabel = item.category || item.manufacturerPartId;
         return (
           <Box key={productId} className="custom-card-box">
             <Box
@@ -154,7 +155,7 @@ export const ProductCard = ({
                 </Typography>
                 <br></br>
                 <Typography variant="label2">
-                  {item.category}
+                  {categoryLabel}
                 </Typography>
               </Box>
               <Box className="custom-card-button-box">
