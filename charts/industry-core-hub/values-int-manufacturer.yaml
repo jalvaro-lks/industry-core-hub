@@ -21,6 +21,9 @@
 ---
 ## For being used in the Integration ArgoCD test environment from the Catena-X Association
 
+nameOverride: "manufacturer-ichub"
+fullnameOverride: "manufacturer-ichub"
+
 participantId : "<path:industry-core-hub/data/edc#bpn>"
 
 postgresql:
