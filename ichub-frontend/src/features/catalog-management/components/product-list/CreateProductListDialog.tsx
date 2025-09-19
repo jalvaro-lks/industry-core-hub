@@ -99,6 +99,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
         length: { value: 0, unit: LengthUnit.MM },
         weight: { value: 0, unit: WeightUnit.KG },
       });
+      // Clear all messages when dialog opens
       setSuccessMessage("");
       setApiErrorMessage("");
       setExpandedMaterial(null);
@@ -192,6 +193,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
     const totalShare = getTotalShare();
     // Enforce 100% only if materials were provided
     if (namedMaterials.length > 0 && Math.abs(totalShare - 100) > 0.01) {
+      // Clear success message and show error
+      setSuccessMessage("");
       setApiErrorMessage("Material shares must add up to 100% when materials are provided");
       return;
     }
@@ -204,6 +207,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
 
     try {
       await createCatalogPart(mapPartInstanceToApiPartData(payload as PartType));
+      // Clear any existing error message first
+      setApiErrorMessage("");
       setSuccessMessage("Catalog part created successfully.");
       setTimeout(() => {
         setSuccessMessage("");
@@ -292,8 +297,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
           }
         }
       }}>
-        {/* Top-of-dialog alerts */}
-        {apiErrorMessage && (
+        {/* Top-of-dialog alerts - Only show one at a time */}
+        {apiErrorMessage && !successMessage && (
           <Alert 
             severity="error" 
             variant="filled" 

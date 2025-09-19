@@ -132,18 +132,6 @@ const SerializedParts = () => {
             onRefresh={handleRefresh}
           />
         )}
-
-        {/* Empty State */}
-        {!isLoading && !error && serializedParts.length === 0 && (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography sx={{ color: 'white', mb: 2 }}>
-              No serialized parts found
-            </Typography>
-            <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
-              The backend may be unavailable or there are no parts to display
-            </Typography>
-          </Box>
-        )}
       </Box>
     </Grid2>
   );

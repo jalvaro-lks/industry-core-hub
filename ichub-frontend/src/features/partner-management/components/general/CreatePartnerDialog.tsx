@@ -81,8 +81,7 @@ const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDial
         }, 3000);
       } catch (axiosError) {
         console.error('Error creating partner:', axiosError);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let errorMessage = (axiosError as any).message || 'Failed to create partner.';
+        let errorMessage = 'Failed to create partner.';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const errorResponse = (axiosError as any).response;
 
@@ -93,9 +92,69 @@ const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDial
           } else if (errorResponse.data && errorResponse.data.message) {
             // General error message from backend response
             errorMessage = errorResponse.data.message;
-          } else if (errorResponse.data) {
-            // Fallback if no specific message format is found but data exists
-            errorMessage = JSON.stringify(errorResponse.data);
+          } else if (errorResponse.data && typeof errorResponse.data === 'string') {
+            // Check if response contains HTML content
+            if (errorResponse.data.includes('<html>') || errorResponse.data.includes('<title>')) {
+              // Extract meaningful error from HTML if possible
+              const titleMatch = errorResponse.data.match(/<title>(.*?)<\/title>/i);
+              const h1Match = errorResponse.data.match(/<h1>(.*?)<\/h1>/i);
+              
+              if (titleMatch && titleMatch[1]) {
+                errorMessage = titleMatch[1].trim();
+              } else if (h1Match && h1Match[1]) {
+                errorMessage = h1Match[1].trim();
+              } else {
+                // Fallback for HTML responses
+                errorMessage = `Server error (${errorResponse.status}): ${errorResponse.statusText || 'Request failed'}`;
+              }
+            } else {
+              errorMessage = errorResponse.data;
+            }
+          } else if (errorResponse.status) {
+            // Status-based error messages
+            switch (errorResponse.status) {
+              case 400:
+                errorMessage = 'Invalid request. Please check your input.';
+                break;
+              case 401:
+                errorMessage = 'Unauthorized. Please log in again.';
+                break;
+              case 403:
+                errorMessage = 'Access denied. You do not have permission to perform this action.';
+                break;
+              case 404:
+                errorMessage = 'Service not found. Please try again later.';
+                break;
+              case 405:
+                errorMessage = 'Operation not allowed. Please contact support.';
+                break;
+              case 409:
+                errorMessage = 'Partner with this BPNL already exists.';
+                break;
+              case 422:
+                errorMessage = 'Invalid data provided. Please check your input.';
+                break;
+              case 500:
+                errorMessage = 'Internal server error. Please try again later.';
+                break;
+              case 502:
+              case 503:
+              case 504:
+                errorMessage = 'Service temporarily unavailable. Please try again later.';
+                break;
+              default:
+                errorMessage = `Server error (${errorResponse.status}). Please try again.`;
+            }
+          }
+        } else if (axiosError instanceof Error && axiosError.message) {
+          // Network or other errors
+          const message = axiosError.message;
+          if (message.includes('Network Error')) {
+            errorMessage = 'Network error. Please check your connection and try again.';
+          } else if (message.includes('timeout')) {
+            errorMessage = 'Request timed out. Please try again.';
+          } else {
+            errorMessage = 'Connection failed. Please try again later.';
           }
         }
         
