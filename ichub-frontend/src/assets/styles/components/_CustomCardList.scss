@@ -40,7 +40,9 @@
         .custom-card {
             display: flex;
             flex-direction: column;
-            width: auto;
+            width: 320px;
+            max-width: 320px;
+            min-width: 320px;
             justify-content: space-between;
             cursor: pointer;
             background: $brand-dark !important;

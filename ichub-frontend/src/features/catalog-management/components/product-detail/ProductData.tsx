@@ -262,11 +262,11 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                                         <Tooltip title="Click to copy Global Asset ID">
                                             <Chip
                                                 icon={<AccountTreeIcon />}
-                                                label={twinDetails.globalId}
+                                                label={twinDetails.globalId.startsWith('urn:uuid:') ? twinDetails.globalId : `urn:uuid:${twinDetails.globalId}`}
                                                 variant="outlined"
                                                 size="small"
                                                 clickable
-                                                onClick={() => handleCopy(twinDetails.globalId, 'Global Asset ID')}
+                                                onClick={() => handleCopy(twinDetails.globalId.startsWith('urn:uuid:') ? twinDetails.globalId : `urn:uuid:${twinDetails.globalId}`, 'Global Asset ID')}
                                                 sx={{
                                                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
                                                     borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -293,11 +293,11 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                                         <Tooltip title="Click to copy AAS ID">
                                             <Chip
                                                 icon={<FingerprintIcon />}
-                                                label={twinDetails.dtrAasId}
+                                                label={twinDetails.dtrAasId.startsWith('urn:uuid:') ? twinDetails.dtrAasId : `urn:uuid:${twinDetails.dtrAasId}`}
                                                 variant="outlined"
                                                 size="small"
                                                 clickable
-                                                onClick={() => handleCopy(twinDetails.dtrAasId, 'AAS ID')}
+                                                onClick={() => handleCopy(twinDetails.dtrAasId.startsWith('urn:uuid:') ? twinDetails.dtrAasId : `urn:uuid:${twinDetails.dtrAasId}`, 'AAS ID')}
                                                 sx={{
                                                     backgroundColor: 'rgba(255, 255, 255, 0.05)',
                                                     borderColor: 'rgba(255, 255, 255, 0.3)',
