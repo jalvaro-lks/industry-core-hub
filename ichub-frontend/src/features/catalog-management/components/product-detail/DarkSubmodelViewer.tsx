@@ -331,8 +331,10 @@ const DarkSubmodelViewer: React.FC<DarkSubmodelViewerProps> = ({
                                 {submodel.semanticId.keys.map(key => key.value).join(' / ')}
                             </Typography>
                             
+                             {/* Asset Id
                             <Typography variant="body2" color="text.secondary">Asset ID:</Typography>
-                            <Typography variant="body2" fontFamily="monospace">{submodelId}</Typography>
+                            <Typography variant="body2" fontFamily="monospace">-</Typography>
+                            */}
                         </Box>
                     </Paper>
 

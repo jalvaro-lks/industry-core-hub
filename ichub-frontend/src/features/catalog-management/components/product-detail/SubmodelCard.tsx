@@ -58,7 +58,6 @@ interface SubmodelCardProps {
 const SubmodelCard: React.FC<SubmodelCardProps> = ({
     semanticId,
     aspect,
-    assetId,
     onViewDetails
 }) => {
     // Parse semantic ID to extract version and model name (inspired by SingleTwinResult)
@@ -127,7 +126,7 @@ const SubmodelCard: React.FC<SubmodelCardProps> = ({
                 }]
             }
         };
-        onViewDetails(mockSubmodel, assetId, semanticId);
+        onViewDetails(mockSubmodel, aspect.submodelId, semanticId);
     };
 
     const parsedSemanticId = parseSemanticId(semanticId);

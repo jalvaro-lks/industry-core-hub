@@ -183,18 +183,28 @@ div[role="presentation"] {
 
 .submodel-button{
     border-radius: 8px!important;
-    border-color: $brand-light-blue!important;
+    border: 1px solid $gradient-green-start!important;
+    background: $green-gradient-bg-light;
 
     &:hover {
-        background: $blue-gradient-bg;
-        border-color: $brand-text!important;
+        background: $green-gradient-bg-hover!important;
+        transform: translateY(-1px)!important;
+        box-shadow: 0 8px 24px rgba(33, 122, 0, 0.606)!important;
+        transition: all 0.2s ease-in-out;
     }
     &:disabled{
         background-color: $brand-gray;
         color: $brand-dark;
-        border-color: $brand-gray !important;
         cursor: not-allowed;
         opacity: 0.5;
+    }
+    &:active{
+        border: 2px solid $gradient-green-start!important;
+        box-shadow: none!important;
+    }
+    &:focus{
+        border: 2px solid $gradient-green-start!important;
+        box-shadow: none!important;
     }
 }
 

@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip, IconButton } from '@mui/material'
+import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip, IconButton, CircularProgress } from '@mui/material'
 import Grid2 from '@mui/material/Grid2';
 import { Typography } from '@mui/material';
 import { PartType, StatusVariants } from '../../types/types';
@@ -56,6 +56,7 @@ interface ProductDataProps {
 const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUpdated }: ProductDataProps) => {
     const [twinDetails, setTwinDetails] = useState<CatalogPartTwinDetailsRead | null>(propTwinDetails || null);
     const [isLoadingTwin, setIsLoadingTwin] = useState(false);
+    const [isUpdatingParent, setIsUpdatingParent] = useState(false);
     const [copySnackbar, setCopySnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
     
     // Submodel viewer dialog state
@@ -76,6 +77,7 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
 
     const handleRegisterTwin = async () => {
         try {
+            setIsUpdatingParent(true);
             const twinToCreate: CatalogPartTwinCreateType = {
                 manufacturerId: part.manufacturerId,
                 manufacturerPartId: part.manufacturerPartId,
@@ -106,11 +108,14 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                     }
                 } catch (err) {
                     console.error('Error in onPartUpdated callback:', err);
+                } finally {
+                    setIsUpdatingParent(false);
                 }
             }, 1000);
         } catch (error) {
             console.error("Error registering part twin:", error);
             setCopySnackbar({ open: true, message: 'Failed to register part twin!', severity: 'error' });
+            setIsUpdatingParent(false);
         }
     };
 
@@ -174,7 +179,43 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
     // Removed unused helpers (getStatusLabel, parseSemanticId)
 
     return (
-        <Box sx={{ width: '100%', p: 2 }}>
+        <Box sx={{ width: '100%', p: 2, position: 'relative' }}>
+            {/* Loading overlay for parent updates */}
+            {isUpdatingParent && (
+                <Box sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 2,
+                }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        gap: 2,
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        p: 4,
+                        borderRadius: 2,
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                    }}>
+                        <CircularProgress size={40} sx={{ color: '#3b82f6' }} />
+                        <Typography variant="h6" sx={{ color: 'text.primary' }}>
+                            Updating part status...
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                            Please wait while we refresh the twin information
+                        </Typography>
+                    </Box>
+                </Box>
+            )}
+            
             {/* Header Section */}
             <Card sx={{ 
                 mb: 3, 
@@ -925,6 +966,7 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                 autoHideDuration={3000}
                 onClose={handleCloseSnackbar}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                sx={{ zIndex: 10000 }}
             >
                 <Alert 
                     onClose={handleCloseSnackbar}

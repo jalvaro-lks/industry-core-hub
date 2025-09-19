@@ -298,7 +298,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             severity="error" 
             variant="filled" 
             onClose={() => setApiErrorMessage("")}
-            sx={{ mb: 2, mt: 2, position: 'sticky', top: 0, zIndex: 1 }}
+            sx={{ mb: 2, mt: 2, position: 'sticky', top: 0, zIndex: 99999 }}
           >
             {apiErrorMessage}
           </Alert>
@@ -308,7 +308,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             severity="success" 
             variant="filled" 
             onClose={() => setSuccessMessage("")}
-            sx={{ mb: 2, mt: 2, position: 'sticky', top: 0, zIndex: 1 }}
+            sx={{ mb: 2, mt: 2, position: 'sticky', top: 0, zIndex: 99999 }}
           >
             {successMessage}
           </Alert>
