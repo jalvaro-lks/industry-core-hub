@@ -19,7 +19,9 @@
 # SPDX-License-Identifier: Apache-2.0
 ###############################################################
 ---
----
+nameOverride: "manufacturer-ichub-edc"
+fullnameOverride: "manufacturer-ichub-edc"
+
 secrets:
   client-secret: <path:industry-core-hub/data/wallet#clientSecret>
 
