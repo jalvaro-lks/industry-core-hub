@@ -146,7 +146,7 @@ vault:
 digital-twin-registry:
   enabled: true
   registry:
-    host: dtr-ichub.int.catena-x.net
+    host: dtr-consumer-ichub.int.catena-x.net
     ingress:
       enabled: true
       tls: 

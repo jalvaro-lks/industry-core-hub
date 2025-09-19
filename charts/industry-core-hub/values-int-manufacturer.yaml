@@ -49,7 +49,7 @@ pgadmin4:
        - secretName: "pgadmin-ichub.int.catena-x.net-tls"
          hosts:
            - "pgadmin-ichub.int.catena-x.net" 
-frontend: 
+frontend: dtr
   env:
     # -- industry-core-hub backend base URL
     backendUrl: "https://backend-ichub-consumer.int.catena-x.net/v1"
@@ -169,7 +169,7 @@ backend:
           hostname: "https://edc-provider-ichub-dataplane.int.catena-x.net"
           publicPath: "/api/public"
       digitalTwinRegistry:
-        hostname: "https://dtr-ichub.int.catena-x.net"
+        hostname: "https://dtr-consumer-ichub.int.catena-x.net"
         apiPath: "/api/v3"
         uri: ""
         asset_config:
