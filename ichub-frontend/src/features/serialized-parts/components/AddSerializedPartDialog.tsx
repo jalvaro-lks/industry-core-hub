@@ -58,7 +58,6 @@ interface AddSerializedPartDialogProps {
 }const AddSerializedPartDialog = ({ open, onClose, onSuccess }: AddSerializedPartDialogProps) => {
     const manufacturerId = getParticipantId();
     const navigate = useNavigate();
-    :', manufacturerId);
     
     // Step management for three-step process
     const [currentStep, setCurrentStep] = useState<'serialized-part' | 'choice' | 'catalog-part'>('serialized-part');

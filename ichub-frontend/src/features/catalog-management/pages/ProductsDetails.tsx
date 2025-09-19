@@ -217,7 +217,7 @@ const ProductsDetails = () => {
           {getStatusTag(partType.status ?? PRODUCT_STATUS.DRAFT)}
         </Grid2>
         <Grid2 size={4} display="flex" justifyContent="center" alignItems="center">
-          <Button size="small" onClick={() => } className="update-button" endIcon={<EditIcon />}>            
+          <Button size="small" className="update-button" endIcon={<EditIcon />}>            
               <span className="update-button-content">UPDATE</span>            
           </Button>
         </Grid2>

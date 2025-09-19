@@ -89,8 +89,6 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
 
   const handleShare = async () => {
     
-    :', bpnl.trim());
-    
     if (!bpnl.trim()) {
       setError(true);
       setApiErrorMessage('');

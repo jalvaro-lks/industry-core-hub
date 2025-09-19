@@ -142,8 +142,6 @@ export const fetchAllSerializedPartTwins = async (): Promise<SerializedPartTwinR
     // Fetch all twins without any filters using browser caching
     const params = new URLSearchParams();
     params.append('include_data_exchange_agreements', 'true');
-    
-    ');
     const response = await cacheableAxios.get<SerializedPartTwinRead[]>(
       `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?${params.toString()}`
     );
@@ -178,8 +176,6 @@ export const fetchSerializedPartTwinsForCatalogPart = async (
   params.append('include_data_exchange_agreements', 'true');
   params.append('manufacturerId', manufacturerId);
   params.append('manufacturerPartId', manufacturerPartId);
-  
-  :', manufacturerId, manufacturerPartId);
   const response = await cacheableAxios.get<SerializedPartTwinRead[]>(
     `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?${params.toString()}`
   );

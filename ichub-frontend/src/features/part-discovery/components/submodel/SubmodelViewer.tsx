@@ -356,7 +356,7 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
       return;
     }
 
-    ' : '');
+    
     isFetching.current = true;
     setLoading(true);
     setError(null);

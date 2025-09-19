@@ -121,7 +121,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
   // Fetch twins only once and cache them in state
   const fetchTwinsOnce = useCallback(async (): Promise<SerializedPartTwinRead[]> => {
-    ');
+
     try {
       // Add timeout to prevent infinite loading on twin requests
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -187,7 +187,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         // Only fetch if we don't have cached twins or parts changed
         let twins = allTwins;
         if (twins.length === 0) {
-          ');
+      
           setIsInitialLoading(true);
           
           // Add timeout for the entire twin loading process

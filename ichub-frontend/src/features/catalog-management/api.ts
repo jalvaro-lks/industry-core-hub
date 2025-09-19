@@ -102,7 +102,6 @@ export const fetchCatalogPartTwinDetails = async (
     console.error('Error fetching catalog part twin details:', error);
     // If the twin doesn't exist, return null instead of throwing an error
     if (axios.isAxiosError(error) && error.response?.status === 404) {
-      , returning null');
       return null;
     }
     throw error;
