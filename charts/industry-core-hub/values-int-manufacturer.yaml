@@ -40,6 +40,7 @@ postgresql:
 
 # -- pgAdmin4 configuration
 frontend:
+  name: "manufacturer-ichub-frontend"
   nameOverride: "manufacturer-ichub-frontend"
   fullnameOverride: "manufacturer-ichub-frontend"
   env:
@@ -75,6 +76,7 @@ frontend:
                 service: "frontend-manufacturer"
                 port: 8080
 backend:
+  name: "manufacturer-ichub-backend"
   nameOverride: "manufacturer-ichub-backend"
   fullnameOverride: "manufacturer-ichub-backend"
   cors:
