@@ -27,15 +27,13 @@ import {
   Typography,
   TextField,
   Button,
-  InputAdornment,
   useTheme,
   useMediaQuery,
   IconButton,
   Alert,
   CircularProgress,
   Card,
-  Chip,
-  Autocomplete
+  Chip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -67,6 +65,7 @@ import {
 } from '../utils/utils';
 import { fetchPartners } from '../../partner-management/api';
 import { PartnerInstance } from '../../partner-management/types/types';
+import { PartnerAutocomplete } from '../../partner-management/components';
 
 interface PartCardData {
   id: string;
@@ -1434,111 +1433,19 @@ const PartsDiscovery = () => {
                         </Alert>
                       )}
                       
-                      <Autocomplete
-                      freeSolo
-                      options={availablePartners}
-                      getOptionLabel={(option) => {
-                        if (typeof option === 'string') return option;
-                        return `${option.name} - ${option.bpnl}`;
-                      }}
-                      value={bpnl}
-                      onChange={(_, newValue) => {
-                        try {
-                          if (typeof newValue === 'string') {
-                            // Custom BPNL entered
-                            setBpnl(newValue);
-                            setSelectedPartner(null);
-                          } else if (newValue) {
-                            // Partner selected from dropdown
-                            setBpnl(newValue.bpnl);
-                            setSelectedPartner(newValue);
-                          } else {
-                            // Cleared
-                            setBpnl('');
-                            setSelectedPartner(null);
-                          }
-                        } catch (err) {
-                          console.error('Error in Autocomplete onChange:', err);
-                          // Fallback to safe state
-                          setBpnl('');
-                          setSelectedPartner(null);
-                        }
-                      }}
-                      onInputChange={(_, newInputValue) => {
-                        try {
-                          setBpnl(newInputValue || '');
-                          // Safely check if partner exists in the array
-                          if (Array.isArray(availablePartners) && !availablePartners.find(p => p?.bpnl === newInputValue)) {
-                            setSelectedPartner(null);
-                          }
-                        } catch (err) {
-                          console.error('Error in Autocomplete onInputChange:', err);
-                          // Fallback to safe state
-                          setBpnl(newInputValue || '');
-                          setSelectedPartner(null);
-                        }
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Partner BPNL *"
-                          placeholder="Select partner or enter custom BPNL (e.g., BPNL0000000093Q7)"
-                          variant="outlined"
-                          error={!!error && !bpnl.trim()}
-                          helperText={
-                            !!error && !bpnl.trim() 
-                              ? 'BPNL is required' 
-                              : 'Select from available partners or enter a custom Business Partner Number Legal Entity'
-                          }
-                          slotProps={{
-                            input: {
-                              ...params.InputProps,
-                              endAdornment: (
-                                <>
-                                  {isLoadingPartners ? <CircularProgress color="inherit" size={20} /> : null}
-                                  {params.InputProps.endAdornment}
-                                  <InputAdornment position="end">
-                                    <IconButton onClick={handleSearch} disabled={isLoading}>
-                                      <SearchIcon />
-                                    </IconButton>
-                                  </InputAdornment>
-                                </>
-                              ),
-                            },
-                          }}
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: 3,
-                              fontSize: '1.1rem',
-                              backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                              '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                              },
-                              '&.Mui-focused': {
-                                backgroundColor: 'white'
-                              }
-                            },
-                            '& .MuiInputLabel-root': {
-                              fontSize: '1.1rem'
-                            }
-                          }}
-                        />
-                      )}
-                      renderOption={(props, option) => (
-                        <Box component="li" {...props} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                            {option.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {option.bpnl}
-                          </Typography>
-                        </Box>
-                      )}
-                      loading={isLoadingPartners}
-                      loadingText="Loading partners..."
-                      noOptionsText="No partners found. You can still enter a custom BPNL."
-                      sx={{ width: '100%' }}
-                    />
+                      <PartnerAutocomplete
+                        value={bpnl}
+                        availablePartners={availablePartners}
+                        selectedPartner={selectedPartner}
+                        isLoadingPartners={isLoadingPartners}
+                        partnersError={!!partnersError}
+                        hasError={!!error}
+                        showSearchIcon={true}
+                        onBpnlChange={setBpnl}
+                        onPartnerChange={setSelectedPartner}
+                        onRetryLoadPartners={retryLoadPartners}
+                        onSearchClick={handleSearch}
+                      />
                     
                     <Button
                       variant="contained"
@@ -1662,106 +1569,18 @@ const PartsDiscovery = () => {
                         </Alert>
                       )}
                       
-                      <Autocomplete
-                      freeSolo
-                      options={availablePartners}
-                      getOptionLabel={(option) => {
-                        if (typeof option === 'string') return option;
-                        return `${option.name} - ${option.bpnl}`;
-                      }}
-                      value={bpnl}
-                      onChange={(_, newValue) => {
-                        try {
-                          if (typeof newValue === 'string') {
-                            // Custom BPNL entered
-                            setBpnl(newValue);
-                            setSelectedPartner(null);
-                          } else if (newValue) {
-                            // Partner selected from dropdown
-                            setBpnl(newValue.bpnl);
-                            setSelectedPartner(newValue);
-                          } else {
-                            // Cleared
-                            setBpnl('');
-                            setSelectedPartner(null);
-                          }
-                        } catch (err) {
-                          console.error('Error in Autocomplete onChange:', err);
-                          // Fallback to safe state
-                          setBpnl('');
-                          setSelectedPartner(null);
-                        }
-                      }}
-                      onInputChange={(_, newInputValue) => {
-                        try {
-                          setBpnl(newInputValue || '');
-                          // Safely check if partner exists in the array
-                          if (Array.isArray(availablePartners) && !availablePartners.find(p => p?.bpnl === newInputValue)) {
-                            setSelectedPartner(null);
-                          }
-                        } catch (err) {
-                          console.error('Error in Autocomplete onInputChange:', err);
-                          // Fallback to safe state
-                          setBpnl(newInputValue || '');
-                          setSelectedPartner(null);
-                        }
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Partner BPNL *"
-                          placeholder="Select partner or enter custom BPNL (e.g., BPNL0000000093Q7)"
-                          variant="outlined"
-                          error={!!error && !bpnl.trim()}
-                          helperText={
-                            !!error && !bpnl.trim() 
-                              ? 'BPNL is required' 
-                              : 'Select from available partners or enter a custom Business Partner Number Legal Entity'
-                          }
-                          slotProps={{
-                            input: {
-                              ...params.InputProps,
-                              endAdornment: (
-                                <>
-                                  {isLoadingPartners ? <CircularProgress color="inherit" size={20} /> : null}
-                                  {params.InputProps.endAdornment}
-                                </>
-                              ),
-                            },
-                          }}
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              borderRadius: 3,
-                              fontSize: '1.1rem',
-                              backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                              '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
-                              },
-                              '&.Mui-focused': {
-                                backgroundColor: 'white'
-                              }
-                            },
-                            '& .MuiInputLabel-root': {
-                              fontSize: '1.1rem'
-                            }
-                          }}
-                        />
-                      )}
-                      renderOption={(props, option) => (
-                        <Box component="li" {...props} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', py: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                            {option.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {option.bpnl}
-                          </Typography>
-                        </Box>
-                      )}
-                      loading={isLoadingPartners}
-                      loadingText="Loading partners..."
-                      noOptionsText="No partners found. You can still enter a custom BPNL."
-                      sx={{ width: '100%' }}
-                    />
+                      <PartnerAutocomplete
+                        value={bpnl}
+                        availablePartners={availablePartners}
+                        selectedPartner={selectedPartner}
+                        isLoadingPartners={isLoadingPartners}
+                        partnersError={!!partnersError}
+                        hasError={!!error}
+                        showSearchIcon={false}
+                        onBpnlChange={setBpnl}
+                        onPartnerChange={setSelectedPartner}
+                        onRetryLoadPartners={retryLoadPartners}
+                      />
 
                     {/* AAS ID Field */}
                     <TextField

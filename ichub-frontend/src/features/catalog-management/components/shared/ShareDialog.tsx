@@ -23,13 +23,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@mui/material';
-import { Box, TextField, Autocomplete, Alert, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Checkbox, FormControlLabel, Typography, Grid2 } from '@mui/material';
+import { Box, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Checkbox, FormControlLabel, Typography, Grid2 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 import { ProductDetailDialogProps } from '../../types/dialog-types';
 import { PartnerInstance } from "../../../partner-management/types/types";
+import { PartnerAutocomplete } from '../../../partner-management/components';
 
 import { shareCatalogPart } from '../../api';
 import { fetchPartners } from '../../../partner-management/api';
@@ -43,6 +44,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [apiErrorMessage, setApiErrorMessage] = useState('');
   const [partnersList, setPartnersList] = useState<PartnerInstance[]>([]);
+  const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
   const [showCustomPartId, setShowCustomPartId] = useState(false);
   const [customPartId, setCustomPartId] = useState('');
 
@@ -255,22 +257,28 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
             </Grid2>
             
             <Grid2 size={12}>
-              <Autocomplete
-                options={partnersList}
-                getOptionLabel={(option) => `${option.name} (${option.bpnl})`}
-                value={partnersList.find(p => p.bpnl === bpnl) || null}
-                onChange={handlePartnerSelection}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Partner"
-                    variant="outlined"
-                    size="medium"
-                    error={error}
-                    helperText={error ? 'Partner selection is required' : ''}
-                    fullWidth
-                  />
-                )}
+              <PartnerAutocomplete
+                value={bpnl}
+                availablePartners={partnersList}
+                selectedPartner={selectedPartner}
+                isLoadingPartners={false}
+                partnersError={false}
+                hasError={error}
+                label="Partner"
+                placeholder="Select a partner to share the part with"
+                helperText="Select from available partners"
+                errorMessage="Partner selection is required"
+                onBpnlChange={setBpnl}
+                onPartnerChange={(partner) => {
+                  setSelectedPartner(partner);
+                  if (partner) {
+                    setBpnl(partner.bpnl);
+                  } else {
+                    setBpnl('');
+                  }
+                  setError(false);
+                  setApiErrorMessage('');
+                }}
               />
             </Grid2>
             

@@ -36,13 +36,13 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import Autocomplete from '@mui/material/Autocomplete';
 
 import { ProductDetailDialogProps } from '../../types/dialog-types';
 import PageNotification from '../../../../components/general/PageNotification';
 import { addSerializedPart } from '../../../serialized-parts/api';
 import { fetchPartners } from '../../../partner-management/api';
 import { PartnerInstance } from '../../../partner-management/types/types';
+import { PartnerAutocomplete } from '../../../partner-management/components';
 import { AxiosError } from '../../../../types/axiosError';
 
 const AddSerializedPartDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
@@ -235,40 +235,18 @@ const AddSerializedPartDialog = ({ open, onClose, partData }: ProductDetailDialo
                         }}>
                             Sharing Partner
                         </Typography>
-                        <Autocomplete
-                            value={selectedPartner}
-                            onChange={(_, newValue) => {
-                                setSelectedPartner(newValue);
-                                setFormData({ 
-                                    ...formData, 
-                                    businessPartnerNumber: newValue?.bpnl || '' 
-                                });
-                            }}
-                            options={partners}
-                            getOptionLabel={(option) => `${option.name} (${option.bpnl})`}
-                            isOptionEqualToValue={(option, value) => option.bpnl === value?.bpnl}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Sharing Partner"
-                                    required
-                                    variant="outlined"
-                                    size="medium"
-                                />
-                            )}
-                            renderOption={(props, option) => (
-                                <li {...props} key={option.bpnl}>
-                                    <Box>
-                                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                            {option.name}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {option.bpnl}
-                                        </Typography>
-                                    </Box>
-                                </li>
-                            )}
-                            fullWidth
+                        <PartnerAutocomplete
+                            value={formData.businessPartnerNumber}
+                            availablePartners={partners}
+                            selectedPartner={selectedPartner}
+                            isLoadingPartners={false}
+                            partnersError={false}
+                            hasError={false}
+                            label="Select Sharing Partner"
+                            placeholder="Select a partner to share with"
+                            required={true}
+                            onBpnlChange={(bpnl) => setFormData({ ...formData, businessPartnerNumber: bpnl })}
+                            onPartnerChange={setSelectedPartner}
                         />
                     </Grid>
 
