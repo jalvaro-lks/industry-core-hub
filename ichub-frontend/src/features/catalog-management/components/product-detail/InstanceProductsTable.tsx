@@ -40,6 +40,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import IosShare from '@mui/icons-material/IosShare';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
 import { SerializedPart } from '../../../serialized-parts/types';
@@ -54,6 +55,7 @@ import { SerializedPartStatusChip } from './SerializedPartStatusChip';
 interface SerializedPartWithStatus extends SerializedPart {
   twinStatus: StatusVariants;
   globalId?: string;
+  dtrAasId?: string;
 }
 
 interface InstanceProductsTableProps {
@@ -71,6 +73,8 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
   const [twinUnsharingId, setTwinUnsharingId] = useState<number | null>(null);
   const [partDeletingId, setPartDeletingId] = useState<number | null>(null);
   const [errorSnackbar, setErrorSnackbar] = useState({ open: false, message: '' });
+  const [successSnackbar, setSuccessSnackbar] = useState({ open: false, message: '' });
+  const [copyAnimations, setCopyAnimations] = useState<{ [key: string]: boolean }>({});
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
     open: boolean;
     row: SerializedPartWithStatus | null;
@@ -79,6 +83,32 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
   // Helper function to show error messages
   const showError = (message: string) => {
     setErrorSnackbar({ open: true, message });
+  };
+
+  // Helper function to show success messages
+  const showSuccess = (message: string) => {
+    setSuccessSnackbar({ open: true, message });
+  };
+
+  // Helper function for copy operations with animation and notification
+  const handleCopyWithFeedback = async (text: string, label: string, animationKey: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      
+      // Trigger animation
+      setCopyAnimations(prev => ({ ...prev, [animationKey]: true }));
+      
+      // Show success notification
+      showSuccess(`${label} copied to clipboard!`);
+      
+      // Reset animation after 600ms
+      setTimeout(() => {
+        setCopyAnimations(prev => ({ ...prev, [animationKey]: false }));
+      }, 600);
+    } catch (err) {
+      console.error(`Failed to copy ${label}:`, err);
+      showError(`Failed to copy ${label}`);
+    }
   };
 
   // Show delete confirmation dialog
@@ -92,7 +122,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
   };
 
   // Determine twin status based on twin data
-  const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string } => {
+  const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string; dtrAasId?: string } => {
     const twin = twins.find(
       (t) => t.manufacturerId === serializedPart.manufacturerId &&
              t.manufacturerPartId === serializedPart.manufacturerPartId &&
@@ -104,10 +134,10 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     }
 
     if (twin.shares && twin.shares.length > 0) {
-      return { status: StatusVariants.shared, globalId: twin.globalId?.toString() };
+      return { status: StatusVariants.shared, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
     }
 
-    return { status: StatusVariants.registered, globalId: twin.globalId?.toString() };
+    return { status: StatusVariants.registered, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
   };
 
   useEffect(() => {
@@ -133,12 +163,13 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
 
         // Merge serialized parts with twin status
         const rowsWithStatus = serializedParts.map((serializedPart, index) => {
-          const { status, globalId } = determineTwinStatus(serializedPart, twins);
+          const { status, globalId, dtrAasId } = determineTwinStatus(serializedPart, twins);
           return {
             ...serializedPart,
             id: serializedPart.id || index,
             twinStatus: status,
             globalId,
+            dtrAasId,
           };
         });
 
@@ -611,6 +642,152 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       ),
     },
     {
+      field: 'globalId',
+      headerName: 'Global Asset ID',
+      width: 350,
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const globalId = params.value;
+        if (!globalId) {
+          return (
+            <Typography
+              variant="body2"
+              sx={{ 
+                color: 'rgba(248, 249, 250, 0.5) !important',
+                fontSize: '0.875rem',
+                fontStyle: 'italic'
+              }}
+            >
+              No Global Asset ID
+            </Typography>
+          );
+        }
+
+        const displayValue = globalId.startsWith('urn:uuid:') ? globalId : `urn:uuid:${globalId}`;
+        const animationKey = `globalId-${params.row.id}`;
+        
+        const handleCopy = async () => {
+          await handleCopyWithFeedback(displayValue, 'Global Asset ID', animationKey);
+        };
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+            <Tooltip title="Click to copy Global Asset ID" arrow>
+              <Typography
+                variant="body2"
+                sx={{ 
+                  color: 'rgb(248, 249, 250) !important',
+                  fontSize: '0.75rem',
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    textDecoration: 'underline'
+                  }
+                }}
+                onClick={handleCopy}
+              >
+                {displayValue}
+              </Typography>
+            </Tooltip>
+            <Tooltip title="Copy Global Asset ID" arrow>
+              <IconButton
+                size="small"
+                onClick={handleCopy}
+                sx={{
+                  color: 'rgba(248, 249, 250, 0.7)',
+                  transform: copyAnimations[animationKey] ? 'scale(1.2)' : 'scale(1)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    color: 'rgb(248, 249, 250)',
+                    backgroundColor: 'rgba(248, 249, 250, 0.1)'
+                  }
+                }}
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'dtrAasId',
+      headerName: 'AAS ID',
+      width: 350,
+      headerAlign: 'center',
+      renderCell: (params) => {
+        const aasId = params.value;
+        if (!aasId) {
+          return (
+            <Typography
+              variant="body2"
+              sx={{ 
+                color: 'rgba(248, 249, 250, 0.5) !important',
+                fontSize: '0.875rem',
+                fontStyle: 'italic'
+              }}
+            >
+              No AAS ID
+            </Typography>
+          );
+        }
+
+        const displayValue = aasId.startsWith('urn:uuid:') ? aasId : `urn:uuid:${aasId}`;
+        const animationKey = `aasId-${params.row.id}`;
+        
+        const handleCopy = async () => {
+          await handleCopyWithFeedback(displayValue, 'AAS ID', animationKey);
+        };
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+            <Tooltip title="Click to copy AAS ID" arrow>
+              <Typography
+                variant="body2"
+                sx={{ 
+                  color: 'rgb(248, 249, 250) !important',
+                  fontSize: '0.75rem',
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                  flex: 1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    textDecoration: 'underline'
+                  }
+                }}
+                onClick={handleCopy}
+              >
+                {displayValue}
+              </Typography>
+            </Tooltip>
+            <Tooltip title="Copy AAS ID" arrow>
+              <IconButton
+                size="small"
+                onClick={handleCopy}
+                sx={{
+                  color: 'rgba(248, 249, 250, 0.7)',
+                  transform: copyAnimations[animationKey] ? 'scale(1.2)' : 'scale(1)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    color: 'rgb(248, 249, 250)',
+                    backgroundColor: 'rgba(248, 249, 250, 0.1)'
+                  }
+                }}
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        );
+      },
+    },
+    {
       field: 'customerPartId',
       headerName: 'Customer Part ID',
       width: 300,
@@ -1011,6 +1188,23 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
           sx={{ width: '100%' }}
         >
           {errorSnackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={successSnackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSuccessSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSuccessSnackbar(prev => ({ ...prev, open: false }))}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {successSnackbar.message}
         </Alert>
       </Snackbar>
 

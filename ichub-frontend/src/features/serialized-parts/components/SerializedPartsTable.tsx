@@ -44,6 +44,7 @@ import IosShare from '@mui/icons-material/IosShare';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useEffect, useState, useCallback } from 'react';
 import { SerializedPart } from '../types';
 import { SerializedPartTwinRead } from '../types/twin-types';
@@ -56,6 +57,7 @@ import AddSerializedPartDialog from './AddSerializedPartDialog';
 interface SerializedPartWithStatus extends SerializedPart {
   twinStatus: StatusVariants;
   globalId?: string;
+  dtrAasId?: string;
 }
 
 interface SerializedPartsTableProps {
@@ -75,6 +77,12 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   const [partDeletingId, setPartDeletingId] = useState<number | null>(null);
   const [errorSnackbar, setErrorSnackbar] = useState({ open: false, message: '' });
   const [successSnackbar, setSuccessSnackbar] = useState({ open: false, message: '' });
+  const [copyAnimations, setCopyAnimations] = useState<{ [key: string]: boolean }>({});
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ 
+    open: false, 
+    message: '', 
+    severity: 'success' 
+  });
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
     open: boolean;
     row: SerializedPartWithStatus | null;
@@ -147,7 +155,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   }, [parts]); // Only depend on parts
 
   // Determine twin status based on twin data
-  const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string } => {
+  const determineTwinStatus = (serializedPart: SerializedPart, twins: SerializedPartTwinRead[]): { status: StatusVariants; globalId?: string; dtrAasId?: string } => {
     const twin = twins.find(
       (t) => t.manufacturerId === serializedPart.manufacturerId &&
              t.manufacturerPartId === serializedPart.manufacturerPartId &&
@@ -159,10 +167,10 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     }
 
     if (twin.shares && twin.shares.length > 0) {
-      return { status: StatusVariants.shared, globalId: twin.globalId?.toString() };
+      return { status: StatusVariants.shared, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
     }
 
-    return { status: StatusVariants.registered, globalId: twin.globalId?.toString() };
+    return { status: StatusVariants.registered, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
   };
 
   useEffect(() => {
@@ -212,12 +220,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         
         // Merge serialized parts with twin status
         const rowsWithStatus = parts.map((serializedPart, index) => {
-          const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
+          const { status, globalId, dtrAasId } = determineTwinStatus(serializedPart, relevantTwins);
           return {
             ...serializedPart,
             id: serializedPart.id || index,
             twinStatus: status,
             globalId,
+            dtrAasId,
             businessPartnerName: serializedPart.businessPartner.name,
             businessPartnerBpnl: serializedPart.businessPartner.bpnl,
           };
@@ -260,12 +269,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       const relevantTwins = getRelevantTwins(updatedTwins);
       
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
+        const { status, globalId, dtrAasId } = determineTwinStatus(serializedPart, relevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
           twinStatus: status,
           globalId,
+          dtrAasId,
           businessPartnerName: serializedPart.businessPartner.name,
           businessPartnerBpnl: serializedPart.businessPartner.bpnl,
         };
@@ -314,12 +324,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       const relevantTwins = getRelevantTwins(updatedTwins);
       
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
+        const { status, globalId, dtrAasId } = determineTwinStatus(serializedPart, relevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
           twinStatus: status,
           globalId,
+          dtrAasId,
           businessPartnerName: serializedPart.businessPartner.name,
           businessPartnerBpnl: serializedPart.businessPartner.bpnl,
         };
@@ -384,12 +395,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       const updatedRelevantTwins = getRelevantTwins(updatedTwins);
       
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, updatedRelevantTwins);
+        const { status, globalId, dtrAasId } = determineTwinStatus(serializedPart, updatedRelevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
           twinStatus: status,
           globalId,
+          dtrAasId,
           businessPartnerName: serializedPart.businessPartner.name,
           businessPartnerBpnl: serializedPart.businessPartner.bpnl,
         };
@@ -443,12 +455,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       const relevantTwins = getRelevantTwins(updatedTwins);
       
       const rowsWithStatus = parts.map((serializedPart, index) => {
-        const { status, globalId } = determineTwinStatus(serializedPart, relevantTwins);
+        const { status, globalId, dtrAasId } = determineTwinStatus(serializedPart, relevantTwins);
         return {
           ...serializedPart,
           id: serializedPart.id || index,
           twinStatus: status,
           globalId,
+          dtrAasId,
           businessPartnerName: serializedPart.businessPartner.name,
           businessPartnerBpnl: serializedPart.businessPartner.bpnl,
         };
@@ -823,6 +836,132 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           </Typography>
         </Box>
       ),
+    },
+    {
+      field: 'globalId',
+      headerName: 'Global Asset ID',
+      width: 200,
+      align: 'left',
+      headerAlign: 'left',
+      renderCell: (params) => {
+        const globalId = params.value;
+        const displayValue = globalId && !globalId.startsWith('urn:uuid:') ? `urn:uuid:${globalId}` : globalId;
+        const isAnimating = copyAnimations[`${params.row.id}-globalId`];
+
+        const handleCopy = () => {
+          if (displayValue) {
+            navigator.clipboard.writeText(displayValue).then(() => {
+              setCopyAnimations(prev => ({ ...prev, [`${params.row.id}-globalId`]: true }));
+              setTimeout(() => {
+                setCopyAnimations(prev => ({ ...prev, [`${params.row.id}-globalId`]: false }));
+              }, 600);
+              setSnackbar({ open: true, message: 'Global Asset ID copied!', severity: 'success' });
+            }).catch(() => {
+              setSnackbar({ open: true, message: 'Failed to copy', severity: 'error' });
+            });
+          }
+        };
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 1 }}>
+            <Tooltip title={displayValue || 'No Global Asset ID'} arrow>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontSize: '0.875rem',
+                  color: 'rgb(248, 249, 250) !important',
+                  maxWidth: '120px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {displayValue || '-'}
+              </Typography>
+            </Tooltip>
+            {displayValue && (
+              <IconButton
+                size="small"
+                onClick={handleCopy}
+                sx={{ 
+                  color: 'rgb(248, 249, 250)',
+                  padding: '4px',
+                  transform: isAnimating ? 'scale(1.2)' : 'scale(1)',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(248, 249, 250, 0.1)',
+                  }
+                }}
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        );
+      },
+    },
+    {
+      field: 'dtrAasId',
+      headerName: 'AAS ID',
+      width: 200,
+      align: 'left',
+      headerAlign: 'left',
+      renderCell: (params) => {
+        const dtrAasId = params.value;
+        const displayValue = dtrAasId && !dtrAasId.startsWith('urn:uuid:') ? `urn:uuid:${dtrAasId}` : dtrAasId;
+        const isAnimating = copyAnimations[`${params.row.id}-dtrAasId`];
+
+        const handleCopy = () => {
+          if (displayValue) {
+            navigator.clipboard.writeText(displayValue).then(() => {
+              setCopyAnimations(prev => ({ ...prev, [`${params.row.id}-dtrAasId`]: true }));
+              setTimeout(() => {
+                setCopyAnimations(prev => ({ ...prev, [`${params.row.id}-dtrAasId`]: false }));
+              }, 600);
+              setSnackbar({ open: true, message: 'AAS ID copied!', severity: 'success' });
+            }).catch(() => {
+              setSnackbar({ open: true, message: 'Failed to copy', severity: 'error' });
+            });
+          }
+        };
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 1 }}>
+            <Tooltip title={displayValue || 'No AAS ID'} arrow>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontSize: '0.875rem',
+                  color: 'rgb(248, 249, 250) !important',
+                  maxWidth: '120px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {displayValue || '-'}
+              </Typography>
+            </Tooltip>
+            {displayValue && (
+              <IconButton
+                size="small"
+                onClick={handleCopy}
+                sx={{ 
+                  color: 'rgb(248, 249, 250)',
+                  padding: '4px',
+                  transform: isAnimating ? 'scale(1.2)' : 'scale(1)',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(248, 249, 250, 0.1)',
+                  }
+                }}
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            )}
+          </Box>
+        );
+      },
     },
     {
       field: 'businessPartnerName',
@@ -1312,6 +1451,23 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           sx={{ width: '100%' }}
         >
           {successSnackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Copy Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
         </Alert>
       </Snackbar>
       

@@ -204,7 +204,15 @@ export const ProductCard = ({
               <Box className="custom-card-content" sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <Tooltip title={name} arrow placement="top">
                   <Typography variant="h5" sx={{ mb: 0.5, wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto', cursor: 'help' }}>
-                    {name}
+                   {(() => {
+                        // Smart truncation for very long product names
+                        const productName = name;
+                        if (productName.length <= 80) return productName;
+                        // Show first 40 characters and last 35 for better recognition
+                        const startLength = 20;
+                        const endLength = 20;
+                        return `${productName.substring(0, startLength)}...${productName.substring(productName.length - endLength)}`;
+                    })()}
                   </Typography>
                 </Tooltip>
                 {/* Identifier labels below name, styled like CatalogPartsDiscovery */}
