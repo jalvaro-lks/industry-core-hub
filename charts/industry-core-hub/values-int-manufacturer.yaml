@@ -70,7 +70,7 @@ frontend:
             - path: /(.*)
               pathType: ImplementationSpecific
               backend:
-                service: "frontend"
+                service: "frontend-manufacturer"
                 port: 8080
 backend:
   cors:
@@ -229,5 +229,5 @@ backend:
           - path: /
             pathType: ImplementationSpecific
             backend:
-              service: "backend"
+              service: "backend-manufacturer"
               port: 8000
