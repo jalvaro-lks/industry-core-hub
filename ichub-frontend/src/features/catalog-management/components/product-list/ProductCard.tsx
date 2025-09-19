@@ -148,7 +148,6 @@ export const ProductCard = ({
       {items.map((item) => {
         const name = item.name ?? "";
         const productId = item.manufacturerId + "/" + item.manufacturerPartId;
-        const categoryLabel = item.category || item.manufacturerPartId;
         const aasId = aasIds[productId];
         return (
           <Box key={productId} className="custom-card-box">
@@ -203,9 +202,11 @@ export const ProductCard = ({
                 </Box>
               </Box>
               <Box className="custom-card-content" sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="h5" sx={{ mb: 0.5, wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}>
-                  {name}
-                </Typography>
+                <Tooltip title={name} arrow placement="top">
+                  <Typography variant="h5" sx={{ mb: 0.5, wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto', cursor: 'help' }}>
+                    {name}
+                  </Typography>
+                </Tooltip>
                 {/* Identifier labels below name, styled like CatalogPartsDiscovery */}
                 <Box sx={{ mt: 0.5, flex: 1, minHeight: 0 }}>
                   <Typography 
@@ -221,58 +222,81 @@ export const ProductCard = ({
                   >
                     Manufacturer Part ID
                   </Typography>
-                  <Typography 
-                    sx={{ 
-                      fontFamily: 'Monaco, "Lucida Console", monospace',
-                      fontSize: '0.76rem',
-                      color: 'rgba(255,255,255,0.87)',
-                      lineHeight: 1.1,
-                      fontWeight: 500,
-                      letterSpacing: '0.1px',
-                      display: 'block',
-                      mb: '0px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '100%'
-                    }}
-                  >
-                    {item.manufacturerPartId}
-                  </Typography>
-                  <Typography 
-                    sx={{ 
-                      fontSize: '0.65rem', 
-                      color: 'rgba(255,255,255,0.45)', 
-                      fontWeight: 500, 
-                      textTransform: 'uppercase', 
-                      letterSpacing: '0.8px', 
-                      mt: '4px',
-                      mb: '0px',
-                      display: 'block'
-                    }}
-                  >
-                    Category
-                  </Typography>
-                  <Typography 
-                    sx={{ 
-                      fontFamily: 'Monaco, "Lucida Console", monospace',
-                      fontSize: '0.74rem',
-                      color: 'rgba(255,255,255,0.75)',
-                      lineHeight: 1.1,
-                      fontWeight: 400,
-                      letterSpacing: '0.1px',
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '100%'
-                    }}
-                  >
-                    {categoryLabel}
-                  </Typography>
+                  <Tooltip title={item.manufacturerPartId} arrow placement="top">
+                    <Typography 
+                      sx={{ 
+                        fontFamily: 'Monaco, "Lucida Console", monospace',
+                        fontSize: '0.76rem',
+                        color: 'rgba(255,255,255,0.87)',
+                        lineHeight: 1.1,
+                        fontWeight: 500,
+                        letterSpacing: '0.1px',
+                        display: 'block',
+                        mb: '0px',
+                        maxWidth: '100%',
+                        cursor: 'help'
+                      }}
+                    >
+                      {(() => {
+                        // Smart truncation showing beginning and end, like category
+                        const manufacturerPartId = item.manufacturerPartId;
+                        if (manufacturerPartId.length <= 30) return manufacturerPartId;
+                        // Show first 15 characters and last 12 for better recognition
+                        const startLength = 15;
+                        const endLength = 12;
+                        return `${manufacturerPartId.substring(0, startLength)}...${manufacturerPartId.substring(manufacturerPartId.length - endLength)}`;
+                      })()}
+                    </Typography>
+                  </Tooltip>
                 </Box>
               </Box>
-              <Box className="custom-card-button-box">
+              <Box className="custom-card-button-box" sx={{ pb: "0!important" }}>
+                {/* Category Banner above VIEW button */}
+                {item.category && item.category.trim() && (
+                  <Box 
+                    sx={{ 
+                      mb: 0, // No distance to button
+                      mx: 0, // Same width as card
+                      display: 'flex', 
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      background: 'linear-gradient(90deg, rgba(79, 172, 254, 0.15) 0%, rgba(79, 172, 254, 0.08) 100%)',
+                      borderTop: '1px solid rgba(79, 172, 254, 0.2)',
+                      borderBottom: '1px solid rgba(79, 172, 254, 0.2)',
+                      py: 0.8,
+                      position: 'relative'
+                    }}
+                  >
+                    <Tooltip title={`Category: ${item.category}`} arrow placement="top">
+                      <Typography
+                        sx={{
+                          fontSize: '0.65rem',
+                          color: 'rgba(79, 172, 254, 0.9)',
+                          fontWeight: 600,
+                          letterSpacing: '0.4px',
+                          textTransform: 'uppercase',
+                          lineHeight: 1.2,
+                          cursor: 'help',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '280px'
+                        }}
+                      >
+                        {(() => {
+                          // Smart truncation showing beginning and end, like manufacturer ID
+                          const category = item.category;
+                          if (category.length <= 30) return category;
+                          // Show first 15 characters and last 12 for better recognition
+                          const startLength = 15;
+                          const endLength = 12;
+                          return `${category.substring(0, startLength)}...${category.substring(category.length - endLength)}`;
+                        })()}
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+                )}
                 <Button variant="contained" size="small" endIcon={<Launch />}>
                   View
                 </Button>

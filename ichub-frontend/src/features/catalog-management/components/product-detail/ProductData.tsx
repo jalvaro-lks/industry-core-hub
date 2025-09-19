@@ -361,16 +361,30 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                             <Grid2 size={{ xs: 12, md: 8 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2, pr: { xs: 0, md: 10 } }}>
                                     <Box>
-                                        <Typography variant="h3" sx={{ 
-                                            color: '#ffffff', 
-                                            mb: 1, 
-                                            fontWeight: 700,
-                                            fontSize: '2.5rem',
-                                            letterSpacing: '-0.02em',
-                                            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
-                                        }}>
-                                            {part.name}
-                                        </Typography>
+                                        <Tooltip title={part.name} arrow placement="top">
+                                            <Typography variant="h3" sx={{ 
+                                                color: '#ffffff', 
+                                                mb: 1, 
+                                                fontWeight: 700,
+                                                fontSize: '2.5rem',
+                                                letterSpacing: '-0.02em',
+                                                textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                                                wordBreak: 'break-word',
+                                                overflowWrap: 'break-word',
+                                                maxWidth: '100%',
+                                                cursor: 'help'
+                                            }}>
+                                                {(() => {
+                                                    // Smart truncation for very long product names
+                                                    const productName = part.name;
+                                                    if (productName.length <= 80) return productName;
+                                                    // Show first 40 characters and last 35 for better recognition
+                                                    const startLength = 40;
+                                                    const endLength = 35;
+                                                    return `${productName.substring(0, startLength)}...${productName.substring(productName.length - endLength)}`;
+                                                })()}
+                                            </Typography>
+                                        </Tooltip>
                                         {part.category && part.category.trim() && (
                                             <Chip 
                                                 label={part.category} 
