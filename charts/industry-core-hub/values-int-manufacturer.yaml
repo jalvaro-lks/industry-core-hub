@@ -21,7 +21,7 @@
 ---
 ## For being used in the Integration ArgoCD test environment from the Catena-X Association
 
-participantId : "<path:industry-core-hub/data/edc-provider#bpn>"
+participantId : "<path:industry-core-hub/data/edc#bpn>"
 
 postgresql:
   auth:
@@ -52,7 +52,7 @@ pgadmin4:
 frontend: 
   env:
     # -- industry-core-hub backend base URL
-    backendUrl: "https://backend-ichub.int.catena-x.net/v1"
+    backendUrl: "https://backend-ichub-consumer.int.catena-x.net/v1"
   ingress:
       enabled: true
       className: "nginx"
@@ -66,16 +66,16 @@ frontend:
       #   nginx.ingress.kubernetes.io/cors-allow-origin: "https://*.example.org"
       # -- Ingress TLS configuration
       tls:
-       - secretName: "frontend-ichub.int.catena-x.net-tls"
+       - secretName: "frontend-ichub-consumer.int.catena-x.net-tls"
          hosts:
-           - "frontend-ichub.int.catena-x.net" 
+           - "frontend-ichub-consumer.int.catena-x.net"
         # # -- Provide tls secret.
         # - secretName: ""
         #   # -- Provide host for tls secret.
         #   hosts:
         #     - ""
       hosts:
-        - host: "frontend-ichub.int.catena-x.net"
+        - host: "frontend-ichub-consumer.int.catena-x.net"
           paths:
             - path: /(.*)
               pathType: ImplementationSpecific
@@ -86,8 +86,8 @@ backend:
   cors:
     enabled: true
     allow_origins:
-      - "https://frontend-ichub.int.catena-x.net"
-      - "https://backend-ichub.int.catena-x.net"
+      - "https://frontend-ichub-consumer.int.catena-x.net"
+      - "https://backend-ichub-consumer.int.catena-x.net"
     allow_credentials: true
     allow_methods:
       - "GET"
@@ -148,7 +148,7 @@ backend:
         dataspace:
           version: "jupiter"
         controlplane:
-          hostname: "https://edc-provider-ichub-control.int.catena-x.net"
+          hostname: "https://edc-consumer-ichub-control.int.catena-x.net"
           apiKeyHeader: "X-Api-Key"
           apiKey: <path:industry-core-hub/data/edc-consumer#authKey>
           managementPath: "/management"
@@ -160,7 +160,7 @@ backend:
         dataspace:
           version: "jupiter"
         controlplane:
-          hostname: "https://edc-provider-ichub-control.int.catena-x.net"
+          hostname: "https://edc-consumer-ichub-control.int.catena-x.net"
           apiKeyHeader: "X-Api-Key"
           apiKey: <path:industry-core-hub/data/edc-provider#authKey>
           managementPath: "/management"
