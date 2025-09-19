@@ -25,7 +25,8 @@ import {
   Box,
   Typography,
   Chip,
-  Tooltip
+  Tooltip,
+  Paper
 } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import ContentCopy from '@mui/icons-material/ContentCopy';
@@ -312,78 +313,82 @@ const SerializedPartsTable = ({ parts, onView }: SerializedPartsTableProps) => {
   ];
 
   return (
-    <Box sx={{ height: '100%', width: '100%' }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        initialState={{
-          pagination: {
-            paginationModel: { page: 0, pageSize: 25 },
-          },
-          sorting: {
-            sortModel: [{ field: 'globalAssetId', sort: 'asc' }],
-          },
-        }}
-        pageSizeOptions={[10, 25, 50, 100]}
-        disableRowSelectionOnClick
-        disableColumnFilter={false}
-        disableColumnSelector={false}
-        disableDensitySelector={false}
-        rowHeight={60}
-        sx={{
-          border: '1px solid #e0e0e0',
-          borderRadius: 1,
-          backgroundColor: 'white',
-          '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: '#f8f9fa',
-            fontWeight: 600,
-            borderBottom: '2px solid #ddd',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-          },
-          '& .MuiDataGrid-cell': {
-            borderBottom: '1px solid #f0f0f0',
-            display: 'flex',
-            alignItems: 'center',
-          },
-          '& .MuiDataGrid-row:hover': {
-            backgroundColor: '#f8f9fa',
-          },
-          '& .MuiDataGrid-footerContainer': {
-            borderTop: '2px solid #ddd',
-            backgroundColor: '#f8f9fa',
-          },
-          '& .MuiDataGrid-toolbarContainer': {
-            padding: '16px',
-            borderBottom: '1px solid #e0e0e0',
-            backgroundColor: '#f8f9fa',
-          },
-          '& .MuiDataGrid-virtualScroller': {
-            height: '100%',
-          },
-        }}
-        slots={{
-          toolbar: () => (
-            <Box sx={{ 
-              p: 2, 
+    <Paper sx={{ width: '100%', borderRadius: 2, boxShadow: 2, background: 'white', overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+      <Box sx={{ height: 600, width: '100%' }}>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          initialState={{
+            pagination: {
+              paginationModel: { page: 0, pageSize: 25 },
+            },
+            sorting: {
+              sortModel: [{ field: 'globalAssetId', sort: 'asc' }],
+            },
+          }}
+          pageSizeOptions={[10, 25, 50, 100]}
+          disableRowSelectionOnClick
+          disableColumnFilter={false}
+          disableColumnSelector={false}
+          disableDensitySelector={false}
+          rowHeight={60}
+          sx={{
+            border: 'none',
+            backgroundColor: 'white',
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: '#f8f9fa',
+              fontWeight: 600,
+              borderBottom: '2px solid #ddd',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1,
+            },
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #f0f0f0',
+              display: 'flex',
+              alignItems: 'center',
+            },
+            '& .MuiDataGrid-row:hover': {
+              backgroundColor: '#f8f9fa',
+            },
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: '2px solid #ddd',
+              backgroundColor: '#f8f9fa',
+              minHeight: '56px',
+              borderRadius: '0 0 16px 16px',
+            },
+            '& .MuiDataGrid-toolbarContainer': {
+              padding: '16px',
               borderBottom: '1px solid #e0e0e0',
               backgroundColor: '#f8f9fa',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                Showing {parts.length} serialized parts
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Click on column headers to sort • Use column filters for search
-              </Typography>
-            </Box>
-          ),
-        }}
-      />
-    </Box>
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              backgroundColor: 'transparent',
+              minHeight: '400px',
+            },
+          }}
+          slots={{
+            toolbar: () => (
+              <Box sx={{ 
+                p: 2, 
+                borderBottom: '1px solid #e0e0e0',
+                backgroundColor: '#f8f9fa',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Showing {parts.length} serialized parts
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Click on column headers to sort • Use column filters for search
+                </Typography>
+              </Box>
+            ),
+          }}
+        />
+      </Box>
+    </Paper>
   );
 };
 

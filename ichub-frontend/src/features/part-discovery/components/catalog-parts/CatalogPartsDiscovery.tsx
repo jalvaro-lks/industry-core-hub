@@ -362,7 +362,7 @@ export const CatalogPartsDiscovery = ({
               <Box className="catalog-parts-card-button-box" sx={{ pb: "0!important" }}>
                 {/* Asset Type Banner above VIEW button */}
                 {(() => {
-                  const assetType = item.rawTwinData?.assetType || item.rawTwinData?.assetKind;
+                  const assetType = item.rawTwinData?.assetType
                   return assetType ? (
                     <Box 
                       sx={{ 
