@@ -40,8 +40,8 @@ const getStatusStyle = (status: StatusVariants): ChipStyle => {
   switch (status) {
     case StatusVariants.registered:
       return {
-        color: 'rgb(255, 255, 255)',
-        backgroundColor: 'rgba(40, 104, 255, 0.8)', // More visible blue background
+        color: 'rgba(0, 0, 0, 1)!important',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)', // More visible blue background
         border: '2px solid rgba(40, 104, 255, 1)',
       };
     case StatusVariants.shared:

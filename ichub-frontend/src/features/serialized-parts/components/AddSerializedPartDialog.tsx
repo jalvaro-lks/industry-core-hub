@@ -711,7 +711,9 @@ interface AddSerializedPartDialogProps {
                         sx={{
                             minWidth: '100px',
                             textTransform: 'none',
-                            fontWeight: 500
+                            fontWeight: 500,
+                            color: '#1976d2',
+                            borderColor: '#1976d2'
                         }}
                     >
                         Back
@@ -726,7 +728,9 @@ interface AddSerializedPartDialogProps {
                             sx={{
                                 minWidth: '100px',
                                 textTransform: 'none',
-                                fontWeight: 500
+                                fontWeight: 500,
+                                color: '#1976d2',
+                                borderColor: '#1976d2'
                             }}
                         >
                             Back
