@@ -40,6 +40,8 @@ postgresql:
 
 # -- pgAdmin4 configuration
 frontend:
+  nameOverride: "manufacturer-ichub-frontend"
+  fullnameOverride: "manufacturer-ichub-frontend"
   env:
     # -- industry-core-hub backend base URL
     backendUrl: "https://backend-ichub-manufacturer.int.catena-x.net/v1"
@@ -73,6 +75,8 @@ frontend:
                 service: "frontend-manufacturer"
                 port: 8080
 backend:
+  nameOverride: "manufacturer-ichub-backend"
+  fullnameOverride: "manufacturer-ichub-backend"
   cors:
     enabled: true
     allow_origins:
