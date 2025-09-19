@@ -211,7 +211,7 @@ backend:
       #   nginx.ingress.kubernetes.io/use-regex: "true"
        nginx.ingress.kubernetes.io/enable-cors: "true"
       #   # -- Provide CORS allowed origin.
-       nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend-ichub.int.catena-x.net, *"
+       nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend-ichub-manufacturer.int.catena-x.net, *"
        nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
       # -- Ingress TLS configuration
       tls:
