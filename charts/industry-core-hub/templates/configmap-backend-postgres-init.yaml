@@ -37,6 +37,14 @@ data:
     }
     postgresql_create_ichub_user
   02-init-db.sql: |
+    CREATE SCHEMA ichub;
+    ALTER SCHEMA ichub OWNER TO ichub;
+    GRANT USAGE ON SCHEMA public TO ichub;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ichub;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ichub;
+
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ichub;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ichub;
     SET statement_timeout = 0;
     SET lock_timeout = 0;
     SET idle_in_transaction_session_timeout = 0;
