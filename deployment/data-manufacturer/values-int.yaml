@@ -173,7 +173,7 @@ digital-twin-registry:
 
 simple-data-backend:
   enabled: true
-  nameOverride: ichub-dataprovider-submodelserver
+  nameOverride: ichub-dataconsumer-submodelserver
   ingress:
     enabled: true
     ingressClassName: ""

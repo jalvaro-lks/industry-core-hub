@@ -116,7 +116,7 @@ backend:
       storageClass: "default"
     logs:
       # -- Enable logs persistence
-      enabled: true
+      enabled: da
       # -- Storage size for logs
       size: 1Gi
       # -- Access mode for logs volume
