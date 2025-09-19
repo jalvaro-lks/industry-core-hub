@@ -28,8 +28,18 @@ const PARTNER_MANAGEMENT_BASE_PATH = '/partner-management/business-partner';
 const backendUrl = getIchubBackendUrl();
 
 export const fetchPartners = async (): Promise<PartnerInstance[]> => {
-  const response = await axios.get<PartnerInstance[]>(`${backendUrl}${PARTNER_MANAGEMENT_BASE_PATH}`);
-  return response.data;
+  try {
+    if (!backendUrl) {
+      console.warn('Backend URL not configured, returning empty partners list');
+      return [];
+    }
+    
+    const response = await axios.get<PartnerInstance[]>(`${backendUrl}${PARTNER_MANAGEMENT_BASE_PATH}`);
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Failed to fetch partners:', error);
+    return []; // Return empty array instead of throwing
+  }
 };
 
 export const createPartner = async (partnerData: { name: string; bpnl: string }): Promise<PartnerInstance> => {

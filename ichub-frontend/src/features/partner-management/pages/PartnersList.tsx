@@ -20,11 +20,11 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 //import { useNavigate } from "react-router-dom";
 import { PartnerInstance } from "../types/types";
 import TablePagination from '@mui/material/TablePagination';
-import { Typography, Grid2, Button } from '@mui/material';
+import { Typography, Grid2, Button, Alert, Box } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { PartnerCard } from "../components/partners-list/PartnerCard";
@@ -39,6 +39,8 @@ const PartnersList = () => {
   const [initialPartnerList, setInitialPartnerList] = useState<PartnerInstance[]>([]);
   const [createPartnerDialogOpen, setCreatePartnerDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
   //const navigate = useNavigate();
@@ -76,26 +78,51 @@ const PartnersList = () => {
     setPage(newPage);
   };
 
-  useEffect(() => {
-    // Define the async function inside useEffect
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchPartners();
-        
-        setPartnerList(data);
-        setInitialPartnerList(data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-
-        setPartnerList([]);
-        setInitialPartnerList([]);
-      } finally {
-        setIsLoading(false);
+  const loadPartners = useCallback(async (isRetry: boolean = false) => {
+    try {
+      if (isRetry) {
+        setIsRetrying(true);
+      } else {
+        setIsLoading(true);
       }
-    };
-    fetchData();  // Call the async function
+      setError(null);
+      
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+      });
+      
+      const data = await Promise.race([
+        fetchPartners(),
+        timeoutPromise
+      ]);
+      
+      setPartnerList(data || []);
+      setInitialPartnerList(data || []);
+      
+      // If we got empty data, show a warning but don't treat it as an error
+      if (!data || data.length === 0) {
+        console.warn('No partners returned from backend');
+      }
+    } catch (error) {
+      console.error('Error fetching partners:', error);
+      setError(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to load partners. Please check backend connectivity.'
+      );
+      setPartnerList([]);
+      setInitialPartnerList([]);
+    } finally {
+      // Always clear loading states, even on error
+      setIsLoading(false);
+      setIsRetrying(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadPartners();
+  }, [loadPartners]);
 
   const handleButtonClick = (partnerBPNL: string) => {
     console.log('Button clicked for partner:', partnerBPNL);
@@ -140,11 +167,44 @@ const PartnersList = () => {
           <Button className="add-button" variant="outlined" size="small" onClick={handleOpenCreatePartnerDialog} startIcon={<AddIcon />} >New</Button>
         </Grid2>
 
-        {partnerList.length === 0 ? (
+        {/* Error State */}
+        {error && (
+          <Grid2 size={12} className="flex flex-content-center" sx={{ mb: 2 }}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                backgroundColor: 'rgba(244, 67, 54, 0.1)', 
+                color: 'white',
+                width: '100%',
+                maxWidth: '600px'
+              }}
+              action={
+                <Button 
+                  onClick={() => loadPartners(true)} 
+                  disabled={isRetrying}
+                  variant="outlined"
+                  size="small"
+                  sx={{ 
+                    color: 'white', 
+                    borderColor: 'white',
+                    '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' }
+                  }}
+                >
+                  {isRetrying ? 'Retrying...' : 'Retry'}
+                </Button>
+              }
+            >
+              {error}
+            </Alert>
+          </Grid2>
+        )}
+
+        {/* No Partners State */}
+        {!error && partnerList.length === 0 ? (
           <Grid2 className="flex flex-content-center" size={12}>
             <ErrorNotFound icon={ReportProblemIcon} message="No partners were added yet, use the green button above to create one."/>
           </Grid2>
-        ) : (
+        ) : !error && (
           <>
             <Grid2 className="flex flex-content-center" size={12}>
               <PartnerCard
