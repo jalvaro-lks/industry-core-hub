@@ -52,7 +52,7 @@ pgadmin4:
        - secretName: "pgadmin-ichub.int.catena-x.net-tls"
          hosts:
            - "pgadmin-ichub.int.catena-x.net" 
-frontend: dtr
+frontend:
   env:
     # -- industry-core-hub backend base URL
     backendUrl: "https://backend-ichub-consumer.int.catena-x.net/v1"
