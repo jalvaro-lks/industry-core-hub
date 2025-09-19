@@ -69,16 +69,16 @@ frontend:
       #   nginx.ingress.kubernetes.io/cors-allow-origin: "https://*.example.org"
       # -- Ingress TLS configuration
       tls:
-       - secretName: "frontend-ichub-consumer.int.catena-x.net-tls"
+       - secretName: "frontend-ichub-manufacturer.int.catena-x.net-tls"
          hosts:
-           - "frontend-ichub-consumer.int.catena-x.net"
+           - "frontend-ichub-manufacturer.int.catena-x.net"
         # # -- Provide tls secret.
         # - secretName: ""
         #   # -- Provide host for tls secret.
         #   hosts:
         #     - ""
       hosts:
-        - host: "frontend-ichub-consumer.int.catena-x.net"
+        - host: "frontend-ichub-manufacturer.int.catena-x.net"
           paths:
             - path: /(.*)
               pathType: ImplementationSpecific
@@ -89,8 +89,8 @@ backend:
   cors:
     enabled: true
     allow_origins:
-      - "https://frontend-ichub-consumer.int.catena-x.net"
-      - "https://backend-ichub-consumer.int.catena-x.net"
+      - "https://frontend-ichub-manufacturer.int.catena-x.net"
+      - "https://backend-ichub-manufacturer.int.catena-x.net"
     allow_credentials: true
     allow_methods:
       - "GET"
@@ -169,7 +169,7 @@ backend:
           managementPath: "/management"
           protocolPath: "/api/v1/dsp"
         dataplane:
-          hostname: "https://edc-provider-ichub-dataplane.int.catena-x.net"
+          hostname: "https://edc-consumer-ichub-dataplane.int.catena-x.net"
           publicPath: "/api/public"
       digitalTwinRegistry:
         hostname: "https://dtr-consumer-ichub.int.catena-x.net"
@@ -228,16 +228,16 @@ backend:
        nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
       # -- Ingress TLS configuration
       tls:
-       - secretName: "backend-ichub.int.catena-x.net-tls"
+       - secretName: "backend-ichub-manufacturer.int.catena-x.net-tls"
          hosts:
-           - "backend-ichub.int.catena-x.net" 
+           - "backend-ichub-manufacturer.int.catena-x.net" 
         # # -- Provide tls secret.
         # - secretName: ""
         #   # -- Provide host for tls secret.
         #   hosts:
         #     - ""
       hosts:
-      - host: "backend-ichub.int.catena-x.net"
+      - host: "backend-ichub-manufacturer.int.catena-x.net"
         paths:
           - path: /
             pathType: ImplementationSpecific
