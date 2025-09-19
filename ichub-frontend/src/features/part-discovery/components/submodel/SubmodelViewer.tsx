@@ -330,7 +330,7 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
     // Register US Tariff Information addon if not already registered
     if (!submodelAddonRegistry.getAddon('us-tariff-information')) {
       submodelAddonRegistry.register(usTariffInformationAddon as unknown as import('../submodel-addons/shared/types').VersionedSubmodelAddon);
-      console.log('Registered US Tariff Information addon');
+      
     }
   }, []);
 
@@ -352,11 +352,11 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
   const fetchSubmodelData = useCallback(async (forceRefresh = false) => {
     // Prevent multiple calls for the same submodel or if already fetching, unless it's a forced refresh
     if (!forceRefresh && (lastLoadedSubmodelId === submodel.id || isFetching.current)) {
-      console.log('SubmodelViewer: Preventing duplicate API call for submodel:', submodel.id);
+      
       return;
     }
 
-    console.log('SubmodelViewer: Fetching submodel data for:', submodel.id, forceRefresh ? '(forced refresh)' : '');
+    ' : '');
     isFetching.current = true;
     setLoading(true);
     setError(null);
@@ -370,11 +370,11 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
       );
       setSubmodelData(response);
       setLastLoadedSubmodelId(submodel.id);
-      console.log('SubmodelViewer: Successfully fetched submodel data');
+      
     } catch (err) {
       // Don't show error for cancelled requests
       if (axios.isCancel(err)) {
-        console.log('SubmodelViewer: Request was cancelled');
+        
         return;
       }
       console.error('Error fetching submodel:', err);

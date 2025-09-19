@@ -121,7 +121,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
   // Fetch twins only once and cache them in state
   const fetchTwinsOnce = useCallback(async (): Promise<SerializedPartTwinRead[]> => {
-    console.log('Fetching all twins for general serialized parts view (once)');
+    ');
     try {
       // Add timeout to prevent infinite loading on twin requests
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -177,7 +177,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     const loadTwinData = async () => {
       // Don't fetch twin data if there are no parts to display
       if (!parts || parts.length === 0) {
-        console.log('No parts to display, skipping twin data fetch');
+        
         setRows([]);
         setIsInitialLoading(false);
         return;
@@ -187,7 +187,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         // Only fetch if we don't have cached twins or parts changed
         let twins = allTwins;
         if (twins.length === 0) {
-          console.log('Fetching all twins for general serialized parts view (initial load)');
+          ');
           setIsInitialLoading(true);
           
           // Add timeout for the entire twin loading process
@@ -264,7 +264,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful creation - re-fetch all twins to get the new one
-      console.log('Refreshing twins after twin creation');
+      
       const updatedTwins = await fetchTwinsOnce();
       const relevantTwins = getRelevantTwins(updatedTwins);
       
@@ -319,7 +319,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful share
-      console.log('Refreshing twins after twin sharing');
+      
       const updatedTwins = await fetchTwinsOnce();
       const relevantTwins = getRelevantTwins(updatedTwins);
       
@@ -390,7 +390,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       });
       
       // Refresh twin data after successful unshare
-      console.log('Refreshing twins after twin unsharing');
+      
       const updatedTwins = await fetchTwinsOnce();
       const updatedRelevantTwins = getRelevantTwins(updatedTwins);
       
@@ -435,8 +435,8 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
   // Perform the actual deletion after confirmation
   const handleDeleteSerializedPart = async (row: SerializedPartWithStatus) => {
-    console.log("Delete confirmed for row:", row);
-    console.log("Row ID:", row.id, "Part Instance ID:", row.partInstanceId);
+    
+    
     
     if (row.id === undefined || row.id === null) {
       console.error("No row ID found for deletion");
@@ -445,12 +445,12 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     
     setPartDeletingId(row.id);
     try {
-      console.log("Calling deleteSerializedPart with:", row.id, row.partInstanceId);
+      
       await deleteSerializedPart(row.id, row.partInstanceId);
-      console.log("Delete API call successful");
+      
       
       // Refresh data after successful deletion
-      console.log('Refreshing twins after part deletion');
+      
       const updatedTwins = await fetchTwinsOnce();
       const relevantTwins = getRelevantTwins(updatedTwins);
       
@@ -467,7 +467,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         };
       });
       setRows(rowsWithStatus);
-      console.log("Data refreshed after deletion");
+      
       
       // Show success message
       showSuccess('Serialized part deleted successfully!');
@@ -498,7 +498,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   };
 
   const handleRefresh = async () => {
-    console.log('Refresh button clicked');
+    
     
     // Set refresh loading state (doesn't show overlay)
     setIsRefreshing(true);
@@ -506,16 +506,16 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     try {
       // Only refresh twins data if there are parts to work with
       if (parts && parts.length > 0) {
-        console.log('Refreshing twins data');
+        
         await fetchTwinsOnce();
-        console.log('Twins data refreshed successfully');
+        
       } else {
-        console.log('No parts available, skipping twin refresh');
+        
       }
       
       // Trigger the parent to refresh the serialized parts data
       if (onRefresh) {
-        console.log('Calling onRefresh callback to fetch fresh serialized parts');
+        
         onRefresh();
       } else {
         console.warn('No onRefresh callback provided');
@@ -662,7 +662,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
               <IconButton
                 size="small"
                 onClick={() => {
-                  console.log("Delete button clicked - registered state");
+                  
                   showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}
@@ -730,7 +730,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
               <IconButton
                 size="small"
                 onClick={() => {
-                  console.log("Delete button clicked - shared state");
+                  
                   showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}

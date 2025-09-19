@@ -77,7 +77,7 @@ const SerializedParts = () => {
   }, [loadData]);
 
   const handleRefresh = useCallback(() => {
-    console.log("Refreshing serialized parts data");
+    
     loadData(true);
   }, [loadData]);
 
@@ -127,7 +127,7 @@ const SerializedParts = () => {
           <SerializedPartsTable 
             parts={serializedParts} 
             onView={(part) => {
-              console.log("View part:", part);
+              
             }}
             onRefresh={handleRefresh}
           />

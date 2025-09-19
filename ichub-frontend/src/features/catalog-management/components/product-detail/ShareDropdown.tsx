@@ -100,7 +100,7 @@ interface ShareDropdownProps {
     
     navigator.clipboard.writeText(textToCopy)
       .then(() => {
-        console.log(`${copyLabel} copied to clipboard: ${textToCopy}`);
+        
         onNotification?.({
           open: true,
           severity: "success",
@@ -130,7 +130,7 @@ interface ShareDropdownProps {
     
     navigator.clipboard.writeText(twinDetails.dtrAasId)
       .then(() => {
-        console.log(`AAS ID copied to clipboard: ${twinDetails.dtrAasId}`);
+        
         onNotification?.({
           open: true,
           severity: "success",

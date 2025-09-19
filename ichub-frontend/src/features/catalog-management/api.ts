@@ -92,17 +92,17 @@ export const fetchCatalogPartTwinDetails = async (
   manufacturerPartId: string
 ): Promise<CatalogPartTwinDetailsRead | null> => {
   try {
-    console.log('Fetching catalog part twin details for:', { manufacturerId, manufacturerPartId });
+    
     const response = await axios.get<CatalogPartTwinDetailsRead>(
       `${backendUrl}/twin-management/catalog-part-twin/${manufacturerId}/${manufacturerPartId}`
     );
-    console.log('Catalog part twin details response:', response.data);
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching catalog part twin details:', error);
     // If the twin doesn't exist, return null instead of throwing an error
     if (axios.isAxiosError(error) && error.response?.status === 404) {
-      console.log('Catalog part twin not found (404), returning null');
+      , returning null');
       return null;
     }
     throw error;

@@ -363,11 +363,11 @@ const PartsDiscovery = () => {
 
   // Function to start loading state
   const startLoadingProgress = () => {
-    console.log('🚀 Starting new search');
+    
     
     // Clear any existing completion timeout
     if (completionTimeoutRef.current) {
-      console.log('🧹 Clearing existing completion timeout');
+      
       clearTimeout(completionTimeoutRef.current);
       completionTimeoutRef.current = null;
     }
@@ -380,20 +380,20 @@ const PartsDiscovery = () => {
     // Return completion function that handles successful or failed completion
     return (isError: boolean = false) => {
       if (isError) {
-        console.log('❌ Search failed - resetting immediately');
+        
         // For errors, reset immediately without showing completion
         setIsLoading(false);
         setShowSearchLoading(false);
         setIsSearchCompleted(false);
       } else {
-        console.log('🏁 Search completion triggered - showing completed state');
+        
         // For successful completion, show completion state briefly before changing view
         setIsLoading(false); // Hide button spinner immediately
         setIsSearchCompleted(true);
         
         // Show completion animation for 200ms, then change to results view
         completionTimeoutRef.current = setTimeout(() => {
-          console.log('⏰ Transitioning to results view after completion animation');
+          
           setHasSearched(true); // This triggers the view change to show results
           setShowSearchLoading(false);
           // Reset completion state after component is hidden
@@ -408,11 +408,11 @@ const PartsDiscovery = () => {
 
   // Function to cancel ongoing search
   const handleCancelSearch = () => {
-    console.log('🚫 Search cancelled by user');
+    
     
     // Abort the ongoing request
     if (abortControllerRef.current) {
-      console.log('🛑 Aborting ongoing request');
+      
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
@@ -479,7 +479,7 @@ const PartsDiscovery = () => {
       try {
         const response = await discoverSingleShell(bpnl, singleTwinAasId.trim(), abortController.signal);
         
-        console.log('✅ Valid response, setting single twin result');
+        
         setSingleTwinResult(response);
         // Success - trigger completion animation and then view change
         stopProgress();
@@ -488,7 +488,7 @@ const PartsDiscovery = () => {
         
         // Check if the error is due to cancellation
         if (searchError instanceof Error && searchError.name === 'AbortError') {
-          console.log('🚫 Request was cancelled');
+          
           return; // Don't show error or reset state for cancelled requests
         }
         
@@ -504,7 +504,7 @@ const PartsDiscovery = () => {
     } catch (err) {
       // Check if the error is due to request cancellation
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('🚫 Single twin search was cancelled by user - no error shown');
+        
         return; // Don't show error for cancelled requests
       }
       
@@ -768,7 +768,7 @@ const PartsDiscovery = () => {
         
         // Check if the error is due to cancellation
         if (apiError instanceof Error && apiError.name === 'AbortError') {
-          console.log('🚫 Request was cancelled');
+          
           return; // Don't show error or reset state for cancelled requests
         }
         
@@ -783,7 +783,7 @@ const PartsDiscovery = () => {
       }
 
       setCurrentResponse(response);      // Log the full response for debugging
-      console.log('API Response:', response);
+      
       
       // Check for any error-like fields in the response object
       const responseObj = response as unknown as Record<string, unknown>;
@@ -883,7 +883,7 @@ const PartsDiscovery = () => {
       
       // Check if the error is due to request cancellation
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('🚫 Search was cancelled by user - no error shown');
+        
         return; // Don't show error for cancelled requests
       }
       
@@ -1017,7 +1017,7 @@ const PartsDiscovery = () => {
   };
 
   const handleCardClick = (partId: string) => {
-    console.log('Card clicked:', partId);
+    
     
     // Find the card data to get the raw twin data
     const card = partTypeCards.find(c => c.id === partId || `${c.manufacturerId}/${c.manufacturerPartId}` === partId);
@@ -1050,7 +1050,7 @@ const PartsDiscovery = () => {
   };
 
   const handleSerializedPartView = (part: SerializedPartData) => {
-    console.log('View serialized part:', part);
+    
     
     if (part.rawTwinData) {
       // Get DTR information if available
@@ -1081,7 +1081,7 @@ const PartsDiscovery = () => {
   };
 
   const handleRegisterClick = (manufacturerId: string, manufacturerPartId: string) => {
-    console.log('Register part:', manufacturerId, manufacturerPartId);
+    
     // Implement registration functionality
   };
 

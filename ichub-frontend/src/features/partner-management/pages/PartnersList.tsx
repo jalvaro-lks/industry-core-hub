@@ -125,7 +125,7 @@ const PartnersList = () => {
   }, [loadPartners]);
 
   const handleButtonClick = (partnerBPNL: string) => {
-    console.log('Button clicked for partner:', partnerBPNL);
+    
     // For now we will just log the partnerBPNL
     //navigate(`/partner/${partnerBPNL}`);  // Navigate to the details page
   };

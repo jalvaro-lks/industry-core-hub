@@ -174,7 +174,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
         });
 
         setRows(rowsWithStatus);
-        console.log('Loaded instance products:', rowsWithStatus);
+        
       } catch (error) {
         console.error("Error fetching instance products:", error);
         // Reset ref on error so it can be retried
@@ -189,7 +189,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     if (onAddClick) {
       onAddClick();
     } else {
-      console.log('Add button clicked - dialog functionality needs to be implemented');
+      
     }
   };
 
@@ -363,8 +363,8 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
   };
 
   const handleDeleteSerializedPart = async (row: SerializedPartWithStatus) => {
-    console.log("Delete button clicked for row:", row);
-    console.log("Row ID:", row.id, "Part Instance ID:", row.partInstanceId);
+    
+    
     
     if (!part || row.id === undefined || row.id === null) {
       console.error("No part or row ID found for deletion");
@@ -374,9 +374,9 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     
     setPartDeletingId(row.id);
     try {
-      console.log("Calling deleteSerializedPart with:", row.id, row.partInstanceId);
+      
       await deleteSerializedPart(row.id, row.partInstanceId);
-      console.log("Delete API call successful");
+      
       
       // Refresh data after successful deletion
       const [serializedParts, twins] = await Promise.all([
@@ -395,7 +395,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       });
 
       setRows(rowsWithStatus);
-      console.log("Data refreshed after deletion");
+      
       
       // Close the confirmation dialog
       closeDeleteConfirmation();
@@ -519,7 +519,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
               <IconButton
                 size="small"
                 onClick={() => {
-                  console.log("Delete button clicked - registered state");
+                  
                   showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}
@@ -587,7 +587,7 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
               <IconButton
                 size="small"
                 onClick={() => {
-                  console.log("Delete button clicked - shared state");
+                  
                   showDeleteConfirmation(row);
                 }}
                 disabled={partDeletingId === row.id}

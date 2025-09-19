@@ -76,7 +76,7 @@ const ProductsDetails = () => {
     setIsLoading(true);
     try {
       const apiData = await fetchCatalogPart(manufacturerId, manufacturerPartId);
-      console.log(apiData)
+      
       // Map API data to PartInstance[]
       const mappedPart: PartType = mapApiPartDataToPartType(apiData)
       setPartType(mappedPart);
@@ -88,9 +88,9 @@ const ProductsDetails = () => {
       
       // Fetch twin details
       try {
-        console.log('Fetching twin details for part:', manufacturerId, manufacturerPartId);
+        
         const twinData = await fetchCatalogPartTwinDetails(manufacturerId, manufacturerPartId);
-        console.log('Twin data received:', twinData);
+        
         setTwinDetails(twinData);
       } catch (twinError) {
         console.error('Error fetching twin details:', twinError);
@@ -217,7 +217,7 @@ const ProductsDetails = () => {
           {getStatusTag(partType.status ?? PRODUCT_STATUS.DRAFT)}
         </Grid2>
         <Grid2 size={4} display="flex" justifyContent="center" alignItems="center">
-          <Button size="small" onClick={() => console.log("DCM v2.0 button")} className="update-button" endIcon={<EditIcon />}>            
+          <Button size="small" onClick={() => } className="update-button" endIcon={<EditIcon />}>            
               <span className="update-button-content">UPDATE</span>            
           </Button>
         </Grid2>

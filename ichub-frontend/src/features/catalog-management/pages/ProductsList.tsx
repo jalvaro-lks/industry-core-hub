@@ -95,7 +95,7 @@ const ProductsList = () => {
         p.manufacturerPartId === manufacturerPartId
     ); // Use carParts directly as visibleRows is a slice
     if (part) {
-      console.log("Share dialog for part:", part);
+      
       setSelectedPart(part);
       setShareDialogOpen(true);
     } else {
@@ -155,7 +155,7 @@ const ProductsList = () => {
   const handleSaveCatalogPart = () => {
     handleCloseCreateDialog();
     fetchData(); // Refresh the list after saving
-    console.log("Catalog part saved, refreshing list...");
+    
   };
 
   return (

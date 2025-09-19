@@ -155,9 +155,9 @@ const DarkSubmodelViewer: React.FC<DarkSubmodelViewerProps> = ({
         setIsLoading(true);
         setError(null);
         try {
-            console.log('Refreshing submodel content:', { semanticId, submodelId });
+            
             const content = await fetchSubmodelContent(semanticId, submodelId);
-            console.log('Refreshed submodel content:', content);
+            
             setSubmodelContent(content);
         } catch (err) {
             console.error('Failed to refresh submodel content:', err);
@@ -174,9 +174,9 @@ const DarkSubmodelViewer: React.FC<DarkSubmodelViewerProps> = ({
             setIsLoading(true);
             setError(null);
             try {
-                console.log('Loading submodel content:', { semanticId, submodelId });
+                
                 const content = await fetchSubmodelContent(semanticId, submodelId);
-                console.log('Loaded submodel content:', content);
+                
                 setSubmodelContent(content);
             } catch (err) {
                 console.error('Failed to load submodel content:', err);

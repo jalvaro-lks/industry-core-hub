@@ -77,7 +77,7 @@ export const CatalogPartsDiscovery = ({
     if (selectedItem?.shellId) {
       try {
         await navigator.clipboard.writeText(selectedItem.shellId);
-        console.log('Shell ID copied to clipboard:', selectedItem.shellId);
+        
         setCopySuccess(true);
         
         // Close menu after showing feedback for 1.5 seconds
@@ -112,7 +112,7 @@ export const CatalogPartsDiscovery = ({
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        console.log('Twin data downloaded successfully');
+        
       } catch (err) {
         console.error('Failed to download twin data:', err);
       }
@@ -201,7 +201,7 @@ export const CatalogPartsDiscovery = ({
                               document.body.removeChild(link);
                               URL.revokeObjectURL(url);
                               
-                              console.log('Twin data downloaded successfully');
+                              
                             } catch (err) {
                               console.error('Failed to download twin data:', err);
                             }

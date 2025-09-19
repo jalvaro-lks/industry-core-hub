@@ -46,7 +46,7 @@ const SerializedPartsTable = ({ parts, onView }: SerializedPartsTableProps) => {
   const handleCopyAasId = async (aasId: string, partId: string) => {
     try {
       await navigator.clipboard.writeText(aasId);
-      console.log('AAS ID copied to clipboard:', aasId);
+      
       setCopySuccess(partId);
       
       // Reset after 2 seconds
@@ -73,7 +73,7 @@ const SerializedPartsTable = ({ parts, onView }: SerializedPartsTableProps) => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        console.log('Twin data downloaded successfully');
+        
       } catch (err) {
         console.error('Failed to download twin data:', err);
       }
@@ -302,7 +302,7 @@ const SerializedPartsTable = ({ parts, onView }: SerializedPartsTableProps) => {
           }
           label="View"
           onClick={() => {
-            console.log('View details for:', params.row);
+            
             if (onView) {
               onView(params.row);
             }

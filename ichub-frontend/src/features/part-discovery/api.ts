@@ -103,7 +103,7 @@ const generateGovernancePoliciesWithPermutations = async (semanticId: string, co
   }
   
   // No specific configuration found, use default policies as fallback
-  console.log(`No specific governance configuration found for semantic ID: ${semanticId}, using default policies`);
+  
   return await getCachedDefaultGovernancePolicies();
 };
 
@@ -155,7 +155,7 @@ const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
   }
   
   // Cache is invalid or doesn't exist, regenerate
-  console.log('DTR governance policies cache invalidated, regenerating...');
+  
   const newPolicies = generateDtrPoliciesWithPermutations(currentConfig);
   
   dtrGovernancePoliciesCache = {
@@ -180,7 +180,7 @@ const getCachedGovernancePolicies = async (semanticId: string): Promise<OdrlPoli
   }
   
   // Cache is invalid or doesn't exist, regenerate
-  console.log(`Governance policies cache invalidated for semantic ID: ${semanticId}, regenerating...`);
+  
   const newPolicies = await generateGovernancePoliciesWithPermutations(semanticId, currentConfig);
   
   governancePoliciesCache.set(semanticId, {
@@ -203,7 +203,7 @@ const getCachedDefaultGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
     return defaultGovernancePolicyCache.policies;
   }
   
-  console.log('Default governance policies cache invalidated, regenerating...');
+  
   const newPolicies = generateDefaultGovernancePolicyPermutations();
   
   defaultGovernancePolicyCache = {

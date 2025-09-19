@@ -131,9 +131,9 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
             if (part.manufacturerId && part.manufacturerPartId) {
                 setIsLoadingTwin(true);
                 try {
-                    console.log('Fetching twin details for part:', part.manufacturerId, part.manufacturerPartId);
+                    
                     const twinData = await fetchCatalogPartTwinDetails(part.manufacturerId, part.manufacturerPartId);
-                    console.log('Twin data received:', twinData);
+                    
                     setTwinDetails(twinData);
                 } catch (error) {
                     console.error('Error fetching twin details:', error);

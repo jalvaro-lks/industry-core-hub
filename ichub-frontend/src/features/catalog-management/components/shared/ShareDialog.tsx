@@ -72,14 +72,14 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
   }, [open, partData]);
 
   const handlePartnerSelection = (_event: React.SyntheticEvent, value: PartnerInstance | null) => {
-    console.log('handlePartnerSelection called with:', value);
+    
     if (value && 'bpnl' in value) {
       // User selected a partner from the dropdown
-      console.log('Setting bpnl to partner.bpnl:', value.bpnl);
+      
       setBpnl(value.bpnl); // Only BPNL for backend
     } else {
       // Value is null
-      console.log('Setting bpnl to empty');
+      
       setBpnl('');
     }
     setError(false); // Clear validation error on change
@@ -88,8 +88,8 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
   };
 
   const handleShare = async () => {
-    console.log('handleShare called with bpnl:', bpnl);
-    console.log('bpnl.trim():', bpnl.trim());
+    
+    :', bpnl.trim());
     
     if (!bpnl.trim()) {
       setError(true);
@@ -308,7 +308,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
                     <Checkbox
                       checked={showCustomPartId}
                       onChange={(e) => {
-                        console.log('Checkbox changed to:', e.target.checked);
+                        
                         setShowCustomPartId(e.target.checked);
                       }}
                       size="small"

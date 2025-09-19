@@ -135,7 +135,7 @@ export const fetchAllSerializedPartTwins = async (): Promise<SerializedPartTwinR
 
     // If we already know the endpoint is unavailable, don't make the request
     if (twinEndpointUnavailable) {
-      console.log('Twin endpoint known to be unavailable, skipping request');
+      
       return [];
     }
     
@@ -143,7 +143,7 @@ export const fetchAllSerializedPartTwins = async (): Promise<SerializedPartTwinR
     const params = new URLSearchParams();
     params.append('include_data_exchange_agreements', 'true');
     
-    console.log('Fetching all twins from API (browser-cached)');
+    ');
     const response = await cacheableAxios.get<SerializedPartTwinRead[]>(
       `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?${params.toString()}`
     );
@@ -179,7 +179,7 @@ export const fetchSerializedPartTwinsForCatalogPart = async (
   params.append('manufacturerId', manufacturerId);
   params.append('manufacturerPartId', manufacturerPartId);
   
-  console.log('Fetching filtered twins from API for catalog part (browser-cached):', manufacturerId, manufacturerPartId);
+  :', manufacturerId, manufacturerPartId);
   const response = await cacheableAxios.get<SerializedPartTwinRead[]>(
     `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?${params.toString()}`
   );
@@ -200,13 +200,13 @@ export const deleteSerializedPart = async (
   partnerCatalogPartId: number,
   partInstanceId: string
 ): Promise<void> => {
-  console.log("deleteSerializedPart API called with:", { partnerCatalogPartId, partInstanceId });
+  
   const url = `${backendUrl}${SERIALIZED_PART_READ_BASE_PATH}/${partnerCatalogPartId}/${partInstanceId}`;
-  console.log("Delete URL:", url);
+  
   
   try {
     const response = await axios.delete(url);
-    console.log("Delete API response:", response);
+    
   } catch (error) {
     console.error("Delete API error:", error);
     throw error;

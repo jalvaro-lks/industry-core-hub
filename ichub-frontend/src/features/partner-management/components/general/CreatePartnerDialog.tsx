@@ -60,7 +60,7 @@ const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDial
 
     if (partnerData) { // Edit mode
       // TODO: Implement PUT request for updating partner when API endpoint is defined
-      console.log(`Partner updated (locally) with name: ${name} and BPNL: ${bpnl}`);
+      with name: ${name} and BPNL: ${bpnl}`);
       onSave?.(partnerPayload); // Update local state in parent
       setSuccessMessage(`Partner ${name} updated successfully [${bpnl}] (local update)`);
       setTimeout(() => {
@@ -71,7 +71,7 @@ const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDial
       try {
         await createPartner(partnerPayload);
         
-        console.log(`Partner created via API with name: ${name} and BPNL: ${bpnl}`);
+        
         onSave?.(partnerPayload); // Call onSave to update the parent component's state
 
         setSuccessMessage(`Partner ${name} created successfully [${bpnl}]`);

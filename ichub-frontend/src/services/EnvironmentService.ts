@@ -86,16 +86,16 @@ export const getIchubBackendUrl = () => {
   ensureWindowEnvInitialized();
   
   // Debug: Log what's available
-  console.log('🔍 Debugging backend URL resolution:');
-  console.log('window?.ENV?.ICHUB_BACKEND_URL:', window?.ENV?.ICHUB_BACKEND_URL);
-  console.log('import.meta.env.VITE_ICHUB_BACKEND_URL:', import.meta.env.VITE_ICHUB_BACKEND_URL);
-  console.log('Full window.ENV object:', window?.ENV);
+  
+  
+  
+  
   
   // First try to get from window.ENV (runtime injection via Helm charts), then fallback to build-time env
   const backendUrl = window?.ENV?.ICHUB_BACKEND_URL || 
                      import.meta.env.VITE_ICHUB_BACKEND_URL;
   
-  console.log('🎯 Resolved backend URL:', backendUrl);
+  
   
   if (!backendUrl) {
     console.warn('❌ ICHUB_BACKEND_URL not configured. Ensure environment variable is set via Helm chart or build configuration.');
@@ -107,9 +107,9 @@ export const getParticipantId = () => {
   ensureWindowEnvInitialized();
   
   // Debug: Log what's available
-  console.log('🔍 Debugging participant ID resolution:');
-  console.log('window?.ENV?.PARTICIPANT_ID:', window?.ENV?.PARTICIPANT_ID);
-  console.log('import.meta.env.VITE_PARTICIPANT_ID:', import.meta.env.VITE_PARTICIPANT_ID);
+  
+  
+  
   
   // First try to get from window.ENV (runtime injection via Helm charts), then fallback to build-time env
   const participantId = window?.ENV?.PARTICIPANT_ID || 
@@ -117,7 +117,7 @@ export const getParticipantId = () => {
   
   // Use fallback value if no participant ID is configured
   const resolvedId = participantId ?? 'BPNL0000000093Q7';
-  console.log('🎯 Resolved participant ID:', resolvedId);
+  
   
   return resolvedId;
 };
