@@ -146,6 +146,9 @@ vault:
   enabled: false
 
 digital-twin-registry:
+  nameOverride: "dtr-manufacturer"
+  fullnameOverride: "dtr-manufacturer"
+  name: "dtr-manufacturer"
   enabled: true
   registry:
     host: dtr-consumer-ichub.int.catena-x.net
