@@ -97,6 +97,10 @@ spec:
             - name: AUTH_PROVIDER
               value: "{{ .Values.frontend.config.authProvider }}"
             
+            # Participant configuration
+            - name: PARTICIPANT_ID
+              value: "{{ .Values.participantId }}"
+            
             # Feature flags
             - name: ENABLE_ADVANCED_LOGGING
               value: "{{ .Values.frontend.config.enableAdvancedLogging }}"
