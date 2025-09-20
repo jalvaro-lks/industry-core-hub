@@ -20,6 +20,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
+import os
+from pathlib import Path
 from typing import Dict, Any
 from uuid import UUID
 from hashlib import sha256
@@ -37,9 +39,31 @@ class SubmodelServiceManager:
     logger = LoggingManager.get_logger(__name__)
 
     def __init__(self):
-        submodel_service_path = ConfigManager.get_config("provider.submodel_dispatcher.path", default="/data/submodels")
+        submodel_service_path = ConfigManager.get_config("provider.submodel_dispatcher.path", default="/industry-core-hub/data/submodels")
         if not isinstance(submodel_service_path, str):
             raise ValueError(f"Expected 'submodel_service.path' to be a string, got: {type(submodel_service_path).__name__}")
+        
+        # Convert relative path to absolute path if needed
+        if not os.path.isabs(submodel_service_path):
+            submodel_service_path = os.path.abspath(submodel_service_path)
+        
+        # Ensure the directory exists and check permissions
+        try:
+            path_obj = Path(submodel_service_path)
+            path_obj.mkdir(parents=True, exist_ok=True)
+            
+            # Check if we have write permissions using os.access()
+            if not os.access(submodel_service_path, os.W_OK):
+                raise PermissionError(f"No write permission for directory: {submodel_service_path}")
+            
+            self.logger.info(f"Submodel storage initialized at: {submodel_service_path}")
+        except PermissionError as e:
+            self.logger.error(f"Permission denied accessing submodel storage path: {submodel_service_path}")
+            raise PermissionError(f"Cannot access submodel storage directory: {submodel_service_path}. Error: {e}")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize submodel storage at {submodel_service_path}: {e}")
+            raise RuntimeError(f"Failed to initialize submodel storage: {e}")
+        
         self.file_system = SubmodelAdapterFactory.get_file_system(root_path=submodel_service_path)
 
     def upload_twin_aspect_document(self, submodel_id : UUID, semantic_id: str, payload: Dict[str, Any]):

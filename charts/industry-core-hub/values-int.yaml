@@ -173,7 +173,6 @@ backend:
       # -- Enable logs persistence
       enabled: true
       # -- Storage size for logs
-      size: 1Gi
       # -- Access mode for logs volume
       accessMode: ReadWriteOnce
       # -- Storage class for logs volume
@@ -267,7 +266,7 @@ backend:
             prohibition: []
             obligation: []
     submodel_dispatcher:
-      path: "./industry-core-hub/data/submodels"
+      path: "/industry-core-hub/data/submodels"
       apiPath: "/submodel-dispatcher"
   ingress:
       enabled: true
