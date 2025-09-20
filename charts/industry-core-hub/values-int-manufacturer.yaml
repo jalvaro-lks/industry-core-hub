@@ -358,6 +358,59 @@ backend:
                     rightOperand: active
             prohibition: []
             obligation: []
+      agreements:
+        - semanticid: urn:samm:io.catenax.serial_part:3.0.0#SerialPart
+          usage:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                LogicalConstraint: odrl:and
+                constraints:
+                  - leftOperand: cx-policy:UsagePurpose
+                    operator: odrl:eq
+                    rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+          access:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                constraints:
+                  - leftOperand: cx-policy:Membership
+                    operator: odrl:eq
+                    rightOperand: active
+            prohibition: []
+            obligation: []
+        - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
+          usage:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                LogicalConstraint: odrl:and
+                constraints:
+                  - leftOperand: cx-policy:UsagePurpose
+                    operator: odrl:eq
+                    rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+          access:
+            context:
+              odrl: http://www.w3.org/ns/odrl/2/
+              cx-policy: https://w3id.org/catenax/policy/
+            permission:
+              - action: odrl:use
+                constraints:
+                  - leftOperand: cx-policy:Membership
+                    operator: odrl:eq
+                    rightOperand: active
+            prohibition: []
+            obligation: []
     submodel_dispatcher:
       path: "/industry-core-hub/data/submodels"
       apiPath: "/submodel-dispatcher"
