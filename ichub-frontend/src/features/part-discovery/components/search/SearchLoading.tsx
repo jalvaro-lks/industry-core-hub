@@ -48,7 +48,7 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
   ];
   
   // Extended wait message for long operations
-  const extendedWaitMessage = "It's taking a bit more than expected, probably the access negotiation is still going (approx 10s)";
+  const extendedWaitMessage = "It's taking a bit more than expected, probably the access negotiation is still going (approx 10s). This negotiation is done only on the first request.";
   
   // Error message for very long operations
   const errorMessage = "This is taking much longer than expected. There may be an error in the initial connection/negotiation process. Please contact your administrator.";
