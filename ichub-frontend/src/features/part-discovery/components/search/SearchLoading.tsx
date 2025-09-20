@@ -209,19 +209,24 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
           '& .MuiLinearProgress-bar': {
             background: isCompleted 
               ? 'linear-gradient(45deg, #4caf50 30%, #66bb6a 90%)'  // Green when completed
-              : isExtendedWait
-                ? 'linear-gradient(45deg, #ff9800 30%, #ffb74d 90%)' // Orange/Yellow when taking longer
-                : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading normally
+              : isErrorState
+                ? 'linear-gradient(45deg, #f44336 30%, #ef5350 90%)' // Red when error state (30+ seconds)
+                : isExtendedWait
+                  ? 'linear-gradient(45deg, #ff9800 30%, #ffb74d 90%)' // Orange/Yellow when taking longer
+                  : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading normally
             borderRadius: 4,
             transition: isCompleted 
               ? 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' // Smooth elastic transition to completion
               : 'all 0.4s ease-in-out', // Smooth transition for normal progress and color changes
-            // Add a subtle glow effect when completed or extended wait
+            // Add a subtle glow effect when completed, extended wait, or error state
             ...(isCompleted && {
               boxShadow: '0 0 15px rgba(76, 175, 80, 0.6)',
               transform: 'scaleY(1.1)' // Slightly expand when complete
             }),
-            ...(isExtendedWait && !isCompleted && {
+            ...(isErrorState && !isCompleted && {
+              boxShadow: '0 0 12px rgba(244, 67, 54, 0.6)',
+            }),
+            ...(isExtendedWait && !isCompleted && !isErrorState && {
               boxShadow: '0 0 12px rgba(255, 152, 0, 0.4)',
             })
           }
