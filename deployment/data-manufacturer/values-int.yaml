@@ -169,6 +169,8 @@ digital-twin-registry:
     dataSource:
       url: jdbc:postgresql://dtr-manufacturer-db:5432
   postgresql:
+    nameOverride: dtr-manufacturer-postgresql
+    fullnameOverride: dtr-manufacturer-postgresql
     name: "dtr-manufacturer-postgresql"
     auth:
       password: "<path:industry-core-hub/data/dtr#password>"
