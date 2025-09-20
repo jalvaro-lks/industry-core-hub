@@ -208,12 +208,6 @@ frontend:
             - action: odrl:use
               LogicalConstraint: odrl:and
               constraints:
-                - leftOperand: cx-policy:FrameworkAgreement
-                  operator: odrl:eq
-                  rightOperand: DataExchangeGovernance:1.0
-                - leftOperand: cx-policy:Membership
-                  operator: odrl:eq
-                  rightOperand: active
                 - leftOperand: cx-policy:UsagePurpose
                   operator: odrl:eq
                   rightOperand: cx.core.industrycore:1
@@ -346,14 +340,7 @@ backend:
               cx-policy: https://w3id.org/catenax/policy/
             permission:
               - action: odrl:use
-                LogicalConstraint: odrl:and
                 constraints:
-                  - leftOperand: cx-policy:FrameworkAgreement
-                    operator: odrl:eq
-                    rightOperand: DataExchangeGovernance:1.0
-                  - leftOperand: cx-policy:Membership
-                    operator: odrl:eq
-                    rightOperand: active
                   - leftOperand: cx-policy:UsagePurpose
                     operator: odrl:eq
                     rightOperand: cx.core.digitalTwinRegistry:1
