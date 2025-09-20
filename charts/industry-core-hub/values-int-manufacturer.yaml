@@ -134,6 +134,7 @@ frontend:
                 service: "frontend-manufacturer"
                 port: 8080
 backend:
+  apiVersion: v1
   name: "manufacturer-ichub-backend"
   nameOverride: "manufacturer-ichub-backend"
   fullnameOverride: "manufacturer-ichub-backend"

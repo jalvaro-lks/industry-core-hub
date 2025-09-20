@@ -141,6 +141,7 @@ frontend:
                 service: "frontend"
                 port: 8080
 backend:
+  apiVersion: v1
   cors:
     enabled: true
     allow_origins:

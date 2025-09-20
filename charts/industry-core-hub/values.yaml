@@ -31,6 +31,7 @@ participantId: ""
 
 # -- Backend configuration
 backend:
+  apiVersion: v1
   enabled: true
   name: "industry-core-hub-backend"
   image:
