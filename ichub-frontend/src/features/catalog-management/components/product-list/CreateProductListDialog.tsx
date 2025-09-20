@@ -38,6 +38,7 @@ import {
   Paper,
   Slider,
   Collapse,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -81,6 +82,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
 
   const [successMessage, setSuccessMessage] = useState("");
   const [apiErrorMessage, setApiErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,6 +104,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
       // Clear all messages when dialog opens
       setSuccessMessage("");
       setApiErrorMessage("");
+      setIsLoading(false);
       setExpandedMaterial(null);
     }
   }, [open, manufacturerId]);
@@ -205,6 +208,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
       materials: namedMaterials,
     };
 
+    setIsLoading(true);
     try {
       await createCatalogPart(mapPartInstanceToApiPartData(payload as PartType));
       // Clear any existing error message first
@@ -214,8 +218,10 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
         setSuccessMessage("");
         onSave?.({ part: payload as PartType });
         onClose();
+        setIsLoading(false);
       }, 3000);
     } catch (error: unknown) {
+      setIsLoading(false);
       console.error("Error creating catalog part:", error);
       let errorMessage = "Failed to create catalog part.";
       if (error instanceof Error) {
@@ -756,7 +762,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
           variant="contained"
           color="primary"
           size="large"
-          disabled={getNamedMaterials().length > 0 && Math.abs(getTotalShare() - 100) > 0.01}
+          disabled={isLoading || (getNamedMaterials().length > 0 && Math.abs(getTotalShare() - 100) > 0.01)}
+          startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : undefined}
           sx={{
             minWidth: '100px',
             textTransform: 'none',
@@ -764,7 +771,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}
         >
-          Create
+          {isLoading ? 'Creating...' : 'Create'}
         </Button>
       </DialogActions>
     </Dialog>

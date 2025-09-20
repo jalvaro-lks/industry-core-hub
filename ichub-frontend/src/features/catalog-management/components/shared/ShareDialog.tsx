@@ -23,7 +23,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@mui/material';
-import { Box, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Checkbox, FormControlLabel, Typography, Grid2 } from '@mui/material';
+import { Box, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Checkbox, FormControlLabel, Typography, Grid2, CircularProgress } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -43,6 +43,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
   const [error, setError] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [apiErrorMessage, setApiErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [partnersList, setPartnersList] = useState<PartnerInstance[]>([]);
   const [selectedPartner, setSelectedPartner] = useState<PartnerInstance | null>(null);
   const [showCustomPartId, setShowCustomPartId] = useState(false);
@@ -55,6 +56,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
       setError(false);
       setSuccessMessage('');
       setApiErrorMessage('');
+      setIsLoading(false);
       setShowCustomPartId(false);
       setCustomPartId('');
 
@@ -102,6 +104,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
       return;
     }
 
+    setIsLoading(true);
     try {
       console.log('Calling shareCatalogPart with:', {
         manufacturerId: partData.manufacturerId,
@@ -124,9 +127,11 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
         onClose(); // Close dialog on success
         // Refresh the page to update the view
         window.location.reload();
+        setIsLoading(false);
       }, 2000);
 
     } catch (axiosError) {
+      setIsLoading(false);
       console.error('Error sharing part:', axiosError);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let errorMessage = (axiosError as any).message || 'Failed to share part.';
@@ -443,8 +448,8 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
             variant="contained"
             color="primary"
             size="large"
-            startIcon={<SendIcon />}
-            disabled={!bpnl}
+            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+            disabled={isLoading || !bpnl}
             sx={{
               minWidth: '100px',
               textTransform: 'none',
@@ -452,7 +457,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}
           >
-            Share
+            {isLoading ? 'Sharing...' : 'Share'}
           </Button>
         )}
       </DialogActions>
