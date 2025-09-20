@@ -25,60 +25,64 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
+export default defineConfig(({ mode }) => {
+  const isDevelopment = mode === 'development';
+  const isProduction = mode === 'production';
+
+  return {
+    plugins: [react()],
+    
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+        '@config': path.resolve(__dirname, 'src/config'),
+        '@services': path.resolve(__dirname, 'src/services'),
+      },
     },
-  },
+
+    define: {
+      // Inject build-time variables
+      __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+      __BUILD_MODE__: JSON.stringify(mode),
+    },
   build: {
-    // Optimize build performance and chunk sizes
     target: 'esnext',
-    minify: 'esbuild',
+    minify: isProduction ? 'esbuild' : false,
     
-    // Increase chunk size warning limit to 1MB (from default 500kB)
     chunkSizeWarningLimit: 1000,
-    
-    // Optimize for faster builds in Docker
-    reportCompressedSize: false, // Skip gzip size reporting for faster builds
+    reportCompressedSize: !isDevelopment,
     
     rollupOptions: {
-      // Define external dependencies to control loading
-      external: () => {
-        // Don't externalize anything - keep everything bundled but control order
-        return false;
-      },
       output: {
-        // Ensure proper chunk loading order by defining imports
         inlineDynamicImports: false,
-        // Manual chunking to ensure React loads before everything else
         manualChunks: {
-          // Explicitly define React chunk first
           'react': ['react', 'react-dom'],
-          // Then MUI and emotion together
           'mui-emotion': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
-          // Router separately
           'router': ['react-router-dom'],
-          // Other vendor libs
-          'vendor': ['axios', 'uuid']
+          'vendor': ['axios', 'uuid'],
+          'config': ['./src/config/ConfigFactory.ts', './src/services/EnvironmentService.ts']
         }
       }
     },
     
-    // Disable source maps in production for faster builds
-    sourcemap: false
+    sourcemap: isDevelopment ? 'inline' : false
   },
   
-  // Optimize dev server
   server: {
     hmr: {
       overlay: false
-    }
+    },
+    // Proxy for development
+    proxy: isDevelopment ? {
+      '/api': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/v1')
+      }
+    } : undefined
   },
   
-  // Optimize dependency pre-bundling
   optimizeDeps: {
     include: [
       'react',
@@ -87,14 +91,12 @@ export default defineConfig({
       '@mui/material',
       '@mui/icons-material'
     ],
-    // Force React to be processed first to ensure useInsertionEffect is available
     force: true
   },
   
-  // Additional optimizations for Docker builds
   esbuild: {
     target: 'esnext',
-    // Drop console logs in production
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
+    drop: isProduction ? ['console', 'debugger'] : []
   }
-})
+  };
+});

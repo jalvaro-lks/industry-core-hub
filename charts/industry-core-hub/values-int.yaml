@@ -50,8 +50,66 @@ pgadmin4:
          hosts:
            - "pgadmin-ichub.int.catena-x.net" 
 frontend: 
+  config:
+    # Core application
+    environment: "integration"
+    version: "1.0.0"
+    
+    # API configuration
+    ichubBackendUrl: "https://backend-ichub.int.catena-x.net/v1"
+    apiTimeout: 20000
+    apiRetryAttempts: 2
+    requireHttpsUrlPattern: true
+    
+    # API key configuration (disabled for integration)
+    apiKey: ""
+    apiKeyHeader: "X-API-Key"
+    enableApiKeyRotation: false
+    apiKeyExpiryWarningDays: 7
+    
+    # Authentication configuration (disabled for integration)
+    authEnabled: false
+    authProvider: "none"
+    authSessionTimeout: 3600
+    authRenewTokenMinValidity: 60
+    authLogoutRedirectUri: ""
+    
+    # Keycloak configuration (disabled for integration)
+    keycloak:
+      url: ""
+      realm: ""
+      clientId: ""
+      onLoad: "check-sso"
+      checkLoginIframe: true
+      silentCheckSsoRedirectUri: ""
+      pkceMethod: "S256"
+      enableLogging: false
+      minValidity: 30
+      checkLoginIframeInterval: 5
+      flow: "standard"
+    
+    # Feature flags for integration environment
+    enableAdvancedLogging: true
+    enablePerformanceMonitoring: true
+    enableDevTools: false
+    
+    # UI configuration
+    uiTheme: "auto"
+    uiLocale: "en"
+    uiCompactMode: false
+    
+    # Governance configuration
+    governanceApiUrl: ""
+    governanceTimeout: 30000
+    governanceRetryAttempts: 2
+    
+    # Participant configuration  
+    participantApiUrl: ""
+    participantTimeout: 30000
+    participantRetryAttempts: 2
+  
   env:
-    # -- industry-core-hub backend base URL
+    # Legacy backend URL (maintained for backward compatibility)
     backendUrl: "https://backend-ichub.int.catena-x.net/v1"
   ingress:
       enabled: true
