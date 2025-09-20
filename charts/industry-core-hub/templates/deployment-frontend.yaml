@@ -97,28 +97,6 @@ spec:
             - name: AUTH_PROVIDER
               value: "{{ .Values.frontend.config.authProvider }}"
             
-            # Core application
-            - name: APP_ENVIRONMENT
-              value: "{{ .Values.frontend.config.environment }}"
-            - name: APP_VERSION
-              value: "{{ .Values.frontend.config.version }}"
-            
-            # API configuration
-            - name: ICHUB_BACKEND_URL
-              value: "{{ .Values.frontend.config.ichubBackendUrl }}"
-            - name: API_TIMEOUT
-              value: "{{ .Values.frontend.config.apiTimeout }}"
-            - name: API_RETRY_ATTEMPTS
-              value: "{{ .Values.frontend.config.apiRetryAttempts }}"
-            - name: REQUIRE_HTTPS_URL_PATTERN
-              value: "{{ .Values.frontend.config.requireHttpsUrlPattern }}"
-            
-            # Authentication configuration
-            - name: AUTH_ENABLED
-              value: "{{ .Values.frontend.config.authEnabled }}"
-            - name: AUTH_PROVIDER
-              value: "{{ .Values.frontend.config.authProvider }}"
-            
             # Feature flags
             - name: ENABLE_ADVANCED_LOGGING
               value: "{{ .Values.frontend.config.enableAdvancedLogging }}"
