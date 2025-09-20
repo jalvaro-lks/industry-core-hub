@@ -166,7 +166,10 @@ digital-twin-registry:
         cert-manager.io/cluster-issuer: "letsencrypt-prod"
         nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
         nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-  
+        dataSource:
+          ## The url, user, and password parameter will be ignored if 'enablePostgres' is set to true.
+          ## In that case the postgresql auth parameters are used.
+          url: jdbc:postgresql://dtr-manufacturer-db:5432
   postgresql:
     name: "dtr-manufacturer-postgresql"
     auth:
