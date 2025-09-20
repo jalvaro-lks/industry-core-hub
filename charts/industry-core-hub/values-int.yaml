@@ -267,7 +267,7 @@ backend:
             prohibition: []
             obligation: []
     submodel_dispatcher:
-      path: "./data/submodels"
+      path: "./industry-core-hub/data/submodels"
       apiPath: "/submodel-dispatcher"
   ingress:
       enabled: true

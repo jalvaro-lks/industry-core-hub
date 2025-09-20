@@ -224,7 +224,7 @@ backend:
             obligation: []
     # -- EDC (Eclipse Dataspace Connector) configuration
     submodel_dispatcher:
-      path: "./data/submodels"
+      path: "/industry-core-hub/data/submodels"
       apiPath: "/submodel-dispatcher"
 
   podAnnotations: {}
