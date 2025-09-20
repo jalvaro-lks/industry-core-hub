@@ -6,7 +6,12 @@
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
  *
- * This program and the accompanying materials are made available under the
+ * This program and the accompan              <Chip
+                icon={<BusinessIcon sx={{ color: 'secondary.contrastText' }} />}
+                label={`Manufacturer ID: ${manufacturerId}`}
+                variant="filled"
+                color="secondary"
+                size="medium"aterials are made available under the
  * terms of the Apache License, Version 2.0 which is available at
  * https://www.apache.org/licenses/LICENSE-2.0.
  *
@@ -39,11 +44,27 @@ import {
   Slider,
   Collapse,
   CircularProgress,
+  InputAdornment,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import CategoryIcon from "@mui/icons-material/Category";
+import DescriptionIcon from "@mui/icons-material/Description";
+import BusinessIcon from "@mui/icons-material/Business";
+import StraightenIcon from "@mui/icons-material/Straighten";
+import ScaleIcon from "@mui/icons-material/Scale";
+import PaletteIcon from "@mui/icons-material/Palette";
+import TuneIcon from "@mui/icons-material/Tune";
+import PercentIcon from "@mui/icons-material/Percent";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import PinDrop from "@mui/icons-material/PinDrop";
+import TagIcon from "@mui/icons-material/Tag";
+import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
+import AspectRatioIcon from "@mui/icons-material/AspectRatio";
+import HeightIcon from "@mui/icons-material/Height";
+import LinearScaleIcon from "@mui/icons-material/LinearScale";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { createCatalogPart } from "../../api";
 import {
@@ -116,34 +137,23 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
   const handleMeasurementChange = (field: "width" | "height" | "length" | "weight", key: "value" | "unit", value: string | number) => {
     setFormData((prev) => ({
       ...prev,
-      [field]: { ...prev[field], [key]: value },
+      [field]: { 
+        ...prev[field], 
+        [key]: key === "value" ? (value === "" || value === null || value === undefined ? 0 : Number(value)) : value 
+      },
     }));
   };
   
   const handleMaterialChange = (index: number, key: "name" | "share", value: string | number) => {
     const newMaterials = [...formData.materials];
     
-    // Prevent negative shares
     if (key === "share") {
-      const shareValue = Math.max(0, Number(value));
-      newMaterials[index] = { ...newMaterials[index], share: shareValue };
-      
-      // Auto-adjust shares to maintain 100% total
-      const currentTotal = newMaterials.reduce((sum, mat, i) => 
-        i === index ? sum + shareValue : sum + mat.share, 0);
-      
-      if (currentTotal !== 100 && newMaterials.length > 1) {
-        const remainingShare = Math.max(0, 100 - shareValue);
-        const otherMaterials = newMaterials.filter((_, i) => i !== index);
-        const currentOtherTotal = otherMaterials.reduce((sum, mat) => sum + mat.share, 0);
-        
-        if (currentOtherTotal > 0) {
-          newMaterials.forEach((mat, i) => {
-            if (i !== index) {
-              mat.share = Math.max(0, Math.round((mat.share / currentOtherTotal) * remainingShare * 100) / 100);
-            }
-          });
-        }
+      // Allow empty string temporarily, convert to 0 for calculations
+      if (value === "" || value === null || value === undefined) {
+        newMaterials[index] = { ...newMaterials[index], share: 0 };
+      } else {
+        const shareValue = Math.max(0, Number(value));
+        newMaterials[index] = { ...newMaterials[index], share: shareValue };
       }
     } else {
       newMaterials[index] = { ...newMaterials[index], name: value as string };
@@ -153,30 +163,43 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
   };
 
   const addMaterial = () => {
-    const currentTotal = formData.materials.reduce((sum, mat) => sum + mat.share, 0);
+    // Simply add a new material with 0 share - let users set their desired values
+    setFormData((prev) => ({ 
+      ...prev, 
+      materials: [...prev.materials, { name: "", share: 0 }] 
+    }));
+  };
+
+  const normalizeMaterialShares = () => {
+    const namedMaterials = getNamedMaterials();
+    if (namedMaterials.length === 0) return;
     
-    if (currentTotal >= 100) {
-      // If total is already 100%, redistribute shares evenly among all materials (including the new one)
-      const totalMaterials = formData.materials.length + 1;
-      const sharePerMaterial = Math.round((100 / totalMaterials) * 100) / 100;
-      const remainder = 100 - (sharePerMaterial * totalMaterials);
+    const currentTotal = getTotalShare();
+    if (currentTotal === 0) {
+      // If all shares are 0, distribute evenly
+      const equalShare = Math.round((100 / namedMaterials.length) * 100) / 100;
+      const remainder = 100 - (equalShare * namedMaterials.length);
       
-      const redistributedMaterials = formData.materials.map((material, index) => ({
-        ...material,
-        share: index === 0 ? sharePerMaterial + remainder : sharePerMaterial
-      }));
+      const newMaterials = formData.materials.map((material, index) => {
+        if (material.name.trim()) {
+          const isFirst = index === formData.materials.findIndex(m => m.name.trim());
+          return { ...material, share: isFirst ? equalShare + remainder : equalShare };
+        }
+        return material;
+      });
       
-      setFormData((prev) => ({ 
-        ...prev, 
-        materials: [...redistributedMaterials, { name: "", share: sharePerMaterial }] 
-      }));
+      setFormData((prev) => ({ ...prev, materials: newMaterials }));
     } else {
-      // If total is less than 100%, add material with remaining share
-      const newShare = Math.max(0, 100 - currentTotal);
-      setFormData((prev) => ({ 
-        ...prev, 
-        materials: [...prev.materials, { name: "", share: newShare }] 
-      }));
+      // Proportionally scale existing shares to total 100%
+      const scaleFactor = 100 / currentTotal;
+      const newMaterials = formData.materials.map((material) => {
+        if (material.name.trim()) {
+          return { ...material, share: Math.round(material.share * scaleFactor * 100) / 100 };
+        }
+        return material;
+      });
+      
+      setFormData((prev) => ({ ...prev, materials: newMaterials }));
     }
   };
 
@@ -198,7 +221,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
     if (namedMaterials.length > 0 && Math.abs(totalShare - 100) > 0.01) {
       // Clear success message and show error
       setSuccessMessage("");
-      setApiErrorMessage("Material shares must add up to 100% when materials are provided");
+      setApiErrorMessage(`Material shares must total exactly 100% (currently ${totalShare.toFixed(1)}%). Please adjust the percentages before creating.`);
       return;
     }
 
@@ -335,7 +358,8 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               mt: 2
             }}>
               <Chip
-                label={`Manufacturer ID: ${manufacturerId}`}
+                icon={<BusinessIcon sx={{color: "black!important"}}/>}
+                label={`Your Manufacturer ID: ${manufacturerId}`}
                 variant="filled"
                 color="secondary"
                 size="medium"
@@ -358,6 +382,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
           </Grid2>
 
           {/* Basic Information */}
+          <Grid2 size={12}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <DescriptionIcon color="primary" />
+              <Typography variant="h6" sx={{ 
+                color: 'text.primary',
+                fontSize: '1.1rem',
+                fontWeight: 500
+              }}>
+                Basic Information
+              </Typography>
+            </Box>
+          </Grid2>
+
           <Grid2 size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Manufacturer Part ID"
@@ -367,6 +404,13 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               required
               variant="outlined"
               size="medium"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <TagIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
           
@@ -379,6 +423,13 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               required
               variant="outlined"
               size="medium"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <DriveFileRenameOutlineIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
 
@@ -392,6 +443,21 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               rows={3}
               variant="outlined"
               size="medium"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 2 }}>
+                    <DescriptionIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& textarea': {
+                    padding: '16px 14px',
+                    lineHeight: 1.5,
+                  }
+                }
+              }}
             />
           </Grid2>
 
@@ -403,6 +469,13 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               fullWidth
               variant="outlined"
               size="medium"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CategoryIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
 
@@ -414,32 +487,47 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               fullWidth
               variant="outlined"
               size="medium"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PinDrop color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
 
           {/* Measurements Section - Now Before Materials */}
           <Grid2 size={12}>
-            <Typography variant="h6" gutterBottom sx={{ 
-              mt: 3, 
-              mb: 2, 
-              color: 'text.primary',
-              fontSize: '1.1rem',
-              fontWeight: 500
-            }}>
-              Measurements
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3, mb: 2 }}>
+              <StraightenIcon color="primary" />
+              <Typography variant="h6" sx={{ 
+                color: 'text.primary',
+                fontSize: '1.1rem',
+                fontWeight: 500
+              }}>
+                Measurements
+              </Typography>
+            </Box>
           </Grid2>
 
           <Grid2 size={{ xs: 6, sm: 3 }}>
             <TextField
               label="Width"
               type="number"
-              value={formData.width?.value || 0}
-              onChange={(e) => handleMeasurementChange("width", "value", Number(e.target.value))}
+              value={formData.width?.value === 0 ? "" : formData.width?.value || ""}
+              onChange={(e) => handleMeasurementChange("width", "value", e.target.value)}
               fullWidth
               variant="outlined"
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <AspectRatioIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
           <Grid2 size={{ xs: 6, sm: 3 }}>
@@ -464,12 +552,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             <TextField
               label="Height"
               type="number"
-              value={formData.height?.value || 0}
-              onChange={(e) => handleMeasurementChange("height", "value", Number(e.target.value))}
+              value={formData.height?.value === 0 ? "" : formData.height?.value || ""}
+              onChange={(e) => handleMeasurementChange("height", "value", e.target.value)}
               fullWidth
               variant="outlined"
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <HeightIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
           <Grid2 size={{ xs: 6, sm: 3 }}>
@@ -494,12 +589,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             <TextField
               label="Length"
               type="number"
-              value={formData.length?.value || 0}
-              onChange={(e) => handleMeasurementChange("length", "value", Number(e.target.value))}
+              value={formData.length?.value === 0 ? "" : formData.length?.value || ""}
+              onChange={(e) => handleMeasurementChange("length", "value", e.target.value)}
               fullWidth
               variant="outlined"
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LinearScaleIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
           <Grid2 size={{ xs: 6, sm: 3 }}>
@@ -524,12 +626,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
             <TextField
               label="Weight"
               type="number"
-              value={formData.weight?.value || 0}
-              onChange={(e) => handleMeasurementChange("weight", "value", Number(e.target.value))}
+              value={formData.weight?.value === 0 ? "" : formData.weight?.value || ""}
+              onChange={(e) => handleMeasurementChange("weight", "value", e.target.value)}
               fullWidth
               variant="outlined"
               size="medium"
               inputProps={{ min: 0, step: 0.01 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <ScaleIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid2>
           <Grid2 size={{ xs: 6, sm: 3 }}>
@@ -552,15 +661,16 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
 
           {/* Materials Section */}
           <Grid2 size={12}>
-            <Typography variant="h6" gutterBottom sx={{ 
-              mt: 4, 
-              mb: 2, 
-              color: 'text.primary',
-              fontSize: '1.1rem',
-              fontWeight: 500
-            }}>
-              Materials
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 4, mb: 2 }}>
+              <PaletteIcon color="primary" />
+              <Typography variant="h6" sx={{ 
+                color: 'text.primary',
+                fontSize: '1.1rem',
+                fontWeight: 500
+              }}>
+                Materials
+              </Typography>
+            </Box>
           </Grid2>
 
           {/* Materials Form and Pie Chart Side by Side */}
@@ -577,6 +687,13 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                       required
                       variant="outlined"
                       size="medium"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PaletteIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
                     />
                   </Grid2>
                   
@@ -643,12 +760,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                         <TextField
                           label="Exact Share (%)"
                           type="number"
-                          value={material.share}
-                          onChange={(e) => handleMaterialChange(index, "share", Number(e.target.value))}
+                          value={material.share === 0 ? "" : material.share}
+                          onChange={(e) => handleMaterialChange(index, "share", e.target.value)}
                           size="small"
                           variant="outlined"
                           inputProps={{ min: 0, max: 100, step: 0.01 }}
                           sx={{ width: '200px' }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <PercentIcon color="action" />
+                              </InputAdornment>
+                            ),
+                          }}
                         />
                         <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
                           Enter precise percentage value
@@ -660,7 +784,7 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               </Box>
             ))}
             
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 2, flexWrap: 'wrap' }}>
               <Button
                 onClick={addMaterial}
                 startIcon={<AddIcon />}
@@ -670,6 +794,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 Add Material
               </Button>
               
+              {getNamedMaterials().length > 1 && Math.abs(getTotalShare() - 100) > 0.01 && (
+                <Button
+                  onClick={normalizeMaterialShares}
+                  startIcon={<TuneIcon />}
+                  variant="outlined"
+                  size="small"
+                  color="warning"
+                  sx={{ fontSize: '0.75rem' }}
+                >
+                  Auto-adjust to 100%
+                </Button>
+              )}
+              
               <Chip
                 label={`Total: ${getTotalShare().toFixed(1)}%`}
                 color={getNamedMaterials().length === 0 ? "default" : (Math.abs(getTotalShare() - 100) < 0.01 ? "success" : "warning")}
@@ -677,6 +814,19 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
                 size="small"
               />
             </Box>
+            
+            {getNamedMaterials().length > 0 && (
+              <Typography 
+                variant="caption" 
+                color={Math.abs(getTotalShare() - 100) < 0.01 ? "success.main" : "warning.main"}
+                sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}
+              >
+                {Math.abs(getTotalShare() - 100) < 0.01 
+                  ? "✓ Perfect! Material shares add up to 100%" 
+                  : `Set your desired percentages freely. Total must equal 100% to create the part (currently ${getTotalShare().toFixed(1)}%)`
+                }
+              </Typography>
+            )}
           </Grid2>
 
           {/* Pie Chart */}
@@ -692,14 +842,16 @@ const CreateProductListDialog = ({ open, onClose, onSave }: ProductListDialogPro
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Typography variant="h6" gutterBottom sx={{ 
-                color: 'text.primary',
-                fontSize: '1rem',
-                fontWeight: 500,
-                mb: 2
-              }}>
-                Material Distribution
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <BarChartIcon color="primary" />
+                <Typography variant="h6" sx={{ 
+                  color: 'text.primary',
+                  fontSize: '1rem',
+                  fontWeight: 500
+                }}>
+                  Material Distribution
+                </Typography>
+              </Box>
               {formData.materials.some(m => m.name.trim() && m.share > 0) ? (
                 <PieChart
                   series={[
