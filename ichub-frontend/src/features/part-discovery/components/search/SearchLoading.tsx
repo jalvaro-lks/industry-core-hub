@@ -39,15 +39,19 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
   // Base rotating messages (shown after first message)
   const rotatingMessages = [
     'Searching through the dataspace for available data...',
+    'Discovering Partner endpoints...',
+    'Discovering Digital Twin Registries...',
     'Negotiating contracts with data providers...',
     'Connecting to digital twin registries...',
     'Establishing secure connections to data sources...',
     'Retrieving digital twin information...',
-    'Almost there, gathering results...'
   ];
   
   // Extended wait message for long operations
-  const extendedWaitMessage = "It's taking a bit more than expected, probably the negotiation is being retried (approx 10s)";
+  const extendedWaitMessage = "It's taking a bit more than expected, probably the access negotiation is still going (approx 10s)";
+  
+  // Error message for very long operations
+  const errorMessage = "This is taking much longer than expected. There may be an error in the initial connection/negotiation process. Please contact your administrator.";
   
   // Reset component state when loading starts
   useEffect(() => {
@@ -99,6 +103,11 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
     
     const elapsed = Date.now() - startTime;
     
+    // Show error message after 30 seconds
+    if (elapsed > 30000) {
+      return errorMessage;
+    }
+    
     // Show extended wait message after 12 seconds
     if (elapsed > 12000) {
       return extendedWaitMessage;
@@ -108,7 +117,10 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
   };
 
   const progressValue = calculateProgress();
-  const progressColor = isCompleted ? 'success' : 'primary';
+  const elapsed = Date.now() - startTime;
+  const isExtendedWait = elapsed > 12000 && elapsed <= 30000 && isLoading && !isCompleted;
+  const isErrorState = elapsed > 30000 && isLoading && !isCompleted;
+  const progressColor = isCompleted ? 'success' : (isErrorState ? 'error' : (isExtendedWait ? 'warning' : 'primary'));
 
   return (
     <Box sx={{ width: '100%', position: 'relative' }}>
@@ -197,15 +209,20 @@ const SearchLoading = ({ isLoading, isCompleted = false, onCancel }: SearchLoadi
           '& .MuiLinearProgress-bar': {
             background: isCompleted 
               ? 'linear-gradient(45deg, #4caf50 30%, #66bb6a 90%)'  // Green when completed
-              : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading
+              : isExtendedWait
+                ? 'linear-gradient(45deg, #ff9800 30%, #ffb74d 90%)' // Orange/Yellow when taking longer
+                : 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // Blue when loading normally
             borderRadius: 4,
             transition: isCompleted 
               ? 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)' // Smooth elastic transition to completion
-              : 'transform 0.4s ease-in-out', // Smooth transition for normal progress
-            // Add a subtle glow effect when completed
+              : 'all 0.4s ease-in-out', // Smooth transition for normal progress and color changes
+            // Add a subtle glow effect when completed or extended wait
             ...(isCompleted && {
               boxShadow: '0 0 15px rgba(76, 175, 80, 0.6)',
               transform: 'scaleY(1.1)' // Slightly expand when complete
+            }),
+            ...(isExtendedWait && !isCompleted && {
+              boxShadow: '0 0 12px rgba(255, 152, 0, 0.4)',
             })
           }
         }} 
