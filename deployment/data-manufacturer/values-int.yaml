@@ -166,8 +166,8 @@ digital-twin-registry:
         cert-manager.io/cluster-issuer: "letsencrypt-prod"
         nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
         nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-      dataSource:
-          url: jdbc:postgresql://dtr-manufacturer-db:5432
+    dataSource:
+      url: jdbc:postgresql://dtr-manufacturer-db:5432
   postgresql:
     name: "dtr-manufacturer-postgresql"
     auth:
