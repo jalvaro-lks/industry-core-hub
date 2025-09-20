@@ -101,6 +101,12 @@ spec:
             - name: PARTICIPANT_ID
               value: "{{ .Values.participantId }}"
             
+            # Governance and policies configuration
+            - name: GOVERNANCE_CONFIG
+              value: {{ .Values.frontend.consumption.governance | toJson | quote }}
+            - name: DTR_POLICIES_CONFIG
+              value: {{ .Values.frontend.consumption.digitalTwinRegistry.policies | toJson | quote }}
+
             # Feature flags
             - name: ENABLE_ADVANCED_LOGGING
               value: "{{ .Values.frontend.config.enableAdvancedLogging }}"

@@ -123,7 +123,6 @@ export interface AppConfig {
   governance: {
     config: GovernanceConfig[];
     dtrPolicies: GovernancePolicy[];
-    strictMode: boolean;
   };
   
   // Feature flags
@@ -188,7 +187,6 @@ export interface RawEnvironmentConfig {
   // Governance and policies
   VITE_GOVERNANCE_CONFIG?: string;
   VITE_DTR_POLICIES_CONFIG?: string;
-  VITE_GOVERNANCE_STRICT_MODE?: string;
   
   // Feature flags
   VITE_ENABLE_ADVANCED_LOGGING?: string;

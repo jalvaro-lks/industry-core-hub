@@ -104,7 +104,6 @@ export class ConfigFactory {
       // Governance and policies
       VITE_GOVERNANCE_CONFIG: windowEnv.GOVERNANCE_CONFIG || viteEnv.VITE_GOVERNANCE_CONFIG,
       VITE_DTR_POLICIES_CONFIG: windowEnv.DTR_POLICIES_CONFIG || viteEnv.VITE_DTR_POLICIES_CONFIG,
-      VITE_GOVERNANCE_STRICT_MODE: windowEnv.GOVERNANCE_STRICT_MODE || viteEnv.VITE_GOVERNANCE_STRICT_MODE,
       
       // Feature flags
       VITE_ENABLE_ADVANCED_LOGGING: windowEnv.ENABLE_ADVANCED_LOGGING || viteEnv.VITE_ENABLE_ADVANCED_LOGGING,
@@ -175,7 +174,6 @@ export class ConfigFactory {
       governance: {
         config: this.parseJsonConfig(raw.VITE_GOVERNANCE_CONFIG, []),
         dtrPolicies: this.parseJsonConfig(raw.VITE_DTR_POLICIES_CONFIG, this.getDefaultDtrPolicies()),
-        strictMode: raw.VITE_GOVERNANCE_STRICT_MODE === 'true',
       },
       
       features: {

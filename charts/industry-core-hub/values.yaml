@@ -418,29 +418,9 @@ frontend:
     authLogoutRedirectUri: ""
     
     # Participant configuration
-    participantId: "BPNL0000000093Q7"
     bpnValidationPattern: "^BPN[LAS]\\d{10}[a-zA-Z0-9]{2}$"
     
     # Governance and policies configuration
-    governanceConfig: []
-    dtrPoliciesConfig:
-      - strict: false
-        permission:
-          action: "odrl:use"
-          LogicalConstraint: "odrl:and"
-          constraints:
-            - leftOperand: "cx-policy:FrameworkAgreement"
-              operator: "odrl:eq"
-              rightOperand: "DataExchangeGovernance:1.0"
-            - leftOperand: "cx-policy:Membership"
-              operator: "odrl:eq"
-              rightOperand: "active"
-            - leftOperand: "cx-policy:UsagePurpose"
-              operator: "odrl:eq"
-              rightOperand: "cx.core.digitalTwinRegistry:1"
-        prohibition: []
-        obligation: []
-    governanceStrictMode: false
     
     # Feature flags
     enableAdvancedLogging: false
@@ -455,7 +435,7 @@ frontend:
   # Legacy configuration (deprecated - use config section above)
   env:
     # -- industry-core-hub backend base URL
-    backendUrl: "https://<backend-hostname>"
+    backendUrl: "https://<backend-hostname>/v1"
   enabled: true
   name: "industry-core-hub-frontend"
   image:
