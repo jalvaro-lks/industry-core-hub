@@ -62,26 +62,36 @@ const generateConfigHash = async (config: unknown): Promise<string> => {
 };
 
 /**
- * Generate DTR policies with all constraint permutations
+ * Generate policies with all constraint permutations
  */
-const generateDtrPoliciesWithPermutations = (dtrPolicies: GovernancePolicy[]): OdrlPolicy[] => {
+const generatePoliciesWithPermutations = (dtrPolicies: GovernancePolicy[]): OdrlPolicy[] => {
   const allPolicyPermutations: OdrlPolicy[] = [];
   
   for (const policy of dtrPolicies) {
-    // Generate permutations for each rule type
-    const permissionPermutations = generateRulesPermutations(policy.permission);
-    const prohibitionPermutations = generateRulesPermutations(policy.prohibition);
-    const obligationPermutations = generateRulesPermutations(policy.obligation);
-    
-    // Create cartesian product of all rule permutations
-    for (const permission of permissionPermutations) {
-      for (const prohibition of prohibitionPermutations) {
-        for (const obligation of obligationPermutations) {
-          allPolicyPermutations.push({
-            "odrl:permission": convertRulesToOdrl(permission),
-            "odrl:prohibition": convertRulesToOdrl(prohibition),
-            "odrl:obligation": convertRulesToOdrl(obligation)
-          });
+    // Check if policy is strict - if so, don't generate permutations
+    if (policy.strict === true) {
+      // Strict policy: use exact order without permutations
+      allPolicyPermutations.push({
+        "odrl:permission": convertRulesToOdrl(policy.permission),
+        "odrl:prohibition": convertRulesToOdrl(policy.prohibition),
+        "odrl:obligation": convertRulesToOdrl(policy.obligation)
+      });
+    } else {
+      // Non-strict policy: generate permutations for each rule type
+      const permissionPermutations = generateRulesPermutations(policy.permission);
+      const prohibitionPermutations = generateRulesPermutations(policy.prohibition);
+      const obligationPermutations = generateRulesPermutations(policy.obligation);
+      
+      // Create cartesian product of all rule permutations
+      for (const permission of permissionPermutations) {
+        for (const prohibition of prohibitionPermutations) {
+          for (const obligation of obligationPermutations) {
+            allPolicyPermutations.push({
+              "odrl:permission": convertRulesToOdrl(permission),
+              "odrl:prohibition": convertRulesToOdrl(prohibition),
+              "odrl:obligation": convertRulesToOdrl(obligation)
+            });
+          }
         }
       }
     }
@@ -99,47 +109,12 @@ const generateGovernancePoliciesWithPermutations = async (semanticId: string, co
   
   if (relevantConfig) {
     // Found specific configuration, use it
-    return generateDtrPoliciesWithPermutations(relevantConfig.policies);
+    return generatePoliciesWithPermutations(relevantConfig.policies);
   }
   
   // No specific configuration found, use default policies as fallback
   
   return await getCachedDefaultGovernancePolicies();
-};
-
-/**
- * Generate default governance policy permutations
- */
-const generateDefaultGovernancePolicyPermutations = (): OdrlPolicy[] => {
-  // Default policies with constraints that need permutations
-  const defaultPolicy: GovernancePolicy = {
-    strict: false,
-    permission: {
-      action: 'odrl:use',
-      LogicalConstraint: 'odrl:and',
-      constraints: [
-        {
-          leftOperand: 'cx-policy:FrameworkAgreement',
-          operator: 'odrl:eq',
-          rightOperand: 'DataExchangeGovernance:1.0'
-        },
-        {
-          leftOperand: 'cx-policy:Membership',
-          operator: 'odrl:eq',
-          rightOperand: 'active'
-        },
-        {
-          leftOperand: 'cx-policy:UsagePurpose',
-          operator: 'odrl:eq',
-          rightOperand: 'cx.core.industrycore:1'
-        }
-      ]
-    },
-    prohibition: [],
-    obligation: []
-  };
-  
-  return generateDtrPoliciesWithPermutations([defaultPolicy]);
 };
 
 /**
@@ -156,7 +131,7 @@ const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
   
   // Cache is invalid or doesn't exist, regenerate
   
-  const newPolicies = generateDtrPoliciesWithPermutations(currentConfig);
+  const newPolicies = generatePoliciesWithPermutations(currentConfig);
   
   dtrGovernancePoliciesCache = {
     configHash: currentHash,
@@ -189,6 +164,28 @@ const getCachedGovernancePolicies = async (semanticId: string): Promise<OdrlPoli
   });
   
   return newPolicies;
+};
+
+/**
+ * Generate default governance policy permutations when no specific configuration is found
+ */
+const generateDefaultGovernancePolicyPermutations = (): OdrlPolicy[] => {
+  // Define your default governance policies here if needed
+  // For now, return empty array as default - no policies means no restrictions
+  // If you have default policies, they should also respect the strict flag:
+  
+  // Example of how to add default policies that respect strict flag:
+  // const defaultPolicies: GovernancePolicy[] = [
+  //   {
+  //     strict: false, // or true depending on your requirements
+  //     permission: [...],
+  //     prohibition: [...],
+  //     obligation: [...]
+  //   }
+  // ];
+  // return generatePoliciesWithPermutations(defaultPolicies);
+  
+  return [];
 };
 
 /**

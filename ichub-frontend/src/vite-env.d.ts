@@ -136,8 +136,8 @@ declare global {
       BPN_VALIDATION_PATTERN?: string;
       
       // Governance and policies
-      GOVERNANCE_CONFIG?: string;
-      DTR_POLICIES_CONFIG?: string;
+      GOVERNANCE_CONFIG?: string | object[];
+      DTR_POLICIES_CONFIG?: string | object[];
       GOVERNANCE_STRICT_MODE?: string;
       
       // Feature flags

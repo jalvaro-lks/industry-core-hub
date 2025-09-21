@@ -21,7 +21,7 @@
 ********************************************************************************/
 
 import { ConfigFactory } from '../config/ConfigFactory';
-import { AppConfig, AuthUser, AuthTokens } from '../config/schema';
+import { AppConfig } from '../config/schema';
 
 // Re-export types for backward compatibility
 export type { AuthUser, AuthTokens } from '../config/schema';
@@ -40,7 +40,7 @@ export interface GovernanceRule {
 }
 
 export interface GovernancePolicy {
-  strict: boolean;
+  strict?: boolean; // Made optional to handle missing values
   permission: GovernanceRule | GovernanceRule[];
   prohibition: GovernanceRule | GovernanceRule[];
   obligation: GovernanceRule | GovernanceRule[];
@@ -50,6 +50,47 @@ export interface GovernanceConfig {
   semanticid: string;
   policies: GovernancePolicy[];
 }
+
+// =================================================================
+// REUSABLE CONFIGURATION UTILITIES
+// =================================================================
+
+/**
+ * Generic configuration parser that handles runtime injection and build-time configs
+ */
+const parseConfig = <T>(
+  runtimeKey: string,
+  buildTimeKey: string,
+  defaultValue: T
+): T => {
+  try {
+    // Try runtime injection first (window.ENV)
+    const runtimeValue = window?.ENV?.[runtimeKey as keyof typeof window.ENV];
+    if (runtimeValue !== undefined && runtimeValue !== null) {
+      // If it's already parsed (object/array), return it
+      if (typeof runtimeValue === 'object') {
+        return runtimeValue as T;
+      }
+      // If it's a string, parse it
+      if (typeof runtimeValue === 'string') {
+        return JSON.parse(runtimeValue) as T;
+      }
+    }
+
+    // Fallback to build-time environment variable
+    const buildTimeValue = import.meta.env[buildTimeKey];
+    if (buildTimeValue) {
+      return JSON.parse(buildTimeValue) as T;
+    }
+
+    return defaultValue;
+  } catch (error) {
+    console.warn(`Failed to parse configuration for ${runtimeKey}:`, error);
+    return defaultValue;
+  }
+};
+
+
 
 class EnvironmentService {
   private config: AppConfig;
@@ -268,34 +309,22 @@ export const isRequireHttpsUrlPattern = () =>
   import.meta.env.VITE_REQUIRE_HTTPS_URL_PATTERN !== 'false';
 
 export const getIchubBackendUrl = () => window?.ENV?.ICHUB_BACKEND_URL ?? import.meta.env.VITE_ICHUB_BACKEND_URL ?? '';
-export const getParticipantId = () => window?.ENV?.PARTICIPANT_ID ?? import.meta.env.VITE_PARTICIPANT_ID ?? 'BPNL0000000093Q7';
+export const getParticipantId = () => window?.ENV?.PARTICIPANT_ID ?? import.meta.env.VITE_PARTICIPANT_ID ?? '';
 
 export const getGovernanceConfig = (): GovernanceConfig[] => {
-  try {
-    // First try to get from window.ENV (runtime injection), then fallback to import.meta.env
-    const configStr = window?.ENV?.GOVERNANCE_CONFIG || import.meta.env.VITE_GOVERNANCE_CONFIG;
-    if (!configStr) return [];
-    return JSON.parse(configStr) as GovernanceConfig[];
-  } catch (error) {
-    console.warn('Failed to parse governance configuration:', error);
-    return [];
-  }
+  return parseConfig<GovernanceConfig[]>(
+    'GOVERNANCE_CONFIG',
+    'VITE_GOVERNANCE_CONFIG',
+    []
+  );
 };
 
 export const getDtrPoliciesConfig = (): GovernancePolicy[] => {
-  try {
-    // First try to get from window.ENV (runtime injection), then fallback to import.meta.env
-    const configStr = window?.ENV?.DTR_POLICIES_CONFIG || import.meta.env.VITE_DTR_POLICIES_CONFIG;
-    if (!configStr) {
-      // Return default DTR policies if no configuration is provided
-      return []
-    }
-    return JSON.parse(configStr) as GovernancePolicy[];
-  } catch (error) {
-    console.warn('Failed to parse DTR policies configuration:', error);
-    // Return default DTR policies on error
-    return [];
-  }
+  return parseConfig<GovernancePolicy[]>(
+    'DTR_POLICIES_CONFIG',
+    'VITE_DTR_POLICIES_CONFIG',
+    []
+  );
 };
 
 // New enhanced service exports

@@ -54,39 +54,7 @@ export const partDiscoveryGovernanceConfig = {
    */
   getDtrPoliciesConfig: (): GovernancePolicy[] => {
     return getDtrPoliciesConfig();
-  },
-
-  /**
-   * Default DTR policy for part discovery
-   */
-  getDefaultDtrPolicy: (): GovernancePolicy => {
-    return {
-      strict: false,
-      permission: {
-        action: 'odrl:use',
-        LogicalConstraint: 'odrl:and',
-        constraints: [
-          {
-            leftOperand: 'cx-policy:FrameworkAgreement',
-            operator: 'odrl:eq',
-            rightOperand: 'DataExchangeGovernance:1.0'
-          },
-          {
-            leftOperand: 'cx-policy:Membership',
-            operator: 'odrl:eq',
-            rightOperand: 'active'
-          },
-          {
-            leftOperand: 'cx-policy:UsagePurpose',
-            operator: 'odrl:eq',
-            rightOperand: 'cx.core.digitalTwinRegistry:1'
-          }
-        ]
-      },
-      prohibition: [],
-      obligation: []
-    };
-  },
+  }
 };
 
 /**
