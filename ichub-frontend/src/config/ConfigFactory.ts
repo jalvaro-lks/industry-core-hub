@@ -295,7 +295,7 @@ export class ConfigFactory {
 
   private static isValidBpn(bpn: string): boolean {
     // BPN format: BPNL followed by 10 alphanumeric characters
-    const bpnPattern = /^BPN[LAS]\d{10}[a-zA-Z0-9]{2}$/;
+    const bpnPattern = /^BPN[LSA][A-Z0-9]{10}[A-Z0-9]{2}$/;
     return bpnPattern.test(bpn);
   }
 
