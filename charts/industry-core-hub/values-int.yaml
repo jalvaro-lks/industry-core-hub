@@ -167,6 +167,7 @@ frontend:
                 rightOperand: cx.core.digitalTwinRegistry:1
           prohibition: []
           obligation: []
+          strict: false
     governance:
       - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
         policies: 
