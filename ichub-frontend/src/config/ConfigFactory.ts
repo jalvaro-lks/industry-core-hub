@@ -173,7 +173,7 @@ export class ConfigFactory {
       
       governance: {
         config: this.parseJsonConfig(raw.VITE_GOVERNANCE_CONFIG, []),
-        dtrPolicies: this.parseJsonConfig(raw.VITE_DTR_POLICIES_CONFIG, this.getDefaultDtrPolicies()),
+        dtrPolicies: this.parseJsonConfig(raw.VITE_DTR_POLICIES_CONFIG, []),
       },
       
       features: {
@@ -335,34 +335,5 @@ export class ConfigFactory {
   static reload(): AppConfig {
     this.clearCache();
     return this.create();
-  }
-
-  private static getDefaultDtrPolicies(): GovernancePolicy[] {
-    return [{
-      strict: false,
-      permission: {
-        action: 'odrl:use',
-        LogicalConstraint: 'odrl:and',
-        constraints: [
-          {
-            leftOperand: 'cx-policy:FrameworkAgreement',
-            operator: 'odrl:eq',
-            rightOperand: 'DataExchangeGovernance:1.0'
-          },
-          {
-            leftOperand: 'cx-policy:Membership',
-            operator: 'odrl:eq',
-            rightOperand: 'active'
-          },
-          {
-            leftOperand: 'cx-policy:UsagePurpose',
-            operator: 'odrl:eq',
-            rightOperand: 'cx.core.digitalTwinRegistry:1'
-          }
-        ]
-      },
-      prohibition: [],
-      obligation: []
-    }];
   }
 }

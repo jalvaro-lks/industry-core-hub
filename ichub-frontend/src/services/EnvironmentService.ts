@@ -288,69 +288,13 @@ export const getDtrPoliciesConfig = (): GovernancePolicy[] => {
     const configStr = window?.ENV?.DTR_POLICIES_CONFIG || import.meta.env.VITE_DTR_POLICIES_CONFIG;
     if (!configStr) {
       // Return default DTR policies if no configuration is provided
-      return [{
-        strict: false,
-        permission: {
-          action: 'odrl:use',
-          LogicalConstraint: 'odrl:and',
-          constraints: [
-            {
-              leftOperand: 'cx-policy:FrameworkAgreement',
-              operator: 'odrl:eq',
-              rightOperand: 'DataExchangeGovernance:1.0'
-            },
-            {
-              leftOperand: 'cx-policy:Membership',
-              operator: 'odrl:eq',
-              rightOperand: 'active'
-            },
-            {
-              leftOperand: 'cx-policy:UsagePurpose',
-              operator: 'odrl:eq',
-              rightOperand: 'cx.core.digitalTwinRegistry:1'
-            }
-          ]
-        },
-        prohibition: [],
-        obligation: []
-      }];
+      return []
     }
     return JSON.parse(configStr) as GovernancePolicy[];
   } catch (error) {
     console.warn('Failed to parse DTR policies configuration:', error);
     // Return default DTR policies on error
-    return [{
-      strict: false,
-      permission: {
-        action: 'odrl:use',
-        LogicalConstraint: 'odrl:and',
-        constraints: [
-          {
-            leftOperand: 'cx-policy:FrameworkAgreement',
-            operator: 'odrl:eq',
-            rightOperand: 'DataExchangeGovernance:1.0'
-          },
-          {
-            leftOperand: 'cx-policy:Membership',
-            operator: 'odrl:eq',
-            rightOperand: 'active'
-          },
-          {
-            leftOperand: 'cx-policy:UsagePurpose',
-            operator: 'odrl:eq',
-            rightOperand: 'cx.core.digitalTwinRegistry:1'
-          }
-        ]
-      },
-      prohibition: {
-        action: 'odrl:prohibit',
-        constraints: []
-      },
-      obligation: {
-        action: 'odrl:compensate',
-        constraints: []
-      }
-    }];
+    return [];
   }
 };
 

@@ -69,7 +69,6 @@ interface ImportMetaEnv {
   // Governance and policies
   readonly VITE_GOVERNANCE_CONFIG: string
   readonly VITE_DTR_POLICIES_CONFIG: string
-  readonly VITE_GOVERNANCE_STRICT_MODE: string
   
   // Feature flags
   readonly VITE_ENABLE_ADVANCED_LOGGING: string
