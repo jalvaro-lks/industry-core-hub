@@ -380,12 +380,11 @@ backend:
                   rightOperand: active
           prohibition: []
           obligation: []
-
-      authorization:
-        enabled: true
-        apiKey:
-          key: "X-Api-Key"
-          value: <path:industry-core-hub/data/backend#apiKey>
+    authorization:
+      enabled: true
+      apiKey:
+        key: "X-Api-Key"
+        value: <path:industry-core-hub/data/backend#apiKey>
     # -- Consumer configuration
     consumer:
       discovery:
