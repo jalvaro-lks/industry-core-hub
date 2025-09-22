@@ -116,10 +116,10 @@ backend:
         connector_discovery:
           key: "bpn"
         oauth:
-          url: "http://ichub-keycloak/auth/"
-          realm: "master"
-          client_id: "admin-cli"
-          client_secret: ""
+          url: "https://<central-idp-url>/auth/"
+          realm: "<realm>"
+          client_id: "<client-id>"
+          client_secret: "<client-secret>"
         digitalTwinRegistry:
           dct_type_key: "dct:type"
           dct_type_filter:
