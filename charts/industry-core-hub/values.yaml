@@ -98,9 +98,10 @@ backend:
           obligation: []
     authorization:
       enabled: true
-      apiKey:
-        key: "X-Api-Key"
-        value: "<<example>>"
+      keycloak:
+        authUrl: "https://<ichub-idp-url>/auth/"
+        realm: "<realm>"
+        clientId: "<client-id>"
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
       echo: false

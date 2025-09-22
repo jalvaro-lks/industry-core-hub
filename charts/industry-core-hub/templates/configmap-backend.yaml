@@ -31,9 +31,10 @@ data:
     hostname: {{ include "industry-core-hub.ingressUrl" . | quote }}
     authorization:
       enabled: {{ .Values.backend.configuration.authorization.enabled }}
-      apiKey: 
-        key: {{ .Values.backend.configuration.authorization.apiKey.key | quote }}
-        value: {{ .Values.backend.configuration.authorization.apiKey.value | quote }}
+      keycloak:
+        auth_url: {{ .Values.backend.configuration.authorization.keycloak.authUrl | quote }}
+        realm: {{ .Values.backend.configuration.authorization.keycloak.realm | quote }}
+        client_id: {{ .Values.backend.configuration.authorization.keycloak.clientId | quote }}
     agreements: {{ .Values.backend.configuration.agreements | toYaml | nindent 6 }}
     database:
       connectionString: {{ include "industry-core-hub.postgresql.dsn" . | quote }}
