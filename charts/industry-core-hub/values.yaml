@@ -98,7 +98,11 @@ backend:
           obligation: []
     authorization:
       enabled: true
+      api_key:
+        key: "X-Api-Key"
+        values: ["<example>"]
       keycloak:
+        enabled: false
         authUrl: "https://<ichub-idp-url>/auth/"
         realm: "<realm>"
         clientId: "<client-id>"

@@ -31,7 +31,11 @@ data:
     hostname: {{ include "industry-core-hub.ingressUrl" . | quote }}
     authorization:
       enabled: {{ .Values.backend.configuration.authorization.enabled }}
+      api_key:
+        key: {{ .Values.backend.configuration.authorization.apiKey.key | quote }}
+        values: {{ .Values.backend.configuration.authorization.apiKey.values | toJson }}
       keycloak:
+        enabled: {{ .Values.backend.configuration.authorization.keycloak.enabled }}
         auth_url: {{ .Values.backend.configuration.authorization.keycloak.authUrl | quote }}
         realm: {{ .Values.backend.configuration.authorization.keycloak.realm | quote }}
         client_id: {{ .Values.backend.configuration.authorization.keycloak.clientId | quote }}
