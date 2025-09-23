@@ -26,7 +26,7 @@ authorization:
   enabled: true
   api_key:
     key: "X-Api-Key"
-    values: <<example>>
+    value: <<example>>
   keycloak:
     enabled: false
     auth_url: "https://<central-idp-url>/auth/"

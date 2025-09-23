@@ -100,7 +100,7 @@ backend:
       enabled: true
       api_key:
         key: "X-Api-Key"
-        values: ["<example>"]
+        value: ["<example>"]
       keycloak:
         enabled: false
         authUrl: "https://<ichub-idp-url>/auth/"

@@ -33,7 +33,7 @@ data:
       enabled: {{ .Values.backend.configuration.authorization.enabled }}
       api_key:
         key: {{ .Values.backend.configuration.authorization.apiKey.key | quote }}
-        values: {{ .Values.backend.configuration.authorization.apiKey.values | toJson }}
+        value: {{ .Values.backend.configuration.authorization.apiKey.value | toJson }}
       keycloak:
         enabled: {{ .Values.backend.configuration.authorization.keycloak.enabled }}
         auth_url: {{ .Values.backend.configuration.authorization.keycloak.authUrl | quote }}
