@@ -60,5 +60,51 @@
       "notBefore": 0,
       "groups": []
     }
+  ],
+  "clients": [
+    {
+      "id": "ichub-api-client-001",
+      "clientId": "industry-core-hub-api",
+      "name": "Industry Core Hub API Client",
+      "description": "OAuth2 client for Industry Core Hub Backend API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ichub-client-secret-2024",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "consentRequired": false,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "http://localhost:8000/*",
+        "http://ichub-backend.tx.test/*",
+        "*"
+      ],
+      "webOrigins": [
+        "http://localhost:8000",
+        "http://ichub-backend.tx.test",
+        "*"
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ],
+      "attributes": {
+        "access.token.lifespan": "1800",
+        "client.secret.creation.time": "1735724400"
+      }
+    }
   ]
 }
