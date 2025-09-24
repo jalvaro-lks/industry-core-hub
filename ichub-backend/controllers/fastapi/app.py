@@ -22,7 +22,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import FastAPI, Request, APIRouter, Header, Body
+from fastapi import FastAPI, HTTPException, status, Request, APIRouter, Header, Body, Depends
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,7 +45,7 @@ from .routers.consumer.v1 import (
     connection_management,
     discovery_management
 )
-from .routers.authentication import auth_keycloak
+from .routers.authentication.auth_api import get_authentication_dependency
 
 tags_metadata = [
     {
@@ -153,7 +153,6 @@ v1_router.include_router(submodel_dispatcher.router)
 v1_router.include_router(sharing_handler.router)
 v1_router.include_router(connection_management.router)
 v1_router.include_router(discovery_management.router)
-v1_router.include_router(auth_keycloak.router)
 
 # Include the API version 1 router into the main app
 app.include_router(v1_router)
