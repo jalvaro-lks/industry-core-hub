@@ -38,7 +38,8 @@ else:
     auth_manager = OAuth2Manager(
         auth_url=ConfigManager.get_config("authorization.keycloak.auth_url"),
         realm=ConfigManager.get_config("authorization.keycloak.realm"),
-        clientid=ConfigManager.get_config("authorization.keycloak.client_id")
+        clientid=ConfigManager.get_config("authorization.keycloak.client_id"),
+        clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
     )
 
 api_key_header = APIKeyHeader(name=ConfigManager.get_config("authorization.api_key.key"), auto_error=False)

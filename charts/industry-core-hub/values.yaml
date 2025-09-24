@@ -106,6 +106,7 @@ backend:
         authUrl: "https://<ichub-idp-url>/auth/"
         realm: "<realm>"
         clientId: "<client-id>"
+        clientSecret: "<client-secret>"
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
       echo: false
