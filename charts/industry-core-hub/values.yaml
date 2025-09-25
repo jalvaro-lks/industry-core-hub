@@ -381,23 +381,23 @@ frontend:
     # Core application settings
     environment: "development"  # development, staging, production
     version: "1.0.0"
-    
+
     # API and backend configuration
     ichubBackendUrl: "https://<backend-hostname>"
     apiTimeout: 30000
     apiRetryAttempts: 3
     requireHttpsUrlPattern: false
-    
+
     # API key configuration (optional)
     apiKey: ""
     apiKeyHeader: "X-API-Key"
     enableApiKeyRotation: false
     apiKeyExpiryWarningDays: 7
-    
+
     # Authentication configuration
     authEnabled: false
     authProvider: "none"  # none, keycloak
-    
+
     # Keycloak configuration (only used when authProvider is keycloak)
     keycloak:
       url: ""
@@ -411,22 +411,22 @@ frontend:
       minValidity: 30
       checkLoginIframeInterval: 5
       flow: "standard"  # standard, implicit, hybrid
-    
+
     # Session management
     authSessionTimeout: 3600000  # 1 hour in milliseconds
     authRenewTokenMinValidity: 300  # 5 minutes in seconds
     authLogoutRedirectUri: ""
-    
+
     # Participant configuration
     bpnValidationPattern: "^BPN[LAS]\\d{10}[a-zA-Z0-9]{2}$"
-    
+
     # Governance and policies configuration
     
     # Feature flags
     enableAdvancedLogging: false
     enablePerformanceMonitoring: false
     enableDevTools: false
-    
+
     # UI configuration
     uiTheme: "auto"
     uiLocale: "en"
@@ -477,7 +477,7 @@ frontend:
     governance:
       - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
         policies:
-          - strict: false # -- Enable here the permutations of constraints (order not matters)
+          - strict: false  # -- Enable here the permutations of constraints (order not matters)
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -493,7 +493,7 @@ frontend:
                   rightOperand: cx.core.industrycore:1
             prohibition: []
             obligation: []
-          - strict: true # -- Disable here the permutations of constraints (order matters)
+          - strict: true  # -- Disable here the permutations of constraints (order matters)
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
