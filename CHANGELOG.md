@@ -5,7 +5,7 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.3.0] - 2025-09-25
+## [0.2.0] - 2025-09-25
 
 ### Added
 
@@ -156,3 +156,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Removed
 
 - Removed unused dependencies and cleaned up files.
+
