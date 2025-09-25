@@ -46,16 +46,13 @@ export const partnerManagementConfig = {
   // Validation configuration
   validation: {
     bpn: {
-      pattern: /^BPNL[0-9A-Z]{12}$/, // Business Partner Number Legal Entity pattern
-      errorMessage: 'BPN must follow format BPNL followed by 12 alphanumeric characters',
+      pattern: /^BPN[LSA][A-Z0-9]{10}[A-Z0-9]{2}/, // Business Partner Number Legal Entity pattern
+      errorMessage: 'BPN must follow format BPNL followed by 10 alphanumeric characters and 2 checksum characters.',
     },
     companyName: {
       minLength: 2,
       maxLength: 100,
-    },
-    email: {
-      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    },
+    }
   },
 
   // Table configuration
