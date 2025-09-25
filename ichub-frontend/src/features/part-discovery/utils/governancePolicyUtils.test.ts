@@ -20,6 +20,8 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+/** Created using an LLM (Github Copilot) review by a human committer */
+
 import { describe, it, expect } from 'vitest';
 import { generateOdrlPolicies, getGovernancePolicyForSemanticId, getDefaultGovernancePolicy } from '../utils/governancePolicyUtils';
 import type { GovernanceConfig } from '../../../services/EnvironmentService';

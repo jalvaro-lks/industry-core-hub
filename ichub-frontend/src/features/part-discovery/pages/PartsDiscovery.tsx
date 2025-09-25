@@ -20,6 +20,8 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+/** Created using an LLM (Github Copilot) review by a human committer */
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
