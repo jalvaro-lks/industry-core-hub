@@ -20,7 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-hostname: "http://localhost:9000"
+hostname: "https://backend-ichub.int.catena-x.net"
 
 authorization:
   enabled: true
@@ -163,14 +163,14 @@ server:
 consumer:
   discovery:
     discovery_finder:
-      url: "https://<discovery-finder>/api/v1.0/administration/connectors/discovery/search"
+      url: "https://semantics.int.catena-x.net/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
     connector_discovery:
       key: "bpn"
     oauth:
-      url: "https://<centralidp.url>/auth/"
+      url: "https://centralidp.int.catena-x.net/auth/"
       realm: "CX-Central"
-      client_id: "<client-id>>"
-      client_secret: "<client-secret>"
+      client_id: "sa307"
+      client_secret: "fZItup0SGJGSpQaVbNLlJ6RBt2XvlxjJ"
     digitalTwinRegistry:
       dct_type_key: "dct:type"
       dct_type_filter:
@@ -181,9 +181,9 @@ consumer:
     dataspace:
       version: "jupiter"
     controlplane:
-      hostname: "https://<control-plane-edc-consumer>"
+      hostname: "https://edc-consumer-ichub-control.int.catena-x.net"
       apiKeyHeader: "X-Api-Key"
-      apiKey: "<api-key-edc-consumer>"
+      apiKey: "ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC"
       managementPath: "/management"
       protocolPath: "/api/v1/dsp"
       catalogPath: "/catalog"
@@ -219,53 +219,22 @@ consumer:
                   rightOperand: active
             prohibition: []
             obligation: []
-      - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#SerialPart"
-        policies: 
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
-            permission:
-            - action: odrl:use
-              LogicalConstraint: odrl:and
-              constraints:
-                - leftOperand: cx-policy:FrameworkAgreement
-                  operator: odrl:eq
-                  rightOperand: DataExchangeGovernance:1.0
-                - leftOperand: cx-policy:Membership
-                  operator: odrl:eq
-                  rightOperand: active
-                - leftOperand: cx-policy:UsagePurpose
-                  operator: odrl:eq
-                  rightOperand: cx.core.industrycore:1
-            prohibition: []
-            obligation: []
-          - strict: true #-- Disable here the permutations of constraints (order matters)
-            permission:
-            - action: odrl:use
-              LogicalConstraint: odrl:and
-              constraints:
-                - leftOperand: cx-policy:FrameworkAgreement
-                  operator: odrl:eq
-                  rightOperand: DataExchangeGovernance:1.0
-                - leftOperand: cx-policy:Membership
-                  operator: odrl:eq
-                  rightOperand: active
-            prohibition: []
-            obligation: []
 provider:
   connector: 
     dataspace:
       version: "jupiter"
     controlplane:
-      hostname: "https://<provider-edc-control-plane>"
+      hostname: "https://edc-provider-ichub-control.int.catena-x.net"
       apiKeyHeader: "X-Api-Key"
-      apiKey: "<api-key-controlplane>"
+      apiKey: "ACA176440A8BDD3954FCEC3552BF8985AFB75608A57B9121EA809791854AAA2BEDBF85333572E8DECE9537D69697D6BA28EA26174085242CB536B7877E219CAC"
       managementPath: "/management"
       protocolPath: "/api/v1/dsp"
     dataplane:
-      hostname: "https://<provider-edc-dataplane>"
+      hostname: "https://edc-provider-ichub-dataplane.int.catena-x.net"
       publicPath: "/api/public"
 
   digitalTwinRegistry:
-    hostname: "https://<provider-digital-twin-registry>"
+    hostname: "https://dtr-ichub.int.catena-x.net"
     apiPath: "/api/v3"
     uri: ""
     asset_config:

@@ -131,7 +131,8 @@ try:
     connector_discovery_service: ConnectorDiscoveryService = None
     discovery_finder_service: DiscoveryFinderService = None
 
-    if discovery_oauth is not None and not discovery_oauth.connected:
+    
+    if discovery_oauth is not None and discovery_oauth.connected:
 
         discovery_finder_service = DiscoveryFinderService(
             url=ConfigManager.get_config("consumer.discovery.discovery_finder.url"),

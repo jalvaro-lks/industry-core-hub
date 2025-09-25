@@ -115,7 +115,9 @@ def start():
             
         if (connector_start_up_error or dtr_start_up_error):
             logger.critical("\n=================================================================================")
-
+        else:
+            logger.info("[STARTUP] All modules (DTR, Connector, Database) initialized successfully. Starting Uvicorn server...")
+        
         try:
             uvicorn.run(**uvicorn_config)
         except KeyboardInterrupt:
