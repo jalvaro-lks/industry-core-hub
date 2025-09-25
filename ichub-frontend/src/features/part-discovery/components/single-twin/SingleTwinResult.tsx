@@ -1358,7 +1358,7 @@ export const SingleTwinResult: React.FC<SingleTwinResultProps> = ({ counterParty
                               <Typography variant="caption" sx={{ fontWeight: '600', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 1 }}>
                                 Credential Type:
                               </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: verifiableInfo.signatureType ? 2 : 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                                 <Chip
                                   label={verifiableInfo.credentialType}
                                   sx={{

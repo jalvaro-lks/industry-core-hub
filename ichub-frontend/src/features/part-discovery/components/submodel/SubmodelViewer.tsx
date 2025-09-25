@@ -408,18 +408,6 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
     }
   }, [open]);
 
-  // Auto-select specialized view when data loads (if available)
-  useEffect(() => {
-    if (submodelData?.submodel && semanticIdValue) {
-      const hasSpecializedAddon = getSpecializedAddon();
-      if (hasSpecializedAddon) {
-        setRightPanelTab(0); // Specialized view first
-      } else {
-        setRightPanelTab(0); // JSON view (will be the only tab)
-      }
-    }
-  }, [submodelData, semanticIdValue, getSpecializedAddon]);
-
   const handleRightPanelTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setRightPanelTab(newValue);
   };
@@ -899,7 +887,7 @@ Best regards`);
                   flex: 1, 
                   overflow: 'hidden', 
                   p: getSpecializedAddon() && rightPanelTab === 0 ? 0 : 0.5,
-                  pt: getSpecializedAddon() && rightPanelTab === 0 ? 0 : 0,
+                  pt: 0,
                   display: 'flex',
                   flexDirection: 'column',
                   width: '100%',
