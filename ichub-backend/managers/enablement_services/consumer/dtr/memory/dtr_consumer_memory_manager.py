@@ -1601,15 +1601,13 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
     def _purge_asset_cache(self, counter_party_id: str, asset_id: str, dsp_endpoint_url: str, policies: List[Dict]) -> bool:
         """Negotiate access to a single asset and return the access token."""
         connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
-        query_checksum = hashlib.sha3_256(str(connector_service.get_filter_expression(
-                key="https://w3id.org/edc/v0.0.1/ns/id", value=asset_id
-            )).encode('utf-8')).hexdigest()
-        policy_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
+        policies_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
+        filter_checksum = hashlib.sha3_256(str(connector_service.get_filter_expression(key="https://w3id.org/edc/v0.0.1/ns/id", value=asset_id, value=asset_id)).encode('utf-8')).hexdigest()
         return connector_service.connection_manager.delete_connection(
             counter_party_id=counter_party_id,
             counter_party_address=dsp_endpoint_url,
-            query_checksum=query_checksum,
-            policy_checksum=policy_checksum
+            query_checksum=filter_checksum,
+            policy_checksum=policies_checksum
         )
             
     def _fetch_submodel_data_with_token(self, submodel_id: str, href: str, access_token: str) -> Optional[Dict]:
