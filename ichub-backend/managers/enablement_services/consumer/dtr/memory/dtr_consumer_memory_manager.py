@@ -959,7 +959,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return response
 
-    def discover_submodel(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[List[Dict]] = None, submodel_id: str = None) -> Dict:
+    def discover_submodel(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None, governance: Optional[List[Dict]] = None, submodel_id: str = None, max_retries: int = 1) -> Dict:
         """
         Retrieve a specific submodel data by submodel ID using direct API call for faster, exact lookup.
         
@@ -971,6 +971,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             governance: Optional list of policies for the submodel. If None, only submodel 
                        descriptor is returned without actual data (status will be "governance_not_found")
             submodel_id: The specific submodel ID to search for (required)
+            max_retries: Maximum number of connection retry attempts (default: 1)
             
         Returns:
             Dict: Response with submodel descriptor, data, and DTR info
@@ -988,9 +989,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 "submodel": {},
                 "dtr": None
             }
-        
-        connector_service = self.connector_consumer_manager.connector_service
-        
+
+        connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
+
         # Try each DTR to find the submodel
         for dtr in dtrs:
             connector_url = dtr.get(self.DTR_CONNECTOR_URL_KEY)
@@ -1004,14 +1005,37 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             )
             
             try:
-                # Establish connection
-                dataplane_url, access_token = connector_service.do_dsp(
-                    counter_party_id=counter_party_id,
-                    counter_party_address=connector_url,
-                    policies=policies_to_use,
-                    filter_expression=filter_expression
-                )
-                
+                retries = 0
+                dataplane_url = None
+                access_token = None
+                while (dataplane_url is None or access_token is None) and retries <= max_retries:
+                    # Establish connection
+                    dataplane_url, access_token = connector_service.do_dsp(
+                        counter_party_id=counter_party_id,
+                        counter_party_address=connector_url,
+                        policies=policies_to_use,
+                        filter_expression=filter_expression
+                    )
+                    if dataplane_url is None or access_token is None:
+                        retries += 1
+                        self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve submodel {connector_url}, deleting and restarting query (attempt {retries}/{max_retries})")
+                        connector_service.connection_manager.delete_connection(
+                            counter_party_id=counter_party_id,
+                            counter_party_address=connector_url,
+                            query_checksum=hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest(),
+                            policy_checksum=hashlib.sha3_256(str(policies_to_use).encode('utf-8')).hexdigest()
+                        )
+                        continue
+
+                if (dataplane_url is None or access_token is None):
+                    return {
+                        "status": "error",
+                        "error": "Failed to fetch submodel data due to connector connection errors",
+                        "submodelDescriptor": {},
+                        "submodel": {},
+                        "dtr": None
+                    }
+
                 # Direct API call to fetch specific submodel descriptor
                 import base64
                 encoded_shell_id = base64.b64encode(id.encode('utf-8')).decode('utf-8')
