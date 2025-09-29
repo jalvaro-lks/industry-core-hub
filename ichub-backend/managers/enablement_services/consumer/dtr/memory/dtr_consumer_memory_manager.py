@@ -1338,6 +1338,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             response["submodelDescriptor"]["error"] = f"Asset negotiation failed. You may not have enough access permissions to this submodel. {str(e)}"
             if self.logger and self.verbose:
                 self.logger.error(f"[DTR Manager] Error fetching single submodel {submodel_id}: {e}")
+            print(counter_party_id,
+                  policies,
+                  asset_id,
+                  connector_url)
             existed = self._purge_asset_cache(counter_party_id, asset_id, connector_url, policies)
             if(not existed):
                 response["submodelDescriptor"]["status"] = "error"
@@ -1603,6 +1607,11 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
         policies_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
         filter_checksum = hashlib.sha3_256(str(connector_service.get_filter_expression(key="https://w3id.org/edc/v0.0.1/ns/id", value=asset_id)).encode('utf-8')).hexdigest()
+        print(counter_party_id,
+                  policies_checksum,
+                  filter_checksum,
+                  dsp_endpoint_url)
+        
         return connector_service.connection_manager.delete_connection(
             counter_party_id=counter_party_id,
             counter_party_address=dsp_endpoint_url,
