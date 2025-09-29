@@ -1602,7 +1602,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         """Negotiate access to a single asset and return the access token."""
         connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
         policies_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
-        filter_checksum = hashlib.sha3_256(str(connector_service.get_filter_expression(key="https://w3id.org/edc/v0.0.1/ns/id", value=asset_id, value=asset_id)).encode('utf-8')).hexdigest()
+        filter_checksum = hashlib.sha3_256(str(connector_service.get_filter_expression(key="https://w3id.org/edc/v0.0.1/ns/id", value=asset_id)).encode('utf-8')).hexdigest()
         return connector_service.connection_manager.delete_connection(
             counter_party_id=counter_party_id,
             counter_party_address=dsp_endpoint_url,
