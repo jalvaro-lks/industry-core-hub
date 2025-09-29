@@ -1103,36 +1103,30 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                         connector_url, asset_id, counter_party_id
                     )
                 else:
-                    retries = 0
-                    dataplane_url = None
-                    access_token = None
-                    while (dataplane_url is None or access_token is None) and retries <= max_retries:
-                        # Establish connection
-                        dataplane_url, access_token = connector_service.do_dsp(
-                            counter_party_id=counter_party_id,
-                            counter_party_address=connector_url,
-                            policies=policies_to_use,
-                            filter_expression=filter_expression
-                        )
-                        if dataplane_url is None or access_token is None:
-                            retries += 1
-                            self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve submodel {connector_url}, deleting and restarting query (attempt {retries}/{max_retries})")
-                            connector_service.connection_manager.delete_connection(
-                                counter_party_id=counter_party_id,
-                                counter_party_address=connector_url,
-                                query_checksum=hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest(),
-                                policy_checksum=hashlib.sha3_256(str(policies_to_use).encode('utf-8')).hexdigest()
-                            )
-                            continue
+                    connector_service.connection_manager.delete_connection(
+                        counter_party_id=counter_party_id,
+                        counter_party_address=connector_url,
+                        query_checksum=hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest(),
+                        policy_checksum=hashlib.sha3_256(str(policies_to_use).encode('utf-8')).hexdigest()
+                    )
+                    self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve submodel {connector_url}, deleting.")
+                    # Establish connection again
+                    dataplane_url, access_token = connector_service.do_dsp(
+                        counter_party_id=counter_party_id,
+                        counter_party_address=connector_url,
+                        policies=policies_to_use,
+                        filter_expression=filter_expression
+                    )
 
                     if (dataplane_url is None or access_token is None):
                         return {
                             "status": "error",
-                            "error": "Failed to fetch submodel data due to connector connection errors",
+                            "error": "Failed to fetch submodel data due to connector connection errors even after retry",
                             "submodelDescriptor": {},
                             "submodel": {},
                             "dtr": None
                         }
+                    ## Retry fetching the submodel descriptor after re-establishing connection
                     submodel_descriptor = self._fetch_submodel_descriptor(id, submodel_id, dataplane_url, access_token)
                 
                     if submodel_descriptor is not None:
