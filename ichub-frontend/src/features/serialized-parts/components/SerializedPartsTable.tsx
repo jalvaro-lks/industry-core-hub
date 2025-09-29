@@ -69,6 +69,7 @@ interface SerializedPartsTableProps {
 const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) => {
   const [rows, setRows] = useState<SerializedPartWithStatus[]>([]);
   const [allTwins, setAllTwins] = useState<SerializedPartTwinRead[]>([]);
+  const [hasFetchedTwins, setHasFetchedTwins] = useState<boolean>(false); // Track if we've attempted to fetch twins
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true); // For initial data load
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false); // For refresh operations
   const [twinCreatingId, setTwinCreatingId] = useState<number | null>(null);
@@ -134,11 +135,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       ]);
       
       setAllTwins(twins);
+      setHasFetchedTwins(true); // Mark that we've attempted to fetch
       return twins;
     } catch (error) {
       console.error('Error fetching all twins:', error);
       // Always return empty array and clear loading state on any error
       setAllTwins([]);
+      setHasFetchedTwins(true); // Mark that we've attempted to fetch even on error
       return [];
     }
   }, []); // No dependencies - this function should be stable
@@ -180,13 +183,14 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         
         setRows([]);
         setIsInitialLoading(false);
+        setHasFetchedTwins(false); // Reset when no parts
         return;
       }
 
       try {
-        // Only fetch if we don't have cached twins or parts changed
+        // Only fetch if we haven't attempted to fetch twins yet
         let twins = allTwins;
-        if (twins.length === 0) {
+        if (!hasFetchedTwins) {
       
           setIsInitialLoading(true);
           
@@ -250,9 +254,11 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       }
     };
 
+    // Reset hasFetchedTwins when parts change to allow fetching twins for new/changed parts
+    setHasFetchedTwins(false);
     loadTwinData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parts, allTwins]); // Only depend on the actual data, not the derived functions
+  }, [parts]); // Only depend on parts - don't include allTwins to avoid infinite loop
 
   const handleCreateTwin = async (row: SerializedPartWithStatus) => {
     setTwinCreatingId(row.id);
@@ -509,10 +515,8 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
         
         await fetchTwinsOnce();
         
-      } else {
-        
       }
-      
+
       // Trigger the parent to refresh the serialized parts data
       if (onRefresh) {
         
