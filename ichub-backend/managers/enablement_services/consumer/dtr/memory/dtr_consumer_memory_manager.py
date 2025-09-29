@@ -1594,6 +1594,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
     def _negotiate_asset(self, counter_party_id: str, asset_id: str, dsp_endpoint_url: str, policies: List[Dict]) -> Optional[str]:
         """Negotiate access to a single asset and return the access token."""
         connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
+        print(counter_party_id,
+            policies,
+            asset_id,
+            dsp_endpoint_url)
         dataplane_url, access_token = connector_service.do_dsp_by_asset_id(
             counter_party_id=counter_party_id,
             counter_party_address=dsp_endpoint_url,
