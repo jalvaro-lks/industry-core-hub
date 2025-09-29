@@ -368,6 +368,15 @@ export const SubmodelViewer: React.FC<SubmodelViewerProps> = ({
         submodel.id,
         semanticIdValue
       );
+      
+      // Check if the API response contains a structured error
+      if (response.status === "error" && response.error) {
+        setError(response.error);
+        setSubmodelData(null);
+        setLastLoadedSubmodelId(submodel.id);
+        return;
+      }
+      
       setSubmodelData(response);
       setLastLoadedSubmodelId(submodel.id);
       
