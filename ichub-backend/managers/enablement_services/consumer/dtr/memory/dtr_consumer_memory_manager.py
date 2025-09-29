@@ -1338,7 +1338,33 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             response["submodelDescriptor"]["error"] = f"Asset negotiation failed. You may not have enough access permissions to this submodel. {str(e)}"
             if self.logger and self.verbose:
                 self.logger.error(f"[DTR Manager] Error fetching single submodel {submodel_id}: {e}")
-        return response
+            existed = self._purge_asset_cache(counter_party_id, asset_id, connector_url, policies)
+            if(not existed):
+                response["submodelDescriptor"]["status"] = "error"
+                response["submodelDescriptor"]["error"] = "This submodel asset does not exists or is not accesible via Connector with your permissions."
+                return response
+             
+            if self.logger and self.verbose:
+                self.logger.info(f"[DTR Manager] [{counter_party_id}] Purged cached asset token for asset ID [{asset_id}] due to data fetch failure, repeating negotiation...")
+
+            # Retry negotiation
+            access_token = self._negotiate_asset(counter_party_id, asset_id, connector_url, policies)
+            if not access_token:
+                response["submodelDescriptor"]["status"] = "error"
+                response["submodelDescriptor"]["error"] = "Asset negotiation failed. You may not have enough access permissions to this submodel."
+                return response
+            
+            # Fetch the submodel data
+            data = self._fetch_submodel_data_with_token(submodel_id, href, access_token)
+            if data:
+                response["submodel"] = data
+                response["submodelDescriptor"]["status"] = "success"
+                return response
+            
+        response["submodelDescriptor"]["status"] = "error"
+        response["submodelDescriptor"]["error"] = "Data fetch returned no data after one retry, probably no data is registered behind this submodel descriptor endpoint, or the href of the submodel is incorrect."
+        return response    
+    
     def _group_submodels_by_asset(self, submodels_to_fetch: List[Dict]) -> Dict[str, Dict]:
         """Group submodels by asset_id for optimization."""
         assets_to_negotiate = {}
