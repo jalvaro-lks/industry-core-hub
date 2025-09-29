@@ -750,6 +750,87 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             return response.json()
         return None
     
+    def _fetch_submodel_descriptor(self, shell_id: str, submodel_id: str, dataplane_url: str, access_token: str) -> Optional[Dict]:
+        """Fetch single submodel descriptor by shell ID and submodel ID.
+        
+        Args:
+            shell_id: The shell ID
+            submodel_id: The submodel ID
+            dataplane_url: The dataplane URL for API calls
+            access_token: The access token for authentication
+            
+        Returns:
+            Optional[Dict]: The submodel descriptor if found, None otherwise
+        """
+        encoded_shell_id = base64.b64encode(shell_id.encode('utf-8')).decode('utf-8')
+        encoded_submodel_id = base64.b64encode(submodel_id.encode('utf-8')).decode('utf-8')
+        
+        response = HttpTools.do_get(
+            url=f"{dataplane_url}/shell-descriptors/{encoded_shell_id}/submodel-descriptors/{encoded_submodel_id}",
+            headers={"Authorization": f"{access_token}"}
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        return None
+    
+    def _process_submodel_descriptor(self, submodel_descriptor: Dict, submodel_id: str, governance: Optional[List[Dict]], connector_url: str, asset_id: str, counter_party_id: str = None) -> Dict:
+        """Process a submodel descriptor and create response structure.
+        
+        Args:
+            submodel_descriptor: The submodel descriptor data
+            submodel_id: The submodel ID
+            governance: Optional governance policies
+            connector_url: The connector URL
+            asset_id: The asset ID
+            counter_party_id: Optional counter party ID for submodel data fetching
+            
+        Returns:
+            Dict: Response with submodel descriptor, data, and DTR info
+        """
+        # Extract information from submodel descriptor
+        current_semantic_id = self._extract_semantic_id(submodel_descriptor)
+        asset_id_sub, connector_url_sub, href = self._extract_submodel_endpoint_info(submodel_descriptor)
+        semantic_ids_base64 = self._create_semantic_ids_base64(submodel_descriptor)
+        
+        # Determine status and prepare descriptor
+        descriptor = {
+            "submodelId": submodel_id,
+            "semanticId": current_semantic_id,
+            "semanticIdKeys": semantic_ids_base64,
+            "assetId": asset_id_sub,
+            "connectorUrl": connector_url_sub,
+            "href": href,
+            "status": self._determine_single_submodel_status(current_semantic_id, governance)
+        }
+        
+        # Add error message if needed
+        if descriptor["status"] == "error" and not current_semantic_id:
+            descriptor["error"] = "No semantic ID found in submodel descriptor"
+        
+        response = {
+            "submodelDescriptor": descriptor,
+            "submodel": {},
+            "dtr": {
+                "connectorUrl": connector_url,
+                "assetId": asset_id,
+            }
+        }
+        
+        # Fetch submodel data if governance policies are available and counter_party_id is provided
+        if counter_party_id and governance and descriptor["status"] == "pending":
+            submodel_info = {
+                "submodel_id": submodel_id,
+                "semantic_id": current_semantic_id,
+                "policies": governance,
+                "assetId": asset_id_sub,
+                "connectorUrl": connector_url_sub,
+                "href": href
+            }
+            response = self._fetch_single_submodel_data(counter_party_id, submodel_info, response)
+        
+        return response
+    
     def _fetch_shell_descriptors(self, shells_response: Dict, dataplane_url: str, access_token: str) -> List[Dict]:
         """Fetch shell descriptors from shell UUIDs in parallel."""
         shell_uuids = shells_response.get('result', []) if isinstance(shells_response, dict) else shells_response
@@ -1005,93 +1086,60 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             )
             
             try:
-                retries = 0
-                dataplane_url = None
-                access_token = None
-                while (dataplane_url is None or access_token is None) and retries <= max_retries:
-                    # Establish connection
-                    dataplane_url, access_token = connector_service.do_dsp(
-                        counter_party_id=counter_party_id,
-                        counter_party_address=connector_url,
-                        policies=policies_to_use,
-                        filter_expression=filter_expression
-                    )
-                    if dataplane_url is None or access_token is None:
-                        retries += 1
-                        self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve submodel {connector_url}, deleting and restarting query (attempt {retries}/{max_retries})")
-                        connector_service.connection_manager.delete_connection(
-                            counter_party_id=counter_party_id,
-                            counter_party_address=connector_url,
-                            query_checksum=hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest(),
-                            policy_checksum=hashlib.sha3_256(str(policies_to_use).encode('utf-8')).hexdigest()
-                        )
-                        continue
-
-                if (dataplane_url is None or access_token is None):
-                    return {
-                        "status": "error",
-                        "error": "Failed to fetch submodel data due to connector connection errors",
-                        "submodelDescriptor": {},
-                        "submodel": {},
-                        "dtr": None
-                    }
+                # Establish connection
+                dataplane_url, access_token = connector_service.do_dsp(
+                    counter_party_id=counter_party_id,
+                    counter_party_address=connector_url,
+                    policies=policies_to_use,
+                    filter_expression=filter_expression
+                )
 
                 # Direct API call to fetch specific submodel descriptor
-                import base64
-                encoded_shell_id = base64.b64encode(id.encode('utf-8')).decode('utf-8')
-                encoded_submodel_id = base64.b64encode(submodel_id.encode('utf-8')).decode('utf-8')
+                submodel_descriptor = self._fetch_submodel_descriptor(id, submodel_id, dataplane_url, access_token)
                 
-                from tractusx_sdk.dataspace.tools.http_tools import HttpTools
-                response_desc = HttpTools.do_get(
-                    url=f"{dataplane_url}/shell-descriptors/{encoded_shell_id}/submodel-descriptors/{encoded_submodel_id}",
-                    headers={"Authorization": f"{access_token}"}
-                )
+                if submodel_descriptor is not None:
+                    return self._process_submodel_descriptor(
+                        submodel_descriptor, submodel_id, governance, 
+                        connector_url, asset_id, counter_party_id
+                    )
+                else:
+                    retries = 0
+                    dataplane_url = None
+                    access_token = None
+                    while (dataplane_url is None or access_token is None) and retries <= max_retries:
+                        # Establish connection
+                        dataplane_url, access_token = connector_service.do_dsp(
+                            counter_party_id=counter_party_id,
+                            counter_party_address=connector_url,
+                            policies=policies_to_use,
+                            filter_expression=filter_expression
+                        )
+                        if dataplane_url is None or access_token is None:
+                            retries += 1
+                            self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve submodel {connector_url}, deleting and restarting query (attempt {retries}/{max_retries})")
+                            connector_service.connection_manager.delete_connection(
+                                counter_party_id=counter_party_id,
+                                counter_party_address=connector_url,
+                                query_checksum=hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest(),
+                                policy_checksum=hashlib.sha3_256(str(policies_to_use).encode('utf-8')).hexdigest()
+                            )
+                            continue
+
+                    if (dataplane_url is None or access_token is None):
+                        return {
+                            "status": "error",
+                            "error": "Failed to fetch submodel data due to connector connection errors",
+                            "submodelDescriptor": {},
+                            "submodel": {},
+                            "dtr": None
+                        }
+                    submodel_descriptor = self._fetch_submodel_descriptor(id, submodel_id, dataplane_url, access_token)
                 
-                if response_desc.status_code == 200:
-                    submodel_descriptor = response_desc.json()
-                    
-                    # Extract information from submodel descriptor
-                    current_semantic_id = self._extract_semantic_id(submodel_descriptor)
-                    asset_id_sub, connector_url_sub, href = self._extract_submodel_endpoint_info(submodel_descriptor)
-                    semantic_ids_base64 = self._create_semantic_ids_base64(submodel_descriptor)
-                    
-                    # Determine status and prepare descriptor
-                    descriptor = {
-                        "submodelId": submodel_id,
-                        "semanticId": current_semantic_id,
-                        "semanticIdKeys": semantic_ids_base64,
-                        "assetId": asset_id_sub,
-                        "connectorUrl": connector_url_sub,
-                        "href": href,
-                        "status": self._determine_single_submodel_status(current_semantic_id, governance)
-                    }
-                    
-                    # Add error message if needed
-                    if descriptor["status"] == "error" and not current_semantic_id:
-                        descriptor["error"] = "No semantic ID found in submodel descriptor"
-                    
-                    response = {
-                        "submodelDescriptor": descriptor,
-                        "submodel": {},
-                        "dtr": {
-                            "connectorUrl": connector_url,
-                            "assetId": asset_id,
-                        }
-                    }
-                    
-                    # Fetch submodel data if governance policies are available
-                    if governance and descriptor["status"] == "pending":
-                        submodel_info = {
-                            "submodel_id": submodel_id,
-                            "semantic_id": current_semantic_id,
-                            "policies": governance,
-                            "assetId": asset_id_sub,
-                            "connectorUrl": connector_url_sub,
-                            "href": href
-                        }
-                        response = self._fetch_single_submodel_data(counter_party_id, submodel_info, response)
-                    
-                    return response
+                    if submodel_descriptor is not None:
+                        return self._process_submodel_descriptor(
+                            submodel_descriptor, submodel_id, governance, 
+                            connector_url, asset_id, counter_party_id
+                        )
                     
             except Exception as e:
                 if self.logger and self.verbose:
