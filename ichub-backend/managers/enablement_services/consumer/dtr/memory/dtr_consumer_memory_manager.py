@@ -1102,38 +1102,14 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                         submodel_descriptor, submodel_id, governance, 
                         connector_url, asset_id, counter_party_id
                     )
-                else:
-                    connector_service.connection_manager.delete_connection(
-                        counter_party_id=counter_party_id,
-                        counter_party_address=connector_url,
-                        query_checksum=hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest(),
-                        policy_checksum=hashlib.sha3_256(str(policies_to_use).encode('utf-8')).hexdigest()
-                    )
-                    self.logger.warning(f"[DTR Manager] [{counter_party_id}] Failed to retrieve submodel {connector_url}, deleting.")
-                    # Establish connection again
-                    dataplane_url, access_token = connector_service.do_dsp(
-                        counter_party_id=counter_party_id,
-                        counter_party_address=connector_url,
-                        policies=policies_to_use,
-                        filter_expression=filter_expression
-                    )
-
-                    if (dataplane_url is None or access_token is None):
-                        return {
-                            "status": "error",
-                            "error": "Failed to fetch submodel data due to connector connection errors even after retry",
-                            "submodelDescriptor": {},
-                            "submodel": {},
-                            "dtr": None
-                        }
-                    ## Retry fetching the submodel descriptor after re-establishing connection
-                    submodel_descriptor = self._fetch_submodel_descriptor(id, submodel_id, dataplane_url, access_token)
                 
-                    if submodel_descriptor is not None:
-                        return self._process_submodel_descriptor(
-                            submodel_descriptor, submodel_id, governance, 
-                            connector_url, asset_id, counter_party_id
-                        )
+                return {
+                    "status": "error",
+                    "error": "Failed to fetch submodel descriptor data due to DTR not accessible or submodel not found",
+                    "submodelDescriptor": {},
+                    "submodel": {},
+                    "dtr": None
+                }
                     
             except Exception as e:
                 if self.logger and self.verbose:
@@ -1315,6 +1291,32 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             # Negotiate access to the asset
             access_token = self._negotiate_asset(counter_party_id, asset_id, connector_url, policies)
             
+            purge_cache = False
+            if not access_token:
+                response["submodelDescriptor"]["status"] = "error"
+                response["submodelDescriptor"]["error"] = "Asset negotiation failed. You may not have enough access permissions to this submodel."
+                purge_cache = True
+
+            if(not purge_cache):
+                # Fetch the submodel data
+                data = self._fetch_submodel_data_with_token(submodel_id, href, access_token)
+
+                if data:
+                    response["submodel"] = data
+                    response["submodelDescriptor"]["status"] = "success"
+                    return response
+            
+            existed = self._purge_asset_cache(counter_party_id, asset_id, connector_url, policies)
+            if(not existed):
+                response["submodelDescriptor"]["status"] = "error"
+                response["submodelDescriptor"]["error"] = "This submodel asset does not exists or is not accesible via Connector with your permissions."
+                return response
+             
+            if self.logger and self.verbose:
+                self.logger.info(f"[DTR Manager] [{counter_party_id}] Purged cached asset token for asset ID [{asset_id}] due to data fetch failure, repeating negotiation...")
+
+            # Retry negotiation
+            access_token = self._negotiate_asset(counter_party_id, asset_id, connector_url, policies)
             if not access_token:
                 response["submodelDescriptor"]["status"] = "error"
                 response["submodelDescriptor"]["error"] = "Asset negotiation failed. You may not have enough access permissions to this submodel."
@@ -1322,13 +1324,14 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             
             # Fetch the submodel data
             data = self._fetch_submodel_data_with_token(submodel_id, href, access_token)
-            
             if data:
                 response["submodel"] = data
                 response["submodelDescriptor"]["status"] = "success"
+                return response
             else:
                 response["submodelDescriptor"]["status"] = "error"
-                response["submodelDescriptor"]["error"] = "Data fetch returned no data"
+                response["submodelDescriptor"]["error"] = "Data fetch returned no data after one retry, probably no data is registered behind this submodel descriptor endpoint, or the href of the submodel is incorrect."
+                return response
                 
         except Exception as e:
             response["submodelDescriptor"]["status"] = "error"
@@ -1560,7 +1563,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
 
     def _negotiate_asset(self, counter_party_id: str, asset_id: str, dsp_endpoint_url: str, policies: List[Dict]) -> Optional[str]:
         """Negotiate access to a single asset and return the access token."""
-        connector_service = self.connector_consumer_manager.connector_service
+        connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
         dataplane_url, access_token = connector_service.do_dsp_by_asset_id(
             counter_party_id=counter_party_id,
             counter_party_address=dsp_endpoint_url,
@@ -1568,6 +1571,20 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             policies=policies
         )
         return access_token
+
+    def _purge_asset_cache(self, counter_party_id: str, asset_id: str, dsp_endpoint_url: str, policies: List[Dict]) -> bool:
+        """Negotiate access to a single asset and return the access token."""
+        connector_service: BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
+        query_checksum = hashlib.sha3_256(str(connector_service.get_filter_expression(
+                key="https://w3id.org/edc/v0.0.1/ns/id", value=asset_id
+            )).encode('utf-8')).hexdigest()
+        policy_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
+        return connector_service.connection_manager.delete_connection(
+            counter_party_id=counter_party_id,
+            counter_party_address=dsp_endpoint_url,
+            query_checksum=query_checksum,
+            policy_checksum=policy_checksum
+        )
             
     def _fetch_submodel_data_with_token(self, submodel_id: str, href: str, access_token: str) -> Optional[Dict]:
         """Fetch submodel data using a pre-negotiated access token."""
