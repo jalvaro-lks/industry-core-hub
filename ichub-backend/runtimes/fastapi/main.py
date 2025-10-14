@@ -27,6 +27,8 @@ from tractusx_sdk.dataspace.tools.utils import get_arguments
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from tractusx_sdk.dataspace.managers import AuthManager
+from connector import connector_start_up_error
+from dtr import dtr_start_up_error
 app = api
 
 ## In memory authentication manager service
@@ -95,7 +97,26 @@ def start():
             "timeout_keep_alive": timeout_keep_alive,
             "timeout_graceful_shutdown": timeout_graceful_shutdown
         }
-        
+
+        if(connector_start_up_error):
+            logger.critical("\n=============[START UP ERROR]-[Connector Module]================================="
+                            + "\n Your connector module is not initialized. This can happen if your database, connector config or IAM information is misconfigured."
+                            + "\n Please check your configuration and logs for more information."
+                            + "\n The application will not work properly without a functional connector module."
+                            )
+            
+
+        if(dtr_start_up_error):
+            logger.critical("\n=============[START UP ERROR]-[DTR Module]================================="
+                            + "\n Your DTR module is not initialized. This can happen if your database or IAM information is misconfigured."
+                            + "\n Please check your configuration and logs for more information."
+                            + "\n The application will not work properly without a functional DTR module."
+                            )
+            
+        if (connector_start_up_error or dtr_start_up_error):
+            logger.critical("\n=================================================================================")
+        else:
+            logger.info("[STARTUP] All modules (DTR, Connector, Database) initialized successfully. Starting Uvicorn server...")
         
         try:
             uvicorn.run(**uvicorn_config)

@@ -128,6 +128,7 @@ agreements:
 database:
   connectionString: "postgresql://user:password@localhost:5432/ichub"
   echo: false
+  timeout: 8
 
 cors:
   enabled: true
