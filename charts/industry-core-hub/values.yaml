@@ -747,13 +747,11 @@ keycloak:
   # ref: https://www.keycloak.org/migration/migrating-to-quarkus#_default_context_path_changed
   httpRelativePath: /auth/
   replicaCount: 1
-  
   # -- Realm import configuration
   realmImport:
     enabled: true
     # -- Method: "startup" for --import-realm flag or "job" for post-install job
     method: "job"
-  
   # -- Environment variables for startup import (only if method is "startup")
   extraEnvVars: []
 
