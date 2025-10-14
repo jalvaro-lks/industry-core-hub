@@ -45,6 +45,7 @@ data:
     database:
       connectionString: {{ include "industry-core-hub.postgresql.dsn" . | quote }}
       echo: {{ .Values.backend.configuration.database.echo }}
+      timeout: {{ .Values.backend.configuration.database.timeout }}
     server: {{ .Values.backend.server | toYaml | nindent 6 }}
     cors: {{ .Values.backend.cors | toYaml | nindent 6 }}
     consumer:
