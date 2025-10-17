@@ -77,17 +77,23 @@ jobs:
           # Build backend image
           docker build -t ichub-backend:test ./ichub-backend
           
-          # Load image into KinD cluster
-          kind load docker-image ichub-backend:test --name ichub-test-cluster
-      
+          # Save image as tarball
+          docker save ichub-backend:test -o ichub-backend-test.tar
+          
+          # Load image into KinD cluster from tar
+          kind load image-archive ichub-backend-test.tar --name ichub-test-cluster
+
       - name: Build and load frontend image to KinD
         run: |
           # Build frontend image
           docker build -t ichub-frontend:test ./ichub-frontend
-          
-          # Load image into KinD cluster
-          kind load docker-image ichub-frontend:test --name ichub-test-cluster
-          
+
+          # Save image as tarball
+          docker save ichub-frontend:test -o ichub-frontend-test.tar
+
+          # Load image into KinD cluster from tar
+          kind load image-archive ichub-frontend-test.tar --name ichub-test-cluster
+
       - name: Wait for cluster to be ready
         run: |
           kubectl cluster-info
