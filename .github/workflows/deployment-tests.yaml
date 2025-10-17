@@ -71,6 +71,22 @@ jobs:
           node_image: kindest/node:${{ matrix.k8s-version }}
           cluster_name: ichub-test-cluster
           wait: 300s
+      
+      - name: Build and load backend image to KinD
+        run: |
+          # Build backend image
+          docker build -t ichub-backend:test ./ichub-backend
+          
+          # Load image into KinD cluster
+          kind load docker-image ichub-backend:test --name ichub-test-cluster
+      
+      - name: Build and load frontend image to KinD
+        run: |
+          # Build frontend image
+          docker build -t ichub-frontend:test ./ichub-frontend
+          
+          # Load image into KinD cluster
+          kind load docker-image ichub-frontend:test --name ichub-test-cluster
           
       - name: Wait for cluster to be ready
         run: |
@@ -80,9 +96,15 @@ jobs:
       
       - name: Run deployment test using KinD and Helm
         run: |
-          # Install Industry Core Hub chart
+          # Install Industry Core Hub chart with locally built images
           helm install tx-ichub charts/industry-core-hub \
            -f tests/deployment/test-helm-values-ichub.yaml \
+           --set backend.image.repository=ichub-backend \
+           --set backend.image.tag=test \
+           --set backend.image.pullPolicy=Never \
+           --set frontend.image.repository=ichub-frontend \
+           --set frontend.image.tag=test \
+           --set frontend.image.pullPolicy=Never \
            --dependency-update \
            --wait --timeout=300s
           
