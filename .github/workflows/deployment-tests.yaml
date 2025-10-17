@@ -97,7 +97,7 @@ jobs:
         run: |
           # Install Industry Core Hub chart with locally built images from KinD registry
           helm install tx-ichub charts/industry-core-hub \
-           -f tests/deployment/test-helm-values-ichub.yaml \
+           -f charts/test-helm-values-ichub.yaml \
            --set backend.image.repository=kind-registry:5000/ichub-backend \
            --set backend.image.tag=test \
            --set backend.image.pullPolicy=IfNotPresent \
