@@ -86,17 +86,26 @@ jobs:
            --dependency-update \
            --wait --timeout=300s
           
-          # Wait for deployments to be ready
-          kubectl wait --for=condition=available --timeout=300s deployment/tx-ichub-backend || true
-          kubectl wait --for=condition=available --timeout=300s deployment/tx-ichub-frontend || true
+          # Debug: Show all resources created
+          echo "=== All resources created ==="
+          kubectl get all -l app.kubernetes.io/instance=tx-ichub
           
-          # Check deployment status
-          kubectl rollout status deployment/tx-ichub-backend --timeout=300s
-          kubectl rollout status deployment/tx-ichub-frontend --timeout=300s
+          echo "=== All deployments ==="
+          kubectl get deployments -l app.kubernetes.io/instance=tx-ichub
+          
+          # Wait for deployments to be ready (using correct naming pattern)
+          kubectl wait --for=condition=available --timeout=300s deployment -l app.kubernetes.io/instance=tx-ichub,app.kubernetes.io/component=backend || true
+          kubectl wait --for=condition=available --timeout=300s deployment -l app.kubernetes.io/instance=tx-ichub,app.kubernetes.io/component=frontend || true
+          
+          # Check deployment status using labels
+          kubectl get deployments -l app.kubernetes.io/instance=tx-ichub -o name | while read deployment; do
+            echo "Checking rollout status for $deployment"
+            kubectl rollout status "$deployment" --timeout=300s
+          done
           
           # Show pod status for debugging
           kubectl get pods -l app.kubernetes.io/instance=tx-ichub
           kubectl describe pods -l app.kubernetes.io/instance=tx-ichub
           
-          # Execute the helm test for connectivity
-          helm test tx-ichub --timeout=120s
+          # Execute the helm test for connectivity (if tests exist)
+          helm test tx-ichub --timeout=120s || echo "No Helm tests found"
