@@ -97,12 +97,6 @@ jobs:
           kubectl wait --for=condition=available --timeout=300s deployment -l app.kubernetes.io/instance=tx-ichub,app.kubernetes.io/component=backend || true
           kubectl wait --for=condition=available --timeout=300s deployment -l app.kubernetes.io/instance=tx-ichub,app.kubernetes.io/component=frontend || true
           
-          # Check deployment status using labels
-          kubectl get deployments -l app.kubernetes.io/instance=tx-ichub -o name | while read deployment; do
-            echo "Checking rollout status for $deployment"
-            kubectl rollout status "$deployment" --timeout=300s
-          done
-          
           # Show pod status for debugging
           kubectl get pods -l app.kubernetes.io/instance=tx-ichub
           kubectl describe pods -l app.kubernetes.io/instance=tx-ichub
