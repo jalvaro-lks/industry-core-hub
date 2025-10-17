@@ -64,35 +64,28 @@ jobs:
         with:
           version: 'latest'
       
-      - name: Create KinD cluster
-        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
+      - name: Create KinD cluster with registry
+        uses: container-tools/kind-action@0ad70e2299366b0e1552c7240f4e4567148f723e # v2.0.4
         with:
           version: v0.22.0
           node_image: kindest/node:${{ matrix.k8s-version }}
           cluster_name: ichub-test-cluster
           wait: 300s
+          registry: true
       
-      - name: Build and load backend image to KinD
-        run: |
-          # Build backend image
-          docker build -t ichub-backend:test ./ichub-backend
-          
-          # Save image as tarball
-          docker save ichub-backend:test -o ichub-backend-test.tar
-          
-          # Load image into KinD cluster from tar
-          kind load image-archive ichub-backend-test.tar --name ichub-test-cluster
+      - name: Build and push backend image
+        uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5.1.0
+        with:
+          context: ./ichub-backend
+          push: true
+          tags: kind-registry:5000/ichub-backend:test
 
-      - name: Build and load frontend image to KinD
-        run: |
-          # Build frontend image
-          docker build -t ichub-frontend:test ./ichub-frontend
-
-          # Save image as tarball
-          docker save ichub-frontend:test -o ichub-frontend-test.tar
-
-          # Load image into KinD cluster from tar
-          kind load image-archive ichub-frontend-test.tar --name ichub-test-cluster
+      - name: Build and push frontend image  
+        uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5.1.0
+        with:
+          context: ./ichub-frontend
+          push: true
+          tags: kind-registry:5000/ichub-frontend:test
 
       - name: Wait for cluster to be ready
         run: |
@@ -102,15 +95,15 @@ jobs:
       
       - name: Run deployment test using KinD and Helm
         run: |
-          # Install Industry Core Hub chart with locally built images
+          # Install Industry Core Hub chart with locally built images from KinD registry
           helm install tx-ichub charts/industry-core-hub \
            -f tests/deployment/test-helm-values-ichub.yaml \
-           --set backend.image.repository=ichub-backend \
+           --set backend.image.repository=kind-registry:5000/ichub-backend \
            --set backend.image.tag=test \
-           --set backend.image.pullPolicy=Never \
-           --set frontend.image.repository=ichub-frontend \
+           --set backend.image.pullPolicy=IfNotPresent \
+           --set frontend.image.repository=kind-registry:5000/ichub-frontend \
            --set frontend.image.tag=test \
-           --set frontend.image.pullPolicy=Never \
+           --set frontend.image.pullPolicy=IfNotPresent \
            --dependency-update \
            --wait --timeout=300s
           
