@@ -99,7 +99,7 @@ jobs:
           helm repo add runix https://helm.runix.net
 
       - name: Run chart-testing (install)
-        run: ct install --charts charts/industry-core-hub --target-branch ${{ github.event.repository.default_branch }}
+        run: ct install --charts charts/industry-core-hub --helm-extra-args "--values charts/test-helm-values-ichub.yaml" --target-branch ${{ github.event.repository.default_branch }}
         if: github.event_name != 'pull_request' || steps.list-changed.outputs.changed == 'true'
 
         # Upgrade the released chart version with the locally available chart
@@ -109,7 +109,7 @@ jobs:
          helm repo add bitnami-full-index https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
          helm repo add runix https://helm.runix.net
          helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
-         helm install industry-core-hub tractusx-dev/industry-core-hub --version ${{ github.event.inputs.upgrade_from || 'x.x.x' }}
+         helm install industry-core-hub tractusx-dev/industry-core-hub --version ${{ github.event.inputs.upgrade_from || 'x.x.x' }} --values charts/test-helm-values-ichub.yaml --timeout 600s
          helm dependency update charts/industry-core-hub
-         helm upgrade industry-core-hub charts/industry-core-hub
+         helm upgrade industry-core-hub charts/industry-core-hub --values charts/test-helm-values-ichub.yaml --timeout 600s
         if: github.event_name != 'pull_request' || steps.list-changed.outputs.changed == 'true'
