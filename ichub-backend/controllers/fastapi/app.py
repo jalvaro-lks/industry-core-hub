@@ -75,10 +75,6 @@ tags_metadata = [
     {
         "name": "Part Discovery Management",
         "description": "Management of the discovery of parts, searching for digital twins and digital twins registries"
-    },
-    {
-        "name": "Authentication",
-        "description": "Handles authentication and token exchange with Keycloak Identity Provider"
     }
 ]
 
