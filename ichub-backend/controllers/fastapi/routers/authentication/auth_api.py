@@ -53,10 +53,7 @@ def get_authentication_dependency():
         bearer_token: HTTPAuthorizationCredentials = Depends(bearer_security)
     ) -> bool:
 
-        if api_key:
-            return auth_manager.is_authenticated(request=request)
-        
-        if bearer_token:
+        if api_key or bearer_token:
             return auth_manager.is_authenticated(request=request)
         
         if auth_manager.auth_enabled:
