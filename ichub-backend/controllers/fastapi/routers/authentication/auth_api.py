@@ -28,19 +28,20 @@ from fastapi import HTTPException, Request, status, Depends
 
 auth_manager: AuthManager | OAuth2Manager = None
 
-if not ConfigManager.get_config("authorization.keycloak.enabled"):
-    auth_manager = AuthManager(
-        api_key_header=ConfigManager.get_config("authorization.api_key.key"),
-        configured_api_key=ConfigManager.get_config("authorization.api_key.value"),
-        auth_enabled=ConfigManager.get_config("authorization.enabled")
-    )
-else:
-    auth_manager = OAuth2Manager(
-        auth_url=ConfigManager.get_config("authorization.keycloak.auth_url"),
-        realm=ConfigManager.get_config("authorization.keycloak.realm"),
-        clientid=ConfigManager.get_config("authorization.keycloak.client_id"),
-        clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
-    )
+if ConfigManager.get_config("authorization.enabled"):
+    if not ConfigManager.get_config("authorization.keycloak.enabled"):
+        auth_manager = AuthManager(
+            api_key_header=ConfigManager.get_config("authorization.api_key.key"),
+            configured_api_key=ConfigManager.get_config("authorization.api_key.value"),
+            auth_enabled=ConfigManager.get_config("authorization.enabled")
+        )
+    else:
+        auth_manager = OAuth2Manager(
+            auth_url=ConfigManager.get_config("authorization.keycloak.auth_url"),
+            realm=ConfigManager.get_config("authorization.keycloak.realm"),
+            clientid=ConfigManager.get_config("authorization.keycloak.client_id"),
+            clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
+        )
 
 api_key_header = APIKeyHeader(name=ConfigManager.get_config("authorization.api_key.key"), auto_error=False)
 bearer_security = HTTPBearer(auto_error=False)
@@ -53,14 +54,14 @@ def get_authentication_dependency():
         bearer_token: HTTPAuthorizationCredentials = Depends(bearer_security)
     ) -> bool:
 
+        if auth_manager is None:
+            return True
+
         if api_key or bearer_token:
             return auth_manager.is_authenticated(request=request)
         
-        if auth_manager.auth_enabled:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required: provide either X-Api-Key header or Bearer token"
-            )
-        
-        return True
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required: provide either X-Api-Key header or Bearer token"
+        )
     return authenticate
