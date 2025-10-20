@@ -33,3 +33,6 @@ postgresql:
       limits:
         memory: "256Mi"
         cpu: "200m"
+
+keycloak:
+  enabled: true
