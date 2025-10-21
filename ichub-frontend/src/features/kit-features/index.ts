@@ -20,8 +20,5 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-@forward 'ProductDetail';
-@forward 'ProductList';
-@forward 'PartnersList';
-@forward 'PartsDiscovery';
-@forward 'KitFeatures';
+export * from './routes';
+export * from './types';
