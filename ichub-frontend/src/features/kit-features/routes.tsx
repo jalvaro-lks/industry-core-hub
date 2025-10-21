@@ -20,8 +20,23 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-@forward 'ProductDetail';
-@forward 'ProductList';
-@forward 'PartnersList';
-@forward 'PartsDiscovery';
-@forward 'KitFeatures';
+import { Apps } from '@mui/icons-material';
+import KitFeaturesPage from './pages/KitFeaturesPage';
+import { FeatureConfig } from '../../types/routing';
+
+export const kitFeaturesFeature: FeatureConfig = {
+  name: 'KIT Features',
+  icon: <Apps />,
+  navigationPath: '/kit-features',
+  disabled: false,
+  routes: [
+    {
+      path: '/kit-features',
+      element: <KitFeaturesPage />,
+      meta: {
+        title: 'KIT Features',
+        description: 'Manage and configure Tractus-X KITs'
+      }
+    }
+  ]
+};
