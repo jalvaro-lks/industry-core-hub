@@ -59,7 +59,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 USER root
 
 # Update libxml2
-RUN apk update && apk add --no-cache libxml2=2.13.9-r0 || apk add --no-cache 'libxml2>=2.13.9'
+RUN apk update && apk add --no-cache libxml2=2.13.9-r0
 
 # Rename index.html to index.html.reference, to be used by env variables inject script
 # Create symlink for tmp for index.html to enable readOnlyRootFilesystem
