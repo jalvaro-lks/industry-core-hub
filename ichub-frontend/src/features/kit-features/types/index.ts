@@ -20,14 +20,24 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-export interface KitFeature {
+export interface KitFeatureItem {
   id: string;
   name: string;
   description: string;
   enabled: boolean;
+}
+
+export interface KitFeature {
+  id: string;
+  name: string;
+  description: string;
+  status: 'available' | 'coming-soon' | 'beta';
   icon: React.ReactElement;
-  features: string[];
+  image?: string;
+  features: KitFeatureItem[];
   category: 'core' | 'sustainability' | 'quality' | 'traceability' | 'collaboration';
+  version?: string;
+  lastUpdated?: string;
 }
 
 export interface KitFeaturesState {

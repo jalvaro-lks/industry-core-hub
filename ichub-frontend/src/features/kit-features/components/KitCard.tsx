@@ -24,30 +24,31 @@ import React from 'react';
 import {
   Card,
   CardContent,
-  CardActions,
   Typography,
   Button,
   Box,
-  Chip
+  Stack,
+  Switch,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { Visibility, ExpandMore, ExpandLess } from '@mui/icons-material';
-import { KitFeature } from '../types';
+import { 
+  Schedule,
+  CheckCircle,
+  Settings,
+  InfoOutlined
+} from '@mui/icons-material';
+import { KitFeature, KitFeatureItem } from '../types';
 
 interface KitCardProps {
   kit: KitFeature;
-  onToggle: (kitId: string, enabled: boolean) => void;
-  onViewFeatures: (kitId: string) => void;
-  isExpanded: boolean;
+  onFeatureToggle: (kitId: string, featureId: string, enabled: boolean) => void;
 }
 
-const KitCard: React.FC<KitCardProps> = ({ kit, onToggle, onViewFeatures, isExpanded }) => {
-  const handleCardClick = () => {
-    onToggle(kit.id, !kit.enabled);
-  };
+const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle }) => {
 
-  const handleViewFeaturesClick = (event: React.MouseEvent) => {
-    event.stopPropagation(); // Evitar que se active el toggle
-    onViewFeatures(kit.id);
+  const handleFeatureToggle = (featureId: string, enabled: boolean) => {
+    onFeatureToggle(kit.id, featureId, enabled);
   };
 
   const getCategoryColor = (category: string) => {
@@ -61,144 +62,251 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onToggle, onViewFeatures, isExpa
     return colors[category] || 'primary';
   };
 
-  const getCategoryHexColor = (category: string, enabled: boolean) => {
-    if (!enabled) return '#9e9e9e'; // Gris cuando está deshabilitado
-    
-    // Colores basados en la identidad visual de Tractus-X
+  const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
-      core: '#0f71cb', // Azul Tractus-X principal
-      sustainability: '#00aa44', // Verde sostenibilidad
-      quality: '#ff6600', // Naranja calidad
-      traceability: '#8b5a3c', // Marrón trazabilidad
-      collaboration: '#e63946' // Rojo colaboración
+      available: '#00aa44',
+      'coming-soon': '#ff6600', 
+      beta: '#1976d2'
     };
-    return colors[category] || '#0f71cb';
+    return colors[status] || '#0f71cb';
   };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'available':
+        return <CheckCircle sx={{ fontSize: '1rem' }} />;
+      case 'coming-soon':
+        return <Schedule sx={{ fontSize: '1rem' }} />;
+      case 'beta':
+        return <Settings sx={{ fontSize: '1rem' }} />;
+      default:
+        return <CheckCircle sx={{ fontSize: '1rem' }} />;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'Available';
+      case 'coming-soon':
+        return 'Coming Soon';
+      case 'beta':
+        return 'Beta';
+      default:
+        return 'Available';
+    }
+  };
+
+  const isKitAvailable = kit.status === 'available' || kit.status === 'beta';
+  const enabledFeaturesCount = kit.features.filter(f => f.enabled).length;
 
   return (
     <Card 
       className="kit-card"
-      onClick={handleCardClick}
       sx={{ 
         height: '100%', 
         display: 'flex', 
-        flexDirection: 'row',
+        flexDirection: 'column',
         transition: 'all 0.3s ease',
-        cursor: 'pointer',
         '&:hover': {
           transform: 'translateY(-4px)',
-          boxShadow: 3
+          boxShadow: 6
         },
-        opacity: kit.enabled ? 1 : 0.7,
+        opacity: kit.status === 'coming-soon' ? 0.8 : 1,
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        border: '1px solid #e0e0e0',
+        borderRadius: 3,
+        backgroundColor: '#ffffff'
       }}
     >
-      {/* Barra lateral con ícono */}
-      <Box
-        className="kit-sidebar"
-        sx={{
-          width: '60px',
-          background: getCategoryHexColor(kit.category, kit.enabled),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          transition: 'background-color 0.3s ease',
-          position: 'relative'
-        }}
-      >
-        <Box className="kit-icon" sx={{ color: 'white', fontSize: '1.8rem' }}>
-          {kit.icon}
-        </Box>
-      </Box>
-
       {/* Contenido principal */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <CardContent sx={{ flexGrow: 1, pb: 1, position: 'relative' }}>
-          {/* Tag de estado arriba a la derecha */}
-          <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
-            <Chip
-              label={kit.enabled ? 'Enabled' : 'Disabled'}
-              variant="outlined"
+      <CardContent sx={{ 
+        flexGrow: 1, 
+        pb: 2, 
+        pt: 2, 
+        px: 2,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: '400px'
+      }}>
+        <Box>
+          {/* Header con título y estado */}
+          <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" component="h3" sx={{ 
+              fontSize: '1.1rem', 
+              fontWeight: 600,
+              color: 'text.primary',
+              flex: 1
+            }}>
+              {kit.name}
+            </Typography>
+            
+            {/* Status indicator - circular light */}
+            <Box
               sx={{
-                backgroundColor: 'transparent',
-                color: kit.enabled ? '#4caf50' : '#9e9e9e',
-                borderColor: kit.enabled ? '#4caf50' : '#9e9e9e',
-                borderWidth: '2px',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                height: '32px',
-                '& .MuiChip-label': {
-                  px: 2,
-                  py: 0.5
-                }
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                backgroundColor: getStatusColor(kit.status),
+                boxShadow: `0 0 6px ${getStatusColor(kit.status)}40`,
+                ml: 2
               }}
             />
           </Box>
 
-          <Box mb={2} sx={{ pr: 10 }}>
-            <Typography variant="h6" component="h3" gutterBottom>
-              {kit.name}
-            </Typography>
-            <Chip 
-              label={kit.category.toUpperCase()} 
-              size="small" 
-              color={getCategoryColor(kit.category)}
-              variant="outlined"
-            />
+          {/* Kit Image/Icon centered */}
+          <Box display="flex" justifyContent="center" mb={2}>
+            {kit.image ? (
+              <Box
+                component="img"
+                src={kit.image}
+                alt={kit.name}
+                sx={{ 
+                  width: 120,
+                  height: 120,
+                  objectFit: 'contain'
+                }}
+              />
+            ) : (
+              <Box sx={{ 
+                fontSize: '6rem', 
+                color: getStatusColor(kit.status),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {kit.icon}
+              </Box>
+            )}
           </Box>
           
-          <Typography variant="body2" color="text.secondary" paragraph>
-            {kit.description}
-          </Typography>
-
-          {/* Features expandibles */}
-          {isExpanded && (
-            <Box mt={2} sx={{ borderTop: 1, borderColor: 'divider', pt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom color="primary">
-                Features ({kit.features.length}):
-              </Typography>
-              <Box>
-                {kit.features.map((feature, index) => (
-                  <Chip 
-                    key={index}
-                    label={feature}
-                    size="small"
-                    variant="outlined"
-                    sx={{ mr: 0.5, mb: 0.5 }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
-        </CardContent>
-        
-        <CardActions sx={{ p: 0 }}>
-          <Button
-            variant="outlined"
-            fullWidth
-            startIcon={isExpanded ? <ExpandLess /> : <ExpandMore />}
-            onClick={handleViewFeaturesClick}
+          {/* Description */}
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
             sx={{ 
-              borderRadius: 0,
-              borderTop: 1,
-              borderLeft: 0,
-              borderRight: 0,
-              borderBottom: 0,
-              borderColor: 'divider',
-              py: 1.5,
-              color: kit.enabled ? 'primary.main' : '#9e9e9e',
-              '&:hover': {
-                borderColor: kit.enabled ? 'primary.main' : '#bdbdbd',
-                backgroundColor: kit.enabled ? 'rgba(25, 118, 210, 0.04)' : 'rgba(158, 158, 158, 0.04)'
-              }
+              fontSize: '0.85rem',
+              lineHeight: 1.4,
+              textAlign: 'center',
+              mb: 2
             }}
           >
-            {isExpanded ? 'Hide' : 'View'} Features ({kit.features.length})
-          </Button>
-        </CardActions>
-      </Box>
+            {kit.description}
+          </Typography>
+        </Box>
+
+        {/* Features list with toggle controls */}
+        {isKitAvailable ? (
+          <Box>
+            <Typography variant="overline" sx={{ 
+              mb: 1.5, 
+              display: 'block',
+              textAlign: 'center',
+              color: 'text.secondary',
+              fontWeight: 500,
+              fontSize: '0.75rem'
+            }}>
+              Features
+            </Typography>
+            <Stack spacing={1}>
+              {kit.features.map((feature) => (
+                <Box
+                  key={feature.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    py: 0.5,
+                    px: 1,
+                    borderRadius: 1,
+                    backgroundColor: feature.enabled ? `${getStatusColor(kit.status)}05` : 'transparent',
+                    border: `1px solid ${feature.enabled ? getStatusColor(kit.status) + '20' : 'transparent'}`,
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      backgroundColor: feature.enabled ? `${getStatusColor(kit.status)}08` : '#f5f5f5'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: '0.8rem',
+                        fontWeight: feature.enabled ? 500 : 400,
+                        color: feature.enabled ? 'text.primary' : 'text.secondary',
+                        mr: 0.5
+                      }}
+                    >
+                      {feature.name}
+                    </Typography>
+                    <Tooltip 
+                      title={feature.description} 
+                      placement="top"
+                      arrow
+                    >
+                      <IconButton 
+                        size="small" 
+                        sx={{ 
+                          p: 0.25, 
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: 'primary.main'
+                          }
+                        }}
+                      >
+                        <InfoOutlined sx={{ fontSize: '0.9rem' }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                  <Switch
+                    checked={feature.enabled}
+                    onChange={(e) => handleFeatureToggle(feature.id, e.target.checked)}
+                    size="small"
+                    sx={{
+                      '& .MuiSwitch-track': {
+                        backgroundColor: feature.enabled ? '#1565c0' : undefined
+                      },
+                      '& .MuiSwitch-thumb': {
+                        color: feature.enabled ? '#42a5f5' : undefined
+                      },
+                      '&.Mui-checked': {
+                        '& .MuiSwitch-thumb': {
+                          color: '#42a5f5'
+                        },
+                        '& + .MuiSwitch-track': {
+                          backgroundColor: '#1565c0'
+                        }
+                      }
+                    }}
+                  />
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+        ) : (
+          /* Coming soon message - more centered */
+          <Box 
+            sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '120px',
+              py: 2
+            }}
+          >
+            <Schedule sx={{ fontSize: 32, color: '#ff9800', mb: 1 }} />
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.85rem', mb: 0.5 }}>
+              Coming Soon
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+              This KIT will be available soon
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
     </Card>
   );
 };

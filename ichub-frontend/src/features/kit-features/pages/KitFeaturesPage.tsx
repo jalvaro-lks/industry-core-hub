@@ -58,7 +58,7 @@ const KitFeaturesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [expandedKits, setExpandedKits] = useState<Set<string>>(new Set());
+
 
   // Mock data for KITs - en producción esto vendría de una API
   const mockKits: KitFeature[] = [
@@ -66,108 +66,154 @@ const KitFeaturesPage: React.FC = () => {
       id: 'industry-core',
       name: 'Industry Core KIT',
       description: 'Core functionality for industrial data management, partner discovery, and catalog management.',
-      enabled: true,
+      status: 'available',
       icon: <Hub />,
-      features: ['Catalog Management', 'Serialized Parts', 'Dataspace Discovery', 'Participants'],
-      category: 'core'
+      image: '/src/assets/kit-images/industry-core-kit.svg',
+      features: [
+        { id: 'catalog-management', name: 'Catalog Management', description: 'Manage service catalogs and registrations', enabled: true },
+        { id: 'serialized-parts', name: 'Serialized Parts', description: 'Track and manage serialized components', enabled: true },
+        { id: 'dataspace-discovery', name: 'Dataspace Discovery', description: 'Discover and connect to data spaces', enabled: true },
+        { id: 'participants', name: 'Participants Management', description: 'Manage ecosystem participants', enabled: true }
+      ],
+      category: 'core',
+      version: '1.0.0',
+      lastUpdated: '2024-10-15'
+    },
+    {
+      id: 'pcf',
+      name: 'PCF KIT',
+      description: 'Product Carbon Footprint calculation and lifecycle assessment tools.',
+      status: 'available',
+      icon: <Science />,
+      image: '/src/assets/kit-images/pcf-kit.svg',
+      features: [
+        { id: 'carbon-calculation', name: 'Carbon Calculation', description: 'Calculate product carbon footprints', enabled: false },
+        { id: 'lifecycle-assessment', name: 'Lifecycle Assessment', description: 'Perform comprehensive LCA analysis', enabled: false },
+        { id: 'emission-tracking', name: 'Emission Tracking', description: 'Track and monitor emissions', enabled: false },
+        { id: 'reports', name: 'Sustainability Reports', description: 'Generate detailed sustainability reports', enabled: false }
+      ],
+      category: 'sustainability',
+      version: '0.9.0',
+      lastUpdated: '2024-10-10'
     },
     {
       id: 'eco-pass',
       name: 'Eco Pass KIT',
       description: 'Environmental sustainability tracking and carbon footprint management for supply chains.',
-      enabled: false,
+      status: 'coming-soon',
       icon: <Recycling />,
-      features: ['Carbon Footprint', 'Environmental Impact', 'Sustainability Reports', 'Green Metrics'],
+      image: '/src/assets/kit-images/eco-pass-kit.svg',
+      features: [
+        { id: 'carbon-footprint', name: 'Carbon Footprint', description: 'Environmental impact tracking', enabled: false },
+        { id: 'environmental-impact', name: 'Environmental Impact', description: 'Assess environmental impacts', enabled: false },
+        { id: 'sustainability-reports', name: 'Sustainability Reports', description: 'Generate sustainability reports', enabled: false },
+        { id: 'green-metrics', name: 'Green Metrics', description: 'Track green performance metrics', enabled: false }
+      ],
       category: 'sustainability'
     },
     {
       id: 'data-chain',
       name: 'Data Chain KIT',
       description: 'Secure data sharing and interoperability across automotive value chains.',
-      enabled: false,
+      status: 'coming-soon',
       icon: <Link />,
-      features: ['Data Sharing', 'Interoperability', 'Chain Management', 'Data Governance'],
+      image: '/src/assets/kit-images/data-chain-kit.svg',
+      features: [
+        { id: 'data-sharing', name: 'Data Sharing', description: 'Secure data sharing capabilities', enabled: false },
+        { id: 'interoperability', name: 'Interoperability', description: 'Cross-platform interoperability', enabled: false },
+        { id: 'chain-management', name: 'Chain Management', description: 'Manage data chains', enabled: false },
+        { id: 'data-governance', name: 'Data Governance', description: 'Data governance and policies', enabled: false }
+      ],
       category: 'collaboration'
-    },
-    {
-      id: 'certificate',
-      name: 'Certificate KIT',
-      description: 'Digital certificates and compliance management for automotive components.',
-      enabled: false,
-      icon: <VerifiedUser />,
-      features: ['Digital Certificates', 'Compliance Check', 'Verification', 'Audit Trail'],
-      category: 'quality'
-    },
-    {
-      id: 'pcf',
-      name: 'PCF KIT',
-      description: 'Product Carbon Footprint calculation and lifecycle assessment tools.',
-      enabled: false,
-      icon: <Science />,
-      features: ['Carbon Calculation', 'Lifecycle Assessment', 'Emission Tracking', 'Reports'],
-      category: 'sustainability'
-    },
-    {
-      id: 'dcm',
-      name: 'DCM KIT',
-      description: 'Demand and Capacity Management for optimizing supply chain operations.',
-      enabled: false,
-      icon: <DeviceHub />,
-      features: ['Demand Planning', 'Capacity Planning', 'Resource Optimization', 'Analytics'],
-      category: 'core'
     },
     {
       id: 'traceability',
       name: 'Traceability KIT',
       description: 'End-to-end traceability of parts and components throughout the supply chain.',
-      enabled: false,
+      status: 'coming-soon',
       icon: <Timeline />,
-      features: ['Part Tracking', 'Supply Chain Visibility', 'Origin Verification', 'Recall Management'],
+      image: '/src/assets/kit-images/traceability-kit.svg',
+      features: [
+        { id: 'part-tracking', name: 'Part Tracking', description: 'Track parts through supply chain', enabled: false },
+        { id: 'supply-chain-visibility', name: 'Supply Chain Visibility', description: 'Full supply chain visibility', enabled: false },
+        { id: 'origin-verification', name: 'Origin Verification', description: 'Verify part origins', enabled: false },
+        { id: 'recall-management', name: 'Recall Management', description: 'Manage product recalls', enabled: false }
+      ],
       category: 'traceability'
     },
     {
-      id: 'material-pass',
-      name: 'Material Pass KIT',
-      description: 'Digital material passports for transparency and compliance in material sourcing.',
-      enabled: false,
-      icon: <QrCode />,
-      features: ['Material Passport', 'Sourcing Transparency', 'Composition Analysis', 'Compliance'],
-      category: 'quality'
+      id: 'business-partner',
+      name: 'Business Partner KIT',
+      description: 'Comprehensive business partner data management and validation.',
+      status: 'coming-soon',
+      icon: <Build />,
+      image: '/src/assets/kit-images/business-partner-kit.svg',
+      features: [
+        { id: 'partner-data', name: 'Partner Data', description: 'Manage partner information', enabled: false },
+        { id: 'validation', name: 'Validation', description: 'Validate partner data', enabled: false },
+        { id: 'master-data', name: 'Master Data', description: 'Master data management', enabled: false },
+        { id: 'golden-record', name: 'Golden Record', description: 'Create golden records', enabled: false }
+      ],
+      category: 'core'
+    },
+    {
+      id: 'dcm',
+      name: 'DCM KIT',
+      description: 'Demand and Capacity Management for optimizing supply chain operations.',
+      status: 'coming-soon',
+      icon: <DeviceHub />,
+      image: '/src/assets/kit-images/dcm-kit.svg',
+      features: [
+        { id: 'demand-planning', name: 'Demand Planning', description: 'Plan and forecast demand', enabled: false },
+        { id: 'capacity-planning', name: 'Capacity Planning', description: 'Optimize capacity planning', enabled: false },
+        { id: 'resource-optimization', name: 'Resource Optimization', description: 'Optimize resource allocation', enabled: false },
+        { id: 'analytics', name: 'Analytics', description: 'Advanced analytics and insights', enabled: false }
+      ],
+      category: 'core'
     },
     {
       id: 'behaviour-twin',
       name: 'Behaviour Twin KIT',
       description: 'Digital twins for predictive behavior modeling and simulation.',
-      enabled: false,
+      status: 'coming-soon',
       icon: <AccountTree />,
-      features: ['Digital Twin', 'Behavior Modeling', 'Predictive Analytics', 'Simulation'],
+      image: '/src/assets/kit-images/behaviour-twin-kit.svg',
+      features: [
+        { id: 'digital-twin', name: 'Digital Twin', description: 'Create and manage digital twins', enabled: false },
+        { id: 'behavior-modeling', name: 'Behavior Modeling', description: 'Model system behaviors', enabled: false },
+        { id: 'predictive-analytics', name: 'Predictive Analytics', description: 'Predictive behavior analysis', enabled: false },
+        { id: 'simulation', name: 'Simulation', description: 'Run behavior simulations', enabled: false }
+      ],
       category: 'core'
     },
     {
       id: 'connector',
       name: 'Connector KIT',
       description: 'Eclipse Dataspace Connector for secure and sovereign data exchange.',
-      enabled: false,
+      status: 'coming-soon',
       icon: <Cloud />,
-      features: ['Data Connector', 'Sovereign Exchange', 'Policy Management', 'Identity Hub'],
+      image: '/src/assets/kit-images/connector-kit.svg',
+      features: [
+        { id: 'data-connector', name: 'Data Connector', description: 'Connect to data sources', enabled: false },
+        { id: 'sovereign-exchange', name: 'Sovereign Exchange', description: 'Sovereign data exchange', enabled: false },
+        { id: 'policy-management', name: 'Policy Management', description: 'Manage data policies', enabled: false },
+        { id: 'identity-hub', name: 'Identity Hub', description: 'Identity and access management', enabled: false }
+      ],
       category: 'collaboration'
-    },
-    {
-      id: 'business-partner',
-      name: 'Business Partner KIT',
-      description: 'Comprehensive business partner data management and validation.',
-      enabled: false,
-      icon: <Build />,
-      features: ['Partner Data', 'Validation', 'Master Data', 'Golden Record'],
-      category: 'core'
     },
     {
       id: 'manufacturing',
       name: 'Manufacturing KIT',
       description: 'Manufacturing process optimization and production data management.',
-      enabled: false,
+      status: 'coming-soon',
       icon: <Engineering />,
-      features: ['Process Optimization', 'Production Data', 'Quality Control', 'Efficiency'],
+      image: '/src/assets/kit-images/manufacturing-kit.svg',
+      features: [
+        { id: 'process-optimization', name: 'Process Optimization', description: 'Optimize manufacturing processes', enabled: false },
+        { id: 'production-data', name: 'Production Data', description: 'Manage production data', enabled: false },
+        { id: 'quality-control', name: 'Quality Control', description: 'Quality control systems', enabled: false },
+        { id: 'efficiency', name: 'Efficiency Metrics', description: 'Track efficiency metrics', enabled: false }
+      ],
       category: 'core'
     }
   ];
@@ -177,33 +223,31 @@ const KitFeaturesPage: React.FC = () => {
     setKits(mockKits);
   }, []);
 
-  const handleKitToggle = (kitId: string, enabled: boolean) => {
+  const handleFeatureToggle = (kitId: string, featureId: string, enabled: boolean) => {
     setKits(prevKits => 
       prevKits.map(kit => 
-        kit.id === kitId ? { ...kit, enabled } : kit
+        kit.id === kitId 
+          ? {
+              ...kit,
+              features: kit.features.map(feature =>
+                feature.id === featureId ? { ...feature, enabled } : feature
+              )
+            }
+          : kit
       )
     );
     
     const kit = kits.find(k => k.id === kitId);
+    const feature = kit?.features.find(f => f.id === featureId);
     setSnackbarMessage(
-      `${kit?.name} has been ${enabled ? 'enabled' : 'disabled'}`
+      `${feature?.name} in ${kit?.name} has been ${enabled ? 'enabled' : 'disabled'}`
     );
     setSnackbarOpen(true);
   };
 
 
 
-  const handleViewFeatures = (kitId: string) => {
-    setExpandedKits(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(kitId)) {
-        newSet.delete(kitId);
-      } else {
-        newSet.add(kitId);
-      }
-      return newSet;
-    });
-  };
+
 
   const categories = [
     { value: 'all', label: 'All KITs' },
@@ -239,7 +283,7 @@ const KitFeaturesPage: React.FC = () => {
           KIT Features
         </Typography>
         <Typography variant="body1" className="kit-features-subtitle" paragraph sx={{ mb: 2 }}>
-          Manage and configure Tractus-X KITs. Enable or disable specific KITs to customize your application features.
+          Manage and configure Tractus-X KITs. Enable or disable specific features within each KIT to customize your application capabilities.
         </Typography>
       </Box>
 
@@ -261,14 +305,12 @@ const KitFeaturesPage: React.FC = () => {
         </Tabs>
       </Paper>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         {filteredKits.map((kit) => (
-          <Grid item xs={12} sm={6} md={4} key={kit.id}>
+          <Grid item xs={12} sm={6} md={4} lg={3} key={kit.id}>
             <KitCard
               kit={kit}
-              onToggle={handleKitToggle}
-              onViewFeatures={handleViewFeatures}
-              isExpanded={expandedKits.has(kit.id)}
+              onFeatureToggle={handleFeatureToggle}
             />
           </Grid>
         ))}
