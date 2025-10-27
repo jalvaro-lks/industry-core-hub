@@ -25,7 +25,10 @@
   padding: 1.5rem;
   max-width: 100%;
   background: #ffffff;
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .kit-features-subtitle {
@@ -182,7 +185,7 @@
 .kit-category-tabs {
   margin-bottom: 2rem;
   margin-top: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   

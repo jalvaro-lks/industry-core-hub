@@ -130,16 +130,18 @@ const KitFeaturesPage: React.FC = () => {
       id: 'traceability',
       name: 'Traceability KIT',
       description: 'End-to-end traceability of parts and components throughout the supply chain.',
-      status: 'coming-soon',
+      status: 'available',
       icon: <Timeline />,
       image: '/src/assets/kit-images/traceability-kit.svg',
       features: [
-        { id: 'part-tracking', name: 'Part Tracking', description: 'Track parts through supply chain', enabled: false },
-        { id: 'supply-chain-visibility', name: 'Supply Chain Visibility', description: 'Full supply chain visibility', enabled: false },
-        { id: 'origin-verification', name: 'Origin Verification', description: 'Verify part origins', enabled: false },
-        { id: 'recall-management', name: 'Recall Management', description: 'Manage product recalls', enabled: false }
+        { id: 'part-tracking', name: 'Part Tracking', description: 'Track parts through supply chain', enabled: true },
+        { id: 'supply-chain-visibility', name: 'Supply Chain Visibility', description: 'Full supply chain visibility', enabled: true },
+        { id: 'origin-verification', name: 'Origin Verification', description: 'Verify part origins', enabled: true },
+        { id: 'recall-management', name: 'Recall Management', description: 'Manage product recalls', enabled: true }
       ],
-      category: 'traceability'
+      category: 'traceability',
+      version: '1.0.0',
+      lastUpdated: '2024-10-24'
     },
     {
       id: 'business-partner',
@@ -263,8 +265,8 @@ const KitFeaturesPage: React.FC = () => {
     : kits.filter(kit => kit.category === selectedCategory);
 
   return (
-    <Box className="kit-features-container" sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", pt: 2, px: 3 }}>
-      <Box mb={2} textAlign="center">
+    <Box className="kit-features-container" sx={{ height: '100%', overflow: 'auto' }}>
+      <Box mb={2} textAlign="center" sx={{ pt: 2, pb: 1, px: 3 }}>
         <Typography 
           variant="h2" 
           sx={{ 
@@ -287,37 +289,41 @@ const KitFeaturesPage: React.FC = () => {
         </Typography>
       </Box>
 
-      <Paper className="kit-category-tabs" sx={{ mb: 3 }}>
-        <Tabs
-          value={selectedCategory}
-          onChange={(_, newValue) => setSelectedCategory(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ borderBottom: 1, borderColor: 'divider' }}
-        >
-          {categories.map((category) => (
-            <Tab
-              key={category.value}
-              label={category.label}
-              value={category.value}
-            />
-          ))}
-        </Tabs>
-      </Paper>
+      <Box sx={{ px: 3, mb: 3 }}>
+        <Paper className="kit-category-tabs">
+          <Tabs
+            value={selectedCategory}
+            onChange={(_, newValue) => setSelectedCategory(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ borderBottom: 1, borderColor: 'divider' }}
+          >
+            {categories.map((category) => (
+              <Tab
+                key={category.value}
+                label={category.label}
+                value={category.value}
+              />
+            ))}
+          </Tabs>
+        </Paper>
+      </Box>
 
-      <Grid container spacing={2}>
-        {filteredKits.map((kit) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={kit.id}>
-            <KitCard
-              kit={kit}
-              onFeatureToggle={handleFeatureToggle}
-            />
-          </Grid>
-        ))}
-      </Grid>
+      <Box sx={{ px: 3, pb: 3 }}>
+        <Grid container spacing={2}>
+          {filteredKits.map((kit) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={kit.id}>
+              <KitCard
+                kit={kit}
+                onFeatureToggle={handleFeatureToggle}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
 
       {filteredKits.length === 0 && (
-        <Box textAlign="center" py={8}>
+        <Box textAlign="center" py={8} sx={{ px: 3 }}>
           <Typography variant="h6" color="text.secondary">
             No KITs found in this category
           </Typography>
