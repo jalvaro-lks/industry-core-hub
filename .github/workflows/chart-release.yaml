@@ -56,6 +56,7 @@ jobs:
         run: |
           cd charts/industry-core-hub
           helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add bitnami-full-index https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
           helm repo add runix https://helm.runix.net
           helm dependency update
 
