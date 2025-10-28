@@ -260,9 +260,20 @@ const KitFeaturesPage: React.FC = () => {
     { value: 'collaboration', label: 'Collaboration' }
   ];
 
-  const filteredKits = selectedCategory === 'all' 
+  const filteredKits = (selectedCategory === 'all' 
     ? kits 
-    : kits.filter(kit => kit.category === selectedCategory);
+    : kits.filter(kit => kit.category === selectedCategory))
+    .sort((a, b) => {
+      // First sort by status: available first, then coming-soon
+      if (a.status !== b.status) {
+        if (a.status === 'available') return -1;
+        if (b.status === 'available') return 1;
+        if (a.status === 'beta' && b.status === 'coming-soon') return -1;
+        if (b.status === 'beta' && a.status === 'coming-soon') return 1;
+      }
+      // Then sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <Box className="kit-features-container" sx={{ height: '100%', overflow: 'auto' }}>
