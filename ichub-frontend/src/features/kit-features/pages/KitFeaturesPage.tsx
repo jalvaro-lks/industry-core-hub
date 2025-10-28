@@ -173,51 +173,6 @@ const KitFeaturesPage: React.FC = () => {
         { id: 'analytics', name: 'Analytics', description: 'Advanced analytics and insights', enabled: false }
       ],
       category: 'core'
-    },
-    {
-      id: 'behaviour-twin',
-      name: 'Behaviour Twin KIT',
-      description: 'Digital twins for predictive behavior modeling and simulation.',
-      status: 'coming-soon',
-      icon: <AccountTree />,
-      image: '/src/assets/kit-images/behaviour-twin-kit.svg',
-      features: [
-        { id: 'digital-twin', name: 'Digital Twin', description: 'Create and manage digital twins', enabled: false },
-        { id: 'behavior-modeling', name: 'Behavior Modeling', description: 'Model system behaviors', enabled: false },
-        { id: 'predictive-analytics', name: 'Predictive Analytics', description: 'Predictive behavior analysis', enabled: false },
-        { id: 'simulation', name: 'Simulation', description: 'Run behavior simulations', enabled: false }
-      ],
-      category: 'core'
-    },
-    {
-      id: 'connector',
-      name: 'Connector KIT',
-      description: 'Eclipse Dataspace Connector for secure and sovereign data exchange.',
-      status: 'coming-soon',
-      icon: <Cloud />,
-      image: '/src/assets/kit-images/connector-kit.svg',
-      features: [
-        { id: 'data-connector', name: 'Data Connector', description: 'Connect to data sources', enabled: false },
-        { id: 'sovereign-exchange', name: 'Sovereign Exchange', description: 'Sovereign data exchange', enabled: false },
-        { id: 'policy-management', name: 'Policy Management', description: 'Manage data policies', enabled: false },
-        { id: 'identity-hub', name: 'Identity Hub', description: 'Identity and access management', enabled: false }
-      ],
-      category: 'collaboration'
-    },
-    {
-      id: 'manufacturing',
-      name: 'Manufacturing KIT',
-      description: 'Manufacturing process optimization and production data management.',
-      status: 'coming-soon',
-      icon: <Engineering />,
-      image: '/src/assets/kit-images/manufacturing-kit.svg',
-      features: [
-        { id: 'process-optimization', name: 'Process Optimization', description: 'Optimize manufacturing processes', enabled: false },
-        { id: 'production-data', name: 'Production Data', description: 'Manage production data', enabled: false },
-        { id: 'quality-control', name: 'Quality Control', description: 'Quality control systems', enabled: false },
-        { id: 'efficiency', name: 'Efficiency Metrics', description: 'Track efficiency metrics', enabled: false }
-      ],
-      category: 'core'
     }
   ];
 
