@@ -397,6 +397,13 @@ frontend:
     apiRetryAttempts: 3
     requireHttpsUrlPattern: false
 
+    # Keycloak configuration
+    keycloak:
+      url: "http://keycloak-hostname"
+      realm: "ICHub"
+      clientId: "industry-core-hub-frontend"
+      onLoad: "login-required"  # check-sso, login-required
+
     # API key configuration (optional)
     apiKey: ""
     apiKeyHeader: "X-API-Key"
@@ -446,10 +453,10 @@ frontend:
   enabled: true
   name: "industry-core-hub-frontend"
   image:
-    repository: "tractusx/industry-core-hub-frontend"
+    repository: "lks/frontend"
     pullPolicy: IfNotPresent
     # -- Overrides the image tag whose default is the chart appVersion
-    tag: ""
+    tag: "2"
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
   service:
@@ -527,7 +534,7 @@ frontend:
 
   # -- ingress declaration to expose the industry-core-hub-backend service
   ingress:
-    enabled: false
+    enabled: true
     className: "nginx"
     ## Optional annotations when using the nginx ingress class
     # annotations:
@@ -544,7 +551,7 @@ frontend:
       #   hosts:
       #     - ""
     hosts:
-      - host: ""
+      - host: "industry-core-hub-frontend.tx.test"
         paths:
           - path: /
             pathType: ImplementationSpecific
@@ -747,6 +754,22 @@ keycloak:
   # ref: https://www.keycloak.org/migration/migrating-to-quarkus#_default_context_path_changed
   httpRelativePath: /auth/
   replicaCount: 1
+  # -- Liveness probe configuration
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 240
+    periodSeconds: 2
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
+  # -- Readiness probe configuration
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 20
+    timeoutSeconds: 2
+    failureThreshold: 6
+    successThreshold: 1
   # -- Realm import configuration
   realmImport:
     enabled: true
@@ -791,10 +814,10 @@ keycloak:
 
   ingress:
     # -- Enable ingress record generation
-    enabled: false
+    enabled: true
     ingressClassName: ""
     # -- Provide default path for the ingress record.
-    hostname: ""
+    hostname: "keycloak-hostname"
     # -- Optional annotations when using the nginx ingress class;
     # Enable TLS configuration for the host defined at `ingress.hostname` parameter;
     # TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`;
@@ -810,6 +833,16 @@ keycloak:
       # nginx.ingress.kubernetes.io/proxy-buffers-number: "20"
       # nginx.ingress.kubernetes.io/use-regex: "true"
     tls: false
+  # -- Resource configuration for Keycloak
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+      ephemeral-storage: "256Mi"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
+      ephemeral-storage: "2Gi"
   rbac:
     create: true
     rules:

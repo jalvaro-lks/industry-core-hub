@@ -20,89 +20,8 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+import Keycloak from 'keycloak-js';
 import environmentService, { AuthUser, AuthTokens } from './EnvironmentService';
-
-// Note: Keycloak will need to be installed as a dependency
-// For now, we'll create the interface and implementation structure
-interface KeycloakInitOptions {
-  onLoad?: 'check-sso' | 'login-required';
-  checkLoginIframe?: boolean;
-  silentCheckSsoRedirectUri?: string;
-  pkceMethod?: 'S256' | 'plain';
-  enableLogging?: boolean;
-  minValidity?: number;
-  checkLoginIframeInterval?: number;
-  flow?: 'standard' | 'implicit' | 'hybrid';
-}
-
-interface KeycloakLoginOptions {
-  redirectUri?: string;
-  prompt?: string;
-  maxAge?: number;
-  loginHint?: string;
-  scope?: string;
-  idpHint?: string;
-  action?: string;
-  locale?: string;
-}
-
-interface KeycloakLogoutOptions {
-  redirectUri?: string;
-}
-
-interface KeycloakUserProfile {
-  id?: string;
-  username?: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  [key: string]: unknown;
-}
-
-interface KeycloakTokenParsed {
-  sub?: string;
-  preferred_username?: string;
-  email?: string;
-  given_name?: string;
-  family_name?: string;
-  realm_access?: {
-    roles: string[];
-  };
-  resource_access?: {
-    [clientId: string]: {
-      roles: string[];
-    };
-  };
-  exp?: number;
-  iat?: number;
-  [key: string]: unknown;
-}
-
-interface KeycloakInstance {
-  init(options: KeycloakInitOptions): Promise<boolean>;
-  login(options?: KeycloakLoginOptions): Promise<void>;
-  logout(options?: KeycloakLogoutOptions): Promise<void>;
-  updateToken(minValidity: number): Promise<boolean>;
-  loadUserProfile(): Promise<KeycloakUserProfile>;
-  authenticated?: boolean;
-  token?: string;
-  refreshToken?: string;
-  idToken?: string;
-  tokenParsed?: KeycloakTokenParsed;
-  onTokenExpired?: () => void;
-  onAuthRefreshError?: () => void;
-  onAuthError?: (error: Error) => void;
-}
-
-interface KeycloakConstructor {
-  new (config: { url: string; realm: string; clientId: string }): KeycloakInstance;
-}
-
-declare global {
-  interface Window {
-    Keycloak?: KeycloakConstructor;
-  }
-}
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -113,7 +32,7 @@ export interface AuthState {
 }
 
 class AuthService {
-  private keycloak: KeycloakInstance | null = null;
+  private keycloak: Keycloak | null = null;
   private initialized = false;
   private authState: AuthState = {
     isAuthenticated: false,
@@ -158,22 +77,37 @@ class AuthService {
   }
 
   private async initializeKeycloak(): Promise<void> {
-    // Check if Keycloak is available (would be loaded as a script or npm package)
-    if (!window.Keycloak) {
-      throw new Error('Keycloak library is not available. Please ensure keycloak-js is loaded.');
-    }
-
     const keycloakConfig = environmentService.getKeycloakConfig();
     const initOptions = environmentService.getKeycloakInitOptions();
 
-    this.keycloak = new window.Keycloak({
+    console.log('Initializing Keycloak with config:', {
       url: keycloakConfig.url,
       realm: keycloakConfig.realm,
-      clientId: keycloakConfig.clientId,
+      clientId: keycloakConfig.clientId
+    });
+
+    this.keycloak = new Keycloak({
+      url: keycloakConfig.url,
+      realm: keycloakConfig.realm,
+      clientId: keycloakConfig.clientId
     });
 
     try {
-      const authenticated = await this.keycloak.init(initOptions);
+      console.log('Keycloak init options:', {
+        onLoad: initOptions.onLoad,
+        checkLoginIframe: false,
+        pkceMethod: 'S256',
+        enableLogging: true
+      });
+
+      const authenticated = await this.keycloak.init({
+        onLoad: initOptions.onLoad as 'login-required' | 'check-sso',
+        checkLoginIframe: false, // Simplificamos deshabilitando iframe check
+        pkceMethod: 'S256',
+        enableLogging: true, // Mantenemos logging para debug
+      });
+
+      console.log('Keycloak initialization result:', authenticated);
 
       if (authenticated) {
         await this.handleAuthenticationSuccess();
@@ -284,7 +218,7 @@ class AuthService {
       this.logout();
     };
 
-    this.keycloak.onAuthError = (error) => {
+    this.keycloak.onAuthError = (error: any) => {
       console.error('Auth error:', error);
       this.setAuthState({
         ...this.authState,

@@ -25,28 +25,31 @@ import Grid2 from '@mui/material/Grid2';
 import Header from '../components/general/Header';
 import Sidebar from '../components/general/Sidebar';
 import AdditionalSidebar from '../components/general/AdditionalSidebar';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 import { SidebarProvider } from '../contexts/SidebarContext';
 import { AdditionalSidebarProvider } from '../contexts/AdditionalSidebarContext';
 import { features } from '../features/main';
 
 function MainLayoutContent() {
   return (
-    <Grid2 container className="contentWrapper" size={12}>
-      <Grid2 size={12} className="headerArea">
-        <Header/>
+    <ProtectedRoute>
+      <Grid2 container className="contentWrapper" size={12}>
+        <Grid2 size={12} className="headerArea">
+          <Header/>
+        </Grid2>
+        <Grid2 container direction="row" size={12}>
+          <Grid2 size={{xl: 0.5, lg: 1, md: 1, sm: 2, xs: 3}} className="sidebarArea">
+            <Sidebar items={features} />
+          </Grid2>
+          <Grid2 size="auto" className="additionalSidebarArea">
+            <AdditionalSidebar />
+          </Grid2>
+          <Grid2 size="auto" className="contentArea" padding={0} sx={{ flex: 1 }}>
+            <Outlet />
+          </Grid2>
+        </Grid2>
       </Grid2>
-      <Grid2 container direction="row" size={12}>
-        <Grid2 size={{xl: 0.5, lg: 1, md: 1, sm: 2, xs: 3}} className="sidebarArea">
-          <Sidebar items={features} />
-        </Grid2>
-        <Grid2 size="auto" className="additionalSidebarArea">
-          <AdditionalSidebar />
-        </Grid2>
-        <Grid2 size="auto" className="contentArea" padding={0} sx={{ flex: 1 }}>
-          <Outlet />
-        </Grid2>
-      </Grid2>
-    </Grid2>
+    </ProtectedRoute>
   );
 }
 

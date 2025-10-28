@@ -35,12 +35,16 @@ import MoreIcon from '@mui/icons-material/MoreVert';
 import { Divider, ListItemIcon, Typography } from '@mui/material';
 import { Logout, Settings } from '@mui/icons-material';
 import { getParticipantId } from '../../services/EnvironmentService';
+import useAuth from '../../hooks/useAuth';
 
 export default function PrimarySearchAppBar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = useState<null | HTMLElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [participantId, setParticipantId] = useState<string>('CX-Operator');
+  
+  // Auth hook
+  const { isAuthenticated, user, logout } = useAuth();
 
   const isMenuOpen = Boolean(anchorEl);
   const isMobileMenuOpen = Boolean(mobileMoreAnchorEl);
@@ -56,6 +60,15 @@ export default function PrimarySearchAppBar() {
   const handleMenuClose = () => {
     setAnchorEl(null);
     handleMobileMenuClose();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+    handleMenuClose();
   };
 
   const handleMobileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -98,9 +111,14 @@ export default function PrimarySearchAppBar() {
         <Typography variant="subtitle1" sx={{ padding: '8px 16px 0px 16px', fontWeight: 'bold' }}>
             Mathias Brunkow Moser
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ padding: '0 16px 8px', fontStyle: 'italic' }}>
-        {participantId}
+        <Typography variant="body2" color="text.secondary" sx={{ padding: '0 16px 4px', fontStyle: 'italic' }}>
+        {isAuthenticated && user ? user.username : participantId}
         </Typography>
+        {isAuthenticated && user?.email && (
+          <Typography variant="caption" color="text.secondary" sx={{ padding: '0 16px 8px' }}>
+            {user.email}
+          </Typography>
+        )}
         <Divider />
 
         {/* Opciones del menú */}
@@ -117,7 +135,7 @@ export default function PrimarySearchAppBar() {
         Settings
         </MenuItem>
         <Divider />
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={handleLogout}>
         <ListItemIcon>
             <Logout fontSize="small" />
         </ListItemIcon>

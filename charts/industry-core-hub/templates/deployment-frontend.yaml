@@ -69,6 +69,16 @@ spec:
             - name: APP_VERSION
               value: "{{ .Values.frontend.config.version }}"
             
+            # Keycloak configuration
+            - name: KEYCLOAK_URL
+              value: "{{ .Values.frontend.config.keycloak.url }}"
+            - name: KEYCLOAK_REALM
+              value: "{{ .Values.frontend.config.keycloak.realm }}"
+            - name: KEYCLOAK_CLIENT_ID
+              value: "{{ .Values.frontend.config.keycloak.clientId }}"
+            - name: KEYCLOAK_ON_LOAD
+              value: "{{ .Values.frontend.config.keycloak.onLoad }}"
+            
             # API configuration
             - name: ICHUB_BACKEND_URL
               value: "{{ .Values.frontend.config.ichubBackendUrl }}"

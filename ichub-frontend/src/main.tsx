@@ -24,13 +24,16 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { theme } from './theme/theme.ts'
 import { ThemeProvider } from '@mui/material/styles';
+import AuthProvider from './components/auth/AuthProvider.tsx'
 
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </ThemeProvider>
   </StrictMode>,
 )
