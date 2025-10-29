@@ -392,7 +392,7 @@ frontend:
     version: "1.0.0"
 
     # API and backend configuration
-    ichubBackendUrl: "https://<backend-hostname>/v1"
+    ichubBackendUrl: "http://industry-core-hub-backend:8000/v1"
     apiTimeout: 30000
     apiRetryAttempts: 3
     requireHttpsUrlPattern: false
@@ -404,15 +404,15 @@ frontend:
     apiKeyExpiryWarningDays: 7
 
     # Authentication configuration
-    authEnabled: false
-    authProvider: "none"  # none, keycloak
+    authEnabled: true
+    authProvider: "keycloak"  # none, keycloak
 
     # Keycloak configuration
     keycloak:
       url: "http://keycloak-hostname/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
-      onLoad: "check-sso"  # check-sso, login-required
+      onLoad: "login-required"  # check-sso, login-required
       checkLoginIframe: true
       silentCheckSsoRedirectUri: ""
       pkceMethod: "S256"
@@ -442,14 +442,14 @@ frontend:
   # Legacy configuration (deprecated - use config section above)
   env:
     # -- industry-core-hub backend base URL
-    backendUrl: "https://<backend-hostname>/v1"
+    backendUrl: "http://industry-core-hub-backend:8000/v1"
   enabled: true
   name: "industry-core-hub-frontend"
   image:
     repository: "lks/frontend"
     pullPolicy: IfNotPresent
     # -- Overrides the image tag whose default is the chart appVersion
-    tag: "layout-fix"
+    tag: "final-fix"
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
   service:
@@ -815,7 +815,8 @@ keycloak:
     # Enable TLS configuration for the host defined at `ingress.hostname` parameter;
     # TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`;
     # Provide the name of ClusterIssuer to acquire the certificate required for this Ingress.
-    annotations: {}
+    annotations:
+      nginx.ingress.kubernetes.io/use-regex: "true"
       # cert-manager.io/cluster-issuer: ""
       # nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
       # nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS"
@@ -824,7 +825,6 @@ keycloak:
       # nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
       # nginx.ingress.kubernetes.io/proxy-buffering: "on"
       # nginx.ingress.kubernetes.io/proxy-buffers-number: "20"
-      # nginx.ingress.kubernetes.io/use-regex: "true"
     tls: false
   # -- Resource configuration for Keycloak
   resources:
@@ -870,9 +870,9 @@ keycloak:
       # # -- Root user password.
       # postgresPassword: "postgres-keycloak-admin-password"
       # -- Database name.
-      database: postgres
-      # -- Secret containing the passwords for root usernames postgres and non-root username kccentral.
-      existingSecret: "ichub-password"
+      database: ichub-postgres
+      # -- Secret containing the passwords for root usernames postgres and non-root username ichub.
+      existingSecret: "ichub-postgres-secret"
     architecture: standalone
   externalDatabase:
     # -- External PostgreSQL configuration

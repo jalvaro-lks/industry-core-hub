@@ -71,19 +71,7 @@ class AuthService {
       
       if (environmentService.isKeycloakEnabled()) {
         console.log('🔑 Keycloak is enabled, starting initialization...');
-        
-        // TEMPORARY: Skip Keycloak and just set a mock authenticated state for testing
-        console.log('⚠️  BYPASSING Keycloak for debugging - setting mock auth state');
-        this.setAuthState({
-          isAuthenticated: false,
-          isLoading: false,
-          user: null,
-          tokens: null,
-          error: null,
-        });
-        
-        // Comment out the real Keycloak initialization for now
-        // await this.initializeKeycloak();
+        await this.initializeKeycloak();
       }
 
       this.initialized = true;
@@ -124,7 +112,7 @@ class AuthService {
 
       // Minimal configuration for keycloak-js 25.x
       const authenticated = await this.keycloak.init({
-        onLoad: 'check-sso',
+        onLoad: 'login-required',
         checkLoginIframe: false
       });
 
