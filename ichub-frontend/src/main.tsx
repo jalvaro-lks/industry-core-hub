@@ -25,15 +25,25 @@ import { createRoot } from 'react-dom/client'
 import { theme } from './theme/theme.ts'
 import { ThemeProvider } from '@mui/material/styles';
 import AuthProvider from './components/auth/AuthProvider.tsx'
+import environmentService from './services/EnvironmentService';
 
 import App from './App.tsx'
+
+// Check if authentication is enabled
+const isAuthEnabled = environmentService.isAuthEnabled();
+
+console.log('🔍 Main.tsx: Authentication enabled =', isAuthEnabled);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
-      <AuthProvider>
+      {isAuthEnabled ? (
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      ) : (
         <App />
-      </AuthProvider>
+      )}
     </ThemeProvider>
   </StrictMode>,
 )

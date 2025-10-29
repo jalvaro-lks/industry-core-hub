@@ -44,12 +44,18 @@ class AuthService {
   private listeners: ((state: AuthState) => void)[] = [];
 
   async initialize(): Promise<void> {
+    console.log('🔍 AuthService.initialize() called');
+    
     if (this.initialized) {
+      console.log('✅ Already initialized, returning');
       return;
     }
 
     try {
+      console.log('🔍 Checking if auth is enabled:', environmentService.isAuthEnabled());
+      
       if (!environmentService.isAuthEnabled()) {
+        console.log('❌ Auth is disabled, setting state and returning');
         this.setAuthState({
           isAuthenticated: false,
           isLoading: false,
@@ -61,13 +67,29 @@ class AuthService {
         return;
       }
 
+      console.log('🔍 Checking if Keycloak is enabled:', environmentService.isKeycloakEnabled());
+      
       if (environmentService.isKeycloakEnabled()) {
-        await this.initializeKeycloak();
+        console.log('🔑 Keycloak is enabled, starting initialization...');
+        
+        // TEMPORARY: Skip Keycloak and just set a mock authenticated state for testing
+        console.log('⚠️  BYPASSING Keycloak for debugging - setting mock auth state');
+        this.setAuthState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          tokens: null,
+          error: null,
+        });
+        
+        // Comment out the real Keycloak initialization for now
+        // await this.initializeKeycloak();
       }
 
       this.initialized = true;
+      console.log('✅ AuthService initialization completed');
     } catch (error) {
-      console.error('Failed to initialize authentication:', error);
+      console.error('❌ Failed to initialize authentication:', error);
       this.setAuthState({
         ...this.authState,
         isLoading: false,
@@ -100,11 +122,10 @@ class AuthService {
         enableLogging: true
       });
 
+      // Minimal configuration for keycloak-js 25.x
       const authenticated = await this.keycloak.init({
-        onLoad: initOptions.onLoad as 'login-required' | 'check-sso',
-        checkLoginIframe: false, // Simplificamos deshabilitando iframe check
-        pkceMethod: 'S256',
-        enableLogging: true, // Mantenemos logging para debug
+        onLoad: 'check-sso',
+        checkLoginIframe: false
       });
 
       console.log('Keycloak initialization result:', authenticated);

@@ -397,13 +397,6 @@ frontend:
     apiRetryAttempts: 3
     requireHttpsUrlPattern: false
 
-    # Keycloak configuration
-    keycloak:
-      url: "http://keycloak-hostname"
-      realm: "ICHub"
-      clientId: "industry-core-hub-frontend"
-      onLoad: "login-required"  # check-sso, login-required
-
     # API key configuration (optional)
     apiKey: ""
     apiKeyHeader: "X-API-Key"
@@ -414,11 +407,11 @@ frontend:
     authEnabled: false
     authProvider: "none"  # none, keycloak
 
-    # Keycloak configuration (only used when authProvider is keycloak)
+    # Keycloak configuration
     keycloak:
-      url: ""
-      realm: ""
-      clientId: ""
+      url: "http://keycloak-hostname/auth"
+      realm: "ICHub"
+      clientId: "industry-core-hub-frontend"
       onLoad: "check-sso"  # check-sso, login-required
       checkLoginIframe: true
       silentCheckSsoRedirectUri: ""
@@ -456,7 +449,7 @@ frontend:
     repository: "lks/frontend"
     pullPolicy: IfNotPresent
     # -- Overrides the image tag whose default is the chart appVersion
-    tag: "2"
+    tag: "layout-fix"
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
   service:

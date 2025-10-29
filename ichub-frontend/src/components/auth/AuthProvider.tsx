@@ -39,33 +39,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        console.log('Initializing authentication...');
+        console.log('🏁 AuthProvider: Starting authentication initialization...');
         
         // Check if authentication is enabled
-        if (!environmentService.isAuthEnabled()) {
-          console.log('Authentication is disabled, skipping initialization');
+        console.log('🔍 AuthProvider: Checking if auth is enabled...');
+        const authEnabled = environmentService.isAuthEnabled();
+        console.log('🔍 AuthProvider: Auth enabled =', authEnabled);
+        
+        if (!authEnabled) {
+          console.log('❌ AuthProvider: Authentication is disabled, skipping initialization');
           setIsInitialized(true);
           return;
         }
 
-        console.log('Authentication is enabled, initializing AuthService...');
-        console.log('Keycloak config:', {
+        console.log('✅ AuthProvider: Authentication is enabled, initializing AuthService...');
+        console.log('🔍 AuthProvider: Keycloak config:', {
           enabled: environmentService.isKeycloakEnabled(),
           url: environmentService.getKeycloakUrl(),
           realm: environmentService.getKeycloakRealm(),
           clientId: environmentService.getKeycloakClientId()
         });
 
+        console.log('🔄 AuthProvider: Calling authService.initialize()...');
         await authService.initialize();
-        console.log('Authentication initialized successfully');
+        console.log('✅ AuthProvider: Authentication initialized successfully');
         setIsInitialized(true);
       } catch (error) {
-        console.error('Failed to initialize authentication:', error);
+        console.error('❌ AuthProvider: Failed to initialize authentication:', error);
         setInitError(error instanceof Error ? error.message : 'Authentication initialization failed');
         setIsInitialized(true); // Still mark as initialized to prevent infinite loading
       }
     };
 
+    console.log('🚀 AuthProvider: useEffect triggered, calling initializeAuth...');
     initializeAuth();
   }, []);
 
