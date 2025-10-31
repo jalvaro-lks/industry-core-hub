@@ -28,7 +28,7 @@
 
 set -e
 
-KEYCLOAK_URL=${KEYCLOAK_URL:-"http://keycloak-hostname"}
+KEYCLOAK_URL=${KEYCLOAK_URL:-"http://keycloak.tx.test"}
 ADMIN_USER=${KEYCLOAK_ADMIN_USER:-"admin"}
 ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-"keycloak-admin-password"}
 REALM_NAME=${REALM_NAME:-"ICHub"}

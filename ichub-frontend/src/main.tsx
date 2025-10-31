@@ -1,6 +1,7 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
+ * Copyright (c) 2025 LKS Next
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -31,8 +32,6 @@ import App from './App.tsx'
 
 // Check if authentication is enabled
 const isAuthEnabled = environmentService.isAuthEnabled();
-
-console.log('🔍 Main.tsx: Authentication enabled =', isAuthEnabled);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

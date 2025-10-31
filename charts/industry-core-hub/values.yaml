@@ -409,11 +409,11 @@ frontend:
 
     # Keycloak configuration
     keycloak:
-      url: "http://keycloak-hostname/auth"
+      url: "http://keycloak.tx.test/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
       onLoad: "login-required"  # check-sso, login-required
-      checkLoginIframe: true
+      checkLoginIframe: false
       silentCheckSsoRedirectUri: ""
       pkceMethod: "S256"
       enableLogging: false
@@ -449,7 +449,7 @@ frontend:
     repository: "lks/frontend"
     pullPolicy: IfNotPresent
     # -- Overrides the image tag whose default is the chart appVersion
-    tag: "final-fix"
+    tag: "with-timeout"
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
   service:
@@ -810,7 +810,7 @@ keycloak:
     enabled: true
     ingressClassName: ""
     # -- Provide default path for the ingress record.
-    hostname: "keycloak-hostname"
+    hostname: "keycloak.tx.test"
     # -- Optional annotations when using the nginx ingress class;
     # Enable TLS configuration for the host defined at `ingress.hostname` parameter;
     # TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`;

@@ -1,6 +1,7 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
+ * Copyright (c) 2025 LKS Next
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -44,18 +45,12 @@ class AuthService {
   private listeners: ((state: AuthState) => void)[] = [];
 
   async initialize(): Promise<void> {
-    console.log('🔍 AuthService.initialize() called');
-    
     if (this.initialized) {
-      console.log('✅ Already initialized, returning');
       return;
     }
 
     try {
-      console.log('🔍 Checking if auth is enabled:', environmentService.isAuthEnabled());
-      
       if (!environmentService.isAuthEnabled()) {
-        console.log('❌ Auth is disabled, setting state and returning');
         this.setAuthState({
           isAuthenticated: false,
           isLoading: false,
@@ -67,17 +62,13 @@ class AuthService {
         return;
       }
 
-      console.log('🔍 Checking if Keycloak is enabled:', environmentService.isKeycloakEnabled());
-      
       if (environmentService.isKeycloakEnabled()) {
-        console.log('🔑 Keycloak is enabled, starting initialization...');
         await this.initializeKeycloak();
       }
 
       this.initialized = true;
-      console.log('✅ AuthService initialization completed');
     } catch (error) {
-      console.error('❌ Failed to initialize authentication:', error);
+      console.error('Failed to initialize authentication:', error);
       this.setAuthState({
         ...this.authState,
         isLoading: false,
@@ -90,12 +81,6 @@ class AuthService {
     const keycloakConfig = environmentService.getKeycloakConfig();
     const initOptions = environmentService.getKeycloakInitOptions();
 
-    console.log('Initializing Keycloak with config:', {
-      url: keycloakConfig.url,
-      realm: keycloakConfig.realm,
-      clientId: keycloakConfig.clientId
-    });
-
     this.keycloak = new Keycloak({
       url: keycloakConfig.url,
       realm: keycloakConfig.realm,
@@ -103,20 +88,19 @@ class AuthService {
     });
 
     try {
-      console.log('Keycloak init options:', {
+      // Add timeout to prevent infinite hanging
+      const initPromise = this.keycloak.init({
         onLoad: initOptions.onLoad,
-        checkLoginIframe: false,
-        pkceMethod: 'S256',
-        enableLogging: true
+        checkLoginIframe: initOptions.checkLoginIframe,
+        pkceMethod: initOptions.pkceMethod as 'S256',
+        enableLogging: initOptions.enableLogging
       });
 
-      // Minimal configuration for keycloak-js 25.x
-      const authenticated = await this.keycloak.init({
-        onLoad: 'login-required',
-        checkLoginIframe: false
+      const timeoutPromise = new Promise<boolean>((_, reject) => {
+        setTimeout(() => reject(new Error('Keycloak initialization timeout')), 10000); // 10 second timeout
       });
 
-      console.log('Keycloak initialization result:', authenticated);
+      const authenticated = await Promise.race([initPromise, timeoutPromise]);
 
       if (authenticated) {
         await this.handleAuthenticationSuccess();
@@ -130,15 +114,18 @@ class AuthService {
         });
       }
 
-      // Set up token refresh
       this.setupTokenRefresh();
-
-      // Set up event listeners
       this.setupKeycloakEvents();
 
     } catch (error) {
       console.error('Keycloak initialization failed:', error);
-      throw new Error('Failed to initialize Keycloak authentication');
+      this.setAuthState({
+        isAuthenticated: false,
+        isLoading: false,
+        user: null,
+        tokens: null,
+        error: error instanceof Error ? error.message : 'Keycloak initialization failed',
+      });
     }
   }
 
