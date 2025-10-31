@@ -392,7 +392,7 @@ frontend:
     version: "1.0.0"
 
     # API and backend configuration
-    ichubBackendUrl: "http://industry-core-hub-backend:8000/v1"
+    ichubBackendUrl: "https://<backend-hostname>/v1"
     apiTimeout: 30000
     apiRetryAttempts: 3
     requireHttpsUrlPattern: false
@@ -409,7 +409,7 @@ frontend:
 
     # Keycloak configuration
     keycloak:
-      url: "http://keycloak.tx.test/auth"
+      url: "https://<keycloak-hostname>/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
       onLoad: "login-required"  # check-sso, login-required
@@ -442,14 +442,14 @@ frontend:
   # Legacy configuration (deprecated - use config section above)
   env:
     # -- industry-core-hub backend base URL
-    backendUrl: "http://industry-core-hub-backend:8000/v1"
+    backendUrl: "https://<backend-hostname>/v1"
   enabled: true
   name: "industry-core-hub-frontend"
   image:
-    repository: "lks/frontend"
+    repository: "tractusx/industry-core-hub-frontend"
     pullPolicy: IfNotPresent
     # -- Overrides the image tag whose default is the chart appVersion
-    tag: "with-timeout"
+    tag: ""
     # -- Existing image pull secret to use to [obtain the container image from private registries](https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry)
     pullSecrets: []
   service:
@@ -527,7 +527,7 @@ frontend:
 
   # -- ingress declaration to expose the industry-core-hub-backend service
   ingress:
-    enabled: true
+    enabled: false
     className: "nginx"
     ## Optional annotations when using the nginx ingress class
     # annotations:
@@ -544,7 +544,7 @@ frontend:
       #   hosts:
       #     - ""
     hosts:
-      - host: "industry-core-hub-frontend.tx.test"
+      - host: "<frontend-hostname>"
         paths:
           - path: /
             pathType: ImplementationSpecific
@@ -807,10 +807,10 @@ keycloak:
 
   ingress:
     # -- Enable ingress record generation
-    enabled: true
+    enabled: false
     ingressClassName: ""
     # -- Provide default path for the ingress record.
-    hostname: "keycloak.tx.test"
+    hostname: "<keycloak-hostname>"
     # -- Optional annotations when using the nginx ingress class;
     # Enable TLS configuration for the host defined at `ingress.hostname` parameter;
     # TLS certificates will be retrieved from a TLS secret with name: `{{- printf "%s-tls" .Values.ingress.hostname }}`;
