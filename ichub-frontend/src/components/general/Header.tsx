@@ -65,11 +65,11 @@ export default function PrimarySearchAppBar() {
 
   const handleLogout = async () => {
     try {
+      handleMenuClose();
       await logout();
     } catch (error) {
       console.error('Logout failed:', error);
     }
-    handleMenuClose();
   };
 
   const handleMobileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
