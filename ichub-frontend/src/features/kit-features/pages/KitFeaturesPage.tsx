@@ -236,6 +236,33 @@ const KitFeaturesPage: React.FC = () => {
     setTimeout(() => setIsAnimating(false), 600);
   };
 
+  // Handle card click to center it
+  const handleCardClick = (kitIndex: number) => {
+    const normalizedCurrent = ((currentIndex % sortedKits.length) + sortedKits.length) % sortedKits.length;
+    if (isAnimating || kitIndex === normalizedCurrent) return; // Don't do anything if it's already centered or animating
+    
+    setIsAnimating(true);
+    // Calculate the difference and move accordingly
+    const difference = kitIndex - normalizedCurrent;
+    
+    // Choose the shortest path (considering infinite loop)
+    let targetIndex;
+    if (Math.abs(difference) <= sortedKits.length / 2) {
+      // Direct path is shorter
+      targetIndex = currentIndex + difference;
+    } else {
+      // Wrap-around path is shorter
+      if (difference > 0) {
+        targetIndex = currentIndex - (sortedKits.length - difference);
+      } else {
+        targetIndex = currentIndex + (sortedKits.length + difference);
+      }
+    }
+    
+    setCurrentIndex(targetIndex);
+    setTimeout(() => setIsAnimating(false), 600);
+  };
+
   // Reset carousel when kits change
   useEffect(() => {
     setCurrentIndex(0);
@@ -456,6 +483,7 @@ const KitFeaturesPage: React.FC = () => {
                 return (
                   <Box
                     key={`${kit.id}-${copyIndex}-${kitIndex}`}
+                    onClick={() => !isCenter && handleCardClick(kitIndex)} // Only allow click if not centered
                     sx={{
                       flex: '0 0 320px',
                       width: '320px',
@@ -465,7 +493,11 @@ const KitFeaturesPage: React.FC = () => {
                       filter: `blur(${blur}px)`,
                       transition: 'all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)',
                       zIndex: zIndex,
-                      px: 2
+                      px: 2,
+                      cursor: !isCenter ? 'pointer' : 'default', // Show pointer cursor for non-centered cards
+                      '&:hover': !isCenter ? {
+                        transform: `scale(${scale * 1.05}) translateY(${distance * 5}px)`, // Slight scale increase on hover for non-centered cards
+                      } : {}
                     }}
                   >
                     <KitCard
