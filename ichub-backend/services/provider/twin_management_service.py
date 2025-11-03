@@ -25,6 +25,7 @@
 
 from typing import Optional, Dict, Any, List
 from uuid import UUID, uuid4
+from datetime import datetime, timezone
 
 from connector import connector_manager
 from dtr import dtr_provider_manager
@@ -528,6 +529,70 @@ class TwinManagementService:
             self._handle_dtr_registration(repo, db_twin_aspect_registration, db_twin, db_twin_aspect, asset_id)
 
             return self._create_twin_aspect_read_response(db_twin_aspect, db_enablement_service_stack, db_twin_aspect_registration)
+        
+    def create_or_update_twin_aspect_not_default(self, twin_aspect_create: TwinAspectCreate) -> TwinAspectRead:
+        """
+        Create or update a twin aspect for a give twin without using the default enablement service stack.
+        """
+
+        with RepositoryManagerFactory.create() as repo:
+            
+            # Step 1: Retrieve the twin entity according to the global_id
+            db_twin = repo.twin_repository.find_by_global_id(twin_aspect_create.global_id)
+            if not db_twin:
+                raise NotFoundError(f"Twin for global ID '{twin_aspect_create.global_id}' not found.")
+
+            # Step 2: Get associated manufacturer id
+            manufacturer_id = self._get_manufacturer_id_from_twin(db_twin)
+
+            # Step 3: Retrieve the enablement service stack entity from the DB according to the given manufacturer ID
+            # (if not there => raise error)
+            # TODO: later the stack needs to be passed as an argument
+            db_enablement_service_stack = self.get_or_create_enablement_stack(repo=repo, manufacturer_id=manufacturer_id)
+            
+            # Step 3a: Create a new twin aspect entity in the database if a submodel_id is not provided
+            if not twin_aspect_create.submodel_id:
+                db_twin_aspect = self._create_twin_aspect_entity_db(twin_aspect_create, repo, db_twin)
+
+            # Step 3b: Retrieve a potentially existing twin aspect entity for the given twin_id, semantic_id and submodel_id. If not found, create it. Otherwise, update it.
+            else:
+                db_twin_aspect = repo.twin_aspect_repository.get_by_twin_id_semantic_id_submodel_id(
+                    db_twin.id,
+                    twin_aspect_create.semantic_id,
+                    twin_aspect_create.submodel_id
+                )
+                if not db_twin_aspect:
+                    db_twin_aspect = self._create_twin_aspect_entity_db(twin_aspect_create, repo, db_twin)
+                else:
+                    # Update existing twin aspect
+                    self._handle_submodel_service_update(
+                        repo, db_twin_aspect.registrations[0], db_enablement_service_stack, db_twin_aspect, twin_aspect_create
+                    )
+                    repo.commit()
+                    repo.refresh(db_twin_aspect)
+                    return self._create_twin_aspect_read_response(db_twin_aspect, db_enablement_service_stack, db_twin_aspect.registrations[0])
+            
+
+            # Step 4: Check if there is already a registration for the given enablement service stack and create it if not
+            db_twin_aspect_registration = self._get_or_create_twin_aspect_registration(
+                repo, db_twin_aspect, db_enablement_service_stack
+            )
+
+            # Step 4b: Ensure DTR asset is registered
+            self._ensure_dtr_asset_registration()
+
+            # Step 5: Handle the submodel service
+            self._handle_submodel_service_upload(
+                repo, db_twin_aspect_registration, db_enablement_service_stack, db_twin_aspect, twin_aspect_create
+            )
+            
+            # Step 6: Handle the EDC registration
+            asset_id = self._handle_edc_registration(repo, db_twin_aspect_registration, db_twin_aspect)
+            
+            # Step 7: Handle the DTR registration
+            self._handle_dtr_registration(repo, db_twin_aspect_registration, db_twin, db_twin_aspect, asset_id)
+
+            return self._create_twin_aspect_read_response(db_twin_aspect, db_enablement_service_stack, db_twin_aspect_registration)
 
     def _get_or_create_twin_aspect_registration(self, repo: RepositoryManager, db_twin_aspect: TwinAspect, db_enablement_service_stack: EnablementServiceStack) -> TwinAspectRegistration:
         """
@@ -581,6 +646,26 @@ class TwinManagementService:
             # Update the registration status to STORED
             db_twin_aspect_registration.status = TwinAspectRegistrationStatus.STORED.value
             repo.commit()
+            repo.refresh(db_twin_aspect_registration)
+    
+    def _handle_submodel_service_update(self, repo: RepositoryManager, db_twin_aspect_registration: TwinAspectRegistration, db_enablement_service_stack: EnablementServiceStack, db_twin_aspect: TwinAspect, twin_aspect_create: TwinAspectCreate) -> None:
+        """
+        Handle the update of the twin aspect payload to the submodel service.
+        """
+        if db_twin_aspect_registration.status == TwinAspectRegistrationStatus.STORED.value:
+            submodel_service_manager = _create_submodel_service_manager(db_enablement_service_stack.connection_settings)
+            
+            # Update the payload to the submodel service
+            submodel_service_manager.upload_twin_aspect_document(
+                db_twin_aspect.submodel_id,
+                db_twin_aspect.semantic_id,
+                twin_aspect_create.payload
+            )
+            # Update the registration modified date
+            db_twin_aspect_registration.modified_date = datetime.now(timezone.utc)
+            repo.commit()
+        else:
+            raise NotAvailableError("Twin aspect document cannot be updated before it is stored in the submodel service.")
 
     def _handle_edc_registration(self, repo: RepositoryManager, db_twin_aspect_registration: TwinAspectRegistration, db_twin_aspect: TwinAspect) -> str:
         """
