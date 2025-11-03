@@ -25,12 +25,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Grid,
   Alert,
   Snackbar,
-  Tab,
-  Tabs,
-  Paper
+  IconButton
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import {
@@ -49,20 +46,26 @@ import {
   VerifiedUser,
   Science,
   QrCode,
-  LocalShipping
+  LocalShipping,
+  ChevronLeft,
+  ChevronRight
 } from '@mui/icons-material';
 import KitCard from '../components/KitCard';
 import { KitFeature } from '../types';
 
 const KitFeaturesPage: React.FC = () => {
   const [kits, setKits] = useState<KitFeature[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  
+  // Carousel state - smooth sliding carousel
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
 
-  // Mock data for KITs - en producción esto vendría de una API
+  // Mock data for KITs in specific order for carousel
   const mockKits: KitFeature[] = [
+    // 1. Industry Core KIT
     {
       id: 'industry-core',
       name: 'Industry Core KIT',
@@ -80,6 +83,7 @@ const KitFeaturesPage: React.FC = () => {
       version: '1.0.0',
       lastUpdated: '2024-10-15'
     },
+    // 2. PCF KIT
     {
       id: 'pcf',
       name: 'PCF KIT',
@@ -97,21 +101,7 @@ const KitFeaturesPage: React.FC = () => {
       version: '0.9.0',
       lastUpdated: '2024-10-10'
     },
-    {
-      id: 'eco-pass',
-      name: 'Eco Pass KIT',
-      description: 'Environmental sustainability tracking and carbon footprint management for supply chains.',
-      status: 'coming-soon',
-      icon: <Recycling />,
-      image: '/src/assets/kit-images/eco-pass-kit.svg',
-      features: [
-        { id: 'carbon-footprint', name: 'Carbon Footprint', description: 'Environmental impact tracking', enabled: false },
-        { id: 'environmental-impact', name: 'Environmental Impact', description: 'Assess environmental impacts', enabled: false },
-        { id: 'sustainability-reports', name: 'Sustainability Reports', description: 'Generate sustainability reports', enabled: false },
-        { id: 'green-metrics', name: 'Green Metrics', description: 'Track green performance metrics', enabled: false }
-      ],
-      category: 'sustainability'
-    },
+    // 3. Data Chain KIT
     {
       id: 'data-chain',
       name: 'Data Chain KIT',
@@ -127,6 +117,55 @@ const KitFeaturesPage: React.FC = () => {
       ],
       category: 'collaboration'
     },
+    // 4. Business Partner KIT
+    {
+      id: 'business-partner',
+      name: 'Business Partner KIT',
+      description: 'Comprehensive business partner data management and validation.',
+      status: 'coming-soon',
+      icon: <Build />,
+      image: '/src/assets/kit-images/business-partner-kit.svg',
+      features: [
+        { id: 'partner-data', name: 'Partner Data', description: 'Manage partner information', enabled: false },
+        { id: 'validation', name: 'Validation', description: 'Validate partner data', enabled: false },
+        { id: 'master-data', name: 'Master Data', description: 'Master data management', enabled: false },
+        { id: 'golden-record', name: 'Golden Record', description: 'Create golden records', enabled: false }
+      ],
+      category: 'core'
+    },
+    // 5. DCM KIT
+    {
+      id: 'dcm',
+      name: 'DCM KIT',
+      description: 'Demand and Capacity Management for optimizing supply chain operations.',
+      status: 'coming-soon',
+      icon: <DeviceHub />,
+      image: '/src/assets/kit-images/dcm-kit.svg',
+      features: [
+        { id: 'demand-planning', name: 'Demand Planning', description: 'Plan and forecast demand', enabled: false },
+        { id: 'capacity-planning', name: 'Capacity Planning', description: 'Optimize capacity planning', enabled: false },
+        { id: 'resource-optimization', name: 'Resource Optimization', description: 'Optimize resource allocation', enabled: false },
+        { id: 'analytics', name: 'Analytics', description: 'Advanced analytics and insights', enabled: false }
+      ],
+      category: 'core'
+    },
+    // 6. Eco Pass KIT
+    {
+      id: 'eco-pass',
+      name: 'Eco Pass KIT',
+      description: 'Environmental sustainability tracking and carbon footprint management for supply chains.',
+      status: 'coming-soon',
+      icon: <Recycling />,
+      image: '/src/assets/kit-images/eco-pass-kit.svg',
+      features: [
+        { id: 'carbon-footprint', name: 'Carbon Footprint', description: 'Environmental impact tracking', enabled: false },
+        { id: 'environmental-impact', name: 'Environmental Impact', description: 'Assess environmental impacts', enabled: false },
+        { id: 'sustainability-reports', name: 'Sustainability Reports', description: 'Generate sustainability reports', enabled: false },
+        { id: 'green-metrics', name: 'Green Metrics', description: 'Track green performance metrics', enabled: false }
+      ],
+      category: 'sustainability'
+    },
+    // 7. Traceability KIT
     {
       id: 'traceability',
       name: 'Traceability KIT',
@@ -143,41 +182,11 @@ const KitFeaturesPage: React.FC = () => {
       category: 'traceability',
       version: '1.0.0',
       lastUpdated: '2024-10-24'
-    },
-    {
-      id: 'business-partner',
-      name: 'Business Partner KIT',
-      description: 'Comprehensive business partner data management and validation.',
-      status: 'coming-soon',
-      icon: <Build />,
-      image: '/src/assets/kit-images/business-partner-kit.svg',
-      features: [
-        { id: 'partner-data', name: 'Partner Data', description: 'Manage partner information', enabled: false },
-        { id: 'validation', name: 'Validation', description: 'Validate partner data', enabled: false },
-        { id: 'master-data', name: 'Master Data', description: 'Master data management', enabled: false },
-        { id: 'golden-record', name: 'Golden Record', description: 'Create golden records', enabled: false }
-      ],
-      category: 'core'
-    },
-    {
-      id: 'dcm',
-      name: 'DCM KIT',
-      description: 'Demand and Capacity Management for optimizing supply chain operations.',
-      status: 'coming-soon',
-      icon: <DeviceHub />,
-      image: '/src/assets/kit-images/dcm-kit.svg',
-      features: [
-        { id: 'demand-planning', name: 'Demand Planning', description: 'Plan and forecast demand', enabled: false },
-        { id: 'capacity-planning', name: 'Capacity Planning', description: 'Optimize capacity planning', enabled: false },
-        { id: 'resource-optimization', name: 'Resource Optimization', description: 'Optimize resource allocation', enabled: false },
-        { id: 'analytics', name: 'Analytics', description: 'Advanced analytics and insights', enabled: false }
-      ],
-      category: 'core'
     }
   ];
 
   useEffect(() => {
-    // Simular carga de datos
+    // Simular carga de datos  
     setKits(mockKits);
   }, []);
 
@@ -203,99 +212,321 @@ const KitFeaturesPage: React.FC = () => {
     setSnackbarOpen(true);
   };
 
+  // Carousel navigation functions - infinite smooth sliding
+  const handlePrevSlide = () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setCurrentIndex(prev => prev - 1);
+    setTimeout(() => setIsAnimating(false), 600);
+  };
+
+  const handleNextSlide = () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setCurrentIndex(prev => prev + 1);
+    setTimeout(() => setIsAnimating(false), 600);
+  };
+
+  // Handle dot click to go to specific card
+  const handleDotClick = (index: number) => {
+    const normalizedCurrent = ((currentIndex % sortedKits.length) + sortedKits.length) % sortedKits.length;
+    if (isAnimating || index === normalizedCurrent) return;
+    setIsAnimating(true);
+    setCurrentIndex(index);
+    setTimeout(() => setIsAnimating(false), 600);
+  };
+
+  // Reset carousel when kits change
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [kits]);
 
 
 
-
-  const categories = [
-    { value: 'all', label: 'All KITs' },
-    { value: 'core', label: 'Core' },
-    { value: 'sustainability', label: 'Sustainability' },
-    { value: 'quality', label: 'Quality' },
-    { value: 'traceability', label: 'Traceability' },
-    { value: 'collaboration', label: 'Collaboration' }
-  ];
-
-  const filteredKits = (selectedCategory === 'all' 
-    ? kits 
-    : kits.filter(kit => kit.category === selectedCategory))
-    .sort((a, b) => {
-      // First sort by status: available first, then coming-soon
-      if (a.status !== b.status) {
-        if (a.status === 'available') return -1;
-        if (b.status === 'available') return 1;
-        if (a.status === 'beta' && b.status === 'coming-soon') return -1;
-        if (b.status === 'beta' && a.status === 'coming-soon') return 1;
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        handlePrevSlide();
+      } else if (event.key === 'ArrowRight') {
+        handleNextSlide();
       }
-      // Then sort alphabetically by name
-      return a.name.localeCompare(b.name);
-    });
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isAnimating]);
+
+  // Optional: Auto-play carousel (uncomment to enable)
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     if (!isAnimating) {
+  //       handleNextSlide();
+  //     }
+  //   }, 4000); // Change slide every 4 seconds
+  //   
+  //   return () => clearInterval(interval);
+  // }, [isAnimating, currentIndex]);
+
+
+
+
+
+  // Keep KITs in specified order for infinite carousel
+  const sortedKits = kits; // No sorting - maintain original order
+
+  // Handle infinite loop reset without animation
+  useEffect(() => {
+    if (!isAnimating) {
+      // Silently reset position to maintain infinite loop
+      const timer = setTimeout(() => {
+        if (currentIndex >= sortedKits.length * 2) {
+          setCurrentIndex(prev => prev - sortedKits.length);
+        } else if (currentIndex <= -sortedKits.length) {
+          setCurrentIndex(prev => prev + sortedKits.length);
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, isAnimating, sortedKits.length]);
 
   return (
-    <Box className="kit-features-container" sx={{ height: '100%', overflow: 'auto' }}>
-      <Box mb={2} textAlign="center" sx={{ pt: 2, pb: 1, px: 3 }}>
-        <Typography 
-          variant="h2" 
-          sx={{ 
-            fontWeight: '800', 
-            color: 'primary.main',
-            textAlign: 'center',
-            mb: 2,
-            fontSize: { xs: '2.5rem', sm: '3rem', md: '3.5rem' },
-            textShadow: '0 2px 4px rgba(25, 118, 210, 0.2)',
-            background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}
-        >
-          KIT Features
-        </Typography>
-        <Typography variant="body1" className="kit-features-subtitle" paragraph sx={{ mb: 2 }}>
-          Manage and configure Tractus-X KITs. Enable or disable specific features within each KIT to customize your application capabilities.
-        </Typography>
-      </Box>
-
-      <Box sx={{ px: 3, mb: 3 }}>
-        <Paper className="kit-category-tabs">
-          <Tabs
-            value={selectedCategory}
-            onChange={(_, newValue) => setSelectedCategory(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ borderBottom: 1, borderColor: 'divider' }}
+        <Box 
+      className="kit-features-page"
+      sx={{ 
+        width: "100%", 
+        height: "100vh", 
+        display: "flex", 
+        flexDirection: "column", 
+        p: 3,
+        overflow: 'hidden', // Prevent any overflow scroll
+        boxSizing: 'border-box' // Include padding in height calculation
+      }}
+    >
+      {/* Header Section - Same format as Catalog Parts */}
+      <Box sx={{ mt: 2, mb: 4 }}>
+        <Grid2 container direction="column" alignItems="center" sx={{ mb: 3 }}>
+          <Grid2 className="product-catalog title flex flex-content-center">
+            <Typography className="text">KIT Features</Typography>
+          </Grid2>
+        </Grid2>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography 
+            variant="body1" 
+            className="kit-features-subtitle" 
+            sx={{ 
+              textAlign: 'center',
+              maxWidth: '800px',
+              margin: '0 auto',
+              fontSize: '1rem'
+            }}
           >
-            {categories.map((category) => (
-              <Tab
-                key={category.value}
-                label={category.label}
-                value={category.value}
-              />
-            ))}
-          </Tabs>
-        </Paper>
-      </Box>
-
-      <Box sx={{ px: 3, pb: 3 }}>
-        <Grid container spacing={2}>
-          {filteredKits.map((kit) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={kit.id}>
-              <KitCard
-                kit={kit}
-                onFeatureToggle={handleFeatureToggle}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
-
-      {filteredKits.length === 0 && (
-        <Box textAlign="center" py={8} sx={{ px: 3 }}>
-          <Typography variant="h6" color="text.secondary">
-            No KITs found in this category
+            Manage and configure Tractus-X KITs. Enable or disable specific features within each KIT to customize your application capabilities.
           </Typography>
         </Box>
+      </Box>
+
+      {/* Center Carousel Container */}
+      <Box sx={{ 
+        flex: 1, // Take remaining space
+        display: 'flex', 
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        maxHeight: 'calc(100vh - 200px)', // Responsive height based on viewport
+        minHeight: '350px' // Minimum height for cards
+      }}>
+        {/* Side Navigation Arrows - Centered with carousel */}
+        {sortedKits.length > 1 && (
+          <>
+            {/* Left Arrow - positioned at left edge of container */}
+            <IconButton
+              onClick={handlePrevSlide}
+              sx={{
+                position: 'absolute',
+                left: '1%', // Close to left edge of container
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 1000,
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(30,30,30,0.9) 100%)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, rgba(66,165,245,0.8) 0%, rgba(30,30,30,0.9) 100%)',
+                  transform: 'translateY(-50%) scale(1.1)',
+                  boxShadow: '0 12px 40px rgba(66,165,245,0.2)'
+                },
+                width: 56,
+                height: 56
+              }}
+            >
+              <ChevronLeft sx={{ fontSize: 32 }} />
+            </IconButton>
+
+            {/* Right Arrow - positioned at right edge of container */}
+            <IconButton
+              onClick={handleNextSlide}
+              sx={{
+                position: 'absolute',
+                right: '1%', // Close to right edge of container
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 1000,
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(30,30,30,0.9) 100%)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, rgba(66,165,245,0.8) 0%, rgba(30,30,30,0.9) 100%)',
+                  transform: 'translateY(-50%) scale(1.1)',
+                  boxShadow: '0 12px 40px rgba(66,165,245,0.2)'
+                },
+                width: 56,
+                height: 56
+              }}
+            >
+              <ChevronRight sx={{ fontSize: 32 }} />
+            </IconButton>
+          </>
+        )}
+        <Box
+          sx={{
+            position: 'relative',
+            width: '100%',
+            height: '380px', // Fixed height matching cards
+            overflow: 'visible' // Allow cards to extend beyond bounds for animations
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              height: '100%',
+              // Create infinite loop by multiplying array size
+              width: `${sortedKits.length * 320 * 5}px`, // 5 copies for seamless infinite scroll
+              transform: `translateX(calc(50vw - 230px - ${(currentIndex + sortedKits.length * 2) * 320}px))`, // Adjusted for perfect centering with title and dots
+              transition: isAnimating ? 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none',
+              gap: 0
+            }}
+          >
+            {/* Create 5 copies for infinite seamless loop */}
+            {Array.from({ length: 5 }, (_, copyIndex) => 
+              sortedKits.map((kit, kitIndex) => {
+                const absoluteIndex = copyIndex * sortedKits.length + kitIndex;
+                const virtualIndex = absoluteIndex - sortedKits.length * 2; // Center offset
+                const relativePosition = virtualIndex - currentIndex;
+                const distance = Math.abs(relativePosition);
+                const isCenter = relativePosition === 0;
+                
+                // Calculate progressive effects based on distance from center
+                let scale = 1;
+                let opacity = 1;
+                let blur = 0;
+                let zIndex = 10;
+                
+                if (distance === 0) {
+                  // Center card - most prominent
+                  scale = 1.1;
+                  opacity = 1;
+                  blur = 0;
+                  zIndex = 20;
+                } else if (distance === 1) {
+                  // Adjacent cards
+                  scale = 0.95;
+                  opacity = 0.8;
+                  blur = 1;
+                  zIndex = 15;
+                } else if (distance === 2) {
+                  // Second level cards
+                  scale = 0.85;
+                  opacity = 0.6;
+                  blur = 2;
+                  zIndex = 10;
+                } else if (distance >= 3) {
+                  // Far cards - heavily blurred
+                  scale = 0.75;
+                  opacity = 0.3;
+                  blur = 4;
+                  zIndex = 5;
+                }
+                
+                return (
+                  <Box
+                    key={`${kit.id}-${copyIndex}-${kitIndex}`}
+                    sx={{
+                      flex: '0 0 320px',
+                      width: '320px',
+                      height: '380px', // More compact cards
+                      transform: `scale(${scale}) translateY(${distance * 5}px)`,
+                      opacity: opacity,
+                      filter: `blur(${blur}px)`,
+                      transition: 'all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                      zIndex: zIndex,
+                      px: 2
+                    }}
+                  >
+                    <KitCard
+                      kit={kit}
+                      onFeatureToggle={handleFeatureToggle}
+                      isCenter={isCenter}
+                    />
+                  </Box>
+                );
+              })
+            ).flat()}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Bottom Navigation Dots */}
+      {sortedKits.length > 1 && (
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            gap: 1.5, 
+            mt: 3, // Same margin as header spacing
+            mb: 3, // Same margin for bottom spacing
+            px: 3
+          }}
+        >
+          {sortedKits.map((_, index) => {
+            const normalizedCurrent = ((currentIndex % sortedKits.length) + sortedKits.length) % sortedKits.length;
+            const isActive = index === normalizedCurrent;
+            
+            return (
+              <Box
+                key={index}
+                onClick={() => handleDotClick(index)}
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  backgroundColor: isActive 
+                    ? 'rgba(66, 165, 245, 0.9)' 
+                    : 'rgba(255, 255, 255, 0.4)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  '&:hover': {
+                    backgroundColor: isActive 
+                      ? 'rgba(66, 165, 245, 1)' 
+                      : 'rgba(255, 255, 255, 0.6)',
+                    transform: 'scale(1.3)',
+                    border: '1px solid rgba(66, 165, 245, 0.5)'
+                  }
+                }}
+              />
+            );
+          })}
+        </Box>
       )}
+
+
 
       <Snackbar
         open={snackbarOpen}
