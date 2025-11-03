@@ -30,7 +30,7 @@
     height: 100%;
     flex-direction: column;
     align-items: center;
-    padding: 10px 0;
+    padding: 10px 0 0 0;
     z-index: 1000000;
     justify-content: space-between;
   }
@@ -44,8 +44,10 @@
   .fixedItems {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    margin-bottom: 10px;
+    align-items: stretch;
+    margin-bottom: 0;
+    width: 100%;
+    flex-shrink: 0;
   }
   
   .iconButton {
@@ -71,36 +73,73 @@
     }
     
     &.kitFeaturesButton {
-      margin: 5px 0;
+      margin: 0;
       opacity: 1;
       width: 100%;
-      padding: 0 8px;
+      padding: 0;
       
       .kitFeaturesIcon {
-        background: $brand-primary;
-        border-radius: 8px;
-        padding: 10px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 0;
+        padding: 20px;
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 8px rgba($brand-primary, 0.3);
-        transition: all 0.3s ease;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         width: 100%;
+        height: 72px;
+        position: relative;
+        overflow: hidden;
+        
+        &::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          transition: left 0.6s ease;
+        }
+        
+        svg {
+          width: 2.2rem;
+          height: 2.2rem;
+          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         
         &:hover {
-          background: #0d47a1;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba($brand-primary, 0.4);
+          background: rgba(0, 0, 0, 0.5);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+          
+          &::before {
+            left: 100%;
+          }
+          
+          svg {
+            transform: scale(1.05);
+          }
         }
         
         &.active {
-          background: #64b5f6;
-          box-shadow: 0 2px 8px rgba(100, 181, 246, 0.3);
+          background: rgba(66, 165, 245, 0.8);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          
+          svg {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            transform: scale(1.1);
+          }
           
           &:hover {
-            background: #42a5f5;
-            box-shadow: 0 4px 12px rgba(100, 181, 246, 0.4);
+            background: rgba(66, 165, 245, 0.9);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            
+            svg {
+              transform: scale(1.15);
+            }
           }
         }
       }

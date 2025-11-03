@@ -20,9 +20,9 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useState, JSX } from "react";
+import { useState, JSX, cloneElement, useRef, useEffect } from "react";
 import { Box } from "@mui/material";
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { kitFeaturesConfig } from '../../features/main';
 
 type SidebarItem = {
@@ -34,7 +34,29 @@ type SidebarItem = {
 const Sidebar = ({ items }: { items: SidebarItem[] }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
+  const previousPath = useRef<string>('/catalog'); // Ruta por defecto
   const isKitFeaturesActive = location.pathname === kitFeaturesConfig.navigationPath;
+  
+  // Guardar la ruta anterior cuando no estemos en KIT Features
+  useEffect(() => {
+    if (location.pathname !== kitFeaturesConfig.navigationPath) {
+      previousPath.current = location.pathname;
+    }
+  }, [location.pathname]);
+  
+  const handleKitFeaturesClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (isKitFeaturesActive) {
+      // Si ya estamos en KIT Features, volver a la página anterior
+      navigate(previousPath.current);
+    } else {
+      // Si no estamos en KIT Features, ir a KIT Features
+      navigate(kitFeaturesConfig.navigationPath);
+    }
+    setActiveIndex(-1);
+  };
 
   return (
     <Box className="sidebarContainer">
@@ -52,15 +74,15 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
       </Box>
       
       <Box className="fixedItems">
-        <NavLink
-          to={kitFeaturesConfig.navigationPath}
+        <Box
           className={`iconButton kitFeaturesButton ${isKitFeaturesActive ? 'active' : ''}`}
-          onClick={() => setActiveIndex(-1)}
+          onClick={handleKitFeaturesClick}
+          sx={{ cursor: 'pointer', textDecoration: 'none' }}
         >
           <Box className={`kitFeaturesIcon ${isKitFeaturesActive ? 'active' : ''}`}>
-            {kitFeaturesConfig.icon}
+            {cloneElement(kitFeaturesConfig.icon as React.ReactElement<any>, { isActive: isKitFeaturesActive })}
           </Box>
-        </NavLink>
+        </Box>
       </Box>
     </Box>
   );
