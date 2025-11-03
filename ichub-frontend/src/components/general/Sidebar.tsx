@@ -24,8 +24,9 @@ import { useState, JSX, cloneElement, useRef, useEffect } from "react";
 import { Box } from "@mui/material";
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Add } from '@mui/icons-material';
-import { kitFeaturesConfig } from '../../features/main';
+import { kitFeaturesConfig, allFeatures } from '../../features/main';
 import FeaturesPanel from './FeaturesPanel';
+import SidebarTooltip from './SidebarTooltip';
 
 type SidebarItem = {
   icon: JSX.Element;
@@ -84,42 +85,49 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
           const isActive = location.pathname === item.path;
           const isDisabled = item.disabled === true;
           
-          return isDisabled ? (
-            <Box
-              key={index}
-              className={`iconButton disabled`}
-              onClick={handleAddFeatureClick}
-              sx={{ cursor: 'pointer', textDecoration: 'none' }}
-            >
-              <Box className={`iconWrapper disabled add-feature ${showFeaturesPanel ? 'active' : ''}`}>
-                <Add />
-              </Box>
-            </Box>
-          ) : (
-            <NavLink
-              to={item.path}
-              key={index}
-              className={`iconButton ${isActive ? "active" : ""}`}
-              onClick={() => setActiveIndex(index)}
-            >
-              <Box className={`iconWrapper ${isActive ? 'active' : ''}`}>
-                {item.icon}
-              </Box>
-            </NavLink>
+          const feature = allFeatures.find(f => f.navigationPath === item.path);
+          const tooltipTitle = isDisabled ? 'Add Features' : (feature?.name || item.path);
+
+          return (
+            <SidebarTooltip key={index} title={tooltipTitle}>
+              {isDisabled ? (
+                <Box
+                  className={`iconButton disabled`}
+                  onClick={handleAddFeatureClick}
+                  sx={{ cursor: 'pointer', textDecoration: 'none' }}
+                >
+                  <Box className={`iconWrapper disabled add-feature ${showFeaturesPanel ? 'active' : ''}`}>
+                    <Add />
+                  </Box>
+                </Box>
+              ) : (
+                <NavLink
+                  to={item.path}
+                  className={`iconButton ${isActive ? "active" : ""}`}
+                  onClick={() => setActiveIndex(index)}
+                >
+                  <Box className={`iconWrapper ${isActive ? 'active' : ''}`}>
+                    {item.icon}
+                  </Box>
+                </NavLink>
+              )}
+            </SidebarTooltip>
           );
         })}
       </Box>
       
       <Box className="fixedItems">
-        <Box
-          className={`iconButton kitFeaturesButton ${isKitFeaturesActive ? 'active' : ''}`}
-          onClick={handleKitFeaturesClick}
-          sx={{ cursor: 'pointer', textDecoration: 'none' }}
-        >
-          <Box className={`kitFeaturesIcon ${isKitFeaturesActive ? 'active' : ''}`}>
-            {cloneElement(kitFeaturesConfig.icon as React.ReactElement<any>, { isActive: isKitFeaturesActive })}
+        <SidebarTooltip title={kitFeaturesConfig.name}>
+          <Box
+            className={`iconButton kitFeaturesButton ${isKitFeaturesActive ? 'active' : ''}`}
+            onClick={handleKitFeaturesClick}
+            sx={{ cursor: 'pointer', textDecoration: 'none' }}
+          >
+            <Box className={`kitFeaturesIcon ${isKitFeaturesActive ? 'active' : ''}`}>
+              {cloneElement(kitFeaturesConfig.icon as React.ReactElement<any>, { isActive: isKitFeaturesActive })}
+            </Box>
           </Box>
-        </Box>
+        </SidebarTooltip>
       </Box>
       
       {/* Overlay for closing panel */}
