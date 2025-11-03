@@ -120,6 +120,18 @@
         svg {
           filter: none;
         }
+        
+        &.add-feature {
+          opacity: 0.7;
+          cursor: pointer;
+          color: rgba(255, 255, 255, 0.8);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px dashed rgba(255, 255, 255, 0.3);
+          
+          svg {
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+          }
+        }
       }
     }
   
@@ -163,6 +175,22 @@
         
         .iconWrapper {
           background: rgba(255, 255, 255, 0.05);
+          
+          &.add-feature {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: white;
+            
+            &::before {
+              left: 100%;
+            }
+            
+            svg {
+              transform: scale(1.1);
+              filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+            }
+          }
         }
       }
     }

@@ -23,7 +23,9 @@
 import { useState, JSX, cloneElement, useRef, useEffect } from "react";
 import { Box } from "@mui/material";
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Add } from '@mui/icons-material';
 import { kitFeaturesConfig } from '../../features/main';
+import FeaturesPanel from './FeaturesPanel';
 
 type SidebarItem = {
   icon: JSX.Element;
@@ -33,6 +35,7 @@ type SidebarItem = {
 
 const Sidebar = ({ items }: { items: SidebarItem[] }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const previousPath = useRef<string>('/catalog'); // Ruta por defecto
@@ -58,6 +61,22 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
     setActiveIndex(-1);
   };
 
+  const handleAddFeatureClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowFeaturesPanel(!showFeaturesPanel);
+  };
+
+  const handleFeatureToggle = (kitId: string, featureId: string, enabled: boolean) => {
+    console.log(`Feature ${featureId} in ${kitId} KIT ${enabled ? 'enabled' : 'disabled'}`);
+    // Aquí puedes añadir la lógica para habilitar/deshabilitar la feature
+    // Por ejemplo, hacer una llamada a la API o actualizar el estado global
+  };
+
+  const handleCloseFeaturesPanel = () => {
+    setShowFeaturesPanel(false);
+  };
+
   return (
     <Box className="sidebarContainer">
       <Box className="regularItems">
@@ -65,14 +84,25 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
           const isActive = location.pathname === item.path;
           const isDisabled = item.disabled === true;
           
-          return (
+          return isDisabled ? (
+            <Box
+              key={index}
+              className={`iconButton disabled`}
+              onClick={handleAddFeatureClick}
+              sx={{ cursor: 'pointer', textDecoration: 'none' }}
+            >
+              <Box className={`iconWrapper disabled add-feature ${showFeaturesPanel ? 'active' : ''}`}>
+                <Add />
+              </Box>
+            </Box>
+          ) : (
             <NavLink
               to={item.path}
               key={index}
-              className={`iconButton ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+              className={`iconButton ${isActive ? "active" : ""}`}
               onClick={() => setActiveIndex(index)}
             >
-              <Box className={`iconWrapper ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}>
+              <Box className={`iconWrapper ${isActive ? 'active' : ''}`}>
                 {item.icon}
               </Box>
             </NavLink>
@@ -91,6 +121,29 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
           </Box>
         </Box>
       </Box>
+      
+      {/* Overlay for closing panel */}
+      {showFeaturesPanel && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1000000,
+            backgroundColor: 'transparent'
+          }}
+          onClick={handleCloseFeaturesPanel}
+        />
+      )}
+      
+      {/* Features Panel */}
+      <FeaturesPanel
+        isOpen={showFeaturesPanel}
+        onClose={handleCloseFeaturesPanel}
+        onFeatureToggle={handleFeatureToggle}
+      />
     </Box>
   );
 };
