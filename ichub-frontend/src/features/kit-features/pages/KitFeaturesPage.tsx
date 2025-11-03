@@ -174,10 +174,10 @@ const KitFeaturesPage: React.FC = () => {
       icon: <Timeline />,
       image: '/src/assets/kit-images/traceability-kit.svg',
       features: [
-        { id: 'part-tracking', name: 'Part Tracking', description: 'Track parts through supply chain', enabled: true },
-        { id: 'supply-chain-visibility', name: 'Supply Chain Visibility', description: 'Full supply chain visibility', enabled: true },
-        { id: 'origin-verification', name: 'Origin Verification', description: 'Verify part origins', enabled: true },
-        { id: 'recall-management', name: 'Recall Management', description: 'Manage product recalls', enabled: true }
+        { id: 'part-tracking', name: 'Part Tracking', description: 'Track parts through supply chain', enabled: false },
+        { id: 'supply-chain-visibility', name: 'Supply Chain Visibility', description: 'Full supply chain visibility', enabled: false },
+        { id: 'origin-verification', name: 'Origin Verification', description: 'Verify part origins', enabled: false },
+        { id: 'recall-management', name: 'Recall Management', description: 'Manage product recalls', enabled: false }
       ],
       category: 'traceability',
       version: '1.0.0',
@@ -263,10 +263,8 @@ const KitFeaturesPage: React.FC = () => {
     setTimeout(() => setIsAnimating(false), 600);
   };
 
-  // Reset carousel when kits change
-  useEffect(() => {
-    setCurrentIndex(0);
-  }, [kits]);
+  // Note: Removed reset carousel when kits change to prevent unwanted navigation
+  // when toggling features
 
 
 
@@ -434,7 +432,7 @@ const KitFeaturesPage: React.FC = () => {
               height: '100%',
               // Create infinite loop by multiplying array size
               width: `${sortedKits.length * 320 * 5}px`, // 5 copies for seamless infinite scroll
-              transform: `translateX(calc(50vw - 230px - ${(currentIndex + sortedKits.length * 2) * 320}px))`, // Adjusted for perfect centering with title and dots
+              transform: `translateX(calc(50vw - 233px - ${(currentIndex + sortedKits.length * 2) * 320}px))`, // Adjusted for perfect centering with title and dots
               transition: isAnimating ? 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none',
               gap: 0
             }}

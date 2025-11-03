@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -40,7 +40,8 @@ import {
   Settings,
   InfoOutlined,
   ExpandMore,
-  ExpandLess
+  ExpandLess,
+  Lock
 } from '@mui/icons-material';
 import { KitFeature, KitFeatureItem } from '../types';
 
@@ -52,6 +53,13 @@ interface KitCardProps {
 
 const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = false }) => {
   const [showFeatures, setShowFeatures] = useState(false);
+
+  // Close features when card is no longer centered
+  useEffect(() => {
+    if (!isCenter && showFeatures) {
+      setShowFeatures(false);
+    }
+  }, [isCenter, showFeatures]);
 
   const handleFeatureToggle = (featureId: string, enabled: boolean) => {
     onFeatureToggle(kit.id, featureId, enabled);
@@ -182,15 +190,17 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
                 src={kit.image}
                 alt={kit.name}
                 sx={{ 
-                  width: 80, // Reduced image size
-                  height: 80,
-                  objectFit: 'contain'
+                  width: showFeatures ? 80 : 140, // Larger by default, smaller when features shown
+                  height: showFeatures ? 80 : 140,
+                  objectFit: 'contain',
+                  transition: 'all 0.3s ease' // Smooth transition
                 }}
               />
             ) : (
               <Box sx={{ 
-                fontSize: '4rem', // Reduced icon size
+                fontSize: showFeatures ? '3.5rem' : '5.5rem', // Larger by default, smaller when features shown
                 color: getStatusColor(kit.status),
+                transition: 'all 0.3s ease', // Smooth transition
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -200,19 +210,21 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
             )}
           </Box>
           
-          {/* Description */}
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              fontSize: '0.8rem', // Slightly smaller text
-              lineHeight: 1.3,
-              textAlign: 'center',
-              mb: 1.5, // Reduced margin
-              color: 'rgba(255, 255, 255, 0.7)'
-            }}
-          >
-            {kit.description}
-          </Typography>
+          {/* Description - Hide when features are shown */}
+          <Collapse in={!showFeatures}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                fontSize: '0.8rem', // Slightly smaller text
+                lineHeight: 1.3,
+                textAlign: 'center',
+                mb: 1.5, // Reduced margin
+                color: 'rgba(255, 255, 255, 0.7)'
+              }}
+            >
+              {kit.description}
+            </Typography>
+          </Collapse>
         </Box>
 
         {/* View Features Button and Collapsible Features */}
@@ -224,12 +236,17 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
               variant="outlined"
               endIcon={showFeatures ? <ExpandLess /> : <ExpandMore />}
               sx={{
-                mb: 2,
+                mb: 1, // Reduced margin bottom from 2 to 1
+                py: 0.5, // Reduced vertical padding
+                minHeight: '32px', // Set a smaller minimum height
+                fontSize: '0.875rem', // Slightly smaller font
                 borderColor: 'rgba(255, 255, 255, 0.3)',
                 color: '#ffffff',
+                backgroundColor: 'transparent',
                 '&:hover': {
-                  borderColor: 'rgba(66, 165, 245, 0.5)',
-                  backgroundColor: 'rgba(66, 165, 245, 0.1)'
+                  borderColor: 'rgba(66, 165, 245, 0.8) !important',
+                  backgroundColor: 'rgba(66, 165, 245, 0.15) !important',
+                  color: '#ffffff !important'
                 }
               }}
             >
@@ -237,16 +254,6 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
             </Button>
             
             <Collapse in={showFeatures}>
-              <Typography variant="overline" sx={{ 
-                mb: 1.5, 
-                display: 'block',
-                textAlign: 'center',
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontWeight: 500,
-                fontSize: '0.75rem'
-              }}>
-                Features ({enabledFeaturesCount}/{kit.features.length} enabled)
-              </Typography>
               <Stack spacing={1}>
                 {kit.features.map((feature) => (
                   <Box
@@ -297,27 +304,57 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
                         </IconButton>
                       </Tooltip>
                     </Box>
-                    <Switch
-                      checked={feature.enabled}
-                      onChange={(e) => handleFeatureToggle(feature.id, e.target.checked)}
-                      size="small"
-                      sx={{
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {kit.id === 'industry-core' && (
+                        <Lock sx={{ 
+                          fontSize: '0.75rem', 
+                          color: 'rgba(66, 165, 245, 0.7)',
+                          opacity: 0.8
+                        }} />
+                      )}
+                      <Switch
+                        checked={feature.enabled}
+                        onChange={(e) => handleFeatureToggle(feature.id, e.target.checked)}
+                        disabled={kit.id === 'industry-core'}
+                        size="small"
+                        sx={{
                         '& .MuiSwitch-track': {
-                          backgroundColor: feature.enabled ? '#42a5f5' : 'rgba(255, 255, 255, 0.3)'
+                          backgroundColor: feature.enabled ? '#42a5f5' : 'rgba(120, 120, 120, 0.9) !important', // Darker interior when disabled
+                          border: feature.enabled ? '1px solid #42a5f5' : '1px solid rgba(255, 255, 255, 0.4)', // Thinner border
+                          opacity: '1 !important' // Force full opacity
                         },
                         '& .MuiSwitch-thumb': {
-                          color: feature.enabled ? '#ffffff' : 'rgba(255, 255, 255, 0.7)'
+                          color: feature.enabled ? '#ffffff' : 'rgba(255, 255, 255, 0.9)', // More visible thumb when disabled
+                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' // Added shadow for better visibility
                         },
                         '&.Mui-checked': {
                           '& .MuiSwitch-thumb': {
-                            color: '#ffffff'
+                            color: '#ffffff',
+                            boxShadow: '0 2px 6px rgba(66, 165, 245, 0.4)' // Blue shadow when enabled
                           },
                           '& + .MuiSwitch-track': {
-                            backgroundColor: '#42a5f5'
+                            backgroundColor: '#42a5f5 !important',
+                            border: '1px solid #42a5f5 !important',
+                            opacity: '1 !important'
+                          }
+                        },
+                        '&.Mui-disabled': {
+                          '& .MuiSwitch-thumb': {
+                            color: 'rgba(255, 255, 255, 0.5)',
+                          },
+                          '&.Mui-checked': {
+                            '& .MuiSwitch-thumb': {
+                              color: 'rgba(66, 165, 245, 0.7)',
+                            },
+                            '& + .MuiSwitch-track': {
+                              backgroundColor: 'rgba(66, 165, 245, 0.4) !important',
+                              border: '1px solid rgba(66, 165, 245, 0.3) !important',
+                            }
                           }
                         }
                       }}
                     />
+                    </Box>
                   </Box>
                 ))}
               </Stack>
@@ -332,7 +369,10 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
               disabled
               endIcon={<Schedule />}
               sx={{
-                mb: 2,
+                mb: 1, // Reduced margin bottom from 2 to 1
+                py: 0.5, // Reduced vertical padding
+                minHeight: '32px', // Set a smaller minimum height
+                fontSize: '0.875rem', // Slightly smaller font
                 borderColor: 'rgba(255, 255, 255, 0.2)',
                 color: 'rgba(255, 255, 255, 0.5)',
                 '&.Mui-disabled': {
