@@ -61,16 +61,23 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
   return (
     <Box className="sidebarContainer">
       <Box className="regularItems">
-        {items.map((item, index) => (
-          <NavLink
-            to={item.path}
-            key={index}
-            className={`iconButton ${index === activeIndex ? "active" : ""} ${item.disabled === true ? "disabled" : ""}`}
-            onClick={() => setActiveIndex(index)}
-          >
-            {item.icon}
-          </NavLink>
-        ))}
+        {items.map((item, index) => {
+          const isActive = location.pathname === item.path;
+          const isDisabled = item.disabled === true;
+          
+          return (
+            <NavLink
+              to={item.path}
+              key={index}
+              className={`iconButton ${isActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+              onClick={() => setActiveIndex(index)}
+            >
+              <Box className={`iconWrapper ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}>
+                {item.icon}
+              </Box>
+            </NavLink>
+          );
+        })}
       </Box>
       
       <Box className="fixedItems">
