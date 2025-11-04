@@ -121,17 +121,44 @@ jobs:
     if: always()
     
     steps:
+    - name: Check if backend tests failed
+      id: check-backend
+      run: |
+        if [[ "${{ needs.backend-tests.result }}" == "failure" ]]; then
+          echo "::error title=Unit Tests Failed::The backend unit tests crashed and could not complete. Check the Backend Tests job for details."
+          echo "::warning::Artifacts (coverage, test results) may not be available due to test failure."
+          echo "backend_failed=true" >> $GITHUB_OUTPUT
+        else
+          echo "backend_failed=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Download test results
+      if: steps.check-backend.outputs.backend_failed == 'false'
       uses: actions/download-artifact@v4
       with:
         name: backend-test-results
         path: backend-test-results
+      continue-on-error: true
+      id: download-test-results
 
     - name: Download coverage reports
+      if: steps.check-backend.outputs.backend_failed == 'false'
       uses: actions/download-artifact@v4
       with:
         name: backend-coverage
         path: backend-coverage
+      continue-on-error: true
+      id: download-coverage
+
+    - name: Check artifact availability
+      if: steps.check-backend.outputs.backend_failed == 'false'
+      run: |
+        if [[ "${{ steps.download-test-results.outcome }}" == "failure" ]]; then
+          echo "::warning::Test results artifact not found - this may indicate the tests failed to run properly"
+        fi
+        if [[ "${{ steps.download-coverage.outcome }}" == "failure" ]]; then
+          echo "::warning::Coverage artifact not found - this may indicate the tests failed to run properly"
+        fi
 
     - name: Generate summary content
       id: summary-content
@@ -145,45 +172,59 @@ jobs:
         STATUS_ICON="⚠️"
         STATUS_MSG="ATTENTION NEEDED"
 
-        # --- Parse Test Results (JUnit XML) ---
-        if [ -f backend-test-results/test-results.xml ]; then
-          RESULTS_FILE="backend-test-results/test-results.xml"
-          TESTS=$(grep '<testsuite ' $RESULTS_FILE | awk -F'tests="' '{print $2}' | awk -F'"' '{print $1}')
-          FAILURES=$(grep '<testsuite ' $RESULTS_FILE | awk -F'failures="' '{print $2}' | awk -F'"' '{print $1}')
-          ERRORS=$(grep '<testsuite ' $RESULTS_FILE | awk -F'errors="' '{print $2}' | awk -F'"' '{print $1}')
+        # --- Check if backend tests crashed/failed ---
+        if [[ "${{ needs.backend-tests.result }}" == "failure" ]]; then
+          STATUS_ICON="❌"
+          STATUS_MSG="TESTS FAILED"
           
-          TESTS=${TESTS:-0}
-          FAILURES=${FAILURES:-0}
-          ERRORS=${ERRORS:-0}
+          # --- Generate Failure Summary (summary.md) ---
+          echo "# 🧪 Test Summary" > summary.md
+          echo "## $STATUS_ICON Status: $STATUS_MSG" >> summary.md
+          echo "" >> summary.md
+          echo "### ❌ Backend Tests" >> summary.md
+          echo "The unit tests failed and could not run." >> summary.md
+          echo "" >> summary.md
+        else
+          # --- Parse Test Results (JUnit XML) ---
+          if [ -f backend-test-results/test-results.xml ]; then
+            RESULTS_FILE="backend-test-results/test-results.xml"
+            TESTS=$(grep '<testsuite ' $RESULTS_FILE | awk -F'tests="' '{print $2}' | awk -F'"' '{print $1}')
+            FAILURES=$(grep '<testsuite ' $RESULTS_FILE | awk -F'failures="' '{print $2}' | awk -F'"' '{print $1}')
+            ERRORS=$(grep '<testsuite ' $RESULTS_FILE | awk -F'errors="' '{print $2}' | awk -F'"' '{print $1}')
+            
+            TESTS=${TESTS:-0}
+            FAILURES=${FAILURES:-0}
+            ERRORS=${ERRORS:-0}
 
-          TOTAL_FAILED=$((FAILURES + ERRORS))
-          PASSED=$((TESTS - TOTAL_FAILED))
+            TOTAL_FAILED=$((FAILURES + ERRORS))
+            PASSED=$((TESTS - TOTAL_FAILED))
+          fi
+
+          # --- Coverage parse (Cobertura XML) ---
+          if [ -f backend-coverage/coverage.xml ]; then
+            COVERAGE_FILE="backend-coverage/coverage.xml"
+            COVERAGE_FRAC=$(grep '<coverage ' $COVERAGE_FILE | awk -F'line-rate="' '{print $2}' | awk -F'"' '{print $1}')
+            COVERAGE_FRAC=${COVERAGE_FRAC:-0}
+            # Usar awk para multiplicación de punto flotante
+            COVERAGE=$(awk -v cov=$COVERAGE_FRAC 'BEGIN {printf "%.2f", cov * 100}')
+          fi
+
+          # --- Determine Overall Status ---
+          if [[ "${{ needs.backend-tests.result }}" == "success" ]]; then
+            STATUS_ICON="🎉"
+            STATUS_MSG="SUCCESS"
+          fi
+
+          # --- Generate Summary (summary.md) ---
+          echo "# 🧪 Test Summary" > summary.md
+          echo "## $STATUS_ICON Status: $STATUS_MSG" >> summary.md
+          echo "" >> summary.md
+          echo "### 📊 Backend Tests" >> summary.md
+          echo "| Passed | Failed | Total | Coverage |" >> summary.md
+          echo "|:---:|:---:|:---:|:---:|" >> summary.md
+          echo "| ✅ $PASSED | ❌ $TOTAL_FAILED | 📋 $TESTS | 📈 $COVERAGE% |" >> summary.md
+          echo "" >> summary.md
         fi
-
-        # --- Coverage parse (Cobertura XML) ---
-        if [ -f backend-coverage/coverage.xml ]; then
-          COVERAGE_FILE="backend-coverage/coverage.xml"
-          COVERAGE_FRAC=$(grep '<coverage ' $COVERAGE_FILE | awk -F'line-rate="' '{print $2}' | awk -F'"' '{print $1}')
-          COVERAGE_FRAC=${COVERAGE_FRAC:-0}
-          # Usar awk para multiplicación de punto flotante
-          COVERAGE=$(awk -v cov=$COVERAGE_FRAC 'BEGIN {printf "%.2f", cov * 100}')
-        fi
-
-        # --- Determine Overall Status ---
-        if [[ "${{ needs.backend-tests.result }}" == "success" ]]; then
-          STATUS_ICON="🎉"
-          STATUS_MSG="SUCCESS"
-        fi
-
-        # --- Generate Summary (summary.md) ---
-        echo "# 🧪 Test Summary" > summary.md
-        echo "## $STATUS_ICON Status: $STATUS_MSG" >> summary.md
-        echo "" >> summary.md
-        echo "### 📊 Backend Tests" >> summary.md
-        echo "| Passed | Failed | Total | Coverage |" >> summary.md
-        echo "|:---:|:---:|:---:|:---:|" >> summary.md
-        echo "| ✅ $PASSED | ❌ $TOTAL_FAILED | 📋 $TESTS | 📈 $COVERAGE% |" >> summary.md
-        echo "" >> summary.md
         
         # Hide run details in a collapsible section
         echo "<details><summary>Run Details</summary>" >> summary.md
