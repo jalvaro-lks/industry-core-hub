@@ -135,6 +135,7 @@ database:
   connectionString: "postgresql://user:password@localhost:5432/ichub"
   echo: false
   timeout: 8
+  retry_interval: 5
 
 cors:
   enabled: true

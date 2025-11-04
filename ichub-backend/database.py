@@ -24,6 +24,7 @@ from managers.config.config_manager import ConfigManager
 from managers.config.log_manager import LoggingManager
 from sqlmodel import SQLModel, create_engine, text
 from tools import env_tools
+import time
 
 base_dsn = ConfigManager.get_config("database.connectionString", default={})
 logger = LoggingManager.get_logger(__name__)
@@ -32,10 +33,10 @@ connection_string = env_tools.substitute_env_vars(string=base_dsn)
 
 db_echo = ConfigManager.get_config("database.echo", default={False})
 db_timeout = ConfigManager.get_config("database.timeout", default=8)
+db_retry_interval = ConfigManager.get_config("database.retry_interval", default=5)
 
 logger.info("Attempting database connection... with timeout %s seconds", db_timeout)
 engine = create_engine(str(connection_string), echo=db_echo, connect_args={"connect_timeout": db_timeout})
-
 
 database_error:bool = False
 
@@ -53,3 +54,22 @@ def connect_and_test():
         logger.critical(f"Failed to establish database connection: {e}")
         database_error = True
         raise
+    
+def wait_for_db_connection():
+    """
+    Tries to establish a connection to the database, retrying on failure.
+    Returns True when the connection is successful.
+    """
+    attempt = 1
+    while True:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            logger.info("Database connection successful on attempt %d", attempt)
+            return True  
+
+        except Exception as e:
+            logger.critical("Database not ready (attempt %d). Retrying in %d seconds: %s", attempt, db_retry_interval, e)
+            time.sleep(db_retry_interval)
+            attempt += 1
+            return False
