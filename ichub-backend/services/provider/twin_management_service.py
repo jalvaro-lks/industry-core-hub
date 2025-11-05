@@ -707,18 +707,18 @@ class TwinManagementService:
         """
         Create and return the TwinAspectRead response object.
         """
+        registration_data = {
+            "enablementServiceStackName": db_enablement_service_stack.name,
+            "status": TwinAspectRegistrationStatus(db_twin_aspect_registration.status),
+            "mode": TwinsAspectRegistrationMode(db_twin_aspect_registration.registration_mode),
+            "createdDate": db_twin_aspect_registration.created_date,
+            "modifiedDate": db_twin_aspect_registration.modified_date
+        }
+        
         return TwinAspectRead(
             semanticId=db_twin_aspect.semantic_id,
             submodelId=db_twin_aspect.submodel_id,
-            registrations={
-                db_enablement_service_stack.name: TwinAspectRegistration(
-                    enablementServiceStackName=db_enablement_service_stack.name,
-                    status=TwinAspectRegistrationStatus(db_twin_aspect_registration.status),
-                    mode=TwinsAspectRegistrationMode(db_twin_aspect_registration.registration_mode),
-                    createdDate=db_twin_aspect_registration.created_date,
-                    modifiedDate=db_twin_aspect_registration.modified_date
-                )
-            }
+            registrations={db_enablement_service_stack.name: registration_data}
         )
 
     def _create_twin_aspect_entity_db(self, twin_aspect_create: TwinAspectCreate, repo: RepositoryManager, db_twin: Twin) -> TwinAspect:
