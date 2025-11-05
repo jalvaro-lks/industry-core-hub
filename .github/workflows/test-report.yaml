@@ -89,30 +89,14 @@ jobs:
       run: |
         cd ichub-backend
         echo "Running all unit tests..."
-        set +e
         PYTHONPATH=. python -m pytest tests/ -v --tb=short --maxfail=5
-        status=$?
-        set -e
-        # Jobs fail only if status > 1
-        if [ $status -gt 1 ]; then
-          echo "::error::Pytest crashed (exit code $status)"
-          exit $status
-        fi
         
     - name: Run tests with coverage
       if: success() || failure()
       run: |
         cd ichub-backend
         echo "Running all backend tests..."
-        set +e
         PYTHONPATH=. python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=html --junit-xml=test-results.xml
-        status=$?
-        set -e
-        # Jobs fail only if status > 1
-        if [ $status -gt 1 ]; then
-          echo "::error::Pytest Coverage crashed (exit code $status)"
-          exit $status
-        fi
         
     - name: Upload coverage reports
       if: always()
@@ -137,19 +121,7 @@ jobs:
     if: always()
     
     steps:
-    - name: Check if backend tests failed
-      id: check-backend
-      run: |
-        if [[ "${{ needs.backend-tests.result }}" == "failure" ]]; then
-          echo "::error title=Unit Tests Failed::The backend unit tests crashed and could not complete. Check the Backend Tests job for details."
-          echo "::warning::Artifacts (coverage, test results) may not be available due to test failure."
-          echo "backend_failed=true" >> $GITHUB_OUTPUT
-        else
-          echo "backend_failed=false" >> $GITHUB_OUTPUT
-        fi
-
     - name: Download test results
-      if: steps.check-backend.outputs.backend_failed == 'false'
       uses: actions/download-artifact@v4
       with:
         name: backend-test-results
@@ -158,23 +130,12 @@ jobs:
       id: download-test-results
 
     - name: Download coverage reports
-      if: steps.check-backend.outputs.backend_failed == 'false'
       uses: actions/download-artifact@v4
       with:
         name: backend-coverage
         path: backend-coverage
       continue-on-error: true
       id: download-coverage
-
-    - name: Check artifact availability
-      if: steps.check-backend.outputs.backend_failed == 'false'
-      run: |
-        if [[ "${{ steps.download-test-results.outcome }}" == "failure" ]]; then
-          echo "::warning::Test results artifact not found - this may indicate the tests failed to run properly"
-        fi
-        if [[ "${{ steps.download-coverage.outcome }}" == "failure" ]]; then
-          echo "::warning::Coverage artifact not found - this may indicate the tests failed to run properly"
-        fi
 
     - name: Generate summary content
       id: summary-content
@@ -189,7 +150,7 @@ jobs:
         STATUS_MSG="ATTENTION NEEDED"
 
         # --- Check if backend tests crashed/failed ---
-        if [[ "${{ needs.backend-tests.result }}" == "failure" ]]; then
+        if [[ "${{ steps.download-test-results.outcome }}" == "failure" ]]; then
           STATUS_ICON="❌"
           STATUS_MSG="TESTS FAILED"
           
