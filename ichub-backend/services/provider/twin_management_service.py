@@ -849,18 +849,22 @@ class TwinManagementService:
         aspects_by_semantic_id = {}
         
         for db_twin_aspect in db_twin.twin_aspects:
+            # Build registrations dictionary separately
+            registrations = {}
+            for db_twin_aspect_registration in db_twin_aspect.twin_aspect_registrations:
+                registration_data = {
+                    "enablementServiceStackName": db_twin_aspect_registration.enablement_service_stack.name,
+                    "status": TwinAspectRegistrationStatus(db_twin_aspect_registration.status),
+                    "mode": TwinsAspectRegistrationMode(db_twin_aspect_registration.registration_mode),
+                    "createdDate": db_twin_aspect_registration.created_date,
+                    "modifiedDate": db_twin_aspect_registration.modified_date
+                }
+                registrations[db_twin_aspect_registration.enablement_service_stack.name] = registration_data
+            
             aspect_read = TwinAspectRead(
                 semanticId=db_twin_aspect.semantic_id,
                 submodelId=db_twin_aspect.submodel_id,
-                registrations={
-                    db_twin_aspect_registration.enablement_service_stack.name: TwinAspectRegistration(
-                        enablementServiceStackName=db_twin_aspect_registration.enablement_service_stack.name,
-                        status=TwinAspectRegistrationStatus(db_twin_aspect_registration.status),
-                        mode=TwinsAspectRegistrationMode(db_twin_aspect_registration.registration_mode),
-                        createdDate=db_twin_aspect_registration.created_date,
-                        modifiedDate=db_twin_aspect_registration.modified_date
-                    ) for db_twin_aspect_registration in db_twin_aspect.twin_aspect_registrations
-                } 
+                registrations=registrations
             )
             
             # Add to complete list
