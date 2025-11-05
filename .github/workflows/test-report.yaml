@@ -90,6 +90,12 @@ jobs:
         cd ichub-backend
         echo "Running all unit tests..."
         PYTHONPATH=. python -m pytest tests/ -v --tb=short --maxfail=5
+        status=$?
+        # Jobs fail only if status > 1
+        if [ $status -gt 1 ]; then
+          echo "::error::Pytest crashed (exit code $status)"
+          exit $status
+        fi
         
     - name: Run tests with coverage
       if: success() || failure()
@@ -97,6 +103,12 @@ jobs:
         cd ichub-backend
         echo "Running all backend tests..."
         PYTHONPATH=. python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=html --junit-xml=test-results.xml || true
+        status=$?
+        # Jobs fail only if status > 1
+        if [ $status -gt 1 ]; then
+          echo "::error::Pytest Coverage crashed (exit code $status)"
+          exit $status
+        fi
         
     - name: Upload coverage reports
       if: always()
