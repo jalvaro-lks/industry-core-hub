@@ -40,9 +40,7 @@ import {
   Science,
   Timeline,
   ExpandMore,
-  ExpandLess,
-  CheckCircle,
-  RadioButtonUnchecked
+  ExpandLess
 } from '@mui/icons-material';
 
 interface FeaturesPanelProps {
@@ -265,14 +263,6 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
                         }
                       }}
                     >
-                      <ListItemIcon
-                        sx={{
-                          minWidth: '32px',
-                          color: featureStates[feature.id] ? '#4caf50' : 'rgba(255, 255, 255, 0.4)'
-                        }}
-                      >
-                        {featureStates[feature.id] ? <CheckCircle /> : <RadioButtonUnchecked />}
-                      </ListItemIcon>
                       <ListItemText
                         primary={
                           <Typography
