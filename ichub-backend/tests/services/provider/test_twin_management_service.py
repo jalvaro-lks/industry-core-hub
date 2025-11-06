@@ -30,7 +30,10 @@ import sys
 mock_modules = [
     'tractusx_sdk',
     'tractusx_sdk.dataspace',
+    'tractusx_sdk.dataspace.managers',
+    'tractusx_sdk.dataspace.managers.connection',
     'tractusx_sdk.dataspace.services',
+    'tractusx_sdk.dataspace.services.discovery',
     'tractusx_sdk.dataspace.services.connector',
     'tractusx_sdk.dataspace.services.connector.base_edc_service',
     'tractusx_sdk.dataspace.core',
@@ -42,12 +45,16 @@ mock_modules = [
     'managers.enablement_services.submodel_service_manager',
     'managers.enablement_services.dtr_manager',
     'managers.enablement_services.connector_manager',
+    'managers.enablement_services',
+    'managers.enablement_services.provider',
+    'managers.enablement_services.consumer',
     'managers.submodels.submodel_document_generator',
     'managers.config.config_manager',
     'managers.config.log_manager',
     'managers.metadata_database.manager',
     'tools.exceptions',
     'database',
+    'connector',
 ]
 
 for module in mock_modules:
@@ -228,8 +235,8 @@ class TestTwinManagementService:
         mock_repo.refresh.assert_called_once()
 
     @patch('services.provider.twin_management_service.RepositoryManagerFactory.create')
-    @patch('services.provider.twin_management_service._create_dtr_manager')
-    def test_create_catalog_part_twin_success(self, mock_dtr_manager, mock_repo_factory, 
+    @patch('services.provider.twin_management_service.dtr_provider_manager')
+    def test_create_catalog_part_twin_success(self, mock_dtr_provider, mock_repo_factory, 
                                             mock_catalog_part, mock_twin, mock_enablement_service_stack,
                                             sample_global_id, sample_aas_id, sample_manufacturer_id, 
                                             sample_manufacturer_part_id):
@@ -247,10 +254,7 @@ class TestTwinManagementService:
         mock_repo.catalog_part_repository.find_by_manufacturer_id_manufacturer_part_id.return_value = [(mock_catalog_part, None)]
         mock_repo.twin_repository.create_new.return_value = mock_twin
         mock_repo.twin_registration_repository.get_by_twin_id_enablement_service_stack_id.return_value = None
-        mock_repo.twin_registration_repository.create_new.return_value = Mock()
-
-        mock_dtr = Mock()
-        mock_dtr_manager.return_value = mock_dtr
+        mock_repo.twin_registration_repository.create_new.return_value = Mock(dtr_registered=False)
 
         # Act
         with patch.object(self.service, 'get_or_create_enablement_stack', return_value=mock_enablement_service_stack):
@@ -260,7 +264,7 @@ class TestTwinManagementService:
             assert isinstance(result, TwinRead)
             assert result.global_id == sample_global_id
             mock_repo.catalog_part_repository.find_by_manufacturer_id_manufacturer_part_id.assert_called_once()
-            mock_dtr.create_or_update_shell_descriptor.assert_called_once()
+            mock_dtr_provider.create_or_update_shell_descriptor.assert_called_once()
 
     @patch('services.provider.twin_management_service.RepositoryManagerFactory.create')
     def test_create_catalog_part_twin_not_found(self, mock_repo_factory, sample_manufacturer_id, sample_manufacturer_part_id):
@@ -343,30 +347,41 @@ class TestTwinManagementService:
         mock_serialized_part = Mock()
         mock_serialized_part.twin_id = None
         mock_serialized_part.van = "VAN123"
-        mock_serialized_part.partner_catalog_part = Mock()
-        mock_serialized_part.partner_catalog_part.customer_part_id = "CUST001"
-        mock_serialized_part.partner_catalog_part.business_partner = Mock(bpnl="BPNL987654321098")
-        mock_serialized_part.partner_catalog_part.catalog_part = Mock(category="product")
+        
+        # Create mock catalog part
+        mock_catalog_part = Mock()
+        mock_catalog_part.category = "product"
+        mock_catalog_part.name = "Test Part"
+        mock_catalog_part.description = "Test Description"
+        
+        # Create mock business partner
+        mock_business_partner = Mock()
+        mock_business_partner.bpnl = "BPNL987654321098"
+        
+        # Create mock partner catalog part
+        mock_partner_catalog_part = Mock()
+        mock_partner_catalog_part.customer_part_id = "CUST001"
+        mock_partner_catalog_part.business_partner = mock_business_partner
+        mock_partner_catalog_part.catalog_part = mock_catalog_part
+        
+        mock_serialized_part.partner_catalog_part = mock_partner_catalog_part
 
         mock_repo = Mock()
         mock_repo_factory.return_value.__enter__.return_value = mock_repo
         mock_repo.serialized_part_repository.find.return_value = [mock_serialized_part]
-        mock_repo.enablement_service_stack_repository.get_by_name.return_value = mock_enablement_service_stack
+        mock_repo.enablement_service_stack_repository.find_by_legal_entity_bpnl.return_value = [mock_enablement_service_stack]
         mock_repo.twin_repository.create_new.return_value = mock_twin
         mock_repo.twin_registration_repository.get_by_twin_id_enablement_service_stack_id.return_value = None
         mock_repo.twin_registration_repository.create_new.return_value = Mock(dtr_registered=False)
 
         # Act
-        with patch('services.provider.twin_management_service._create_dtr_manager') as mock_dtr_manager:
-            mock_dtr = Mock()
-            mock_dtr_manager.return_value = mock_dtr
-
+        with patch('services.provider.twin_management_service.dtr_provider_manager') as mock_dtr_provider:
             result = self.service.create_serialized_part_twin(create_input)
 
             # Assert
             assert isinstance(result, TwinRead)
             assert result.global_id == sample_global_id
-            mock_dtr.create_or_update_shell_descriptor_serialized_part.assert_called_once()
+            mock_dtr_provider.create_or_update_shell_descriptor.assert_called_once()
 
     @patch('services.provider.twin_management_service.RepositoryManagerFactory.create')
     def test_get_serialized_part_twins_success(self, mock_repo_factory, mock_twin):
@@ -594,32 +609,17 @@ class TestTwinManagementService:
         assert hasattr(service, 'submodel_document_generator')
         assert service.submodel_document_generator is not None
 
-    @patch('services.provider.twin_management_service.ConfigManager')
-    def test_create_dtr_manager(self, mock_config_manager):
-        """Test DTR manager creation."""
-        # Arrange
-        mock_config_manager.get_config.side_effect = lambda key: {
-            'digitalTwinRegistry.hostname': 'http://test.com',
-            'digitalTwinRegistry.uri': '/api',
-            'digitalTwinRegistry.lookupUri': '/lookup',
-            'digitalTwinRegistry.apiPath': '/v3'
-        }[key]
+    def test_dtr_integration_available(self):
+        """Test that DTR provider manager is available for integration."""
+        # This test ensures that the DTR integration is properly imported and available
+        from services.provider.twin_management_service import dtr_provider_manager
+        assert dtr_provider_manager is not None
 
-        # Act
-        from services.provider.twin_management_service import _create_dtr_manager
-        result = _create_dtr_manager(None)
-
-        # Assert
-        assert result is not None
-
-    def test_create_connector_manager(self):
-        """Test connector manager creation."""
-        # Act
-        from services.provider.twin_management_service import _create_connector_manager
-        result = _create_connector_manager(None)
-
-        # Assert
-        assert result is not None
+    def test_connector_integration_available(self):
+        """Test that connector manager is available for integration."""
+        # This test ensures that the connector integration is properly imported and available
+        from services.provider.twin_management_service import connector_manager
+        assert connector_manager is not None
 
     def test_create_submodel_service_manager(self):
         """Test submodel service manager creation."""
