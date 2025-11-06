@@ -45,7 +45,8 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
   // Guardar la ruta anterior cuando no estemos en KIT Features
   useEffect(() => {
     if (location.pathname !== kitFeaturesConfig.navigationPath) {
-      previousPath.current = location.pathname;
+      // Si estamos en la ruta raíz, guardar /catalog como la ruta anterior
+      previousPath.current = location.pathname === '/' ? '/catalog' : location.pathname;
     }
   }, [location.pathname]);
   
@@ -82,7 +83,7 @@ const Sidebar = ({ items }: { items: SidebarItem[] }) => {
     <Box className="sidebarContainer">
       <Box className="regularItems">
         {items.map((item, index) => {
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || (location.pathname === '/' && item.path === '/catalog');
           const isDisabled = item.disabled === true;
           
           const feature = allFeatures.find(f => f.navigationPath === item.path);
