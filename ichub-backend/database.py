@@ -60,7 +60,7 @@ def wait_for_db_connection():
     Tries to establish a connection to the database, retrying on failure.
     Returns True when the connection is successful.
     """
-    attempt = 1
+    attempt = 0
     while True:
         try:
             with engine.connect() as conn:
@@ -69,7 +69,6 @@ def wait_for_db_connection():
             return True  
 
         except Exception as e:
-            logger.critical("Database not ready (attempt %d). Retrying in %d seconds: %s", attempt, db_retry_interval, e)
-            time.sleep(db_retry_interval)
             attempt += 1
-            return False
+            logger.critical("Database not ready (attempt %d). Retrying in %d seconds: %s",attempt, db_retry_interval, e)
+            time.sleep(db_retry_interval)

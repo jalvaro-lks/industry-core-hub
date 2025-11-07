@@ -54,9 +54,7 @@ database_error:bool = False
 try:
 
     # If the database is not ready, the backend should wait until the PostgreSQL service is fully available and accepting connections 
-    db_ready = False
-    while not db_ready:
-        db_ready = wait_for_db_connection()
+    wait_for_db_connection()
 
     # Create the connection manager for the provider
     connection_manager = PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)
