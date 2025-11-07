@@ -51,11 +51,18 @@ export function ProtectedRoute({
         flexDirection="column"
         justifyContent="center" 
         alignItems="center" 
-        minHeight="60vh"
-        gap={2}
+        minHeight="100vh"
+        gap={3}
+        sx={{ 
+          background: 'black',
+          color: 'white'
+        }}
       >
-        <CircularProgress size={60} />
-        <Typography variant="h6" color="textSecondary">
+        <CircularProgress size={80} sx={{ color: 'white' }} />
+        <Typography variant="h4" fontWeight="bold">
+          Industry Core Hub
+        </Typography>
+        <Typography variant="h6">
           Authenticating...
         </Typography>
       </Box>
@@ -95,11 +102,18 @@ export function ProtectedRoute({
         flexDirection="column"
         justifyContent="center" 
         alignItems="center" 
-        minHeight="60vh"
-        gap={2}
+        minHeight="100vh"
+        gap={3}
+        sx={{ 
+          background: 'black',
+          color: 'white'
+        }}
       >
-        <CircularProgress size={60} />
-        <Typography variant="h6" color="textSecondary">
+        <CircularProgress size={80} sx={{ color: 'white' }} />
+        <Typography variant="h4" fontWeight="bold">
+          Industry Core Hub
+        </Typography>
+        <Typography variant="h6">
           Redirecting to login...
         </Typography>
       </Box>
