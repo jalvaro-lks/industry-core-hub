@@ -145,6 +145,8 @@ backend:
       echo: false
       # -- seconds to wait for the database to respond before aborting the connection attempt
       timeout: 8
+      # -- seconds to wait between retry attempts
+      retry_interval: 5
     # Configuration for the logger settings
     logger:
      # Possible values: WARNING, INFO, DEBUG
