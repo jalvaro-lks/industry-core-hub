@@ -40,7 +40,8 @@ import {
     Update as UpdateIcon,
     Tag as TagIcon,
     ChevronLeft as ChevronLeftIcon,
-    ChevronRight as ChevronRightIcon
+    ChevronRight as ChevronRightIcon,
+    Add as AddIcon
 } from '@mui/icons-material';
 import { CatalogPartTwinDetailsRead } from '../../types/twin-types';
 
@@ -57,9 +58,10 @@ interface SubmodelViewerProps {
             }>;
         };
     }, submodelId: string, semanticId: string) => void;
+    onCreateSubmodel?: () => void;
 }
 
-const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFullDetails }) => {
+const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFullDetails, onCreateSubmodel }) => {
     const [currentStartIndex, setCurrentStartIndex] = useState(0);
     const submodelsPerPage = 3;
     const submodelEntries = Object.entries(twinDetails.aspects || {});
@@ -168,6 +170,33 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
                     <SchemaIcon sx={{ color: 'primary.main' }} />
                     Digital Twin Submodels ({totalSubmodels})
                 </Typography>
+                
+                {onCreateSubmodel && (
+                    <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={onCreateSubmodel}
+                        sx={{
+                            background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                            borderRadius: '10px',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: '11px',
+                            py: 0.75,
+                            px: 2,
+                            boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
+                            },
+                            transition: 'all 0.2s ease-in-out',
+                        }}
+                    >
+                        New Submodel
+                    </Button>
+                )}
                 
                 {showCarousel && (
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
