@@ -25,7 +25,16 @@
  * Schema registry for managing different schema types and versions
  */
 
-import { DPP_SCHEMA_METADATA, DPPSchema, DPP_FORM_FIELDS, createDefaultDPP, validateDPP } from './dpp/dpp-v6.1.0-real';
+import { 
+  DPP_SCHEMA_METADATA, 
+  DPPSchema, 
+  DPP_COMPREHENSIVE_FORM_FIELDS, 
+  createDefaultDPP, 
+  validateDPP,
+  getDPPFieldGroups,
+  getDPPRequiredFields,
+  getDPPOptionalFields
+} from './dpp/dpp-v6.1.0';
 
 // Helper function to get value from nested object path
 const getValueByPath = (obj: any, path: string): any => {
@@ -55,7 +64,7 @@ export interface SchemaDefinition<T = any> {
 const SCHEMA_REGISTRY: Record<string, SchemaDefinition> = {
   'dpp-v6.1.0': {
     metadata: DPP_SCHEMA_METADATA,
-    formFields: DPP_FORM_FIELDS,
+    formFields: DPP_COMPREHENSIVE_FORM_FIELDS,
     createDefault: createDefaultDPP,
     validate: validateDPP
   }

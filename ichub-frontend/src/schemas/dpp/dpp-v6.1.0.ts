@@ -39,10 +39,16 @@ const dppSchemaConfig = interpretJSONSchema(dppJsonSchema);
 export const DPP_SCHEMA_VERSION = '6.1.0';
 export const DPP_SEMANTIC_ID = 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport';
 
-// Export the generated form fields and functions
-export const DPP_FORM_FIELDS = dppSchemaConfig.formFields;
-export const createDefaultDPP = dppSchemaConfig.createDefault;
+// Export ALL comprehensive interpreter functions
 export const validateDPP = dppSchemaConfig.validate;
+export const createDefaultDPPFromSchema = dppSchemaConfig.createDefault;
+export const getDPPFieldGroups = dppSchemaConfig.getFieldGroups;
+export const getDPPFieldByKey = dppSchemaConfig.getFieldByKey;
+export const getDPPRequiredFields = dppSchemaConfig.getRequiredFields;
+export const getDPPOptionalFields = dppSchemaConfig.getOptionalFields;
+
+// Export the comprehensive form fields from the interpreter
+export const DPP_COMPREHENSIVE_FORM_FIELDS = dppSchemaConfig.formFields;
 
 // TypeScript interface generated from the JSON Schema (simplified for type safety)
 export interface DPPSchema {
@@ -126,9 +132,6 @@ export interface DPPSchema {
   };
 }
 
-export const DPP_SCHEMA_VERSION = "6.1.0";
-export const DPP_SEMANTIC_ID = "urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport";
-
 /**
  * Form field configuration for dynamic form generation
  */
@@ -143,9 +146,14 @@ export interface DPPFormField {
     min?: number;
     max?: number;
     pattern?: string;
+    minItems?: number;
+    maxItems?: number;
   };
   section: string;
   description?: string;
+  // Array-specific properties
+  itemType?: 'string' | 'number' | 'object';
+  itemFields?: DPPFormField[];
 }
 
 export const DPP_FORM_FIELDS: DPPFormField[] = [

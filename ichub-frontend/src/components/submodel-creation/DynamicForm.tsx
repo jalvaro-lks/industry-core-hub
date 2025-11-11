@@ -36,14 +36,26 @@ import {
     Chip,
     Tooltip,
     Switch,
-    FormControlLabel
+    FormControlLabel,
+    Button,
+    IconButton,
+    Card,
+    CardContent,
+    Collapse
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
     Info as InfoIcon,
-    CalendarToday as CalendarTodayIcon
+    CalendarToday as CalendarTodayIcon,
+    Add as AddIcon,
+    Delete as DeleteIcon,
+    DragIndicator as DragIndicatorIcon
 } from '@mui/icons-material';
-import { SchemaDefinition, DPPFormField } from '../../schemas';
+import { SchemaDefinition } from '../../schemas';
+import { FormField } from '../../schemas/json-schema-interpreter';
+
+// For backwards compatibility, use FormField as DPPFormField
+type DPPFormField = FormField;
 
 interface DynamicFormProps {
     schema: SchemaDefinition;
@@ -62,23 +74,72 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     onChange,
     errors
 }, ref) => {
-    const formFields = schema.formFields as DPPFormField[];
+    const formFields = schema.formFields as FormField[];
     const fieldRefs = useRef<Record<string, any>>({});
     const accordionRefs = useRef<Record<string, any>>({});
     
-    // State to control expanded panels
+    // State to control expanded panels - expand main sections by default
     const [expandedPanels, setExpandedPanels] = useState<Record<string, boolean>>({
-        'Product Identifier': true
+        'Metadata': true,
+        'Identification': true,
+        'Operation': false,
+        'Product Characteristics': false,
+        'Commercial Information': false,
+        'Materials': false,
+        'Sustainability': false
     });
 
-    // Group fields by section
+    // Group fields by section using comprehensive interpreter data
     const groupedFields = formFields.reduce((acc, field) => {
         if (!acc[field.section]) {
             acc[field.section] = [];
         }
         acc[field.section].push(field);
         return acc;
-    }, {} as Record<string, DPPFormField[]>);
+    }, {} as Record<string, FormField[]>);
+
+    // Create hierarchical structure for nested fields
+    interface FieldNode {
+        field?: FormField;
+        children: Record<string, FieldNode>;
+        path: string;
+        isLeaf: boolean;
+    }
+
+    const createFieldHierarchy = (fields: FormField[]): Record<string, FieldNode> => {
+        const root: Record<string, FieldNode> = {};
+
+        fields.forEach(field => {
+            const pathParts = field.key.split('.');
+            let current = root;
+            let currentPath = '';
+
+            pathParts.forEach((part, index) => {
+                currentPath = currentPath ? `${currentPath}.${part}` : part;
+                
+                if (!current[part]) {
+                    current[part] = {
+                        children: {},
+                        path: currentPath,
+                        isLeaf: index === pathParts.length - 1
+                    };
+                }
+
+                if (index === pathParts.length - 1) {
+                    // This is the leaf node, attach the field
+                    current[part].field = field;
+                    current[part].isLeaf = true;
+                } else {
+                    // This is an intermediate node
+                    current[part].isLeaf = false;
+                }
+
+                current = current[part].children;
+            });
+        });
+
+        return root;
+    };
 
     // Get user-friendly section name
     const getSectionDisplayName = (sectionName: string): string => {
@@ -177,12 +238,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         return result;
     };
 
-    const handleFieldChange = (field: DPPFormField, value: any) => {
+    const handleFieldChange = (field: FormField, value: any) => {
         const newData = setValueByPath(data, field.key, value);
         onChange(newData);
     };
 
-    const renderField = (field: DPPFormField) => {
+    const renderField = (field: FormField) => {
         const currentValue = getValueByPath(data, field.key) || '';
         const hasError = errors.some(error => error.toLowerCase().includes(field.label.toLowerCase()));
 
@@ -449,9 +510,630 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     </Box>
                 );
 
+            case 'integer':
+                return (
+                    <TextField
+                        fullWidth
+                        type="number"
+                        label={field.label}
+                        value={currentValue}
+                        onChange={(e) => handleFieldChange(field, parseInt(e.target.value) || 0)}
+                        placeholder={field.placeholder}
+                        required={field.required}
+                        error={hasError}
+                        variant="outlined"
+                        size="small"
+                        inputProps={{
+                            min: field.validation?.min || 0,
+                            max: field.validation?.max,
+                            step: 1
+                        }}
+                        InputProps={{
+                            endAdornment: field.description ? (
+                                <Tooltip title={field.description} placement="top">
+                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                </Tooltip>
+                            ) : undefined
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                '&:hover fieldset': {
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            }
+                        }}
+                    />
+                );
+
+            case 'email':
+                return (
+                    <TextField
+                        fullWidth
+                        type="email"
+                        label={field.label}
+                        value={currentValue}
+                        onChange={(e) => handleFieldChange(field, e.target.value)}
+                        placeholder={field.placeholder || 'Enter email address'}
+                        required={field.required}
+                        error={hasError}
+                        variant="outlined"
+                        size="small"
+                        InputProps={{
+                            endAdornment: field.description ? (
+                                <Tooltip title={field.description} placement="top">
+                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                </Tooltip>
+                            ) : undefined
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                '&:hover fieldset': {
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            }
+                        }}
+                    />
+                );
+
+            case 'url':
+                return (
+                    <TextField
+                        fullWidth
+                        type="url"
+                        label={field.label}
+                        value={currentValue}
+                        onChange={(e) => handleFieldChange(field, e.target.value)}
+                        placeholder={field.placeholder || 'https://example.com'}
+                        required={field.required}
+                        error={hasError}
+                        variant="outlined"
+                        size="small"
+                        InputProps={{
+                            endAdornment: field.description ? (
+                                <Tooltip title={field.description} placement="top">
+                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                </Tooltip>
+                            ) : undefined
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                '&:hover fieldset': {
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            }
+                        }}
+                    />
+                );
+
+            case 'datetime':
+                return (
+                    <TextField
+                        fullWidth
+                        type="datetime-local"
+                        label={field.label}
+                        value={currentValue}
+                        onChange={(e) => handleFieldChange(field, e.target.value)}
+                        required={field.required}
+                        error={hasError}
+                        variant="outlined"
+                        size="small"
+                        InputLabelProps={{
+                            shrink: true,
+                        }}
+                        InputProps={{
+                            endAdornment: field.description ? (
+                                <Tooltip title={field.description} placement="top">
+                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                </Tooltip>
+                            ) : undefined
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                '&:hover fieldset': {
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            }
+                        }}
+                    />
+                );
+
+            case 'time':
+                return (
+                    <TextField
+                        fullWidth
+                        type="time"
+                        label={field.label}
+                        value={currentValue}
+                        onChange={(e) => handleFieldChange(field, e.target.value)}
+                        required={field.required}
+                        error={hasError}
+                        variant="outlined"
+                        size="small"
+                        InputLabelProps={{
+                            shrink: true,
+                        }}
+                        InputProps={{
+                            endAdornment: field.description ? (
+                                <Tooltip title={field.description} placement="top">
+                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                </Tooltip>
+                            ) : undefined
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                '&:hover fieldset': {
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: 'primary.main',
+                                },
+                            }
+                        }}
+                    />
+                );
+
+            case 'radio':
+                // Convert radio options to dropdown for better UX
+                return (
+                    <FormControl fullWidth size="small" error={hasError}>
+                        <InputLabel sx={{ color: 'text.secondary' }}>
+                            {field.label}
+                            {field.required && ' *'}
+                        </InputLabel>
+                        <Select
+                            value={currentValue || ''}
+                            label={field.label + (field.required ? ' *' : '')}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            sx={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'primary.main',
+                                },
+                            }}
+                        >
+                            {!field.required && (
+                                <MenuItem value="">
+                                    <em>Select {field.label}</em>
+                                </MenuItem>
+                            )}
+                            {field.options?.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                        {field.description && (
+                            <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                                {field.description}
+                            </Typography>
+                        )}
+                    </FormControl>
+                );
+
+            case 'object':
+                // For object fields, we render a nested structure
+                return (
+                    <Card sx={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: 2,
+                        p: 2
+                    }}>
+                        <Typography variant="subtitle2" sx={{ 
+                            color: 'text.primary',
+                            fontWeight: 600,
+                            mb: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1
+                        }}>
+                            {field.label}
+                            {field.required && (
+                                <Chip 
+                                    label="Required" 
+                                    size="small" 
+                                    color="error" 
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                                />
+                            )}
+                            {field.description && (
+                                <Tooltip title={field.description} placement="top">
+                                    <InfoIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                </Tooltip>
+                            )}
+                        </Typography>
+                        
+                        {/* Render nested object fields if available */}
+                        {field.objectFields && field.objectFields.length > 0 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {field.objectFields.map((subField) => (
+                                    <Box key={subField.key}>
+                                        {renderField(subField)}
+                                    </Box>
+                                ))}
+                            </Box>
+                        )}
+                    </Card>
+                );
+
+            case 'array':
+                const arrayValue = getValueByPath(data, field.key) || [];
+                const ensureArray = Array.isArray(arrayValue) ? arrayValue : [];
+                
+                const addArrayItem = () => {
+                    const newItem = field.itemType === 'object' ? {} : '';
+                    const newArray = [...ensureArray, newItem];
+                    handleFieldChange(field, newArray);
+                };
+                
+                const removeArrayItem = (index: number) => {
+                    const newArray = ensureArray.filter((_, i) => i !== index);
+                    handleFieldChange(field, newArray);
+                };
+                
+                const updateArrayItem = (index: number, value: any) => {
+                    const newArray = [...ensureArray];
+                    newArray[index] = value;
+                    handleFieldChange(field, newArray);
+                };
+
+                return (
+                    <Box sx={{ width: '100%' }}>
+                        {/* Array Header */}
+                        <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            mb: 2,
+                            pb: 1,
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.12)'
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="subtitle2" sx={{ 
+                                    color: 'text.primary',
+                                    fontWeight: 600
+                                }}>
+                                    {field.label}
+                                </Typography>
+                                {field.required && (
+                                    <Chip 
+                                        label="Required" 
+                                        size="small" 
+                                        color="error" 
+                                        variant="outlined"
+                                        sx={{ fontSize: '0.7rem', height: '20px' }}
+                                    />
+                                )}
+                                {field.description && (
+                                    <Tooltip title={field.description} placement="top">
+                                        <InfoIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    </Tooltip>
+                                )}
+                            </Box>
+                            <Button
+                                size="small"
+                                startIcon={<AddIcon />}
+                                onClick={addArrayItem}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontSize: '0.8rem',
+                                    color: 'primary.main',
+                                    border: '1px solid rgba(96, 165, 250, 0.3)',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                        borderColor: 'primary.main'
+                                    }
+                                }}
+                            >
+                                Add Item
+                            </Button>
+                        </Box>
+
+                        {/* Array Items */}
+                        {ensureArray.length === 0 ? (
+                            <Box sx={{
+                                p: 3,
+                                textAlign: 'center',
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                borderRadius: 2,
+                                border: '1px dashed rgba(255, 255, 255, 0.2)'
+                            }}>
+                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                    No items added yet. Click "Add Item" to get started.
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {ensureArray.map((item, index) => (
+                                    <Card key={index} sx={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: 2
+                                    }}>
+                                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                                {/* Drag handle */}
+                                                <DragIndicatorIcon sx={{ 
+                                                    color: 'text.secondary', 
+                                                    fontSize: 20,
+                                                    mt: 1,
+                                                    cursor: 'grab'
+                                                }} />
+                                                
+                                                {/* Item content */}
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                                        <Typography variant="caption" sx={{ 
+                                                            color: 'text.secondary',
+                                                            fontWeight: 600,
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: 1
+                                                        }}>
+                                                            Item {index + 1}
+                                                        </Typography>
+                                                    </Box>
+                                                    
+                                                    {field.itemType === 'object' && field.itemFields ? (
+                                                        // Render object fields
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                            {field.itemFields.map((subField: any) => {
+                                                                const subFieldValue = item[subField.key] || '';
+                                                                return (
+                                                                    <TextField
+                                                                        key={subField.key}
+                                                                        fullWidth
+                                                                        size="small"
+                                                                        label={subField.label}
+                                                                        value={subFieldValue}
+                                                                        onChange={(e) => {
+                                                                            const newItem = { ...item, [subField.key]: e.target.value };
+                                                                            updateArrayItem(index, newItem);
+                                                                        }}
+                                                                        placeholder={subField.placeholder}
+                                                                        required={subField.required}
+                                                                        type={subField.type === 'number' ? 'number' : 'text'}
+                                                                        multiline={subField.type === 'textarea'}
+                                                                        maxRows={subField.type === 'textarea' ? 3 : 1}
+                                                                        sx={{
+                                                                            '& .MuiOutlinedInput-root': {
+                                                                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                                                                '&:hover fieldset': {
+                                                                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                                                                },
+                                                                                '&.Mui-focused fieldset': {
+                                                                                    borderColor: 'primary.main',
+                                                                                },
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                );
+                                                            })}
+                                                        </Box>
+                                                    ) : (
+                                                        // Render simple field
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            value={item}
+                                                            onChange={(e) => updateArrayItem(index, e.target.value)}
+                                                            placeholder={`${field.label} item`}
+                                                            sx={{
+                                                                '& .MuiOutlinedInput-root': {
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                                                    '&:hover fieldset': {
+                                                                        borderColor: 'rgba(96, 165, 250, 0.5)',
+                                                                    },
+                                                                    '&.Mui-focused fieldset': {
+                                                                        borderColor: 'primary.main',
+                                                                    },
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                </Box>
+                                                
+                                                {/* Delete button */}
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => removeArrayItem(index)}
+                                                    sx={{
+                                                        color: 'error.main',
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(244, 67, 54, 0.1)'
+                                                        }
+                                                    }}
+                                                >
+                                                    <DeleteIcon sx={{ fontSize: 18 }} />
+                                                </IconButton>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </Box>
+                        )}
+
+                        {/* Array summary */}
+                        <Box sx={{ 
+                            mt: 2, 
+                            p: 1, 
+                            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                            borderRadius: 1,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                {ensureArray.length} item{ensureArray.length !== 1 ? 's' : ''}
+                            </Typography>
+                            {field.validation?.minItems && ensureArray.length < field.validation.minItems && (
+                                <Typography variant="caption" sx={{ color: 'error.main' }}>
+                                    Minimum {field.validation.minItems} items required
+                                </Typography>
+                            )}
+                        </Box>
+                    </Box>
+                );
+
             default:
                 return null;
         }
+    };
+
+    // State for nested group expansion
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    // Render hierarchical field structure with proper visual nesting
+    const renderFieldHierarchy = (nodes: Record<string, FieldNode>, depth = 0): React.ReactElement[] => {
+        return Object.entries(nodes)
+            .map(([key, node]) => {
+                if (node.isLeaf && node.field) {
+                    // Render the actual field
+                    return (
+                        <Box 
+                            key={node.field.key}
+                            sx={{ 
+                                mb: 2
+                            }}
+                            ref={(el) => {
+                                if (el) fieldRefs.current[node.field!.key] = el;
+                            }}
+                        >
+                            {renderField(node.field)}
+                        </Box>
+                    );
+                } else {
+                    // Render a nested group
+                    const hasChildFields = Object.values(node.children).some(child => 
+                        child.isLeaf || Object.keys(child.children).length > 0
+                    );
+
+                    if (!hasChildFields) return null;
+
+                    // Create a friendly label for the group
+                    const groupLabel = key.charAt(0).toUpperCase() + key.slice(1)
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^\s/, '');
+
+                    const groupId = `${node.path}-${depth}`;
+                    const isGroupExpanded = expandedGroups[groupId] ?? true; // Default expanded
+
+                    return (
+                        <Box key={node.path} sx={{ mb: 2 }}>
+                            {/* Parent Group Container */}
+                            <Box
+                                sx={{
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    borderRadius: 2,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                    overflow: 'hidden',
+                                    transition: 'all 0.2s ease',
+                                    // Only apply hover effects to nested groups (depth > 0)
+                                    ...(depth > 0 && {
+                                        '&:hover': {
+                                            borderColor: 'rgba(96, 165, 250, 0.3)',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)'
+                                        }
+                                    })
+                                }}
+                            >
+                                {/* Group Header - always visible for nested groups */}
+                                {depth > 0 && (
+                                    <Box
+                                        onClick={() => setExpandedGroups(prev => ({ 
+                                            ...prev, 
+                                            [groupId]: !isGroupExpanded 
+                                        }))}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            cursor: 'pointer',
+                                            py: 1.5,
+                                            px: 2,
+                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            borderBottom: isGroupExpanded ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+                                            transition: 'all 0.2s ease',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(96, 165, 250, 0.1)'
+                                            }
+                                        }}
+                                    >
+                                        <ExpandMoreIcon 
+                                            sx={{ 
+                                                fontSize: 18,
+                                                color: 'primary.main',
+                                                transform: isGroupExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                                                transition: 'transform 0.2s ease'
+                                            }} 
+                                        />
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            sx={{ 
+                                                fontWeight: 600,
+                                                color: 'text.primary',
+                                                fontSize: '0.875rem'
+                                            }}
+                                        >
+                                            {groupLabel}
+                                        </Typography>
+                                        <Chip 
+                                            label={Object.keys(node.children).length} 
+                                            size="small" 
+                                            sx={{ 
+                                                ml: 'auto',
+                                                height: 20,
+                                                fontSize: '0.75rem',
+                                                backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                                                color: 'primary.main'
+                                            }} 
+                                        />
+                                    </Box>
+                                )}
+                                
+                                {/* Group Content - nested fields appear INSIDE this container */}
+                                <Collapse in={isGroupExpanded} timeout={200}>
+                                    <Box 
+                                        sx={{ 
+                                            p: 2,
+                                            pt: depth === 0 ? 2 : 1.5, // Less padding at top if there's a header
+                                            backgroundColor: depth > 0 ? 'rgba(0, 0, 0, 0.02)' : 'transparent',
+                                            // Create visual depth with subtle background changes
+                                            ...(depth > 1 && {
+                                                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                                                borderLeft: '3px solid rgba(96, 165, 250, 0.2)'
+                                            })
+                                        }}
+                                    >
+                                        {renderFieldHierarchy(node.children, depth + 1)}
+                                    </Box>
+                                </Collapse>
+                            </Box>
+                        </Box>
+                    );
+                }
+            })
+            .filter(Boolean) as React.ReactElement[];
     };
 
     return (
@@ -539,17 +1221,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             </Box>
                         </AccordionSummary>
                         <AccordionDetails sx={{ p: 3 }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                {sectionFields.map((field: DPPFormField) => (
-                                    <Box 
-                                        key={field.key} 
-                                        ref={(el) => {
-                                            if (el) fieldRefs.current[field.key] = el;
-                                        }}
-                                    >
-                                        {renderField(field)}
-                                    </Box>
-                                ))}
+                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                {renderFieldHierarchy(createFieldHierarchy(sectionFields))}
                             </Box>
                         </AccordionDetails>
                     </Accordion>

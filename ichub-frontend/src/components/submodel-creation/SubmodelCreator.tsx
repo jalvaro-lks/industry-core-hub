@@ -41,7 +41,8 @@ import {
     Card,
     CardContent,
     Tooltip,
-    Chip
+    Chip,
+    Badge
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -52,12 +53,18 @@ import {
     Code as CodeIcon,
     AccountTree as AccountTreeIcon,
     Fingerprint as FingerprintIcon,
-    Inventory as InventoryIcon
+    Inventory as InventoryIcon,
+    Error as ErrorIcon,
+    ViewModule as ViewModuleIcon,
+    DataObject as DataObjectIcon,
+    Warning as WarningIcon,
+    ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
 import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
+import JsonViewer from '../general/JsonViewer';
 
 interface SubmodelCreatorProps {
     open: boolean;
@@ -125,6 +132,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [formData, setFormData] = useState<any>({});
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [viewMode, setViewMode] = useState<'json' | 'errors'>('json');
     const formRef = useRef<DynamicFormRef>(null);
 
     // Function to handle clipboard copy
@@ -137,16 +145,431 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         }
     };
 
+    // Schema-aware error parsing interface
+    interface ParsedError {
+        message: string;
+        fieldKey?: string;
+        fieldLabel?: string;
+        fieldPath?: string;
+        severity: 'error' | 'warning';
+        context?: string;
+        arrayIndex?: number;
+    }
+
+    // ErrorViewer component - Schema-aware version
+    const ErrorViewer: React.FC<{ 
+        errors: string[], 
+        onNavigateToField: (fieldKey: string) => void 
+    }> = ({ errors, onNavigateToField }) => {
+        
+        // Schema-aware error parsing function
+        const parseValidationError = (error: string): ParsedError => {
+            // Extract field information using schema structure
+            const findFieldInSchema = (fieldName: string): { key: string, label: string, path: string } | null => {
+                if (!selectedSchema?.formFields) return null;
+                
+                // Look for exact match first
+                const exactMatch = selectedSchema.formFields.find(field => 
+                    field.key === fieldName || 
+                    field.label === fieldName ||
+                    field.key.endsWith(`.${fieldName}`)
+                );
+                
+                if (exactMatch) {
+                    return {
+                        key: exactMatch.key,
+                        label: exactMatch.label,
+                        path: exactMatch.key
+                    };
+                }
+                
+                // Look for partial matches in nested fields
+                const partialMatch = selectedSchema.formFields.find(field => 
+                    field.key.toLowerCase().includes(fieldName.toLowerCase()) ||
+                    field.label.toLowerCase().includes(fieldName.toLowerCase())
+                );
+                
+                if (partialMatch) {
+                    return {
+                        key: partialMatch.key,
+                        label: partialMatch.label,
+                        path: partialMatch.key
+                    };
+                }
+                
+                return null;
+            };
+            
+            // Extract field name from error message with multiple patterns
+            let fieldName: string | null = null;
+            let fieldInfo: { key: string, label: string, path: string } | null = null;
+            let arrayIndex: number | undefined = undefined;
+            
+            // Try different patterns to extract field name
+            const patterns = [
+                // Array patterns
+                /(\w+)\[(\d+)\]\.(\w+)\s+is required/i,  // field[0].subfield is required
+                /(\w+)\[(\d+)\]\s+is required/i,        // field[0] is required
+                // Nested field patterns
+                /(\w+)\.(\w+)\.(\w+)\s+is required/i,   // group.subgroup.field is required
+                /(\w+)\.(\w+)\s+is required/i,          // group.field is required
+                // Simple patterns
+                /(\w+)\s+is required/i,                 // field is required
+                /(\w+)\s+field is required/i,           // field field is required
+                /(\w+)\s+must be/i,                     // field must be
+                /(\w+)\s+format is invalid/i,           // field format is invalid
+                // Quoted patterns
+                /'([^']+)'\s+is required/i,             // 'field' is required
+                /"([^"]+)"\s+is required/i,             // "field" is required
+                // Property patterns
+                /field\s+'([^']+)'/i,                   // field 'name'
+                /property\s+'([^']+)'/i,                // property 'name'
+            ];
+            
+            for (const pattern of patterns) {
+                const match = error.match(pattern);
+                if (match) {
+                    if (pattern.source.includes('\\[(\\d+)\\]')) {
+                        // Array field match
+                        fieldName = match[1];
+                        arrayIndex = parseInt(match[2]);
+                        if (match[3]) {
+                            fieldName = `${match[1]}.${match[3]}`;
+                        }
+                    } else if (match[3]) {
+                        // Triple nested match
+                        fieldName = `${match[1]}.${match[2]}.${match[3]}`;
+                    } else if (match[2]) {
+                        // Double nested match
+                        fieldName = `${match[1]}.${match[2]}`;
+                    } else {
+                        // Simple field match
+                        fieldName = match[1];
+                    }
+                    
+                    fieldInfo = findFieldInSchema(fieldName);
+                    if (fieldInfo) break;
+                    
+                    // If no direct match, try simpler versions
+                    if (!fieldInfo && fieldName.includes('.')) {
+                        const simpleName = fieldName.split('.').pop();
+                        if (simpleName) {
+                            fieldInfo = findFieldInSchema(simpleName);
+                            if (fieldInfo) {
+                                fieldName = simpleName;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // If no field found, try to extract from the end of the message
+            if (!fieldInfo && error.includes('required')) {
+                const words = error.split(' ');
+                for (let i = words.length - 1; i >= 0; i--) {
+                    const word = words[i].replace(/['"]/g, '');
+                    fieldInfo = findFieldInSchema(word);
+                    if (fieldInfo) {
+                        fieldName = word;
+                        break;
+                    }
+                }
+            }
+            
+            // Create more specific error messages based on schema context
+            let specificMessage = error;
+            let context = '';
+            
+            if (fieldInfo) {
+                const pathParts = fieldInfo.path.split('.');
+                if (pathParts.length > 1) {
+                    context = pathParts.slice(0, -1).join(' → ');
+                    
+                    // Create more user-friendly messages
+                    if (error.includes('is required')) {
+                        specificMessage = `${fieldInfo.label} is required`;
+                        if (arrayIndex !== undefined) {
+                            specificMessage += ` (item ${arrayIndex + 1})`;
+                        }
+                    } else if (error.includes('format is invalid')) {
+                        specificMessage = `${fieldInfo.label} has an invalid format`;
+                    } else if (error.includes('must be')) {
+                        specificMessage = error.replace(fieldName || '', fieldInfo.label);
+                    }
+                }
+            }
+            
+            return {
+                message: specificMessage,
+                fieldKey: fieldInfo?.key,
+                fieldLabel: fieldInfo?.label,
+                fieldPath: fieldInfo?.path,
+                severity: 'error',
+                context,
+                arrayIndex
+            };
+        };
+
+        const parsedErrors = errors.map(parseValidationError);
+
+        if (parsedErrors.length === 0) {
+            return (
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    height: '100%',
+                    textAlign: 'center',
+                    p: 4
+                }}>
+                    <Box sx={{ 
+                        fontSize: 64, 
+                        mb: 2,
+                        opacity: 0.5
+                    }}>
+                        ✅
+                    </Box>
+                    <Typography variant="h6" sx={{ color: 'success.main', mb: 1, fontWeight: 600 }}>
+                        No Validation Errors
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Your submodel data is valid and ready to submit
+                    </Typography>
+                </Box>
+            );
+        }
+
+        return (
+            <Box sx={{ height: '100%', overflow: 'auto' }}>
+                {parsedErrors.map((parsedError, index) => (
+                    <Card key={index} sx={{
+                        mb: 2,
+                        backgroundColor: 'rgba(244, 67, 54, 0.05)',
+                        border: '1px solid rgba(244, 67, 54, 0.2)',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        cursor: parsedError.fieldKey ? 'pointer' : 'default',
+                        transition: 'all 0.2s ease',
+                        ...(parsedError.fieldKey && {
+                            '&:hover': {
+                                backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                                borderColor: 'rgba(244, 67, 54, 0.3)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 8px rgba(244, 67, 54, 0.15)'
+                            }
+                        })
+                    }} onClick={() => parsedError.fieldKey && onNavigateToField(parsedError.fieldKey)}>
+                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                <Box sx={{ 
+                                    flexShrink: 0,
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: '50%',
+                                    backgroundColor: 'error.main',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mt: 0.25
+                                }}>
+                                    <WarningIcon sx={{ fontSize: 14, color: 'white' }} />
+                                </Box>
+                                
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    {/* Error message */}
+                                    <Typography 
+                                        variant="body2" 
+                                        sx={{ 
+                                            color: 'error.main',
+                                            lineHeight: 1.5,
+                                            fontWeight: 500,
+                                            mb: 1
+                                        }}
+                                    >
+                                        {parsedError.message}
+                                    </Typography>
+                                    
+                                    {/* Context information */}
+                                    {parsedError.context && (
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                display: 'block',
+                                                color: 'text.secondary',
+                                                mb: 0.5,
+                                                fontSize: '0.75rem'
+                                            }}
+                                        >
+                                            Context: {parsedError.context}
+                                        </Typography>
+                                    )}
+                                    
+                                    {/* Field path */}
+                                    {parsedError.fieldPath && (
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                display: 'block',
+                                                color: 'text.secondary',
+                                                fontFamily: 'monospace',
+                                                fontSize: '0.75rem',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                px: 1,
+                                                py: 0.5,
+                                                borderRadius: 1,
+                                                mt: 0.5
+                                            }}
+                                        >
+                                            Field: {parsedError.fieldPath}
+                                            {parsedError.arrayIndex !== undefined && ` [${parsedError.arrayIndex}]`}
+                                        </Typography>
+                                    )}
+                                </Box>
+                                
+                                {/* Navigation indicator */}
+                                {parsedError.fieldKey && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                color: 'primary.main',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 500
+                                            }}
+                                        >
+                                            Navigate
+                                        </Typography>
+                                        <ChevronRightIcon 
+                                            sx={{ 
+                                                color: 'primary.main', 
+                                                fontSize: 16
+                                            }} 
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </CardContent>
+                    </Card>
+                ))}
+                
+                {/* Summary */}
+                <Box sx={{ 
+                    mt: 3, 
+                    p: 2, 
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: 2,
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                        {parsedErrors.length} validation issue{parsedErrors.length !== 1 ? 's' : ''} found. 
+                        Click on any error to navigate to the corresponding field.
+                    </Typography>
+                </Box>
+            </Box>
+        );
+    };
+
     // Initialize form data with default values when schema changes
     useEffect(() => {
         if (selectedSchema && open) {
             const defaultData = selectedSchema.createDefault(manufacturerPartId);
             setFormData(defaultData);
             
+            // 🧪 Debug: Log schema structure for verification (development mode)
+            console.log('🔍 DPP Schema Analysis:');
+            console.log('Total Form Fields:', selectedSchema.formFields?.length || 0);
+            console.log('Form Fields Structure:');
+            
+            // Group fields by section to see structure
+            const fieldsBySection = selectedSchema.formFields?.reduce((acc: any, field: any) => {
+                if (!acc[field.section]) acc[field.section] = [];
+                acc[field.section].push({
+                    key: field.key,
+                    label: field.label,
+                    type: field.type,
+                    required: field.required
+                });
+                return acc;
+            }, {}) || {};
+            
+            Object.entries(fieldsBySection).forEach(([section, fields]: [string, any]) => {
+                console.log(`📁 ${section} (${fields.length} fields):`);
+                fields.forEach((field: any) => {
+                    const requiredMark = field.required ? '🔴' : '🔵';
+                    const nestedMark = field.key.includes('.') ? '└─' : '├─';
+                    console.log(`  ${nestedMark} ${requiredMark} ${field.key} (${field.type}): ${field.label}`);
+                });
+            });
+            
+            console.log('📊 Schema Validation Test Results:');
+            
             // Immediately validate the default data
             if (selectedSchema.validate) {
                 const validation = selectedSchema.validate(defaultData);
                 setValidationErrors(validation.errors);
+                
+                // 🧪 Test schema validation with specific DPP data
+                // Test invalid BPNL
+                const testInvalidBPNL = {
+                    metadata: {
+                        version: "1.0",
+                        economicOperatorId: "INVALID_BPNL", // ❌ Should fail BpnlTrait pattern
+                        passportIdentifier: "550e8400-e29b-41d4-a716-446655440000",
+                        predecessor: "550e8400-e29b-41d4-a716-446655440001",
+                        backupReference: "backup-ref",
+                        language: "en",
+                        issueDate: "2025-01-01",
+                        expirationDate: "2025-12-31"
+                    }
+                };
+                
+                const bpnlTest = selectedSchema.validate(testInvalidBPNL);
+                console.log('❌ BPNL Pattern Test:', bpnlTest.isValid ? 'FAILED - Should be invalid' : 'PASSED - Correctly detected invalid BPNL');
+                if (!bpnlTest.isValid) {
+                    console.log('   Errors:', bpnlTest.errors);
+                }
+                
+                // Test invalid UUID
+                const testInvalidUUID = {
+                    metadata: {
+                        version: "1.0",
+                        economicOperatorId: "BPNLABCDEF123456",
+                        passportIdentifier: "not-a-valid-uuid", // ❌ Should fail UuidV4Trait pattern
+                        predecessor: "also-not-uuid",
+                        backupReference: "backup-ref",
+                        language: "en",
+                        issueDate: "2025-01-01",
+                        expirationDate: "2025-12-31"
+                    }
+                };
+                
+                const uuidTest = selectedSchema.validate(testInvalidUUID);
+                console.log('❌ UUID Pattern Test:', uuidTest.isValid ? 'FAILED - Should be invalid' : 'PASSED - Correctly detected invalid UUID');
+                if (!uuidTest.isValid) {
+                    console.log('   Errors:', uuidTest.errors);
+                }
+                
+                // Test valid data
+                const testValidData = {
+                    metadata: {
+                        version: "1.0",
+                        economicOperatorId: "BPNLABCDEF123456", // ✅ Valid BPNL
+                        passportIdentifier: "550e8400-e29b-41d4-a716-446655440000", // ✅ Valid UUID
+                        predecessor: "550e8400-e29b-41d4-a716-446655440001", // ✅ Valid UUID
+                        backupReference: "backup-ref",
+                        language: "en",
+                        issueDate: "2025-01-01", // ✅ Valid date
+                        expirationDate: "2025-12-31" // ✅ Valid date
+                    }
+                };
+                
+                const validTest = selectedSchema.validate(testValidData);
+                console.log('✅ Valid Data Test:', validTest.isValid ? 'PASSED - Correctly accepted valid data' : 'FAILED - Should be valid');
+                if (!validTest.isValid) {
+                    console.log('   Errors:', validTest.errors);
+                }
             } else {
                 setValidationErrors([]);
             }
@@ -468,26 +891,108 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                             borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 2
+                                            justifyContent: 'space-between'
                                         }}>
-                                            <PreviewIcon sx={{ color: 'secondary.main' }} />
-                                            <Box>
-                                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                    JSON Preview
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                                    Real-time preview of your submodel data
-                                                </Typography>
+                                            {/* Left side - Title and description */}
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                {viewMode === 'json' ? (
+                                                    <DataObjectIcon sx={{ color: 'primary.main' }} />
+                                                ) : (
+                                                    <Badge 
+                                                        badgeContent={validationErrors.length} 
+                                                        color="error"
+                                                        sx={{ 
+                                                            '& .MuiBadge-badge': { 
+                                                                fontSize: '0.75rem',
+                                                                minWidth: '20px',
+                                                                height: '20px'
+                                                            } 
+                                                        }}
+                                                    >
+                                                        <ErrorIcon sx={{ color: 'error.main' }} />
+                                                    </Badge>
+                                                )}
+                                                <Box>
+                                                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                                        {viewMode === 'json' ? 'JSON Preview' : 'Validation Errors'}
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                                        {viewMode === 'json' 
+                                                            ? 'Real-time preview of your submodel data'
+                                                            : `${validationErrors.length} validation issue${validationErrors.length !== 1 ? 's' : ''} found`
+                                                        }
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+
+                                            {/* Right side - Toggle buttons */}
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <Button
+                                                    variant={viewMode === 'json' ? 'contained' : 'outlined'}
+                                                    size="small"
+                                                    startIcon={<DataObjectIcon />}
+                                                    onClick={() => setViewMode('json')}
+                                                    sx={{
+                                                        minWidth: '80px',
+                                                        textTransform: 'none',
+                                                        fontSize: '0.875rem',
+                                                        ...(viewMode === 'json' && {
+                                                            backgroundColor: 'primary.main',
+                                                            '&:hover': {
+                                                                backgroundColor: 'primary.dark'
+                                                            }
+                                                        })
+                                                    }}
+                                                >
+                                                    JSON
+                                                </Button>
+                                                <Button
+                                                    variant={viewMode === 'errors' ? 'contained' : 'outlined'}
+                                                    size="small"
+                                                    startIcon={
+                                                        <Badge 
+                                                            badgeContent={validationErrors.length} 
+                                                            color="error"
+                                                            sx={{ 
+                                                                '& .MuiBadge-badge': { 
+                                                                    fontSize: '0.65rem',
+                                                                    minWidth: '16px',
+                                                                    height: '16px'
+                                                                } 
+                                                            }}
+                                                        >
+                                                            <ErrorIcon />
+                                                        </Badge>
+                                                    }
+                                                    onClick={() => setViewMode('errors')}
+                                                    sx={{
+                                                        minWidth: '100px',
+                                                        textTransform: 'none',
+                                                        fontSize: '0.875rem',
+                                                        ...(viewMode === 'errors' && {
+                                                            backgroundColor: 'error.main',
+                                                            color: 'white',
+                                                            '&:hover': {
+                                                                backgroundColor: 'error.dark'
+                                                            }
+                                                        })
+                                                    }}
+                                                >
+                                                    Errors
+                                                </Button>
                                             </Box>
                                         </Box>
 
                                         {/* Preview Content */}
                                         <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-                                            <JsonPreview 
-                                                data={formData}
-                                                errors={validationErrors}
-                                                onNavigateToField={handleNavigateToField}
-                                            />
+                                            {viewMode === 'json' ? (
+                                                <JsonViewer data={formData} />
+                                            ) : (
+                                                <ErrorViewer 
+                                                    errors={validationErrors}
+                                                    onNavigateToField={handleNavigateToField}
+                                                />
+                                            )}
                                         </Box>
                                     </CardContent>
                                 </Card>
@@ -506,11 +1011,6 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                             border: '1px solid rgba(255, 255, 255, 0.12)'
                         }}>
                             <Box>
-                                {validationErrors.length > 0 && (
-                                    <Typography variant="body2" sx={{ color: 'error.main' }}>
-                                        {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found
-                                    </Typography>
-                                )}
                                 {validationErrors.length === 0 && Object.keys(formData).length > 0 && (
                                     <Typography variant="body2" sx={{ color: 'success.main' }}>
                                         Form is valid and ready to submit

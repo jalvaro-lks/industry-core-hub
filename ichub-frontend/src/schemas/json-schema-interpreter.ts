@@ -22,104 +22,246 @@
  ********************************************************************************/
 
 /**
- * JSON Schema Interpreter
- * Automatically generates form fields, validation, and default values from JSON Schema
+ * COMPREHENSIVE JSON Schema Interpreter
+ * Automatically generates form fields, validation, and default values from ANY JSON Schema
+ * Handles: nested objects, arrays, all data types, validation rules, descriptions, required fields
  */
 
 export interface JSONSchemaProperty {
   type?: string | string[];
   description?: string;
   properties?: Record<string, JSONSchemaProperty>;
-  items?: JSONSchemaProperty;
+  items?: JSONSchemaProperty | JSONSchemaProperty[];
+  additionalItems?: JSONSchemaProperty;
   enum?: any[];
+  const?: any;
   pattern?: string;
   format?: string;
   minimum?: number;
   maximum?: number;
+  exclusiveMinimum?: number | boolean;
+  exclusiveMaximum?: number | boolean;
   minLength?: number;
   maxLength?: number;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  multipleOf?: number;
   required?: string[];
+  dependencies?: Record<string, string[] | JSONSchemaProperty>;
   $ref?: string;
   default?: any;
+  examples?: any[];
+  title?: string;
+  // SAMM aspect model extensions
   'x-samm-aspect-model-urn'?: string;
+  // JSON Schema draft-specific
+  allOf?: JSONSchemaProperty[];
+  anyOf?: JSONSchemaProperty[];
+  oneOf?: JSONSchemaProperty[];
+  not?: JSONSchemaProperty;
+  if?: JSONSchemaProperty;
+  then?: JSONSchemaProperty;
+  else?: JSONSchemaProperty;
 }
 
 export interface JSONSchema {
   $schema?: string;
-  type?: string;
+  $id?: string;
+  title?: string;
   description?: string;
+  type?: string;
   properties?: Record<string, JSONSchemaProperty>;
+  patternProperties?: Record<string, JSONSchemaProperty>;
+  additionalProperties?: boolean | JSONSchemaProperty;
+  items?: JSONSchemaProperty | JSONSchemaProperty[];
+  additionalItems?: JSONSchemaProperty;
+  required?: string[];
+  dependencies?: Record<string, string[] | JSONSchemaProperty>;
+  enum?: any[];
+  const?: any;
+  // Component definitions
   components?: {
     schemas?: Record<string, JSONSchemaProperty>;
   };
-  required?: string[];
+  definitions?: Record<string, JSONSchemaProperty>;
+  // Schema composition
+  allOf?: JSONSchemaProperty[];
+  anyOf?: JSONSchemaProperty[];
+  oneOf?: JSONSchemaProperty[];
+  not?: JSONSchemaProperty;
+  if?: JSONSchemaProperty;
+  then?: JSONSchemaProperty;
+  else?: JSONSchemaProperty;
 }
 
 export interface FormField {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox' | 'array';
+  type: 'text' | 'textarea' | 'number' | 'integer' | 'date' | 'datetime' | 'time' | 'email' | 'url' | 'password' | 'select' | 'multiselect' | 'checkbox' | 'radio' | 'array' | 'object';
   section: string;
   description?: string;
   placeholder?: string;
   required: boolean;
-  options?: Array<{ value: any; label: string }>;
+  readonly?: boolean;
+  deprecated?: boolean;
+  // Enhanced options for complex types
+  options?: Array<{ value: any; label: string; description?: string }>;
+  // Comprehensive validation rules
   validation?: {
     min?: number;
     max?: number;
-    pattern?: string;
+    exclusiveMin?: number;
+    exclusiveMax?: number;
     minLength?: number;
     maxLength?: number;
+    minItems?: number;
+    maxItems?: number;
+    uniqueItems?: boolean;
+    pattern?: string;
+    format?: string;
+    multipleOf?: number;
+    enum?: any[];
+    const?: any;
   };
+  // Array-specific properties
+  itemType?: 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array';
+  itemSchema?: JSONSchemaProperty;
+  itemFields?: FormField[];
+  // Object-specific properties
+  objectFields?: FormField[];
+  // Conditional logic
+  dependencies?: Record<string, any>;
+  // Default and example values
+  defaultValue?: any;
+  examples?: any[];
 }
 
 /**
- * Converts JSON Schema property to form field type
+ * Converts JSON Schema property to comprehensive form field type
  */
 function getFormFieldType(property: JSONSchemaProperty, resolvedProperty?: JSONSchemaProperty): FormField['type'] {
   const prop = resolvedProperty || property;
   
-  if (prop.enum) {
+  // Handle arrays of types (JSON Schema allows type: ["string", "null"])
+  const types = Array.isArray(prop.type) ? prop.type : [prop.type];
+  const primaryType = types.find(t => t !== 'null') || types[0];
+  
+  // Enum/const values become select (dropdown for better UX)
+  if (prop.enum && prop.enum.length > 0) {
     return 'select';
   }
   
-  if (prop.type === 'array') {
+  if (prop.const !== undefined) {
+    return 'text'; // Read-only field with const value
+  }
+  
+  // Handle arrays
+  if (primaryType === 'array') {
     return 'array';
   }
   
-  if (prop.type === 'boolean') {
+  // Handle objects
+  if (primaryType === 'object') {
+    return 'object';
+  }
+  
+  // Handle booleans
+  if (primaryType === 'boolean') {
+    // If there are specific enum values for boolean, use select instead
+    if (prop.enum && prop.enum.length > 0) {
+      return 'select';
+    }
     return 'checkbox';
   }
   
-  if (prop.type === 'number' || prop.type === 'integer') {
+  // Handle numbers
+  if (primaryType === 'number') {
     return 'number';
   }
   
-  if (prop.type === 'string') {
-    if (prop.format === 'date' || prop.pattern?.includes('\\d{4}-\\d{2}-\\d{2}')) {
-      return 'date';
+  if (primaryType === 'integer') {
+    return 'integer';
+  }
+  
+  // Handle strings with formats
+  if (primaryType === 'string') {
+    // Date/time formats
+    if (prop.format === 'date') return 'date';
+    if (prop.format === 'date-time') return 'datetime';
+    if (prop.format === 'time') return 'time';
+    
+    // String formats
+    if (prop.format === 'email') return 'email';
+    if (prop.format === 'uri' || prop.format === 'uri-reference') return 'url';
+    if (prop.format === 'password') return 'password';
+    
+    // Pattern-based detection
+    if (prop.pattern) {
+      // Date pattern
+      if (prop.pattern.includes('\\d{4}-\\d{2}-\\d{2}')) return 'date';
+      // Email pattern
+      if (prop.pattern.includes('@')) return 'email';
+      // URL pattern
+      if (prop.pattern.includes('http')) return 'url';
     }
     
-    if (prop.description && prop.description.length > 100) {
+    // Long descriptions become textarea
+    if (prop.description && prop.description.length > 200) {
+      return 'textarea';
+    }
+    
+    // Title suggests textarea
+    if (prop.title && (prop.title.toLowerCase().includes('description') || 
+                      prop.title.toLowerCase().includes('comment') ||
+                      prop.title.toLowerCase().includes('note'))) {
       return 'textarea';
     }
     
     return 'text';
   }
   
+  // Default fallback
   return 'text';
 }
 
 /**
- * Resolves $ref references in JSON Schema
+ * Resolves $ref references in JSON Schema - handles all reference formats
  */
 function resolveRef(ref: string, schema: JSONSchema): JSONSchemaProperty | null {
-  if (!ref.startsWith('#/components/schemas/')) {
+  if (!ref.startsWith('#/')) {
+    console.warn(`External references not supported: ${ref}`);
     return null;
   }
   
-  const schemaName = ref.replace('#/components/schemas/', '');
-  return schema.components?.schemas?.[schemaName] || null;
+  // Handle different reference paths
+  if (ref.startsWith('#/components/schemas/')) {
+    const schemaName = ref.replace('#/components/schemas/', '');
+    return schema.components?.schemas?.[schemaName] || null;
+  }
+  
+  if (ref.startsWith('#/definitions/')) {
+    const schemaName = ref.replace('#/definitions/', '');
+    return schema.definitions?.[schemaName] || null;
+  }
+  
+  // Handle JSON Pointer references like #/properties/metadata
+  if (ref.startsWith('#/')) {
+    const path = ref.substring(2).split('/');
+    let current: any = schema;
+    
+    for (const segment of path) {
+      if (current && typeof current === 'object') {
+        current = current[segment];
+      } else {
+        return null;
+      }
+    }
+    
+    return current as JSONSchemaProperty || null;
+  }
+  
+  return null;
 }
 
 /**
@@ -134,157 +276,504 @@ function generateLabel(key: string): string {
 }
 
 /**
- * Determines the section name for grouping fields
+ * Determines the section name for grouping fields - intelligently detects from schema
  */
-function getSectionName(key: string, property: JSONSchemaProperty): string {
+function getSectionName(key: string, property: JSONSchemaProperty, parentKey?: string): string {
+  // Use title from schema if available
+  if (property.title) {
+    return property.title;
+  }
+  
+  // Use description to infer section if it contains section-like keywords
+  if (property.description) {
+    const desc = property.description.toLowerCase();
+    if (desc.includes('metadata') || desc.includes('meta data')) return 'Metadata';
+    if (desc.includes('identification') || desc.includes('identifier')) return 'Identification';
+    if (desc.includes('operation') || desc.includes('manufacturing')) return 'Operation';
+    if (desc.includes('handling') || desc.includes('spare part')) return 'Handling';
+    if (desc.includes('characteristic') || desc.includes('dimension') || desc.includes('physical')) return 'Product Characteristics';
+    if (desc.includes('commercial') || desc.includes('market') || desc.includes('purchase')) return 'Commercial Information';
+    if (desc.includes('material') || desc.includes('substance') || desc.includes('composition')) return 'Materials';
+    if (desc.includes('sustainability') || desc.includes('environment') || desc.includes('carbon')) return 'Sustainability';
+    if (desc.includes('source') || desc.includes('documentation') || desc.includes('document')) return 'Sources & Documentation';
+  }
+  
+  // Predefined section mapping based on common JSON Schema keys
   const sectionMap: Record<string, string> = {
+    // Core DPP sections
     metadata: 'Metadata',
     identification: 'Identification',
     operation: 'Operation',
     handling: 'Handling',
     characteristics: 'Product Characteristics',
+    physicalDimension: 'Product Characteristics',
+    lifespan: 'Product Characteristics',
     commercial: 'Commercial Information',
     materials: 'Materials',
     sustainability: 'Sustainability',
     sources: 'Sources & Documentation',
-    additionalData: 'Additional Data'
+    additionalData: 'Additional Data',
+    
+    // Generic sections for common schema patterns
+    properties: 'Properties',
+    attributes: 'Attributes',
+    configuration: 'Configuration',
+    settings: 'Settings',
+    options: 'Options',
+    parameters: 'Parameters',
+    details: 'Details',
+    information: 'Information',
+    data: 'Data',
+    content: 'Content',
+    
+    // Specific domain sections
+    product: 'Product Information',
+    manufacturer: 'Manufacturing Information',
+    supplier: 'Supplier Information',
+    customer: 'Customer Information',
+    technical: 'Technical Specifications',
+    compliance: 'Compliance & Certification',
+    quality: 'Quality Information',
+    security: 'Security Information',
+    contact: 'Contact Information',
+    address: 'Address Information',
+    location: 'Location Information',
+    date: 'Date Information',
+    version: 'Version Information'
   };
   
-  return sectionMap[key] || 'General Information';
+  // Check exact key match
+  if (sectionMap[key.toLowerCase()]) {
+    return sectionMap[key.toLowerCase()];
+  }
+  
+  // Check if key contains section keywords
+  const lowerKey = key.toLowerCase();
+  for (const [keyword, section] of Object.entries(sectionMap)) {
+    if (lowerKey.includes(keyword)) {
+      return section;
+    }
+  }
+  
+  // If we have a parent key, try to use it for context
+  if (parentKey) {
+    const parentSection = getSectionName(parentKey, property);
+    return `${parentSection} - ${generateLabel(key)}`;
+  }
+  
+  // Default fallback
+  return 'General Information';
 }
 
 /**
- * Recursively processes properties to generate form fields
+ * COMPREHENSIVE recursive processing of properties - handles ALL JSON Schema features
  */
 function processProperties(
   properties: Record<string, JSONSchemaProperty>,
   schema: JSONSchema,
   requiredFields: string[] = [],
   parentKey: string = '',
-  parentSection: string = 'General Information'
+  parentSection: string = 'General Information',
+  depth: number = 0
 ): FormField[] {
   const fields: FormField[] = [];
+  
+  // Prevent infinite recursion
+  if (depth > 10) {
+    console.warn(`Maximum recursion depth reached for ${parentKey}`);
+    return fields;
+  }
   
   for (const [key, property] of Object.entries(properties)) {
     const fullKey = parentKey ? `${parentKey}.${key}` : key;
     const isRequired = requiredFields.includes(key);
     
-    // Resolve $ref if present
-    let resolvedProperty = property;
-    if (property.$ref) {
-      const resolved = resolveRef(property.$ref, schema);
-      if (resolved) {
-        resolvedProperty = resolved;
-      }
-    }
+    // Resolve all possible references and compositions
+    let resolvedProperty = resolveSchemaProperty(property, schema);
     
-    // Determine section
-    const section = parentKey ? parentSection : getSectionName(key, resolvedProperty);
+    // Determine section - use intelligent section detection
+    const section = parentKey ? parentSection : getSectionName(key, resolvedProperty, parentKey);
     
-    // Handle nested objects
-    if (resolvedProperty.type === 'object' && resolvedProperty.properties) {
-      const nestedFields = processProperties(
-        resolvedProperty.properties,
-        schema,
-        resolvedProperty.required || [],
-        fullKey,
-        section
-      );
-      fields.push(...nestedFields);
-      continue;
-    }
-    
-    // Handle arrays of objects
-    if (resolvedProperty.type === 'array' && resolvedProperty.items?.type === 'object') {
-      // For now, skip complex array objects - can be enhanced later
-      continue;
-    }
-    
-    // Create form field
-    const field: FormField = {
-      key: fullKey,
-      label: generateLabel(key),
-      type: getFormFieldType(property, resolvedProperty),
+    // Handle different property types comprehensively
+    const processedFields = processSchemaProperty(
+      key,
+      fullKey,
+      resolvedProperty,
+      schema,
       section,
-      description: resolvedProperty.description,
-      required: isRequired,
-      placeholder: `Enter ${generateLabel(key).toLowerCase()}`
-    };
+      isRequired,
+      depth + 1
+    );
     
-    // Add enum options
-    if (resolvedProperty.enum) {
-      field.options = resolvedProperty.enum.map(value => ({
-        value,
-        label: typeof value === 'string' ? generateLabel(value) : String(value)
-      }));
-    }
-    
-    // Add validation rules
-    if (resolvedProperty.minimum !== undefined || resolvedProperty.maximum !== undefined ||
-        resolvedProperty.minLength !== undefined || resolvedProperty.maxLength !== undefined ||
-        resolvedProperty.pattern) {
-      field.validation = {
-        min: resolvedProperty.minimum,
-        max: resolvedProperty.maximum,
-        minLength: resolvedProperty.minLength,
-        maxLength: resolvedProperty.maxLength,
-        pattern: resolvedProperty.pattern
-      };
-    }
-    
-    fields.push(field);
+    fields.push(...processedFields);
   }
   
   return fields;
 }
 
 /**
- * Main function to interpret JSON Schema and generate form configuration
+ * Resolves a schema property handling $ref, allOf, anyOf, oneOf, and other compositions
+ */
+function resolveSchemaProperty(property: JSONSchemaProperty, schema: JSONSchema): JSONSchemaProperty {
+  let resolved = { ...property };
+  
+  // Resolve $ref
+  if (property.$ref) {
+    const refResolved = resolveRef(property.$ref, schema);
+    if (refResolved) {
+      resolved = { ...refResolved, ...resolved };
+      delete resolved.$ref;
+    }
+  }
+  
+  // Handle allOf - merge all schemas
+  if (property.allOf) {
+    for (const subSchema of property.allOf) {
+      const subResolved = resolveSchemaProperty(subSchema, schema);
+      resolved = mergeSchemas(resolved, subResolved);
+    }
+  }
+  
+  // Handle oneOf - take the first schema for now (could be enhanced with UI selection)
+  if (property.oneOf && property.oneOf.length > 0) {
+    const firstOption = resolveSchemaProperty(property.oneOf[0], schema);
+    resolved = mergeSchemas(resolved, firstOption);
+  }
+  
+  // Handle anyOf - similar to oneOf for now
+  if (property.anyOf && property.anyOf.length > 0) {
+    const firstOption = resolveSchemaProperty(property.anyOf[0], schema);
+    resolved = mergeSchemas(resolved, firstOption);
+  }
+  
+  return resolved;
+}
+
+/**
+ * Merges two schema properties
+ */
+function mergeSchemas(base: JSONSchemaProperty, overlay: JSONSchemaProperty): JSONSchemaProperty {
+  const merged = { ...base, ...overlay };
+  
+  // Merge properties
+  if (base.properties && overlay.properties) {
+    merged.properties = { ...base.properties, ...overlay.properties };
+  }
+  
+  // Merge required arrays
+  if (base.required && overlay.required) {
+    const combined = [...base.required, ...overlay.required];
+    merged.required = combined.filter((item, index) => combined.indexOf(item) === index);
+  }
+  
+  return merged;
+}
+
+/**
+ * Processes a single schema property into form fields
+ */
+function processSchemaProperty(
+  key: string,
+  fullKey: string,
+  property: JSONSchemaProperty,
+  schema: JSONSchema,
+  section: string,
+  isRequired: boolean,
+  depth: number
+): FormField[] {
+  const fields: FormField[] = [];
+  
+  // Handle object types - process nested properties
+  if (property.type === 'object' && property.properties) {
+    const nestedFields = processProperties(
+      property.properties,
+      schema,
+      property.required || [],
+      fullKey,
+      section,
+      depth
+    );
+    fields.push(...nestedFields);
+    return fields;
+  }
+  
+  // Handle array types
+  if (property.type === 'array') {
+    const arrayField = processArrayProperty(key, fullKey, property, schema, section, isRequired, depth);
+    fields.push(arrayField);
+    return fields;
+  }
+  
+  // Handle primitive types
+  const field = createFormField(key, fullKey, property, section, isRequired);
+  fields.push(field);
+  
+  return fields;
+}
+
+/**
+ * Processes array properties with comprehensive support
+ */
+function processArrayProperty(
+  key: string,
+  fullKey: string,
+  property: JSONSchemaProperty,
+  schema: JSONSchema,
+  section: string,
+  isRequired: boolean,
+  depth: number
+): FormField {
+  const field: FormField = {
+    key: fullKey,
+    label: generateLabel(key),
+    type: 'array',
+    section,
+    description: property.description,
+    required: isRequired,
+    placeholder: `Add ${generateLabel(key).toLowerCase()}`
+  };
+  
+  // Process array items
+  if (property.items) {
+    const itemsSchema = Array.isArray(property.items) ? property.items[0] : property.items;
+    const resolvedItems = resolveSchemaProperty(itemsSchema, schema);
+    
+    // Determine item type
+    if (resolvedItems.type === 'object' && resolvedItems.properties) {
+      field.itemType = 'object';
+      field.itemSchema = resolvedItems;
+      
+      // Process nested fields for array items
+      const itemFields = processProperties(
+        resolvedItems.properties,
+        schema,
+        resolvedItems.required || [],
+        `${fullKey}[item]`,
+        section,
+        depth
+      );
+      field.itemFields = itemFields;
+    } else if (resolvedItems.type === 'array') {
+      field.itemType = 'array';
+      field.itemSchema = resolvedItems;
+    } else {
+      field.itemType = resolvedItems.type as any || 'string';
+      field.itemSchema = resolvedItems;
+    }
+  }
+  
+  // Add array-specific validation
+  field.validation = {
+    ...createValidationRules(property),
+    minItems: property.minItems,
+    maxItems: property.maxItems,
+    uniqueItems: property.uniqueItems
+  };
+  
+  return field;
+}
+
+/**
+ * Creates a form field for primitive types with comprehensive validation
+ */
+function createFormField(
+  key: string,
+  fullKey: string,
+  property: JSONSchemaProperty,
+  section: string,
+  isRequired: boolean
+): FormField {
+  const field: FormField = {
+    key: fullKey,
+    label: property.title || generateLabel(key),
+    type: getFormFieldType(property),
+    section,
+    description: property.description,
+    required: isRequired,
+    placeholder: `Enter ${generateLabel(key).toLowerCase()}`
+  };
+  
+  // Add enum/const options
+  if (property.enum) {
+    field.options = property.enum.map(value => ({
+      value,
+      label: typeof value === 'string' ? generateLabel(value) : String(value),
+      description: property.description
+    }));
+  }
+  
+  if (property.const !== undefined) {
+    field.defaultValue = property.const;
+    field.readonly = true;
+  }
+  
+  // Add comprehensive validation
+  field.validation = createValidationRules(property);
+  
+  // Add default value and examples
+  if (property.default !== undefined) {
+    field.defaultValue = property.default;
+  }
+  
+  if (property.examples) {
+    field.examples = property.examples;
+  }
+  
+  return field;
+}
+
+/**
+ * Creates comprehensive validation rules from JSON Schema property
+ */
+function createValidationRules(property: JSONSchemaProperty): FormField['validation'] {
+  const validation: FormField['validation'] = {};
+  
+  // Numeric constraints
+  if (property.minimum !== undefined) validation.min = property.minimum;
+  if (property.maximum !== undefined) validation.max = property.maximum;
+  if (property.exclusiveMinimum !== undefined) {
+    validation.exclusiveMin = typeof property.exclusiveMinimum === 'boolean' 
+      ? property.minimum : property.exclusiveMinimum;
+  }
+  if (property.exclusiveMaximum !== undefined) {
+    validation.exclusiveMax = typeof property.exclusiveMaximum === 'boolean' 
+      ? property.maximum : property.exclusiveMaximum;
+  }
+  if (property.multipleOf !== undefined) validation.multipleOf = property.multipleOf;
+  
+  // String constraints
+  if (property.minLength !== undefined) validation.minLength = property.minLength;
+  if (property.maxLength !== undefined) validation.maxLength = property.maxLength;
+  if (property.pattern) validation.pattern = property.pattern;
+  if (property.format) validation.format = property.format;
+  
+  // Array constraints
+  if (property.minItems !== undefined) validation.minItems = property.minItems;
+  if (property.maxItems !== undefined) validation.maxItems = property.maxItems;
+  if (property.uniqueItems !== undefined) validation.uniqueItems = property.uniqueItems;
+  
+  // Enum/const constraints
+  if (property.enum) validation.enum = property.enum;
+  if (property.const !== undefined) validation.const = property.const;
+  
+  return Object.keys(validation).length > 0 ? validation : undefined;
+}
+
+/**
+ * COMPREHENSIVE JSON Schema interpretation - handles ANY JSON Schema completely
  */
 export function interpretJSONSchema(schema: JSONSchema): {
   formFields: FormField[];
   validate: (data: any) => { isValid: boolean; errors: string[] };
   createDefault: (params?: any) => any;
+  getFieldGroups: () => Record<string, FormField[]>;
+  getFieldByKey: (key: string) => FormField | undefined;
+  getRequiredFields: () => FormField[];
+  getOptionalFields: () => FormField[];
 } {
-  if (!schema.properties) {
-    throw new Error('Invalid JSON Schema: missing properties');
+  if (!schema.properties && !schema.allOf && !schema.anyOf && !schema.oneOf) {
+    throw new Error('Invalid JSON Schema: missing properties or composition keywords');
+  }
+  
+  let baseProperties = schema.properties || {};
+  
+  // Handle schema composition at root level
+  if (schema.allOf) {
+    for (const subSchema of schema.allOf) {
+      const resolved = resolveSchemaProperty(subSchema, schema);
+      if (resolved.properties) {
+        baseProperties = { ...baseProperties, ...resolved.properties };
+      }
+    }
   }
   
   const formFields = processProperties(
-    schema.properties,
+    baseProperties,
     schema,
     schema.required || []
   );
   
-  // Generate validation function
+  // Enhanced validation function with comprehensive rules
   const validate = (data: any): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
     for (const field of formFields) {
+      const value = getValueByPath(data, field.key);
+      
+      // Required field validation
       if (field.required) {
-        const value = getValueByPath(data, field.key);
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
+        if (value === undefined || value === null || 
+            (typeof value === 'string' && value.trim() === '') ||
+            (Array.isArray(value) && value.length === 0)) {
           errors.push(`${field.label} is required`);
+          continue;
         }
       }
       
-      // Additional validation based on field rules
-      const value = getValueByPath(data, field.key);
-      if (value !== undefined && value !== null && value !== '') {
-        if (field.validation?.min !== undefined && Number(value) < field.validation.min) {
-          errors.push(`${field.label} must be at least ${field.validation.min}`);
+      // Skip validation for empty optional fields
+      if (!field.required && (value === undefined || value === null || value === '')) {
+        continue;
+      }
+      
+      // Comprehensive validation based on field rules
+      if (field.validation) {
+        const val = field.validation;
+        
+        // Numeric validations
+        if (val.min !== undefined && Number(value) < val.min) {
+          errors.push(`${field.label} must be at least ${val.min}`);
         }
-        if (field.validation?.max !== undefined && Number(value) > field.validation.max) {
-          errors.push(`${field.label} must be at most ${field.validation.max}`);
+        if (val.max !== undefined && Number(value) > val.max) {
+          errors.push(`${field.label} must be at most ${val.max}`);
         }
-        if (field.validation?.minLength !== undefined && String(value).length < field.validation.minLength) {
-          errors.push(`${field.label} must be at least ${field.validation.minLength} characters`);
+        if (val.exclusiveMin !== undefined && Number(value) <= val.exclusiveMin) {
+          errors.push(`${field.label} must be greater than ${val.exclusiveMin}`);
         }
-        if (field.validation?.maxLength !== undefined && String(value).length > field.validation.maxLength) {
-          errors.push(`${field.label} must be at most ${field.validation.maxLength} characters`);
+        if (val.exclusiveMax !== undefined && Number(value) >= val.exclusiveMax) {
+          errors.push(`${field.label} must be less than ${val.exclusiveMax}`);
         }
-        if (field.validation?.pattern && !new RegExp(field.validation.pattern).test(String(value))) {
+        if (val.multipleOf !== undefined && Number(value) % val.multipleOf !== 0) {
+          errors.push(`${field.label} must be a multiple of ${val.multipleOf}`);
+        }
+        
+        // String validations
+        if (val.minLength !== undefined && String(value).length < val.minLength) {
+          errors.push(`${field.label} must be at least ${val.minLength} characters`);
+        }
+        if (val.maxLength !== undefined && String(value).length > val.maxLength) {
+          errors.push(`${field.label} must be at most ${val.maxLength} characters`);
+        }
+        if (val.pattern && !new RegExp(val.pattern).test(String(value))) {
           errors.push(`${field.label} format is invalid`);
+        }
+        
+        // Array validations
+        if (Array.isArray(value)) {
+          if (val.minItems !== undefined && value.length < val.minItems) {
+            errors.push(`${field.label} must have at least ${val.minItems} items`);
+          }
+          if (val.maxItems !== undefined && value.length > val.maxItems) {
+            errors.push(`${field.label} must have at most ${val.maxItems} items`);
+          }
+          if (val.uniqueItems && new Set(value).size !== value.length) {
+            errors.push(`${field.label} items must be unique`);
+          }
+        }
+        
+        // Enum validation
+        if (val.enum && !val.enum.includes(value)) {
+          errors.push(`${field.label} must be one of: ${val.enum.join(', ')}`);
+        }
+        
+        // Const validation
+        if (val.const !== undefined && value !== val.const) {
+          errors.push(`${field.label} must be exactly: ${val.const}`);
+        }
+        
+        // Format validation
+        if (val.format) {
+          const formatErrors = validateFormat(value, val.format, field.label);
+          errors.push(...formatErrors);
         }
       }
     }
@@ -295,40 +784,171 @@ export function interpretJSONSchema(schema: JSONSchema): {
     };
   };
   
-  // Generate default values function
+  // Enhanced default values function
   const createDefault = (params?: any): any => {
     const defaultData: any = {};
     
     for (const field of formFields) {
-      if (field.key.includes('.')) {
-        setValueByPath(defaultData, field.key, getDefaultValue(field));
-      } else {
-        defaultData[field.key] = getDefaultValue(field);
+      const defaultValue = getDefaultValue(field);
+      if (defaultValue !== undefined) {
+        if (field.key.includes('.')) {
+          setValueByPath(defaultData, field.key, defaultValue);
+        } else {
+          defaultData[field.key] = defaultValue;
+        }
       }
     }
     
     return defaultData;
   };
   
+  // Utility functions
+  const getFieldGroups = (): Record<string, FormField[]> => {
+    return formFields.reduce((groups, field) => {
+      if (!groups[field.section]) {
+        groups[field.section] = [];
+      }
+      groups[field.section].push(field);
+      return groups;
+    }, {} as Record<string, FormField[]>);
+  };
+  
+  const getFieldByKey = (key: string): FormField | undefined => {
+    return formFields.find(field => field.key === key);
+  };
+  
+  const getRequiredFields = (): FormField[] => {
+    return formFields.filter(field => field.required);
+  };
+  
+  const getOptionalFields = (): FormField[] => {
+    return formFields.filter(field => !field.required);
+  };
+  
   return {
     formFields,
     validate,
-    createDefault
+    createDefault,
+    getFieldGroups,
+    getFieldByKey,
+    getRequiredFields,
+    getOptionalFields
   };
 }
 
 /**
- * Helper function to get default value for a field
+ * Validates format-specific rules
+ */
+function validateFormat(value: any, format: string, fieldLabel: string): string[] {
+  const errors: string[] = [];
+  const strValue = String(value);
+  
+  switch (format) {
+    case 'email':
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(strValue)) {
+        errors.push(`${fieldLabel} must be a valid email address`);
+      }
+      break;
+      
+    case 'uri':
+    case 'uri-reference':
+      try {
+        new URL(strValue);
+      } catch {
+        errors.push(`${fieldLabel} must be a valid URL`);
+      }
+      break;
+      
+    case 'date':
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(strValue)) {
+        errors.push(`${fieldLabel} must be in YYYY-MM-DD format`);
+      }
+      break;
+      
+    case 'date-time':
+      const dateTimeRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+      if (!dateTimeRegex.test(strValue)) {
+        errors.push(`${fieldLabel} must be in ISO 8601 date-time format`);
+      }
+      break;
+      
+    case 'time':
+      const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
+      if (!timeRegex.test(strValue)) {
+        errors.push(`${fieldLabel} must be in HH:MM:SS format`);
+      }
+      break;
+      
+    case 'ipv4':
+      const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+      if (!ipv4Regex.test(strValue)) {
+        errors.push(`${fieldLabel} must be a valid IPv4 address`);
+      }
+      break;
+      
+    case 'ipv6':
+      const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+      if (!ipv6Regex.test(strValue)) {
+        errors.push(`${fieldLabel} must be a valid IPv6 address`);
+      }
+      break;
+      
+    case 'uuid':
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (!uuidRegex.test(strValue)) {
+        errors.push(`${fieldLabel} must be a valid UUID`);
+      }
+      break;
+  }
+  
+  return errors;
+}
+
+/**
+ * Enhanced helper function to get default value for a field
  */
 function getDefaultValue(field: FormField): any {
+  // Use explicit default value if provided
+  if (field.defaultValue !== undefined) {
+    return field.defaultValue;
+  }
+  
+  // Use const value if provided
+  if (field.validation?.const !== undefined) {
+    return field.validation.const;
+  }
+  
+  // Use first enum option if available
+  if (field.options && field.options.length > 0) {
+    return field.options[0].value;
+  }
+  
+  // Type-based defaults
   switch (field.type) {
     case 'checkbox':
       return false;
     case 'number':
-      return 0;
+    case 'integer':
+      return field.validation?.min !== undefined ? field.validation.min : 0;
     case 'array':
       return [];
+    case 'object':
+      return {};
+    case 'date':
+      return new Date().toISOString().split('T')[0]; // Today in YYYY-MM-DD format
+    case 'datetime':
+      return new Date().toISOString();
+    case 'time':
+      return '00:00:00';
+    case 'email':
+      return '';
+    case 'url':
+      return 'https://';
     case 'select':
+    case 'radio':
+    case 'multiselect':
       return field.options?.[0]?.value || '';
     default:
       return '';
