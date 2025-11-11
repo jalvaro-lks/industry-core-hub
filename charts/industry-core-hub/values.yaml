@@ -398,6 +398,8 @@ backend:
       # -- Cron schedule (only used when type is "cronjob")
       # Example: "0 */6 * * *" runs every 6 hours
       schedule: "0 2 * * *"  # Daily at 2 AM
+      # -- Deadline in seconds for starting the job if it misses scheduled time (CronJob only)
+      startingDeadlineSeconds: 200
       # -- Restart policy for job pods
       restartPolicy: "OnFailure"
       # -- Number of retries before marking job as failed

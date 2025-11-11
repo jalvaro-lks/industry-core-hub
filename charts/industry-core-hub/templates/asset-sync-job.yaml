@@ -32,6 +32,7 @@ metadata:
     app.kubernetes.io/component: asset-sync-job
 spec:
   schedule: {{ .Values.backend.jobs.assetSync.schedule | quote }}
+  startingDeadlineSeconds: {{ .Values.backend.jobs.assetSync.startingDeadlineSeconds | default 200 }}
   concurrencyPolicy: {{ .Values.backend.jobs.assetSync.concurrencyPolicy }}
   successfulJobsHistoryLimit: {{ .Values.backend.jobs.assetSync.successfulJobsHistoryLimit }}
   failedJobsHistoryLimit: {{ .Values.backend.jobs.assetSync.failedJobsHistoryLimit }}
