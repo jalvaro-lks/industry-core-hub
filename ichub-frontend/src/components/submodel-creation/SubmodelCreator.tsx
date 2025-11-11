@@ -46,12 +46,12 @@ import {
     Close as CloseIcon,
     ArrowBack as ArrowBackIcon,
     Schema as SchemaIcon,
-    Build as BuildIcon,
     Preview as PreviewIcon,
     Save as SaveIcon,
     Code as CodeIcon
 } from '@mui/icons-material';
-import { SchemaDefinition } from '../../schemas';
+import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
+import SchemaSelector from './SchemaSelector';
 import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
 
@@ -63,6 +63,7 @@ interface SubmodelCreatorProps {
     selectedSchema: SchemaDefinition | null;
     schemaKey: string;
     manufacturerPartId?: string;
+    twinId?: string;
     loading?: boolean;
 }
 
@@ -112,6 +113,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     selectedSchema,
     schemaKey,
     manufacturerPartId,
+    twinId,
     loading = false
 }) => {
     const [formData, setFormData] = useState<any>({});
@@ -198,19 +200,16 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                         </IconButton>
                         
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                            <BuildIcon sx={{ fontSize: 28 }} />
                             <Box>
                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                                     Create New Submodel - {selectedSchema?.metadata.name}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
-                                    {manufacturerPartId ? `For part: ${manufacturerPartId}` : 'Creating new submodel'}
-                                    {selectedSchema && ` • Schema v${selectedSchema.metadata.version}`}
+                                    {twinId ? `For Twin: ${twinId}` : 'Creating new submodel'}
+                                    {selectedSchema && ` • SemanticID: ${selectedSchema.metadata.semanticId}`}
                                 </Typography>
                             </Box>
-                        </Box>
-                        
-                        <IconButton 
+                        </Box>                        <IconButton 
                             onClick={onClose} 
                             color="inherit"
                             sx={{ 
@@ -272,7 +271,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                             alignItems: 'center',
                                             gap: 2
                                         }}>
-                                            <BuildIcon sx={{ color: 'primary.main' }} />
+                                            <SchemaIcon sx={{ color: 'primary.main' }} />
                                             <Box>
                                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
                                                     Submodel Configuration

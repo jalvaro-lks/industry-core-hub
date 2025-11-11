@@ -1089,6 +1089,7 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                 selectedSchema={selectedSchema}
                 schemaKey={selectedSchemaKey}
                 manufacturerPartId={part.manufacturerPartId}
+                twinId={twinDetails?.globalId}
             />
         </Box>
         
