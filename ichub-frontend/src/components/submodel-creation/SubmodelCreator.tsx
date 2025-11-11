@@ -40,7 +40,8 @@ import {
     Button,
     Card,
     CardContent,
-    Tooltip
+    Tooltip,
+    Chip
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -48,7 +49,10 @@ import {
     Schema as SchemaIcon,
     Preview as PreviewIcon,
     Save as SaveIcon,
-    Code as CodeIcon
+    Code as CodeIcon,
+    AccountTree as AccountTreeIcon,
+    Fingerprint as FingerprintIcon,
+    Inventory as InventoryIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
@@ -64,6 +68,7 @@ interface SubmodelCreatorProps {
     schemaKey: string;
     manufacturerPartId?: string;
     twinId?: string;
+    dtrAasId?: string;
     loading?: boolean;
 }
 
@@ -114,12 +119,23 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     schemaKey,
     manufacturerPartId,
     twinId,
+    dtrAasId,
     loading = false
 }) => {
     const [formData, setFormData] = useState<any>({});
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const formRef = useRef<DynamicFormRef>(null);
+
+    // Function to handle clipboard copy
+    const handleCopy = async (text: string, fieldName: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            console.log(`${fieldName} copied to clipboard`);
+        } catch (error) {
+            console.error('Failed to copy:', error);
+        }
+    };
 
     // Initialize form data with default values when schema changes
     useEffect(() => {
@@ -239,15 +255,132 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                             border: '1px solid rgba(96, 165, 250, 0.2)',
                             flexShrink: 0
                         }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <SchemaIcon sx={{ color: 'primary.main', fontSize: 24 }} />
-                                <Box>
-                                    <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                                        Target Product
-                                    </Typography>
-                                    <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-                                        Manufacturer Part ID: <strong style={{ color: '#60a5fa' }}>{manufacturerPartId}</strong>
-                                    </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                    <SchemaIcon sx={{ color: 'primary.main', fontSize: 24 }} />
+                                    <Box sx={{ flex: 1 }}>
+                                        <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, mb: 2 }}>
+                                            Target Product
+                                        </Typography>
+                                        
+                                        {/* All IDs as self-contained chips */}
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 1 }}>
+                                            {/* Manufacturer Part ID */}
+                                            <Tooltip title="Click to copy Manufacturer Part ID">
+                                                <Chip
+                                                    icon={<InventoryIcon />}
+                                                    label={`Manufacturer Part ID: ${manufacturerPartId}`}
+                                                    variant="outlined"
+                                                    size="medium"
+                                                    clickable
+                                                    onClick={() => handleCopy(manufacturerPartId || '', 'Manufacturer Part ID')}
+                                                    sx={{
+                                                        height: '36px',
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                        color: '#ffffff',
+                                                        '&:hover': {
+                                                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                            borderColor: 'rgba(255, 255, 255, 0.5)'
+                                                        },
+                                                        '& .MuiChip-icon': {
+                                                            color: '#ffffff'
+                                                        },
+                                                        '& .MuiChip-label': {
+                                                            color: '#ffffff !important',
+                                                            fontSize: '14px',
+                                                            fontWeight: 500,
+                                                            px: 1
+                                                        }
+                                                    }}
+                                                />
+                                            </Tooltip>
+
+                                            {/* Twin ID */}
+                                            {twinId && (
+                                                <Tooltip title="Click to copy Twin ID (Global Asset ID)">
+                                                    <Chip
+                                                        icon={<AccountTreeIcon />}
+                                                        label={`Twin ID: ${twinId.startsWith('urn:uuid:') ? twinId : `urn:uuid:${twinId}`}`}
+                                                        variant="outlined"
+                                                        size="medium"
+                                                        clickable
+                                                        onClick={() => handleCopy(twinId.startsWith('urn:uuid:') ? twinId : `urn:uuid:${twinId}`, 'Twin ID')}
+                                                        sx={{
+                                                            height: '36px',
+                                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                            color: '#ffffff',
+                                                            '&:hover': {
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderColor: 'rgba(255, 255, 255, 0.5)'
+                                                            },
+                                                            '& .MuiChip-icon': {
+                                                                color: '#ffffff'
+                                                            },
+                                                            '& .MuiChip-label': {
+                                                                color: '#ffffff !important',
+                                                                fontSize: '14px',
+                                                                fontWeight: 500,
+                                                                px: 1
+                                                            }
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            )}
+
+                                            {/* AAS ID */}
+                                            {dtrAasId && (
+                                                <Tooltip title="Click to copy AAS ID">
+                                                    <Chip
+                                                        icon={<FingerprintIcon />}
+                                                        label={`AAS ID: ${dtrAasId.startsWith('urn:uuid:') ? dtrAasId : `urn:uuid:${dtrAasId}`}`}
+                                                        variant="outlined"
+                                                        size="medium"
+                                                        clickable
+                                                        onClick={() => handleCopy(dtrAasId.startsWith('urn:uuid:') ? dtrAasId : `urn:uuid:${dtrAasId}`, 'AAS ID')}
+                                                        sx={{
+                                                            height: '36px',
+                                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                            color: '#ffffff',
+                                                            '&:hover': {
+                                                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                                                borderColor: 'rgba(255, 255, 255, 0.5)'
+                                                            },
+                                                            '& .MuiChip-icon': {
+                                                                color: '#ffffff'
+                                                            },
+                                                            '& .MuiChip-label': {
+                                                                color: '#ffffff !important',
+                                                                fontSize: '14px',
+                                                                fontWeight: 500,
+                                                                px: 1
+                                                            }
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            )}
+
+                                            {/* Fallback message when no twin */}
+                                            {(!twinId && !dtrAasId) && (
+                                                <Chip 
+                                                    label="Twin Status: Not yet created" 
+                                                    variant="outlined" 
+                                                    size="medium" 
+                                                    sx={{ 
+                                                        height: '36px',
+                                                        color: 'rgba(255, 255, 255, 0.7)',
+                                                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                        '& .MuiChip-label': {
+                                                            fontSize: '14px',
+                                                            px: 2
+                                                        }
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
+                                    </Box>
                                 </Box>
                             </Box>
                         </Paper>
