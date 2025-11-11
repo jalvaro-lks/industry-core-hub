@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -38,7 +38,10 @@ import {
     alpha,
     Chip,
     AppBar,
-    Toolbar
+    Toolbar,
+    Tooltip,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -47,6 +50,7 @@ import {
     AccountTree as AccountTreeIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition, SCHEMA_REGISTRY } from '../../schemas';
+import { parseSemanticId } from '../../utils/semantics';
 
 interface SchemaSelectorProps {
     open: boolean;
@@ -92,6 +96,17 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
     manufacturerPartId
 }) => {
     const availableSchemas = getAvailableSchemas();
+    const [copySuccess, setCopySuccess] = useState(false);
+
+    const handleCopySemanticId = async (semanticId: string, event: React.MouseEvent) => {
+        event.stopPropagation(); // Prevenir que se active el click de la card
+        try {
+            await navigator.clipboard.writeText(semanticId);
+            setCopySuccess(true);
+        } catch (error) {
+            console.error('Failed to copy semantic ID:', error);
+        }
+    };
 
     const handleSchemaSelect = (schemaKey: string, schema: SchemaDefinition) => {
         onSchemaSelect(schemaKey, schema);
@@ -240,30 +255,49 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                         {schema.metadata.description}
                                                     </Typography>
 
-                                                    {/* Schema Tags */}
+                                                    {/* Semantic ID */}
                                                     <Box sx={{ 
                                                         display: 'flex', 
-                                                        flexWrap: 'wrap', 
-                                                        gap: 0.5,
+                                                        justifyContent: 'center',
                                                         mt: 'auto'
                                                     }}>
-                                                        {schema.metadata.tags.slice(0, 3).map((tag: string) => (
-                                                            <Chip
-                                                                key={tag}
-                                                                label={tag}
-                                                                size="small"
-                                                                variant="outlined"
-                                                                sx={{
-                                                                    fontSize: '9px',
-                                                                    height: '20px',
-                                                                    borderColor: 'rgba(255, 255, 255, 0.2)',
-                                                                    color: 'text.secondary',
-                                                                    '& .MuiChip-label': {
-                                                                        px: 1
-                                                                    }
-                                                                }}
-                                                            />
-                                                        ))}
+                                                        {/* Semantic ID as chip */}
+                                                        {schema.metadata.semanticId && (
+                                                            <Tooltip
+                                                                title={`Click to copy: ${schema.metadata.semanticId}`}
+                                                                placement="top"
+                                                                arrow
+                                                            >
+                                                                <Chip
+                                                                    label={schema.metadata.semanticId}
+                                                                    size="medium"
+                                                                    variant="outlined"
+                                                                    onClick={(e) => handleCopySemanticId(schema.metadata.semanticId, e)}
+                                                                    sx={{
+                                                                        fontSize: '10px',
+                                                                        height: '24px',
+                                                                        width: '100%',
+                                                                        borderColor: 'rgba(96, 165, 250, 0.4)',
+                                                                        color: 'rgba(96, 165, 250, 0.9)',
+                                                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                                        fontFamily: 'monospace',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease',
+                                                                        '&:hover': {
+                                                                            borderColor: 'rgba(96, 165, 250, 0.8)',
+                                                                            backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                                                                            transform: 'scale(1.02)'
+                                                                        },
+                                                                        '& .MuiChip-label': {
+                                                                            px: 1,
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                            whiteSpace: 'nowrap'
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </Tooltip>
+                                                        )}
                                                     </Box>
                                                 </CardContent>
                                             </CardActionArea>
@@ -317,6 +351,22 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                     </Container>
                 </DialogContent>
             </Dialog>
+
+            {/* Snackbar for copy confirmation */}
+            <Snackbar
+                open={copySuccess}
+                autoHideDuration={2000}
+                onClose={() => setCopySuccess(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert 
+                    onClose={() => setCopySuccess(false)} 
+                    severity="success" 
+                    sx={{ width: '100%' }}
+                >
+                    Semantic ID copied to clipboard!
+                </Alert>
+            </Snackbar>
         </ThemeProvider>
     );
 };

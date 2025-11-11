@@ -44,6 +44,7 @@ import {
     Add as AddIcon
 } from '@mui/icons-material';
 import { CatalogPartTwinDetailsRead } from '../../types/twin-types';
+import { parseSemanticId } from '../../../../utils/semantics';
 
 interface SubmodelViewerProps {
     twinDetails: CatalogPartTwinDetailsRead;
@@ -109,28 +110,13 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
     };
 
     const getSemanticIdDisplayName = (semanticId: string) => {
-        const parts = semanticId.split('#');
-        return parts[parts.length - 1] || semanticId;
+        const parsed = parseSemanticId(semanticId);
+        return parsed.name;
     };
 
     const getSemanticIdVersion = (semanticId: string) => {
-        try {
-            // Handle different URN formats:
-            // urn:bamm:io.catenax.single_level_bom_as_built:3.0.0#SingleLevelBomAsBuilt
-            // urn:samm:io.catenax.generic.digital_product_passport:5.0.0#DigitalProductPassport
-            
-            const parts = semanticId.split(':');
-            if (parts.length >= 4) {
-                const versionPart = parts[3];
-                // Extract version before the '#' if present
-                const version = versionPart.split('#')[0];
-                return version;
-            }
-            return 'Unknown';
-        } catch (error) {
-            console.warn('Error parsing semantic ID version:', error);
-            return 'Unknown';
-        }
+        const parsed = parseSemanticId(semanticId);
+        return parsed.version;
     };
 
     if (!twinDetails?.aspects || Object.keys(twinDetails.aspects).length === 0) {
