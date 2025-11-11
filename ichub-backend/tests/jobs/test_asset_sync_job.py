@@ -42,8 +42,6 @@ class TestAssetSyncJob(unittest.TestCase):
         """Test job initialization when enabled."""
         self.assertTrue(self.job.enabled)
         self.assertEqual(self.job.connector_provider_manager, self.mock_connector_manager)
-        self.assertIsNone(self.job._sync_thread)
-        self.assertFalse(self.job._is_running)
 
     def test_init_disabled(self):
         """Test job initialization when disabled."""
@@ -54,15 +52,14 @@ class TestAssetSyncJob(unittest.TestCase):
         self.assertFalse(job.enabled)
 
     @patch('jobs.asset_sync_job.logger')
-    def test_start_sync_disabled(self, mock_logger):
+    def test_run_disabled(self, mock_logger):
         """Test that sync doesn't run when disabled."""
         job = AssetSyncJob(
             connector_provider_manager=self.mock_connector_manager,
             enabled=False
         )
-        job.start_sync(blocking=True)
+        job.run()
         mock_logger.info.assert_any_call("[AssetSyncJob] Asset synchronization is disabled.")
-        self.assertFalse(job.is_running())
 
     @patch('jobs.asset_sync_job.ConfigManager')
     def test_sync_dtr_asset_success(self, mock_config_manager):
@@ -156,36 +153,9 @@ class TestAssetSyncJob(unittest.TestCase):
             2
         )
 
-    def test_is_running(self):
-        """Test is_running status tracking."""
-        self.assertFalse(self.job.is_running())
-        
-        self.job._is_running = True
-        self.assertTrue(self.job.is_running())
-        
-        self.job._is_running = False
-        self.assertFalse(self.job.is_running())
-
-    @patch('jobs.asset_sync_job.threading.Thread')
-    def test_start_sync_non_blocking(self, mock_thread):
-        """Test non-blocking sync start."""
-        mock_thread_instance = Mock()
-        mock_thread.return_value = mock_thread_instance
-        
-        self.job.start_sync(blocking=False)
-        
-        # Verify thread was created and started
-        mock_thread.assert_called_once()
-        mock_thread_instance.start.assert_called_once()
-
-    def test_wait_for_completion_not_running(self):
-        """Test wait_for_completion when not running."""
-        result = self.job.wait_for_completion(timeout=1.0)
-        self.assertTrue(result)
-
     @patch('jobs.asset_sync_job.ConfigManager')
     @patch('jobs.asset_sync_job.logger')
-    def test_run_sync_complete_flow(self, mock_logger, mock_config_manager):
+    def test_run_complete_flow(self, mock_logger, mock_config_manager):
         """Test complete sync flow."""
         # Setup mocks
         mock_config_manager.get_config.side_effect = [
@@ -205,7 +175,7 @@ class TestAssetSyncJob(unittest.TestCase):
         self.mock_connector_manager.register_submodel_bundle_circular_offer.return_value = ("s-id", "p", "a", "c")
         
         # Execute
-        self.job._run_sync()
+        self.job.run()
         
         # Verify both sync methods were called
         self.mock_connector_manager.register_dtr_offer.assert_called_once()
@@ -213,6 +183,20 @@ class TestAssetSyncJob(unittest.TestCase):
         
         # Verify completion logging
         mock_logger.info.assert_any_call("[AssetSyncJob] Asset synchronization completed successfully.")
+
+    @patch('jobs.asset_sync_job.logger')
+    @patch('jobs.asset_sync_job.ConfigManager')
+    def test_run_with_exception(self, mock_config_manager, mock_logger):
+        """Test that exceptions are caught and logged properly."""
+        # Setup mock to raise exception
+        mock_config_manager.get_config.side_effect = Exception("Config error")
+        
+        # Execute - should not raise exception, but log errors
+        self.job.run()
+        
+        # Verify errors were logged for both sync operations
+        error_calls = [call for call in mock_logger.error.call_args_list if "Config error" in str(call)]
+        self.assertGreater(len(error_calls), 0, "Expected error logging for config failure")
 
 
 if __name__ == '__main__':

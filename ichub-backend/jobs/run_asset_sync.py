@@ -140,19 +140,13 @@ def run_asset_sync_job():
             enabled=True
         )
         
-        sync_job.start_sync(blocking=True)
+        sync_job.run()
         
-        # Check if sync was successful
-        if not sync_job.is_running():
-            logger.info("=" * 60)
-            logger.info("✓ Asset synchronization job completed successfully.")
-            logger.info("=" * 60)
-            return 0
-        else:
-            logger.error("=" * 60)
-            logger.error("✗ Asset synchronization job still running unexpectedly.")
-            logger.error("=" * 60)
-            return 1
+        # If we reach here, sync was successful
+        logger.info("=" * 60)
+        logger.info("✓ Asset synchronization job completed successfully.")
+        logger.info("=" * 60)
+        return 0
             
     except Exception as e:
         logger.error("=" * 60)

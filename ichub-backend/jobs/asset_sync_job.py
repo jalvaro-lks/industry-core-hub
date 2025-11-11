@@ -22,9 +22,7 @@
 #################################################################################
 ## Code created partially using a LLM and reviewed by a human committer
 
-import threading
 import logging
-from typing import Optional
 from managers.config.config_manager import ConfigManager
 from managers.config.log_manager import LoggingManager
 from managers.enablement_services.provider import ConnectorProviderManager
@@ -34,10 +32,11 @@ logger = LoggingManager.get_logger(__name__)
 
 class AssetSyncJob:
     """
-    Background job that synchronizes EDC assets (Digital Twin Registry and Semantic assets) 
-    from the database/configuration to the connector on startup.
+    Kubernetes Job that synchronizes EDC assets (Digital Twin Registry and Semantic assets) 
+    from the database/configuration to the connector.
     
     This ensures all assets are registered in the connector before any sharing operations occur.
+    Designed to run as a standalone Kubernetes Job/CronJob.
     """
     
     def __init__(self, connector_provider_manager: ConnectorProviderManager, enabled: bool = True):
@@ -50,36 +49,17 @@ class AssetSyncJob:
         """
         self.connector_provider_manager = connector_provider_manager
         self.enabled = enabled
-        self._sync_thread: Optional[threading.Thread] = None
-        self._is_running = False
         
-    def start_sync(self, blocking: bool = False) -> None:
+    def run(self) -> None:
         """
-        Start the asset synchronization process.
+        Execute the synchronization process.
         
-        Args:
-            blocking (bool): If True, sync runs in current thread. If False, runs in background thread.
+        Runs synchronously - designed for Kubernetes Job execution.
         """
         if not self.enabled:
             logger.info("[AssetSyncJob] Asset synchronization is disabled.")
             return
-            
-        if self._is_running:
-            logger.warning("[AssetSyncJob] Sync is already running. Skipping duplicate start.")
-            return
         
-        if blocking:
-            self._run_sync()
-        else:
-            self._sync_thread = threading.Thread(target=self._run_sync, daemon=True, name="AssetSyncJob")
-            self._sync_thread.start()
-            logger.info("[AssetSyncJob] Background sync thread started.")
-    
-    def _run_sync(self) -> None:
-        """
-        Execute the synchronization process.
-        """
-        self._is_running = True
         try:
             logger.info("[AssetSyncJob] Starting asset synchronization...")
             
@@ -93,8 +73,7 @@ class AssetSyncJob:
             
         except Exception as e:
             logger.error(f"[AssetSyncJob] Asset synchronization failed: {e}", exc_info=True)
-        finally:
-            self._is_running = False
+            raise  # Re-raise to signal failure to Kubernetes
     
     def _sync_dtr_asset(self) -> None:
         """
@@ -173,27 +152,3 @@ class AssetSyncJob:
             
         except Exception as e:
             logger.error(f"[AssetSyncJob] Error synchronizing semantic assets: {e}", exc_info=True)
-    
-    def wait_for_completion(self, timeout: Optional[float] = None) -> bool:
-        """
-        Wait for the sync job to complete (if running in background thread).
-        
-        Args:
-            timeout (float): Maximum time to wait in seconds. None means wait indefinitely.
-            
-        Returns:
-            bool: True if sync completed, False if timeout occurred or not running.
-        """
-        if self._sync_thread and self._sync_thread.is_alive():
-            self._sync_thread.join(timeout=timeout)
-            return not self._sync_thread.is_alive()
-        return not self._is_running
-    
-    def is_running(self) -> bool:
-        """
-        Check if the sync job is currently running.
-        
-        Returns:
-            bool: True if sync is in progress, False otherwise.
-        """
-        return self._is_running
