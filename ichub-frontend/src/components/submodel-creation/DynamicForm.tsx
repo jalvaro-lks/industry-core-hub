@@ -245,194 +245,219 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
     const renderField = (field: FormField) => {
         const currentValue = getValueByPath(data, field.key) || '';
-        const hasError = errors.some(error => error.toLowerCase().includes(field.label.toLowerCase()));
+        
+        // Improved error detection
+        const hasError = errors.some(error => {
+            const errorLower = error.toLowerCase();
+            const labelLower = field.label.toLowerCase();
+            const keyLower = field.key.toLowerCase();
+            return errorLower.includes(labelLower) || 
+                   errorLower.includes(keyLower) ||
+                   errorLower.includes(`${field.key} is required`);
+        });
+
+        // Check if field is required and empty for additional visual feedback
+        const isRequiredAndEmpty = field.required && 
+            (!currentValue || currentValue === '' || 
+             (Array.isArray(currentValue) && currentValue.length === 0));
+
+        // Nueva función: Maneja etiquetas con asteriscos para campos requeridos
+        const getFieldLabel = (label: string, isRequired: boolean = false) => {
+            // Limpiar asteriscos existentes primero
+            const cleanLabel = label.replace(/(\s*\*\s*)+$/, '').trim();
+            // Agregar asterisco solo si es requerido
+            return isRequired ? `${cleanLabel} *` : cleanLabel;
+        };
+
+        // Función actualizada: Separar styling de errores reales vs campos requeridos
+        const getFieldStyles = (required: boolean, isEmpty: boolean = false, hasError: boolean = false) => ({
+            '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(19, 19, 19, 0.02)',
+                '&:hover fieldset': {
+                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                },
+                '&.Mui-focused fieldset': {
+                    borderColor: hasError ? 'error.main' : 'primary.main',
+                },
+                // Borde rojo solo para errores reales, no solo por ser requerido
+                ...(hasError && {
+                    '& fieldset': {
+                        borderColor: 'error.main',
+                        borderWidth: '2px',
+                    }
+                })
+            },
+            '& .MuiInputLabel-root': {
+                color: hasError ? 'error.main' : 'text.secondary',
+                '&.Mui-focused': {
+                    color: hasError ? 'error.main' : 'primary.main',
+                }
+            }
+        });
+
+        // Función para FormControl labels
+        const getFormControlLabelStyles = (isRequired: boolean, hasError: boolean = false) => ({
+            color: hasError ? 'error.main' : 'text.secondary',
+            '&.Mui-focused': {
+                color: hasError ? 'error.main' : 'primary.main',
+            }
+        });
+
+        // Common description tooltip
+        const getDescriptionTooltip = (description?: string) => 
+            description ? (
+                <Tooltip title={description} placement="top" arrow>
+                    <InfoIcon sx={{ 
+                        fontSize: 16, 
+                        color: 'text.secondary',
+                        cursor: 'help',
+                        opacity: 1
+                    }} />
+                </Tooltip>
+            ) : undefined;
+
+        // Common icon container positioned on the border
+        const getIconContainer = (description?: string) => 
+            description ? (
+                <Box sx={{ 
+                    position: 'absolute', 
+                    right: 32, 
+                    top: -10,
+                    zIndex: 1,
+                    backgroundColor: 'background.paper',
+                    borderRadius: '12px',
+                    padding: '3px',
+                    border: '1px solid rgba(158, 63, 63, 0)',
+                    boxShadow: '0 1px 2px rgba(65, 65, 65, 0)',
+                    width: '22px',
+                    height: '22px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    {getDescriptionTooltip(description)}
+                </Box>
+            ) : null;
 
         switch (field.type) {
             case 'text':
                 return (
-                    <TextField
-                        fullWidth
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: 'text.secondary',
-                            }
-                        }}
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            placeholder={field.placeholder}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'textarea':
                 return (
-                    <TextField
-                        fullWidth
-                        multiline
-                        maxRows={1}
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: 'text.secondary',
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            multiline
+                            maxRows={4}
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            placeholder={field.placeholder}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'number':
                 return (
-                    <TextField
-                        fullWidth
-                        type="number"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, parseFloat(e.target.value) || 0)}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        inputProps={{
-                            min: field.validation?.min || 0,
-                            max: field.validation?.max || undefined,
-                            step: "any"
-                        }}
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: 'text.secondary',
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="number"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, parseFloat(e.target.value) || 0)}
+                            placeholder={field.placeholder}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            inputProps={{
+                                min: field.validation?.min || 0,
+                                max: field.validation?.max || undefined,
+                                step: "any"
+                            }}
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'date':
                 return (
-                    <TextField
-                        fullWidth
-                        type="date"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        InputLabelProps={{
-                            shrink: true,
-                        }}
-                        InputProps={{
-                            startAdornment: (
-                                <CalendarTodayIcon 
-                                    sx={{ 
-                                        fontSize: 20, 
-                                        color: '#ffffff',
-                                        mr: 1 
-                                    }} 
-                                />
-                            ),
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="date"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            InputProps={{
+                                startAdornment: (
+                                    <CalendarTodayIcon 
+                                        sx={{ 
+                                            fontSize: 20, 
+                                            color: '#ffffff',
+                                            mr: 1 
+                                        }} 
+                                    />
+                                ),
+                            }}
+                            sx={{
+                                ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
                                 '& input[type="date"]::-webkit-calendar-picker-indicator': {
                                     filter: 'invert(1)',
                                     cursor: 'pointer'
                                 }
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: 'text.secondary',
-                            }
-                        }}
-                    />
+                            }}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'select':
                 return (
-                    <Box sx={{ position: 'relative' }}>
+                    <Box key={field.key} sx={{ position: 'relative' }}>
                         <FormControl fullWidth size="small" error={hasError}>
-                            <InputLabel sx={{ color: 'text.secondary' }}>
-                                {field.label}
+                            <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
+                                {getFieldLabel(field.label, field.required)}
                             </InputLabel>
                             <Select
-                                value={currentValue}
-                                label={field.label}
+                                value={currentValue || ''}
+                                label={getFieldLabel(field.label, field.required)}
                                 onChange={(e) => handleFieldChange(field, e.target.value)}
-                                sx={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: 'rgba(96, 165, 250, 0.5)',
-                                    },
-                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: 'primary.main',
-                                    },
-                                }}
+                                sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                             >
-                                <MenuItem value="">
-                                    <em>Select {field.label}</em>
-                                </MenuItem>
+                                {!field.required && (
+                                    <MenuItem value="">
+                                        <em>Select {getFieldLabel(field.label, false)}</em>
+                                    </MenuItem>
+                                )}
                                 {field.options?.map((option: { value: string; label: string }) => (
                                     <MenuItem key={option.value} value={option.value}>
                                         {option.label}
@@ -440,294 +465,191 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 ))}
                             </Select>
                         </FormControl>
-                        
-                        {/* Info icon positioned absolutely if description exists */}
-                        {field.description && (
-                            <Box sx={{ 
-                                position: 'absolute', 
-                                right: 38, 
-                                top: '50%',
-                                transform: 'translateY(-50%)', 
-                                pointerEvents: 'none',
-                                zIndex: 1
-                            }}>
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary', pointerEvents: 'auto' }} />
-                                </Tooltip>
-                            </Box>
-                        )}
+                        {getIconContainer(field.description)}
                     </Box>
                 );
 
             case 'checkbox':
                 return (
-                    <Box 
-                        onClick={() => handleFieldChange(field, !currentValue)}
-                        sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            width: '100%',
-                            py: 1,
-                            px: 2,
-                            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: 1,
-                            minHeight: '40px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease-in-out',
-                            '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                borderColor: 'rgba(96, 165, 250, 0.5)',
-                            }
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" sx={{ color: 'text.primary' }}>
-                                {field.label}
+                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box 
+                            onClick={() => handleFieldChange(field, !currentValue)}
+                            sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                width: '100%',
+                                py: 1,
+                                px: 2,
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                border: `1px solid ${hasError ? 'rgba(211, 47, 47, 0.5)' : 'rgba(255, 255, 255, 0.12)'}`,
+                                borderRadius: 1,
+                                minHeight: '40px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease-in-out',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    borderColor: 'rgba(96, 165, 250, 0.5)',
+                                }
+                            }}
+                        >
+                            <Typography variant="body2" sx={{ 
+                                color: hasError ? 'error.main' : 'text.primary' 
+                            }}>
+                                {getFieldLabel(field.label, field.required)}
                             </Typography>
-                            {field.description && (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            )}
+                            <Switch
+                                checked={!!currentValue}
+                                onChange={(e) => {
+                                    e.stopPropagation(); // Prevent double triggering
+                                    handleFieldChange(field, e.target.checked);
+                                }}
+                                sx={{
+                                    '& .MuiSwitch-switchBase.Mui-checked': {
+                                        color: 'primary.main',
+                                    },
+                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                        backgroundColor: 'primary.main',
+                                    },
+                                }}
+                            />
                         </Box>
-                        <Switch
-                            checked={!!currentValue}
-                            onChange={(e) => {
-                                e.stopPropagation(); // Prevent double triggering
-                                handleFieldChange(field, e.target.checked);
-                            }}
-                            sx={{
-                                '& .MuiSwitch-switchBase.Mui-checked': {
-                                    color: 'primary.main',
-                                },
-                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                    backgroundColor: 'primary.main',
-                                },
-                            }}
-                        />
+                        {getIconContainer(field.description)}
                     </Box>
                 );
 
             case 'integer':
                 return (
-                    <TextField
-                        fullWidth
-                        type="number"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, parseInt(e.target.value) || 0)}
-                        placeholder={field.placeholder}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        inputProps={{
-                            min: field.validation?.min || 0,
-                            max: field.validation?.max,
-                            step: 1
-                        }}
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="number"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, parseInt(e.target.value) || 0)}
+                            placeholder={field.placeholder}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            inputProps={{
+                                min: field.validation?.min || 0,
+                                max: field.validation?.max,
+                                step: 1
+                            }}
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'email':
                 return (
-                    <TextField
-                        fullWidth
-                        type="email"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        placeholder={field.placeholder || 'Enter email address'}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="email"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            placeholder={field.placeholder || 'Enter email address'}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'url':
                 return (
-                    <TextField
-                        fullWidth
-                        type="url"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        placeholder={field.placeholder || 'https://example.com'}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="url"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            placeholder={field.placeholder || 'https://example.com'}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'datetime':
                 return (
-                    <TextField
-                        fullWidth
-                        type="datetime-local"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        InputLabelProps={{
-                            shrink: true,
-                        }}
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="datetime-local"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'time':
                 return (
-                    <TextField
-                        fullWidth
-                        type="time"
-                        label={field.label}
-                        value={currentValue}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        required={field.required}
-                        error={hasError}
-                        variant="outlined"
-                        size="small"
-                        InputLabelProps={{
-                            shrink: true,
-                        }}
-                        InputProps={{
-                            endAdornment: field.description ? (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                                </Tooltip>
-                            ) : undefined
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover fieldset': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: 'primary.main',
-                                },
-                            }
-                        }}
-                    />
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="time"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            error={hasError}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'radio':
                 // Convert radio options to dropdown for better UX
                 return (
-                    <FormControl fullWidth size="small" error={hasError}>
-                        <InputLabel sx={{ color: 'text.secondary' }}>
-                            {field.label}
-                            {field.required && ' *'}
-                        </InputLabel>
-                        <Select
-                            value={currentValue || ''}
-                            label={field.label + (field.required ? ' *' : '')}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            sx={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                '&:hover .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                },
-                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'primary.main',
-                                },
-                            }}
-                        >
-                            {!field.required && (
-                                <MenuItem value="">
-                                    <em>Select {field.label}</em>
-                                </MenuItem>
-                            )}
-                            {field.options?.map((option) => (
-                                <MenuItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                        {field.description && (
-                            <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-                                {field.description}
-                            </Typography>
-                        )}
-                    </FormControl>
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <FormControl fullWidth size="small" error={hasError}>
+                            <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
+                                {getFieldLabel(field.label, field.required)}
+                            </InputLabel>
+                            <Select
+                                value={currentValue || ''}
+                                label={getFieldLabel(field.label, field.required)}
+                                onChange={(e) => handleFieldChange(field, e.target.value)}
+                                sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                            >
+                                {!field.required && (
+                                    <MenuItem value="">
+                                        <em>Select {getFieldLabel(field.label, false)}</em>
+                                    </MenuItem>
+                                )}
+                                {field.options?.map((option) => (
+                                    <MenuItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        {getIconContainer(field.description)}
+                    </Box>
                 );
 
             case 'object':
@@ -740,28 +662,15 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         p: 2
                     }}>
                         <Typography variant="subtitle2" sx={{ 
-                            color: 'text.primary',
+                            color: hasError ? 'error.main' : 'text.primary',
                             fontWeight: 600,
                             mb: 2,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1
                         }}>
-                            {field.label}
-                            {field.required && (
-                                <Chip 
-                                    label="Required" 
-                                    size="small" 
-                                    color="error" 
-                                    variant="outlined"
-                                    sx={{ fontSize: '0.7rem', height: '20px' }}
-                                />
-                            )}
-                            {field.description && (
-                                <Tooltip title={field.description} placement="top">
-                                    <InfoIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                </Tooltip>
-                            )}
+                            {getFieldLabel(field.label, field.required)}
+                            {getDescriptionTooltip(field.description)}
                         </Typography>
                         
                         {/* Render nested object fields if available */}
@@ -811,25 +720,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography variant="subtitle2" sx={{ 
-                                    color: 'text.primary',
+                                    color: hasError ? 'error.main' : 'text.primary',
                                     fontWeight: 600
                                 }}>
-                                    {field.label}
+                                    {getFieldLabel(field.label, field.required)}
                                 </Typography>
-                                {field.required && (
-                                    <Chip 
-                                        label="Required" 
-                                        size="small" 
-                                        color="error" 
-                                        variant="outlined"
-                                        sx={{ fontSize: '0.7rem', height: '20px' }}
-                                    />
-                                )}
-                                {field.description && (
-                                    <Tooltip title={field.description} placement="top">
-                                        <InfoIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                    </Tooltip>
-                                )}
+                                {getDescriptionTooltip(field.description)}
                             </Box>
                             <Button
                                 size="small"
@@ -904,14 +800,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                                                         key={subField.key}
                                                                         fullWidth
                                                                         size="small"
-                                                                        label={subField.label}
+                                                                        label={getFieldLabel(subField.label, subField.required)}
                                                                         value={subFieldValue}
                                                                         onChange={(e) => {
                                                                             const newItem = { ...item, [subField.key]: e.target.value };
                                                                             updateArrayItem(index, newItem);
                                                                         }}
                                                                         placeholder={subField.placeholder}
-                                                                        required={subField.required}
                                                                         type={subField.type === 'number' ? 'number' : 'text'}
                                                                         multiline={subField.type === 'textarea'}
                                                                         maxRows={subField.type === 'textarea' ? 3 : 1}
