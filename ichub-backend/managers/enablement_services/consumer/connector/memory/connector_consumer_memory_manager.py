@@ -234,30 +234,30 @@ class ConnectorConsumerMemoryManager(BaseConnectorConsumerManager):
         Returns:
             List[str]: List of connector URLs/endpoints for the BPN
         """
-        self.logger.debug(f"[CONNECTOR Manager] [{threading.get_ident()}] Trying to acquire lock (get_connectors)")
+        self.logger.debug(f"[CONNECTOR Manager] [{threading.get_ident()}] Trying to acquire lock (get_connectors check)")
         with self._lock:
-            self.logger.debug(f"[CONNECTOR Manager] [{threading.get_ident()}] Acquired lock (get_connectors)")
+            self.logger.debug(f"[CONNECTOR Manager] [{threading.get_ident()}] Acquired lock (get_connectors check)")
             known_connectors: Dict = {}
             
             ## If the connectors are known then the cache is loaded
             if(bpn in self.known_connectors):
                 known_connectors = copy.deepcopy(self.known_connectors[bpn])
+        self.logger.debug(f"[CONNECTOR Manager] [{threading.get_ident()}] Released lock (get_connectors check)")
             
-            ## In case there is connectors, and the interval has not yet been reached
-            if(known_connectors != {}) and (self.REFRESH_INTERVAL_KEY in known_connectors) and (self.CONNECTOR_LIST_KEY in known_connectors) and (not op.is_interval_reached(end_timestamp=known_connectors[self.REFRESH_INTERVAL_KEY])):
-                if(self.logger and self.verbose):
-                    self.logger.debug(f"[CONNECTOR Manager] [{bpn}] Returning [{len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY])}] CONNECTORs from cache. Next refresh at [{op.timestamp_to_datetime(self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
-                return self.known_connectors[bpn][self.CONNECTOR_LIST_KEY] ## Return the urls from the connectors
-            
+        ## In case there is connectors, and the interval has not yet been reached
+        if(known_connectors != {}) and (self.REFRESH_INTERVAL_KEY in known_connectors) and (self.CONNECTOR_LIST_KEY in known_connectors) and (not op.is_interval_reached(end_timestamp=known_connectors[self.REFRESH_INTERVAL_KEY])):
             if(self.logger and self.verbose):
-                self.logger.info(f"[CONNECTOR Manager] No cached CONNECTOR were found, discoverying CONNECTORs for bpn [{bpn}]...")
-
-            connectors: Optional[List[str]] = self.connector_discovery.find_connector_by_bpn(bpn=bpn)
-            if(connectors is None or len(connectors) == 0):
-                return []
+                self.logger.debug(f"[CONNECTOR Manager] [{bpn}] Returning [{len(self.known_connectors[bpn][self.CONNECTOR_LIST_KEY])}] CONNECTORs from cache. Next refresh at [{op.timestamp_to_datetime(self.known_connectors[bpn][self.REFRESH_INTERVAL_KEY])}] UTC")
+            return self.known_connectors[bpn][self.CONNECTOR_LIST_KEY] ## Return the urls from the connectors
             
-            self.add_connectors(bpn=bpn, connectors=connectors)
-        self.logger.debug(f"[CONNECTOR Manager] [{threading.get_ident()}] Released lock (get_connectors)")
+        if(self.logger and self.verbose):
+            self.logger.info(f"[CONNECTOR Manager] No cached CONNECTOR were found, discoverying CONNECTORs for bpn [{bpn}]...")
+
+        connectors: Optional[List[str]] = self.connector_discovery.find_connector_by_bpn(bpn=bpn)
+        if(connectors is None or len(connectors) == 0):
+            return []
+        
+        self.add_connectors(bpn=bpn, connectors=connectors)
 
         return connectors
 
