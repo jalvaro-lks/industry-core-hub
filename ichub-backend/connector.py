@@ -23,7 +23,7 @@
 from tractusx_sdk.dataspace.managers.connection import PostgresMemoryRefreshConnectionManager
 from tractusx_sdk.dataspace.services.discovery import ConnectorDiscoveryService, DiscoveryFinderService
 from tractusx_sdk.dataspace.services.connector import ServiceFactory, BaseConnectorService
-from database import engine
+from database import engine, wait_for_db_connection
 from managers.enablement_services import ConnectorManager
 from managers.enablement_services.provider import ConnectorProviderManager
 from managers.config.config_manager import ConfigManager
@@ -52,15 +52,12 @@ discovery_oauth:OAuth2Manager = None
 database_error:bool = False
 
 try:
-    
-    if engine is None:
-        logger.critical("Database engine is not initialized. Your database is not connected or misconfigured.")
-        database_error = True
-        
-    if(not database_error):
-    
-        # Create the connection manager for the provider
-        connection_manager = PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)
+
+    # If the database is not ready, the backend should wait until the PostgreSQL service is fully available and accepting connections 
+    wait_for_db_connection()
+
+    # Create the connection manager for the provider
+    connection_manager = PostgresMemoryRefreshConnectionManager(engine=engine, logger=logger, verbose=True)
 
     if not connection_manager:
         logger.critical("Failed to create PostgresMemoryRefreshConnectionManager. Your database is not connected or misconfigured.")
@@ -85,7 +82,7 @@ try:
 
     # Create EDC headers
     provider_connector_headers = {
-        provider_api_key_header: provider_api_key_header,
+        provider_api_key_header: provider_api_key,
         "Content-Type": "application/json"
     }
 

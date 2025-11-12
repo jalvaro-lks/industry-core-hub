@@ -133,12 +133,20 @@ backend:
       enabled: true
       apiKey:
         key: "X-Api-Key"
-        value: "<<example>>"
+        value: ["<example>"]
+      keycloak:
+        enabled: false
+        authUrl: "https://<ichub-idp-url>/auth/"
+        realm: "<realm>"
+        clientId: "<client-id>"
+        clientSecret: "<client-secret>"
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
       echo: false
       # -- seconds to wait for the database to respond before aborting the connection attempt
       timeout: 8
+      # -- seconds to wait between retry attempts
+      retry_interval: 5
     # Configuration for the logger settings
     logger:
      # Possible values: WARNING, INFO, DEBUG
@@ -741,12 +749,30 @@ keycloak:
   # ref: https://www.keycloak.org/migration/migrating-to-quarkus#_default_context_path_changed
   httpRelativePath: /auth/
   replicaCount: 1
+  # -- Realm import configuration
+  realmImport:
+    enabled: true
+    # -- Method: "startup" for --import-realm flag or "job" for post-install job
+    method: "job"
+  # -- Environment variables for startup import (only if method is "startup")
+  extraEnvVars: []
+
   extraVolumes:
     - name: themes
       emptyDir: {}
+    # -- Volume for realm import (only mounted when onStartup is true)
+    - name: realm-data
+      configMap:
+        name: "{{ .Release.Name }}-realm-data"
+        optional: true
+
   extraVolumeMounts:
     - name: themes
       mountPath: /opt/bitnami/keycloak/themes/catenax-central
+    # -- Mount realm import file (only when onStartup is true)
+    - name: realm-data
+      mountPath: /opt/bitnami/keycloak/data/import
+
   initContainers:
     - name: import
       image: docker.io/tractusx/portal-iam:v4.2.0
@@ -761,8 +787,10 @@ keycloak:
       volumeMounts:
         - name: themes
           mountPath: /themes
+
   service:
     sessionAffinity: ClientIP
+
   ingress:
     # -- Enable ingress record generation
     enabled: false
