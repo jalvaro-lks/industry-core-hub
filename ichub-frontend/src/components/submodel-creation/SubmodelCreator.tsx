@@ -42,7 +42,10 @@ import {
     CardContent,
     Tooltip,
     Chip,
-    Badge
+    Badge,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -58,7 +61,8 @@ import {
     ViewModule as ViewModuleIcon,
     DataObject as DataObjectIcon,
     Warning as WarningIcon,
-    ChevronRight as ChevronRightIcon
+    ChevronRight as ChevronRightIcon,
+    ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
@@ -151,21 +155,25 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         fieldKey?: string;
         fieldLabel?: string;
         fieldPath?: string;
-        severity: 'error' | 'warning';
+        section?: string;
+        severity: 'error' | 'warning' | 'info';
         context?: string;
         arrayIndex?: number;
     }
 
-    // ErrorViewer component - Schema-aware version
+    // ErrorViewer component - Schema-aware version with grouped errors
     const ErrorViewer: React.FC<{ 
         errors: string[], 
         onNavigateToField: (fieldKey: string) => void 
     }> = ({ errors, onNavigateToField }) => {
         
+        // State for controlling which error groups are expanded
+        const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
         // Schema-aware error parsing function
         const parseValidationError = (error: string): ParsedError => {
             // Extract field information using schema structure
-            const findFieldInSchema = (fieldName: string): { key: string, label: string, path: string } | null => {
+            const findFieldInSchema = (fieldName: string): { key: string, label: string, path: string, section: string } | null => {
                 if (!selectedSchema?.formFields) return null;
                 
                 // Look for exact match first
@@ -179,7 +187,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                     return {
                         key: exactMatch.key,
                         label: exactMatch.label,
-                        path: exactMatch.key
+                        path: exactMatch.key,
+                        section: exactMatch.section || 'General'
                     };
                 }
                 
@@ -193,7 +202,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                     return {
                         key: partialMatch.key,
                         label: partialMatch.label,
-                        path: partialMatch.key
+                        path: partialMatch.key,
+                        section: partialMatch.section || 'General'
                     };
                 }
                 
@@ -202,7 +212,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             
             // Extract field name from error message with multiple patterns
             let fieldName: string | null = null;
-            let fieldInfo: { key: string, label: string, path: string } | null = null;
+            let fieldInfo: { key: string, label: string, path: string, section: string } | null = null;
             let arrayIndex: number | undefined = undefined;
             
             // Try different patterns to extract field name
@@ -305,6 +315,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                 fieldKey: fieldInfo?.key,
                 fieldLabel: fieldInfo?.label,
                 fieldPath: fieldInfo?.path,
+                section: fieldInfo?.section || 'General',
                 severity: 'error',
                 context,
                 arrayIndex
@@ -312,6 +323,39 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         };
 
         const parsedErrors = errors.map(parseValidationError);
+
+        // Group errors by section
+        const groupedErrors = parsedErrors.reduce((acc, error) => {
+            const section = error.section || 'General';
+            if (!acc[section]) {
+                acc[section] = [];
+            }
+            acc[section].push(error);
+            return acc;
+        }, {} as Record<string, ParsedError[]>);
+
+        // Get section display name
+        const getSectionDisplayName = (sectionName: string): string => {
+            const sectionNames: Record<string, string> = {
+                'Metadata': 'Metadata',
+                'Identification': 'Identification',
+                'Operation': 'Operation',
+                'Characteristics': 'Product Characteristics',
+                'Commercial': 'Commercial Information',
+                'Materials': 'Materials',
+                'Sustainability': 'Sustainability',
+                'General': 'General'
+            };
+            return sectionNames[sectionName] || sectionName.replace(/([A-Z])/g, ' $1').trim();
+        };
+
+        // Toggle group expansion
+        const toggleGroup = (sectionName: string) => {
+            setExpandedGroups(prev => ({
+                ...prev,
+                [sectionName]: !prev[sectionName]
+            }));
+        };
 
         if (parsedErrors.length === 0) {
             return (
@@ -343,118 +387,159 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
         return (
             <Box sx={{ height: '100%', overflow: 'auto' }}>
-                {parsedErrors.map((parsedError, index) => (
-                    <Card key={index} sx={{
-                        mb: 2,
-                        backgroundColor: 'rgba(244, 67, 54, 0.05)',
-                        border: '1px solid rgba(244, 67, 54, 0.2)',
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        cursor: parsedError.fieldKey ? 'pointer' : 'default',
-                        transition: 'all 0.2s ease',
-                        ...(parsedError.fieldKey && {
-                            '&:hover': {
-                                backgroundColor: 'rgba(244, 67, 54, 0.08)',
-                                borderColor: 'rgba(244, 67, 54, 0.3)',
-                                transform: 'translateY(-1px)',
-                                boxShadow: '0 4px 8px rgba(244, 67, 54, 0.15)'
-                            }
-                        })
-                    }} onClick={() => parsedError.fieldKey && onNavigateToField(parsedError.fieldKey)}>
-                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                                <Box sx={{ 
-                                    flexShrink: 0,
-                                    width: 24,
-                                    height: 24,
-                                    borderRadius: '50%',
-                                    backgroundColor: 'error.main',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    mt: 0.25
-                                }}>
-                                    <WarningIcon sx={{ fontSize: 14, color: 'white' }} />
-                                </Box>
-                                
-                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    {/* Error message */}
-                                    <Typography 
-                                        variant="body2" 
-                                        sx={{ 
-                                            color: 'error.main',
-                                            lineHeight: 1.5,
-                                            fontWeight: 500,
-                                            mb: 1
-                                        }}
-                                    >
-                                        {parsedError.message}
+                {/* Grouped Errors */}
+                {Object.entries(groupedErrors).map(([sectionName, sectionErrors]) => {
+                    const isExpanded = expandedGroups[sectionName] ?? false; // Default collapsed
+                    const displayName = getSectionDisplayName(sectionName);
+                    
+                    return (
+                        <Accordion
+                            key={sectionName}
+                            expanded={isExpanded}
+                            onChange={() => toggleGroup(sectionName)}
+                            sx={{
+                                mb: 2,
+                                backgroundColor: 'rgba(244, 67, 54, 0.03)',
+                                border: '1px solid rgba(244, 67, 54, 0.15)',
+                                '&:before': {
+                                    display: 'none',
+                                },
+                                '& .MuiAccordionSummary-root': {
+                                    backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                                    borderBottom: isExpanded ? '1px solid rgba(244, 67, 54, 0.2)' : 'none',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(244, 67, 54, 0.12)',
+                                    }
+                                }
+                            }}
+                        >
+                            <AccordionSummary 
+                                expandIcon={<ExpandMoreIcon sx={{ color: 'error.main' }} />}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                    <ErrorIcon sx={{ color: 'error.main', fontSize: 20 }} />
+                                    <Typography variant="subtitle1" sx={{ 
+                                        fontWeight: 600,
+                                        color: 'error.main'
+                                    }}>
+                                        {displayName}
                                     </Typography>
-                                    
-                                    {/* Context information */}
-                                    {parsedError.context && (
-                                        <Typography 
-                                            variant="caption" 
-                                            sx={{ 
-                                                display: 'block',
-                                                color: 'text.secondary',
-                                                mb: 0.5,
-                                                fontSize: '0.75rem'
-                                            }}
-                                        >
-                                            Context: {parsedError.context}
-                                        </Typography>
-                                    )}
-                                    
-                                    {/* Field path */}
-                                    {parsedError.fieldPath && (
-                                        <Typography 
-                                            variant="caption" 
-                                            sx={{ 
-                                                display: 'block',
-                                                color: 'text.secondary',
-                                                fontFamily: 'monospace',
-                                                fontSize: '0.75rem',
-                                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                                px: 1,
-                                                py: 0.5,
-                                                borderRadius: 1,
-                                                mt: 0.5
-                                            }}
-                                        >
-                                            Field: {parsedError.fieldPath}
-                                            {parsedError.arrayIndex !== undefined && ` [${parsedError.arrayIndex}]`}
-                                        </Typography>
-                                    )}
+                                    <Chip
+                                        label={`${sectionErrors.length} error${sectionErrors.length !== 1 ? 's' : ''}`}
+                                        size="small"
+                                        sx={{
+                                            fontSize: '0.7rem',
+                                            height: 20,
+                                            backgroundColor: 'rgba(244, 67, 54, 0.2)',
+                                            color: 'error.main',
+                                            ml: 'auto'
+                                        }}
+                                    />
                                 </Box>
-                                
-                                {/* Navigation indicator */}
-                                {parsedError.fieldKey && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                                        <Typography 
-                                            variant="caption" 
-                                            sx={{ 
-                                                color: 'primary.main',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 500
-                                            }}
-                                        >
-                                            Navigate
-                                        </Typography>
-                                        <ChevronRightIcon 
-                                            sx={{ 
-                                                color: 'primary.main', 
-                                                fontSize: 16
-                                            }} 
-                                        />
-                                    </Box>
-                                )}
-                            </Box>
-                        </CardContent>
-                    </Card>
-                ))}
+                            </AccordionSummary>
+                            <AccordionDetails sx={{ p: 2, pt: 1 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                    {sectionErrors.map((parsedError, index) => (
+                                        <Card key={index} sx={{
+                                            backgroundColor: 'rgba(244, 67, 54, 0.05)',
+                                            border: '1px solid rgba(244, 67, 54, 0.2)',
+                                            borderRadius: 2,
+                                            overflow: 'hidden',
+                                            cursor: parsedError.fieldKey ? 'pointer' : 'default',
+                                            transition: 'all 0.2s ease',
+                                            ...(parsedError.fieldKey && {
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                                                    borderColor: 'rgba(244, 67, 54, 0.3)',
+                                                    transform: 'translateX(4px)',
+                                                    boxShadow: '0 2px 6px rgba(244, 67, 54, 0.15)'
+                                                }
+                                            })
+                                        }} onClick={() => parsedError.fieldKey && onNavigateToField(parsedError.fieldKey)}>
+                                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                                    <Box sx={{ 
+                                                        flexShrink: 0,
+                                                        width: 20,
+                                                        height: 20,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: 'error.main',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        mt: 0.25
+                                                    }}>
+                                                        <WarningIcon sx={{ fontSize: 12, color: 'white' }} />
+                                                    </Box>
+                                                    
+                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                        {/* Error message */}
+                                                        <Typography 
+                                                            variant="body2" 
+                                                            sx={{ 
+                                                                color: 'error.main',
+                                                                lineHeight: 1.4,
+                                                                fontWeight: 500,
+                                                                mb: 1
+                                                            }}
+                                                        >
+                                                            {parsedError.message}
+                                                        </Typography>
+                                                        
+                                                        {/* Field path */}
+                                                        {parsedError.fieldPath && (
+                                                            <Typography 
+                                                                variant="caption" 
+                                                                sx={{ 
+                                                                    display: 'block',
+                                                                    color: 'text.secondary',
+                                                                    fontFamily: 'monospace',
+                                                                    fontSize: '0.7rem',
+                                                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                                                    px: 1,
+                                                                    py: 0.5,
+                                                                    borderRadius: 1,
+                                                                    mt: 0.5
+                                                                }}
+                                                            >
+                                                                {parsedError.fieldPath}
+                                                                {parsedError.arrayIndex !== undefined && ` [${parsedError.arrayIndex}]`}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                    
+                                                    {/* Navigation indicator */}
+                                                    {parsedError.fieldKey && (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                                                            <Typography 
+                                                                variant="caption" 
+                                                                sx={{ 
+                                                                    color: 'primary.main',
+                                                                    fontSize: '0.7rem',
+                                                                    fontWeight: 600
+                                                                }}
+                                                            >
+                                                                Go to field
+                                                            </Typography>
+                                                            <ChevronRightIcon 
+                                                                sx={{ 
+                                                                    color: 'primary.main', 
+                                                                    fontSize: 14
+                                                                }} 
+                                                            />
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </Box>
+                            </AccordionDetails>
+                        </Accordion>
+                    );
+                })}
                 
-                {/* Summary */}
+                {/* Overall Summary */}
                 <Box sx={{ 
                     mt: 3, 
                     p: 2, 
@@ -462,9 +547,11 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                     borderRadius: 2,
                     border: '1px solid rgba(255, 255, 255, 0.1)'
                 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-                        {parsedErrors.length} validation issue{parsedErrors.length !== 1 ? 's' : ''} found. 
-                        Click on any error to navigate to the corresponding field.
+                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', mb: 1 }}>
+                        <strong>{parsedErrors.length}</strong> validation issue{parsedErrors.length !== 1 ? 's' : ''} found across <strong>{Object.keys(groupedErrors).length}</strong> section{Object.keys(groupedErrors).length !== 1 ? 's' : ''}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'center', display: 'block' }}>
+                        Click on any error to navigate to the corresponding field. Expand sections to view details.
                     </Typography>
                 </Box>
             </Box>

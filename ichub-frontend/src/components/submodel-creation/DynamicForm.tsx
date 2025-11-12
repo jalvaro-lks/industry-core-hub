@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useState, useMemo, useEffect } from 'react';
 import {
     Box,
     Typography,
@@ -246,15 +246,45 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     const renderField = (field: FormField) => {
         const currentValue = getValueByPath(data, field.key) || '';
         
-        // Improved error detection
-        const hasError = errors.some(error => {
-            const errorLower = error.toLowerCase();
-            const labelLower = field.label.toLowerCase();
-            const keyLower = field.key.toLowerCase();
-            return errorLower.includes(labelLower) || 
-                   errorLower.includes(keyLower) ||
-                   errorLower.includes(`${field.key} is required`);
-        });
+        // CORRECTED AND SIMPLIFIED: Error detection using exact field key matching
+        // 
+        // SOLUTION: This fixes the false positive issue by using the updated error messages
+        // that include the unique field.key (e.g., "Field 'metadata.status' is required" vs
+        // "Field 'sustainability.status' is required") instead of just labels.
+        const hasError = useMemo(() => {
+            if (errors.length === 0) return false;
+            
+            // Simple and effective: Look for errors mentioning this field's key
+            const hasFieldError = errors.some(error => {
+                // Primary method: Check for new format "Field 'field.key' is required"
+                if (error.includes(`'${field.key}'`)) {
+                    return true;
+                }
+                
+                // Fallback method: Direct key matching for other error types
+                if (error.toLowerCase().includes(field.key.toLowerCase())) {
+                    return true;
+                }
+                
+                return false;
+            });
+            
+            // Debug logging for status fields to verify the fix works
+            if (field.key.includes('status')) {
+                console.log(`🔍 Status field error check: "${field.key}"`, {
+                    hasError: hasFieldError,
+                    allErrors: errors,
+                    matchingErrors: errors.filter(e => 
+                        e.includes(`'${field.key}'`) || 
+                        e.toLowerCase().includes(field.key.toLowerCase())
+                    )
+                });
+            }
+            
+            return hasFieldError;
+        }, [errors, field.key]);
+
+
 
         // Check if field is required and empty for additional visual feedback
         const isRequiredAndEmpty = field.required && 
