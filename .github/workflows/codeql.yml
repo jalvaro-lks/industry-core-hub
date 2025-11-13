@@ -22,18 +22,12 @@ name: "CodeQL"
 on:
   push:
     branches: ["main"]
-    paths:
-      - "ichub-backend/**/*.py"
-      - "ichub-frontend/**/*.py"
     paths-ignore:
       - "**/*.yml"
       - "**/*.yaml"
       - "**/*.md"
       - "**/*.txt"
   pull_request:
-    paths:
-      - "ichub-backend/**/*.py"
-      - "ichub-frontend/**/*.py"
     paths-ignore:
       - "**/*.yml"
       - "**/*.yaml"
