@@ -331,7 +331,7 @@ class DtrProviderManager:
             logger.info(f"Creating new twin with id {aas_id.urn}!")
             res = self.aas_service.create_asset_administration_shell_descriptor(shell_descriptor=shell)
             if isinstance(res, Result):
-                raise ExternalAPIError("Error creating or updating shell descriptor"+ res.to_json_string())
+                raise ExternalAPIError("Error creating or updating shell descriptor: " + "\n" + res.to_json_string())
             return res
         
         # If shell existed, update it in the DTR with new asset IDs and BPNs
@@ -362,7 +362,7 @@ class DtrProviderManager:
 
         # Raise exception if service returned an error
         if isinstance(res, Result):
-            raise ExternalAPIError("Error creating or updating shell descriptor"+ res.to_json_string())
+            raise ExternalAPIError("Error creating or updating shell descriptor: " + "\n" + res.to_json_string())
 
         return res
         
@@ -437,7 +437,7 @@ class DtrProviderManager:
         
         res = self.aas_service.create_submodel_descriptor(aas_id.urn, submodel)
         if isinstance(res, Result):
-            raise ExternalAPIError("Error creating submodels descriptor", res.to_json_string())
+            raise ExternalAPIError("Error creating submodels descriptor: " + "\n" +res.to_json_string())
         return res
 
     def get_shell_descriptor_by_id(self, aas_id: UUID) -> ShellDescriptor:
@@ -448,7 +448,7 @@ class DtrProviderManager:
             aas_id.urn
         )
         if isinstance(res, Result):
-            raise ExternalAPIError("Error retrieving shell descriptor", res.to_json_string())
+            raise ExternalAPIError("Error retrieving shell descriptor: " + "\n" + res.to_json_string())
         return res
 
     def get_submodel_descriptor_by_id(
@@ -462,7 +462,7 @@ class DtrProviderManager:
         )
         if isinstance(res, Result):
             raise ExternalAPIError(
-                "Error retrieving submodel descriptor", res.to_json_string()
+                "Error retrieving submodel descriptor: " + "\n" + res.to_json_string()
             )
         return res
 
@@ -472,7 +472,7 @@ class DtrProviderManager:
         """
         res = self.aas_service.delete_asset_administration_shell_descriptor(aas_id.urn)
         if isinstance(res, Result):
-            raise ExternalAPIError("Error deleting shell descriptor", res.to_json_string())
+            raise ExternalAPIError("Error deleting shell descriptor: " + "\n" + res.to_json_string())
 
     def delete_submodel_descriptor(self, aas_id: UUID, submodel_id: UUID) -> None:
         """
@@ -480,7 +480,7 @@ class DtrProviderManager:
         """
         res = self.aas_service.delete_submodel_descriptor(aas_id.urn, submodel_id.urn)
         if isinstance(res, Result):
-            raise ExternalAPIError("Error deleting submodel descriptor", res.to_json_string())
+            raise ExternalAPIError("Error deleting submodel descriptor: " + "\n" + res.to_json_string())
 
 
     def _update_or_append_customer_part_ids(
