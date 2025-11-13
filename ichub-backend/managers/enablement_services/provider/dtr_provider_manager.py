@@ -241,6 +241,7 @@ class DtrProviderManager:
         # Prepare containers for asset IDs and key lookup
         specific_asset_ids = []
         existing_keys = {}
+        res = None
 
         # Try retrieving an existing shell descriptor using the AAS ID and manufacturer BPN
         existing_shell:ShellDescriptor = self.aas_service.get_asset_administration_shell_descriptor_by_id(
@@ -357,8 +358,8 @@ class DtrProviderManager:
                 shell_descriptor=existing_shell, aas_identifier=aas_id.urn, bpn=manufacturer_id
             )
             logger.info(f"Successfully updated the AAS with id {aas_id.urn}!")
-        except:
-            logger.error(f"Failed to update AAS {aas_id.urn}")
+        except Exception as e:
+            logger.error(f"Failed to update AAS {aas_id.urn}: {e}")
 
         # Raise exception if service returned an error
         if isinstance(res, Result):
