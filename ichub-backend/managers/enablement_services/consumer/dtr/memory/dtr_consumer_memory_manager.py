@@ -1533,9 +1533,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
     def _create_semantic_ids_base64(self, submodel: Dict) -> str:
         """Create base64 encoded semantic IDs from submodel descriptor."""
         try:
-            import base64
-            import json
-            
             semantic_id_obj = submodel.get("semanticId", {})
             if semantic_id_obj:
                 # Convert semantic ID object to JSON string then encode to base64
