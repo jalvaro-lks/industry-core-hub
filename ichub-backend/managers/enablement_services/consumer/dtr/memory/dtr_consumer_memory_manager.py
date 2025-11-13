@@ -549,8 +549,7 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 return {
                     "shellDescriptors": [],
                     "dtrs": [],
-                    "error": f"Cursor was created with limit {current_page.limit} but request has limit {limit}. Please start pagination from the beginning.",
-                    "error": "LIMIT_MISMATCH"
+                    "error": f"Cursor was created with limit {current_page.limit} but request has limit {limit}. Please start pagination from the beginning."+ "\n" +"LIMIT_MISMATCH"
                 }
         else:
             # Initialize first page
