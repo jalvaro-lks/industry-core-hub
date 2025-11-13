@@ -1,13 +1,3 @@
-<!--
-## NOTICE
-
-This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
-
-- SPDX-License-Identifier: CC-BY-4.0
-- SPDX-FileCopyrightText: 2025 LKS Next
-- SPDX-FileCopyrightText: 2025 Contributors to the Eclipse Foundation
-- Source URL: https://github.com/eclipse-tractusx/industry-core-hub
--->
 # Reset Keycloak Password Script
 
 ## Context
@@ -58,3 +48,12 @@ export ICHUB_ADMIN_PASSWORD="new-secure-password"
 
 ## Conclusion
 The `reset-keycloak-password.sh` script is a convenient tool for managing the `ichub-admin` user's password in Keycloak. While it simplifies password management in development environments, it is important to follow best practices for security in production deployments.
+
+## NOTICE
+
+This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
+
+- SPDX-License-Identifier: CC-BY-4.0
+- SPDX-FileCopyrightText: 2025 LKS Next
+- SPDX-FileCopyrightText: 2025 Contributors to the Eclipse Foundation
+- Source URL: https://github.com/eclipse-tractusx/industry-core-hub
