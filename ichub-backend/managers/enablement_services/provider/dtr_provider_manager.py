@@ -41,12 +41,10 @@ from typing import Dict, Optional
 from uuid import UUID
 from urllib import parse
 
-from managers.config.config_manager import ConfigManager
 from tools.aspect_id_tools import extract_aspect_id_name_from_urn_camelcase
 from tools.exceptions import ExternalAPIError, InvalidError
 from urllib.parse import urljoin
 
-import json
 import logging
 import re
 logger = logging.getLogger(__name__)

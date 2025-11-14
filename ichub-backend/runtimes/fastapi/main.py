@@ -20,8 +20,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 import uvicorn
-import os
-import yaml
 from controllers.fastapi import app as api
 from tractusx_sdk.dataspace.tools.utils import get_arguments
 from managers.config.log_manager import LoggingManager
