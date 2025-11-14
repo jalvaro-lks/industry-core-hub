@@ -27,6 +27,11 @@ from managers.config.config_manager import ConfigManager
 from tractusx_sdk.dataspace.managers import AuthManager
 from connector import connector_start_up_error
 from dtr import dtr_start_up_error
+
+# Set up asyncio default thread pool for blocking operations
+import asyncio
+import concurrent.futures
+
 app = api
 
 ## In memory authentication manager service
@@ -72,10 +77,6 @@ def start():
         logger.info(f"[UVICORN] Starting server with {max_workers} worker(s)")
         logger.info(f"[UVICORN] Thread pool size: {worker_threads}")
         logger.info(f"[UVICORN] Timeouts: keep_alive={timeout_keep_alive}s, graceful_shutdown={timeout_graceful_shutdown}s")
-        
-        # Set up asyncio default thread pool for blocking operations
-        import asyncio
-        import concurrent.futures
         
         # Configure asyncio's default thread pool executor globally
         loop = asyncio.new_event_loop()
