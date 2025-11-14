@@ -326,5 +326,6 @@ export const DPP_SCHEMA_METADATA = {
   description: 'Comprehensive digital passport containing product information, manufacturing details, sustainability data, and lifecycle information.',
   icon: 'DPP',
   color: '#1976d2',
-  tags: ['sustainability', 'traceability', 'compliance']
+  tags: ['sustainability', 'traceability', 'compliance'],
+  namespace: 'io.catenax.generic.digital_product_passport'
 };

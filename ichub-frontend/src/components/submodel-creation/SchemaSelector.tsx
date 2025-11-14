@@ -97,14 +97,16 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
 }) => {
     const availableSchemas = getAvailableSchemas();
     const [copySuccess, setCopySuccess] = useState(false);
+    const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
-    const handleCopySemanticId = async (semanticId: string, event: React.MouseEvent) => {
+    const handleCopy = async (value: string, event: React.MouseEvent) => {
         event.stopPropagation(); // Prevenir que se active el click de la card
         try {
-            await navigator.clipboard.writeText(semanticId);
+            await navigator.clipboard.writeText(value);
+            setCopiedValue(value);
             setCopySuccess(true);
         } catch (error) {
-            console.error('Failed to copy semantic ID:', error);
+            console.error('Failed to copy value:', error);
         }
     };
 
@@ -207,21 +209,23 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                 onClick={() => handleSchemaSelect(schemaKey, schema)}
                                                 sx={{ height: '100%', p: 0 }}
                                             >
-                                                <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                                    {/* Schema Icon and Version */}
-                                                    <Box sx={{ 
-                                                        display: 'flex', 
-                                                        alignItems: 'center', 
-                                                        justifyContent: 'space-between',
-                                                        mb: 2 
-                                                    }}>
-                                                        <Box sx={{ 
-                                                            fontSize: '2.5rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center'
-                                                        }}>
-                                                            {schema.metadata.icon}
-                                                        </Box>
+                                                <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                                    {/* Schema Title (Full Name) */}
+                                                    <Box>
+                                                        <Typography
+                                                            variant="h5"
+                                                            sx={{
+                                                                color: 'text.primary',
+                                                                fontWeight: 600,
+                                                                mb: 1.5,
+                                                                fontSize: '1.5rem',
+                                                                lineHeight: 1.3,
+                                                                width: '100%'
+                                                            }}
+                                                        >
+                                                            {schema.metadata.name}
+                                                        </Typography>
+                                                        {/* Version Chip directly below title */}
                                                         <Chip
                                                             label={`v${schema.metadata.version}`}
                                                             size="small"
@@ -229,50 +233,92 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                                 backgroundColor: schema.metadata.color,
                                                                 color: 'white',
                                                                 fontWeight: 600,
-                                                                fontSize: '10px'
+                                                                fontSize: '10px',
+                                                                alignSelf: 'flex-start',
+                                                                mb: 0
                                                             }}
                                                         />
                                                     </Box>
 
-                                                    {/* Schema Name */}
-                                                    <Typography variant="h6" sx={{ 
-                                                        color: 'text.primary',
-                                                        fontWeight: 600,
-                                                        mb: 1,
-                                                        fontSize: '1.1rem'
-                                                    }}>
-                                                        {schema.metadata.name}
-                                                    </Typography>
-
-                                                    {/* Schema Description */}
-                                                    <Typography variant="body2" sx={{ 
-                                                        color: 'text.secondary',
-                                                        mb: 2,
+                                                    {/* Schema Description - centered vertically */}
+                                                    <Box sx={{ 
+                                                        display: 'flex',
+                                                        alignItems: 'center',
                                                         flex: 1,
-                                                        fontSize: '0.875rem',
-                                                        lineHeight: 1.4
+                                                        py: 2
                                                     }}>
-                                                        {schema.metadata.description}
-                                                    </Typography>
+                                                        <Typography variant="body2" sx={{ 
+                                                            color: 'text.secondary',
+                                                            fontSize: '0.875rem',
+                                                            lineHeight: 1.4,
+                                                            textAlign: 'left'
+                                                        }}>
+                                                            {schema.metadata.description}
+                                                        </Typography>
+                                                    </Box>
 
-                                                    {/* Semantic ID */}
+                                                    {/* Semantic ID and Namespace */}
                                                     <Box sx={{ 
                                                         display: 'flex', 
-                                                        justifyContent: 'center',
+                                                        flexDirection: 'column',
+                                                        gap: 1,
                                                         mt: 'auto'
                                                     }}>
                                                         {/* Semantic ID as chip */}
                                                         {schema.metadata.semanticId && (
                                                             <Tooltip
-                                                                title={`Click to copy: ${schema.metadata.semanticId}`}
+                                                                title={`Click to copy semanticId: ${schema.metadata.semanticId}`}
                                                                 placement="top"
                                                                 arrow
+                                                                disableInteractive
+                                                                enterDelay={200}
+                                                                leaveDelay={0}
                                                             >
                                                                 <Chip
                                                                     label={schema.metadata.semanticId}
                                                                     size="medium"
                                                                     variant="outlined"
-                                                                    onClick={(e) => handleCopySemanticId(schema.metadata.semanticId, e)}
+                                                                    onClick={(e) => handleCopy(schema.metadata.semanticId, e)}
+                                                                    sx={{
+                                                                        fontSize: '10px',
+                                                                        height: '24px',
+                                                                        width: '100%',
+                                                                        borderColor: 'rgba(96, 165, 250, 0.4)',
+                                                                        color: 'rgba(96, 165, 250, 0.9)',
+                                                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                                        fontFamily: 'monospace',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease',
+                                                                        '&:hover': {
+                                                                            borderColor: 'rgba(96, 165, 250, 0.8)',
+                                                                            backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                                                                            transform: 'scale(1.02)'
+                                                                        },
+                                                                        '& .MuiChip-label': {
+                                                                            px: 1,
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                            whiteSpace: 'nowrap'
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </Tooltip>
+                                                        )}
+                                                        {/* Namespace Chip */}
+                                                        {schema.metadata.namespace && (
+                                                            <Tooltip
+                                                                title={`Click to copy namespace: ${schema.metadata.namespace}`}
+                                                                placement="top"
+                                                                arrow
+                                                                disableInteractive
+                                                                enterDelay={200}
+                                                                leaveDelay={0}
+                                                            >
+                                                                <Chip
+                                                                    label={schema.metadata.namespace}
+                                                                    size="medium"
+                                                                    variant="outlined"
+                                                                    onClick={(e) => handleCopy(schema.metadata.namespace!, e)}
                                                                     sx={{
                                                                         fontSize: '10px',
                                                                         height: '24px',
@@ -364,7 +410,7 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                     severity="success" 
                     sx={{ width: '100%' }}
                 >
-                    Semantic ID copied to clipboard!
+                    Copied to clipboard: {copiedValue}
                 </Alert>
             </Snackbar>
         </ThemeProvider>

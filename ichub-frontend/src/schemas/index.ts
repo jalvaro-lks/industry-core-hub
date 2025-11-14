@@ -49,6 +49,7 @@ export interface SchemaMetadata {
   icon: string;
   color: string;
   tags: string[];
+  namespace?: string; // Optional namespace for schema identification
 }
 
 export interface SchemaDefinition<T = any> {
