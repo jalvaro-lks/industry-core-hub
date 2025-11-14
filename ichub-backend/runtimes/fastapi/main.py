@@ -24,7 +24,6 @@ from controllers.fastapi import app as api
 from tractusx_sdk.dataspace.tools.utils import get_arguments
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
-from tractusx_sdk.dataspace.managers import AuthManager
 from connector import connector_start_up_error
 from dtr import dtr_start_up_error
 
@@ -34,13 +33,10 @@ import concurrent.futures
 
 app = api
 
-## In memory authentication manager service
-auth_manager: AuthManager
-
 
 def start():
     ## Load in memory data storages and authentication manager
-    global auth_manager, logger
+    global logger
     
     # Initialize the server environment and get the comand line arguments
     args = get_arguments()
@@ -49,9 +45,6 @@ def start():
     logger = LoggingManager.get_logger('staging')
     if(args.debug):
         logger = LoggingManager.get_logger('development')
-
-    ## Start the authentication manager
-    auth_manager = AuthManager()
     
     ## Once initial checks and configurations are done here is the place where it shall be included
     logger.info("[INIT] Application Startup Initialization Completed!")
