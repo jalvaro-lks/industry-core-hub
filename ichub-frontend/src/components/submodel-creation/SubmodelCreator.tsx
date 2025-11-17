@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React, { useState, useEffect, useRef } from 'react';
+import { getDPPFieldGroups, getDPPRequiredFields } from '../../schemas/dpp/dpp-v6.1.0';
 import {
     Dialog,
     DialogContent,
@@ -156,7 +157,9 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
     // Handler for field focus (no scroll logic)
     const handleFieldFocus = (fieldKey: string) => {
-        setFocusedField(fieldKey);
+    setFocusedField(fieldKey);
+    // If not already in JSON view, switch to it
+    setViewMode((prev) => prev !== 'json' ? 'json' : prev);
     };
 
     // Function to handle clipboard copy
@@ -632,40 +635,20 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     // Initialize form data with default values when schema changes
     useEffect(() => {
         if (selectedSchema && open) {
-            const defaultData = selectedSchema.createDefault(manufacturerPartId);
-            setFormData(defaultData);
-            
-            // Reset validation state on schema change
+            // Detect top-level keys (object keys) that have at least one required field
+            const requiredFields = getDPPRequiredFields();
+            const topLevelKeys = new Set(
+                requiredFields
+                    .map((f: any) => f.key.split('.')[0])
+                    .filter(Boolean)
+            );
+            const groups: Record<string, any> = {};
+            topLevelKeys.forEach((key) => {
+                groups[key] = {};
+            });
+            setFormData(groups); // JSON starts with empty objects for required groups using schema keys
             setValidationState('initial');
             setValidationErrors([]);
-            
-            // 🧪 Debug: Log schema structure for verification (development mode)
-            console.log('🔍 DPP Schema Analysis:');
-            console.log('Total Form Fields:', selectedSchema.formFields?.length || 0);
-            console.log('Form Fields Structure:');
-            
-            // Group fields by section to see structure
-            const fieldsBySection = selectedSchema.formFields?.reduce((acc: any, field: any) => {
-                if (!acc[field.section]) acc[field.section] = [];
-                acc[field.section].push({
-                    key: field.key,
-                    label: field.label,
-                    type: field.type,
-                    required: field.required
-                });
-                return acc;
-            }, {}) || {};
-            
-            Object.entries(fieldsBySection).forEach(([section, fields]: [string, any]) => {
-                console.log(`📁 ${section} (${fields.length} fields):`);
-                fields.forEach((field: any) => {
-                    const requiredMark = field.required ? '🔴' : '🔵';
-                    const nestedMark = field.key.includes('.') ? '└─' : '├─';
-                    console.log(`  ${nestedMark} ${requiredMark} ${field.key} (${field.type}): ${field.label}`);
-                });
-            });
-            
-            console.log('📊 Schema loaded. Validation will be triggered manually by user.');
         }
     }, [selectedSchema, manufacturerPartId, open]);
 
