@@ -35,8 +35,10 @@ import {
     TextField,
     InputAdornment,
     IconButton,
-    Tooltip
+    Tooltip,
+    Autocomplete
 } from '@mui/material';
+import { autocompleteClasses } from '@mui/material/Autocomplete';
 import {
     ExpandMore as ExpandMoreIcon,
     CheckCircle as CheckCircleIcon,
@@ -81,27 +83,24 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
     onSearchTermChange 
 }) => {
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-        'required': true,
-        'otherRules': true
+        'required': false,
+        'otherRules': false,
+        'formatRules': false
     });
+    // Track expanded/collapsed state for long descriptions by field key
+    const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
     const [searchTerm, setSearchTerm] = useState<string>(initialSearchTerm);
+    const [autocompleteOpen, setAutocompleteOpen] = useState(false);
     
-    // Update search term when initialSearchTerm changes (from external search)
-    React.useEffect(() => {
-        if (initialSearchTerm) {
-            setSearchTerm(initialSearchTerm);
-            // Auto-expand both groups when searching
-            setExpandedGroups({
-                'required': true,
-                'otherRules': true
-            });
-        }
-    }, [initialSearchTerm]);
 
-    // Extract all rules from schema fields
-    const extractFieldRules = (): { requiredFields: FieldRule[], otherFields: FieldRule[] } => {
+    // Update search term when initialSearchTerm changes (from external search)
+
+
+    // Extract all rules from schema fields, splitting format rules
+    const extractFieldRules = () => {
         const requiredFields: FieldRule[] = [];
         const otherFields: FieldRule[] = [];
+        const formatFields: FieldRule[] = [];
 
         schema.formFields?.forEach((field: FormField) => {
             const rules: FieldRule['rules'] = {
@@ -110,50 +109,118 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                 description: field.description
             };
 
-            // Add validation rules if they exist
-            if (field.validation) {
-                if (field.validation.min !== undefined) rules.minimum = field.validation.min;
-                if (field.validation.max !== undefined) rules.maximum = field.validation.max;
-                if (field.validation.pattern) rules.pattern = field.validation.pattern;
-            }
-
             // Add enum options
             if (field.options && field.options.length > 0) {
                 rules.enum = field.options;
             }
 
+            // Add validation rules if they exist
+            let hasFormat = false;
+            if (field.validation) {
+                if (field.validation.pattern) {
+                    rules.pattern = field.validation.pattern;
+                    hasFormat = true;
+                }
+                if (field.validation.minLength !== undefined) {
+                    rules.minLength = field.validation.minLength;
+                    hasFormat = true;
+                }
+                if (field.validation.maxLength !== undefined) {
+                    rules.maxLength = field.validation.maxLength;
+                    hasFormat = true;
+                }
+                if (field.validation.format) {
+                    rules.format = field.validation.format;
+                    hasFormat = true;
+                }
+                if (field.validation.min !== undefined) {
+                    rules.minimum = field.validation.min;
+                }
+                if (field.validation.max !== undefined) {
+                    rules.maximum = field.validation.max;
+                }
+            }
+
             const fieldRule: FieldRule = { field, rules };
 
-            if (field.required) {
+            if (hasFormat) {
+                formatFields.push(fieldRule);
+            } else if (field.required) {
                 requiredFields.push(fieldRule);
             } else {
                 otherFields.push(fieldRule);
             }
         });
 
-        return { requiredFields, otherFields };
+        return { requiredFields, otherFields, formatFields };
     };
 
-    const { requiredFields, otherFields } = extractFieldRules();
+    const { requiredFields, otherFields, formatFields } = extractFieldRules();
+
+
+
+    // Build a tree of all field keys for hierarchical autocomplete
+    const allFieldKeys = useMemo(() => {
+        const all = [...requiredFields, ...otherFields, ...formatFields];
+        const keys = all.map(f => f.field.key);
+        return keys;
+    }, [requiredFields, otherFields, formatFields]);
+
+    // Given a prefix (e.g. "foo.bar"), return next possible segments
+    function getNextKeySegments(prefix: string): string[] {
+        const prefixParts = prefix ? prefix.split('.') : [];
+        const suggestions = new Set<string>();
+        allFieldKeys.forEach(key => {
+            const parts = key.split('.');
+            if (prefixParts.length === 0) {
+                // Suggest root keys
+                if (parts.length > 0) suggestions.add(parts[0]);
+            } else if (parts.length > prefixParts.length) {
+                let match = true;
+                for (let i = 0; i < prefixParts.length; i++) {
+                    if (parts[i] !== prefixParts[i]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) suggestions.add(parts[prefixParts.length]);
+            }
+        });
+        return Array.from(suggestions).sort();
+    }
+
+    // Build hierarchical options for autocomplete
+    const hierarchicalOptions = useMemo(() => {
+        if (!searchTerm) return [];
+        const term = searchTerm.trim();
+        // If term ends with a dot, show next segments
+        if (term.endsWith('.')) {
+            return getNextKeySegments(term.slice(0, -1)).map(seg => term + seg);
+        }
+        // Otherwise, show completions for current segment
+        const lastDot = term.lastIndexOf('.');
+        const prefix = lastDot >= 0 ? term.slice(0, lastDot) : '';
+        const base = lastDot >= 0 ? term.slice(0, lastDot + 1) : '';
+        const partial = term.slice(lastDot + 1);
+        const segments = getNextKeySegments(prefix);
+        return segments
+            .filter(seg => seg.startsWith(partial))
+            .map(seg => base + seg);
+    }, [searchTerm, allFieldKeys]);
 
     // Filter fields based on search term
-    const filteredRequiredFields = useMemo(() => {
-        if (!searchTerm.trim()) return requiredFields;
+    const filterFields = (fields: FieldRule[]) => {
+        if (!searchTerm.trim()) return fields;
         const term = searchTerm.toLowerCase();
-        return requiredFields.filter(fieldRule => 
+        return fields.filter(fieldRule =>
             fieldRule.field.key.toLowerCase().includes(term) ||
             fieldRule.field.label.toLowerCase().includes(term)
         );
-    }, [requiredFields, searchTerm]);
+    };
 
-    const filteredOtherFields = useMemo(() => {
-        if (!searchTerm.trim()) return otherFields;
-        const term = searchTerm.toLowerCase();
-        return otherFields.filter(fieldRule => 
-            fieldRule.field.key.toLowerCase().includes(term) ||
-            fieldRule.field.label.toLowerCase().includes(term)
-        );
-    }, [otherFields, searchTerm]);
+    const filteredRequiredFields = useMemo(() => filterFields(requiredFields), [requiredFields, searchTerm]);
+    const filteredOtherFields = useMemo(() => filterFields(otherFields), [otherFields, searchTerm]);
+    const filteredFormatFields = useMemo(() => filterFields(formatFields), [formatFields, searchTerm]);
 
     // Group required fields by section
     const groupRequiredFieldsBySection = (fields: FieldRule[]): Record<string, FieldRule[]> => {
@@ -168,6 +235,23 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
     };
 
     const groupedRequiredFields = groupRequiredFieldsBySection(filteredRequiredFields);
+
+    // Auto-expand only groups with results when searchTerm changes (must be after filtered fields are defined)
+    React.useEffect(() => {
+        if (searchTerm) {
+            setExpandedGroups({
+                required: filteredRequiredFields.length > 0,
+                formatRules: filteredFormatFields.length > 0,
+                otherRules: filteredOtherFields.length > 0
+            });
+        } else {
+            setExpandedGroups({
+                required: false,
+                formatRules: false,
+                otherRules: false
+            });
+        }
+    }, [searchTerm, filteredRequiredFields.length, filteredFormatFields.length, filteredOtherFields.length]);
 
     const toggleGroup = (groupName: string) => {
         setExpandedGroups(prev => ({
@@ -192,7 +276,10 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
 
     const renderFieldRuleCard = (fieldRule: FieldRule, showRequiredBadge: boolean = false) => {
         const { field, rules } = fieldRule;
-        
+        const desc = rules.description || '';
+        const isLong = desc.length > 120;
+        const isExpanded = expandedDescriptions[field.key] || false;
+
         return (
             <Card
                 key={field.key}
@@ -223,7 +310,7 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                                 <RuleIcon sx={{ fontSize: 12, color: 'white' }} />
                             )}
                         </Box>
-                        
+
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                             {/* Field name and label */}
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -248,7 +335,7 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                                     />
                                 )}
                             </Box>
-                            
+
                             {/* Field path */}
                             <Typography 
                                 variant="caption" 
@@ -267,26 +354,68 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                                 {field.key}
                             </Typography>
 
-                            {/* Description */}
-                            {rules.description && (
-                                <Typography 
-                                    variant="body2" 
-                                    sx={{ 
-                                        color: 'text.secondary',
-                                        fontSize: '0.8rem',
-                                        mb: 1.5,
-                                        fontStyle: 'italic'
-                                    }}
-                                >
-                                    {rules.description}
-                                </Typography>
+                            {/* Description with leer más */}
+                            {desc && (
+                                <Box sx={{ mb: 1.5 }}>
+                                    <Typography 
+                                        variant="body2" 
+                                        sx={{ 
+                                            color: 'text.secondary',
+                                            fontSize: '0.8rem',
+                                            fontStyle: 'italic',
+                                            display: 'inline'
+                                        }}
+                                    >
+                                        {isLong && !isExpanded ? desc.slice(0, 120) + '...' : desc}
+                                    </Typography>
+                                    {isLong && (
+                                        <Box component="span" sx={{ ml: 1 }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{ color: 'primary.main', cursor: 'pointer', fontWeight: 600 }}
+                                                onClick={() => setExpandedDescriptions(prev => ({ ...prev, [field.key]: !isExpanded }))}
+                                            >
+                                                {isExpanded ? 'read less' : 'read more'}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
                             )}
 
                             {/* Rules chips */}
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                 {rules.type && renderRuleChip('Type', rules.type, 'primary')}
                                 {rules.format && renderRuleChip('Format', rules.format, 'secondary')}
-                                {rules.pattern && renderRuleChip('Pattern', rules.pattern)}
+                                {rules.pattern && (
+                                    <Tooltip
+                                        title={
+                                            <Box sx={{ fontFamily: 'monospace', fontSize: '0.9em', px: 1, py: 0.5 }}>
+                                                {rules.pattern}
+                                            </Box>
+                                        }
+                                        arrow
+                                        placement="top"
+                                    >
+                                        <Chip
+                                            label={`Pattern: ${rules.pattern}`}
+                                            size="small"
+                                            sx={{
+                                                fontSize: '0.7rem',
+                                                height: '22px',
+                                                mr: 0.5,
+                                                mb: 0.5,
+                                                maxWidth: 220,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                                cursor: 'pointer',
+                                            }}
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(rules.pattern || '');
+                                            }}
+                                        />
+                                    </Tooltip>
+                                )}
                                 {rules.minLength !== undefined && renderRuleChip('Min Length', rules.minLength)}
                                 {rules.maxLength !== undefined && renderRuleChip('Max Length', rules.maxLength)}
                                 {rules.minimum !== undefined && renderRuleChip('Min', rules.minimum)}
@@ -305,7 +434,7 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                                 )}
                             </Box>
                         </Box>
-                        
+
                         {/* Navigation button */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                             <Tooltip title="Go to field in form" placement="left">
@@ -356,47 +485,75 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                     Search by field ID or name, then use the button to navigate to the field in the form.
                 </Typography>
                 
-                {/* Search Field */}
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Search by field ID (e.g., operation.import.content.id)"
-                    value={searchTerm}
-                    onChange={(e) => {
-                        const newTerm = e.target.value;
-                        setSearchTerm(newTerm);
-                        onSearchTermChange?.(newTerm);
+                {/* Search Field with Hierarchical Autocomplete */}
+                <Autocomplete
+                    freeSolo
+                    options={hierarchicalOptions}
+                    inputValue={searchTerm}
+                    open={autocompleteOpen && !!searchTerm && hierarchicalOptions.length > 0}
+                    onOpen={() => setAutocompleteOpen(true)}
+                    onClose={() => setAutocompleteOpen(false)}
+                    onInputChange={(_, value, reason) => {
+                        setSearchTerm(value);
+                        onSearchTermChange?.(value);
+                        if (reason === 'clear' || value === '') setAutocompleteOpen(false);
+                        else setAutocompleteOpen(true);
                     }}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-                            </InputAdornment>
-                        ),
-                        endAdornment: searchTerm && (
-                            <InputAdornment position="end">
-                                <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                        setSearchTerm('');
-                                        onSearchTermChange?.('');
-                                    }}
-                                    sx={{ padding: 0.5 }}
-                                >
-                                    <ClearIcon sx={{ fontSize: 18 }} />
-                                </IconButton>
-                            </InputAdornment>
-                        )
+                    onChange={(_, value, reason) => {
+                        if (typeof value === 'string') {
+                            setSearchTerm(value);
+                            onSearchTermChange?.(value);
+                        }
+                        // Close dropdown after selection
+                        setAutocompleteOpen(false);
                     }}
+                    filterOptions={x => x} // No filtering, we already filter
+                    renderInput={params => (
+                        <TextField
+                            {...params}
+                            fullWidth
+                            size="small"
+                            placeholder="Search by field path (e.g. group.key.subkey)"
+                            InputProps={{
+                                ...params.InputProps,
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: searchTerm && (
+                                    <InputAdornment position="end" sx={{ mr: -1.5 }}>
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                                setSearchTerm('');
+                                                onSearchTermChange?.('');
+                                            }}
+                                            sx={{ padding: 0.5 }}
+                                        >
+                                            <ClearIcon sx={{ fontSize: 18 }} />
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                    },
+                                    '&.Mui-focused': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                    }
+                                }
+                            }}
+                        />
+                    )}
                     sx={{
-                        '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                            '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                            },
-                            '&.Mui-focused': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            }
+                        [`& .${autocompleteClasses.paper}`]: {
+                            backgroundColor: '#fff',
+                            color: '#222',
+                            boxShadow: 3,
                         }
                     }}
                 />
@@ -483,7 +640,56 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
                 </AccordionDetails>
             </Accordion>
 
-            {/* Group 2: Other Rules */}
+
+            {/* Group 2: Format Rules */}
+            <Accordion
+                expanded={expandedGroups['formatRules'] || false}
+                onChange={() => toggleGroup('formatRules')}
+                sx={{
+                    mb: 2,
+                    backgroundColor: 'rgba(255, 193, 7, 0.03)',
+                    border: '1px solid rgba(255, 193, 7, 0.15)',
+                    '&:before': {
+                        display: 'none',
+                    },
+                    '& .MuiAccordionSummary-root': {
+                        backgroundColor: 'rgba(255, 193, 7, 0.08)',
+                        borderBottom: expandedGroups['formatRules'] ? '1px solid rgba(255, 193, 7, 0.2)' : 'none',
+                    }
+                }}
+            >
+                <AccordionSummary 
+                    expandIcon={<ExpandMoreIcon sx={{ color: 'warning.main' }} />}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                        <RuleIcon sx={{ color: 'warning.main', fontSize: 20 }} />
+                        <Typography variant="subtitle1" sx={{ 
+                            fontWeight: 600,
+                            color: 'warning.main'
+                        }}>
+                            Format Rules
+                        </Typography>
+                        <Chip
+                            label={searchTerm ? `${filteredFormatFields.length} / ${formatFields.length}` : `${formatFields.length} field${formatFields.length !== 1 ? 's' : ''}`}
+                            size="small"
+                            sx={{
+                                fontSize: '0.7rem',
+                                height: 20,
+                                backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                                color: 'warning.main',
+                                ml: 'auto'
+                            }}
+                        />
+                    </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 2, pt: 1 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        {filteredFormatFields.map(fieldRule => renderFieldRuleCard(fieldRule, false))}
+                    </Box>
+                </AccordionDetails>
+            </Accordion>
+
+            {/* Group 3: Other Rules */}
             <Accordion
                 expanded={expandedGroups['otherRules'] || false}
                 onChange={() => toggleGroup('otherRules')}
