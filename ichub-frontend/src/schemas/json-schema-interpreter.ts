@@ -891,29 +891,43 @@ export function interpretJSONSchema(schema: JSONSchema): {
   const validate = (data: any): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
+    // Helper: for a field key like 'a.b.c', return the parent path 'a.b' (or null if top-level)
+    function getParentPath(path: string): string | null {
+      const parts = path.split('.');
+      if (parts.length <= 1) return null;
+      return parts.slice(0, -1).join('.');
+    }
+
     for (const field of formFields) {
       const value = getValueByPath(data, field.key);
-      
-      // Required field validation - FIXED: Use field key to distinguish between fields with same labels
+
+      // Only validate required children if their parent exists (for nested fields)
       if (field.required) {
-        if (value === undefined || value === null || 
+        const parentPath = getParentPath(field.key);
+        if (parentPath) {
+          const parentValue = getValueByPath(data, parentPath);
+          // If parent is undefined/null/empty, skip required check for this child
+          if (parentValue === undefined || parentValue === null || parentValue === '') {
+            continue;
+          }
+        }
+        if (value === undefined || value === null ||
             (typeof value === 'string' && value.trim() === '') ||
             (Array.isArray(value) && value.length === 0)) {
-          // CRITICAL: Include field.key to avoid confusion between metadata.status and sustainability.status
           errors.push(`Field '${field.key}' is required`);
           continue;
         }
       }
-      
+
       // Skip validation for empty optional fields
       if (!field.required && (value === undefined || value === null || value === '')) {
         continue;
       }
-      
+
       // Comprehensive validation based on field rules
       if (field.validation) {
         const val = field.validation;
-        
+
         // Numeric validations
         if (val.min !== undefined && Number(value) < val.min) {
           errors.push(`${field.label} must be at least ${val.min}`);
@@ -930,7 +944,7 @@ export function interpretJSONSchema(schema: JSONSchema): {
         if (val.multipleOf !== undefined && Number(value) % val.multipleOf !== 0) {
           errors.push(`${field.label} must be a multiple of ${val.multipleOf}`);
         }
-        
+
         // String validations
         if (val.minLength !== undefined && String(value).length < val.minLength) {
           errors.push(`${field.label} must be at least ${val.minLength} characters`);
@@ -941,7 +955,7 @@ export function interpretJSONSchema(schema: JSONSchema): {
         if (val.pattern && !new RegExp(val.pattern).test(String(value))) {
           errors.push(`${field.label} format is invalid`);
         }
-        
+
         // Array validations
         if (Array.isArray(value)) {
           if (val.minItems !== undefined && value.length < val.minItems) {
@@ -954,17 +968,17 @@ export function interpretJSONSchema(schema: JSONSchema): {
             errors.push(`${field.label} items must be unique`);
           }
         }
-        
+
         // Enum validation
         if (val.enum && !val.enum.includes(value)) {
           errors.push(`${field.label} must be one of: ${val.enum.join(', ')}`);
         }
-        
+
         // Const validation
         if (val.const !== undefined && value !== val.const) {
           errors.push(`${field.label} must be exactly: ${val.const}`);
         }
-        
+
         // Format validation
         if (val.format) {
           const formatErrors = validateFormat(value, val.format, field.label);

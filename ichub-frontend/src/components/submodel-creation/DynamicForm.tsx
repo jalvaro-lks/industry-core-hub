@@ -247,88 +247,50 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
     const renderField = (field: FormField) => {
         const currentValue = getValueByPath(data, field.key) || '';
-        
-        // Check if this field has a persistent error (from validation)
         const hasPersistedError = fieldErrors.has(field.key);
-        
-        // Check if this field is currently focused/being edited
         const isFieldFocused = focusedField === field.key;
-        
-        // IMPROVED: Error detection with persistence
-        // Shows red border if field has error, shows error message only when focused
-        const { hasError, errorMessage } = useMemo(() => {
-            // If this field doesn't have a persisted error, no error to show
+        // Show all error messages for this field
+        const { hasError, errorMessages } = useMemo(() => {
             if (!hasPersistedError || errors.length === 0) {
-                return { hasError: false, errorMessage: undefined };
+                return { hasError: false, errorMessages: [] };
             }
-            
             const fieldKey = field.key;
             const fieldLabel = field.label;
-            
-            // Split nested field key to check for partial matches
-            const keyParts = fieldKey.split('.');
+            const keyParts = fieldKey.split('.')
             const lastKeyPart = keyParts[keyParts.length - 1];
-            
-            let matchedError: string | undefined;
-            
-            const hasFieldError = errors.some(error => {
+            // Collect all errors for this field
+            const matchedErrors = errors.filter(error => {
                 const errorLower = error.toLowerCase();
                 const fieldKeyLower = fieldKey.toLowerCase();
-                
-                // Method 1: Exact field key match with quotes (highest priority)
-                if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) {
-                    matchedError = error;
-                    return true;
-                }
-                
-                // Method 2: Exact field key match without quotes
+                if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) return true;
                 if (errorLower.includes(fieldKeyLower)) {
-                    const regex = new RegExp(`\\b${fieldKeyLower.replace(/\./g, '\\.')}\\b`);
-                    if (regex.test(errorLower)) {
-                        matchedError = error;
-                        return true;
-                    }
+                    const regex = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\b`);
+                    if (regex.test(errorLower)) return true;
                 }
-                
-                // Method 3: Match by label (for user-friendly error messages)
-                if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) {
-                    matchedError = error;
-                    return true;
-                }
-                
-                // Method 4: For nested fields, also check the last part of the key
+                if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) return true;
                 if (keyParts.length > 1 && errorLower.includes(lastKeyPart.toLowerCase())) {
-                    const hasContextMatch = keyParts.slice(0, -1).some(part => 
-                        errorLower.includes(part.toLowerCase())
-                    );
-                    if (hasContextMatch) {
-                        matchedError = error;
-                        return true;
-                    }
+                    const hasContextMatch = keyParts.slice(0, -1).some(part => errorLower.includes(part.toLowerCase()));
+                    if (hasContextMatch) return true;
                 }
-                
                 return false;
             });
-            
-            // Format error message for display (only shown when focused)
-            let formattedMessage: string | undefined;
-            if (hasFieldError && matchedError) {
-                formattedMessage = matchedError
+            // Format all error messages for display
+            const formattedMessages = matchedErrors.map(msg => {
+                let formatted = msg
                     .replace(new RegExp(`'${fieldKey}'`, 'gi'), '')
                     .replace(new RegExp(`"${fieldKey}"`, 'gi'), '')
                     .replace(new RegExp(`'${fieldLabel}'`, 'gi'), '')
                     .replace(new RegExp(`"${fieldLabel}"`, 'gi'), '')
                     .replace(/\s{2,}/g, ' ')
                     .trim();
-                
-                if (formattedMessage && formattedMessage.length > 0) {
-                    formattedMessage = formattedMessage.charAt(0).toUpperCase() + formattedMessage.slice(1);
+                if (formatted && formatted.length > 0) {
+                    formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
                 }
-            }
-            
-            return { 
-                hasError: hasFieldError, 
-                errorMessage: formattedMessage 
+                return formatted;
+            });
+            return {
+                hasError: formattedMessages.length > 0,
+                errorMessages: formattedMessages
             };
         }, [hasPersistedError, errors, field.key, field.label]);
 
@@ -434,7 +396,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
@@ -457,7 +421,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
@@ -479,7 +445,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             inputProps={{
@@ -505,7 +473,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onFocus={() => onFieldFocus?.(field.key)}
                             onBlur={() => onFieldBlur?.()}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             InputLabelProps={{
@@ -560,8 +530,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     </MenuItem>
                                 ))}
                             </Select>
-                            {hasError && isFieldFocused && errorMessage && (
-                                <FormHelperText>{errorMessage}</FormHelperText>
+                            {hasError && isFieldFocused && errorMessages.length > 0 && (
+                                <FormHelperText>
+                                    {errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}
+                                </FormHelperText>
                             )}
                         </FormControl>
                         {getIconContainer(field.description, field.key)}
@@ -617,15 +589,15 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     }}
                                 />
                             </Box>
-                            {getIconContainer(field.description)}
+                            {getIconContainer(field.description, field.key)}
                         </Box>
-                        {hasError && isFieldFocused && errorMessage && (
+                        {hasError && isFieldFocused && errorMessages.length > 0 && (
                             <Typography variant="caption" sx={{ 
                                 color: 'error.main',
                                 ml: 1.75,
                                 fontSize: '0.75rem'
                             }}>
-                                {errorMessage}
+                                {errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}
                             </Typography>
                         )}
                     </Box>
@@ -644,7 +616,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             inputProps={{
@@ -671,15 +645,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder || 'Enter email address'}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
-
             case 'url':
                 return (
                     <Box key={field.key} sx={{ position: 'relative' }}>
@@ -693,15 +668,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onChange={(e) => handleFieldChange(field, e.target.value)}
                             placeholder={field.placeholder || 'https://example.com'}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
-
             case 'datetime':
                 return (
                     <Box key={field.key} sx={{ position: 'relative' }}>
@@ -714,7 +690,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             onFocus={() => onFieldFocus?.(field.key)}
                             onBlur={() => onFieldBlur?.()}
                             error={hasError}
-                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             variant="outlined"
                             size="small"
                             InputLabelProps={{
@@ -722,7 +700,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -777,38 +755,30 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     </Box>
                 );
 
-            case 'object':
-                // For object fields, we render a nested structure
+            case 'datetime':
                 return (
-                    <Card sx={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: 2,
-                        p: 2
-                    }}>
-                        <Typography variant="subtitle2" sx={{ 
-                            color: hasError ? 'error.main' : 'text.primary',
-                            fontWeight: 600,
-                            mb: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                        }}>
-                            {getFieldLabel(field.label, field.required)}
-                            {getDescriptionTooltip(field.description, field.key)}
-                        </Typography>
-                        
-                        {/* Render nested object fields if available */}
-                        {field.objectFields && field.objectFields.length > 0 && (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                {field.objectFields.map((subField) => (
-                                    <Box key={subField.key}>
-                                        {renderField(subField)}
-                                    </Box>
-                                ))}
-                            </Box>
-                        )}
-                    </Card>
+                    <Box key={field.key} sx={{ position: 'relative' }}>
+                        <TextField
+                            fullWidth
+                            type="datetime-local"
+                            label={getFieldLabel(field.label, field.required)}
+                            value={currentValue}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
+                            error={hasError}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                        />
+                        {getIconContainer(field.description, field.key)}
+                    </Box>
                 );
 
             case 'array':

@@ -23,6 +23,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getDPPFieldGroups, getDPPRequiredFields } from '../../schemas/dpp/dpp-v6.1.0';
+import JsonImportDialog from './JsonImportDialog';
 import {
     Dialog,
     DialogContent,
@@ -153,6 +154,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [rulesSearchTerm, setRulesSearchTerm] = useState<string>('');
     const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set()); // Track which fields have errors
     const [focusedField, setFocusedField] = useState<string | null>(null); // Track currently focused/editing field
+    const [jsonImportOpen, setJsonImportOpen] = useState(false);
+    const [jsonImportError, setJsonImportError] = useState<string | undefined>(undefined);
     const formRef = useRef<DynamicFormRef>(null);
 
     // Handler for field focus (no scroll logic)
@@ -654,36 +657,15 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
     const handleFormChange = (newData: any, changedFieldKey?: string) => {
         setFormData(newData);
-        
-        // If a specific field changed and it had an error, remove it from fieldErrors
+        // Siempre que se edite un campo tras validar, volver a estado 'initial' para forzar revalidación
+        if (validationState !== 'initial') {
+            setValidationState('initial');
+        }
+        // Limpiar errores de campo editado
         if (changedFieldKey && fieldErrors.has(changedFieldKey)) {
             const newFieldErrors = new Set(fieldErrors);
             newFieldErrors.delete(changedFieldKey);
             setFieldErrors(newFieldErrors);
-            
-            // Also remove the error from validationErrors array
-            const newValidationErrors = validationErrors.filter(error => {
-                // Check if this error belongs to the changed field
-                return !(
-                    error.includes(`'${changedFieldKey}'`) || 
-                    error.includes(`"${changedFieldKey}"`)
-                );
-            });
-            setValidationErrors(newValidationErrors);
-            
-            // If no more errors, update validation state
-            if (newFieldErrors.size === 0) {
-                setValidationState('validated');
-            }
-        }
-        
-        // Reset validation state when form changes after validation (only if not in errors state)
-        // This ensures that any changes require re-validation
-        if (validationState === 'validated') {
-            setValidationState('initial');
-            
-            // Switch to JSON view to show the changes
-            setViewMode('json');
         }
     };
 
@@ -693,11 +675,14 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             return;
         }
 
-        const validation = selectedSchema.validate(formData);
-        
-        // Remove duplicate errors (fix for nested/array field duplicate bug)
-        const uniqueErrors = Array.from(new Set(validation.errors));
-        setValidationErrors(uniqueErrors);
+    const validation = selectedSchema.validate(formData);
+    // Debug: log all errors before and after deduplication
+    // eslint-disable-next-line no-console
+    console.log('ALL validation.errors:', validation.errors);
+    const uniqueErrors = Array.from(new Set(validation.errors));
+    // eslint-disable-next-line no-console
+    console.log('UNIQUE validation.errors:', uniqueErrors);
+    setValidationErrors(uniqueErrors);
 
         // Extract field keys from errors and store them
         const errorFieldKeys = new Set<string>();
@@ -986,14 +971,40 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                         backdropFilter: 'blur(10px)'
                                     }}>
                                         <SchemaIcon sx={{ color: 'primary.main' }} />
-                                        <Box>
-                                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                Submodel Configuration
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                                Fill in the details for your {selectedSchema?.metadata.name} submodel
-                                            </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                            <Box>
+                                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                                    Submodel Configuration
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                                    Fill in the details for your {selectedSchema?.metadata.name} submodel
+                                                </Typography>
+                                            </Box>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                onClick={() => setJsonImportOpen(true)}
+                                                startIcon={<DataObjectIcon />}
+                                            >
+                                                Import JSON
+                                            </Button>
                                         </Box>
+
+                                    {/* JSON Import Dialog */}
+                                    <JsonImportDialog
+                                        open={jsonImportOpen}
+                                        onClose={() => { setJsonImportOpen(false); setJsonImportError(undefined); }}
+                                        onImport={(json: any) => {
+                                            setJsonImportError(undefined);
+                                            if (!selectedSchema) return;
+                                            // TODO: Validate JSON using schema
+                                            setFormData(json);
+                                            setJsonImportOpen(false);
+                                            // If invalid, set error:
+                                            // setJsonImportError('Invalid JSON for this schema');
+                                        }}
+                                        error={jsonImportError}
+                                    />
                                     </Box>
 
                                     {/* Form Content - No scroll logic */}
