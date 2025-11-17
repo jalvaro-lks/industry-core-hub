@@ -87,16 +87,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     const fieldRefs = useRef<Record<string, any>>({});
     const accordionRefs = useRef<Record<string, any>>({});
     
-    // State to control expanded panels - expand main sections by default
-    const [expandedPanels, setExpandedPanels] = useState<Record<string, boolean>>({
-        'Metadata': false,
-        'Identification': false,
-        'Operation': false,
-        'Product Characteristics': false,
-        'Commercial Information': false,
-        'Materials': false,
-        'Sustainability': false
-    });
+    // State to control which main section is expanded (only one at a time, all collapsed by default)
+    const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
 
     // Group fields by section using comprehensive interpreter data
     const groupedFields = formFields.reduce((acc, field) => {
@@ -178,9 +170,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         scrollToField: (fieldKey: string) => {
             // First, find and expand the section containing this field
             const sectionName = findFieldSection(fieldKey);
-            if (sectionName && !expandedPanels[sectionName]) {
-                setExpandedPanels(prev => ({ ...prev, [sectionName]: true }));
-                
+            if (sectionName && expandedPanel !== sectionName) {
+                setExpandedPanel(sectionName);
                 // Wait for expansion animation to complete before scrolling
                 setTimeout(() => {
                     const element = fieldRefs.current[fieldKey];
@@ -1189,9 +1180,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 return (
                     <Accordion
                         key={sectionName}
-                        expanded={expandedPanels[sectionName] || false}
+                        expanded={expandedPanel === sectionName}
                         onChange={(event, isExpanded) => {
-                            setExpandedPanels(prev => ({ ...prev, [sectionName]: isExpanded }));
+                            setExpandedPanel(isExpanded ? sectionName : null);
                         }}
                         ref={(el) => {
                             if (el) accordionRefs.current[sectionName] = el;
