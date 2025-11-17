@@ -30,6 +30,7 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
+    FormHelperText,
     Accordion,
     AccordionSummary,
     AccordionDetails,
@@ -60,8 +61,12 @@ type DPPFormField = FormField;
 interface DynamicFormProps {
     schema: SchemaDefinition;
     data: any;
-    onChange: (data: any) => void;
+    onChange: (data: any, changedFieldKey?: string) => void;
     errors: string[];
+    fieldErrors?: Set<string>; // Fields that have validation errors
+    focusedField?: string | null; // Currently focused field
+    onFieldFocus?: (fieldKey: string) => void; // Callback when field is focused
+    onFieldBlur?: () => void; // Callback when field loses focus
 }
 
 interface DynamicFormRef {
@@ -72,7 +77,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     schema,
     data,
     onChange,
-    errors
+    errors,
+    fieldErrors = new Set(),
+    focusedField = null,
+    onFieldFocus,
+    onFieldBlur
 }, ref) => {
     const formFields = schema.formFields as FormField[];
     const fieldRefs = useRef<Record<string, any>>({});
@@ -80,8 +89,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     
     // State to control expanded panels - expand main sections by default
     const [expandedPanels, setExpandedPanels] = useState<Record<string, boolean>>({
-        'Metadata': true,
-        'Identification': true,
+        'Metadata': false,
+        'Identification': false,
         'Operation': false,
         'Product Characteristics': false,
         'Commercial Information': false,
@@ -240,49 +249,95 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
     const handleFieldChange = (field: FormField, value: any) => {
         const newData = setValueByPath(data, field.key, value);
-        onChange(newData);
+        onChange(newData, field.key); // Pass the field key that changed
     };
 
     const renderField = (field: FormField) => {
         const currentValue = getValueByPath(data, field.key) || '';
         
-        // CORRECTED AND SIMPLIFIED: Error detection using exact field key matching
-        // 
-        // SOLUTION: This fixes the false positive issue by using the updated error messages
-        // that include the unique field.key (e.g., "Field 'metadata.status' is required" vs
-        // "Field 'sustainability.status' is required") instead of just labels.
-        const hasError = useMemo(() => {
-            if (errors.length === 0) return false;
+        // Check if this field has a persistent error (from validation)
+        const hasPersistedError = fieldErrors.has(field.key);
+        
+        // Check if this field is currently focused/being edited
+        const isFieldFocused = focusedField === field.key;
+        
+        // IMPROVED: Error detection with persistence
+        // Shows red border if field has error, shows error message only when focused
+        const { hasError, errorMessage } = useMemo(() => {
+            // If this field doesn't have a persisted error, no error to show
+            if (!hasPersistedError || errors.length === 0) {
+                return { hasError: false, errorMessage: undefined };
+            }
             
-            // Simple and effective: Look for errors mentioning this field's key
+            const fieldKey = field.key;
+            const fieldLabel = field.label;
+            
+            // Split nested field key to check for partial matches
+            const keyParts = fieldKey.split('.');
+            const lastKeyPart = keyParts[keyParts.length - 1];
+            
+            let matchedError: string | undefined;
+            
             const hasFieldError = errors.some(error => {
-                // Primary method: Check for new format "Field 'field.key' is required"
-                if (error.includes(`'${field.key}'`)) {
+                const errorLower = error.toLowerCase();
+                const fieldKeyLower = fieldKey.toLowerCase();
+                
+                // Method 1: Exact field key match with quotes (highest priority)
+                if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) {
+                    matchedError = error;
                     return true;
                 }
                 
-                // Fallback method: Direct key matching for other error types
-                if (error.toLowerCase().includes(field.key.toLowerCase())) {
+                // Method 2: Exact field key match without quotes
+                if (errorLower.includes(fieldKeyLower)) {
+                    const regex = new RegExp(`\\b${fieldKeyLower.replace(/\./g, '\\.')}\\b`);
+                    if (regex.test(errorLower)) {
+                        matchedError = error;
+                        return true;
+                    }
+                }
+                
+                // Method 3: Match by label (for user-friendly error messages)
+                if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) {
+                    matchedError = error;
                     return true;
+                }
+                
+                // Method 4: For nested fields, also check the last part of the key
+                if (keyParts.length > 1 && errorLower.includes(lastKeyPart.toLowerCase())) {
+                    const hasContextMatch = keyParts.slice(0, -1).some(part => 
+                        errorLower.includes(part.toLowerCase())
+                    );
+                    if (hasContextMatch) {
+                        matchedError = error;
+                        return true;
+                    }
                 }
                 
                 return false;
             });
             
-            // Debug logging for status fields to verify the fix works
-            if (field.key.includes('status')) {
-                console.log(`🔍 Status field error check: "${field.key}"`, {
-                    hasError: hasFieldError,
-                    allErrors: errors,
-                    matchingErrors: errors.filter(e => 
-                        e.includes(`'${field.key}'`) || 
-                        e.toLowerCase().includes(field.key.toLowerCase())
-                    )
-                });
+            // Format error message for display (only shown when focused)
+            let formattedMessage: string | undefined;
+            if (hasFieldError && matchedError) {
+                formattedMessage = matchedError
+                    .replace(new RegExp(`'${fieldKey}'`, 'gi'), '')
+                    .replace(new RegExp(`"${fieldKey}"`, 'gi'), '')
+                    .replace(new RegExp(`'${fieldLabel}'`, 'gi'), '')
+                    .replace(new RegExp(`"${fieldLabel}"`, 'gi'), '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+                
+                if (formattedMessage && formattedMessage.length > 0) {
+                    formattedMessage = formattedMessage.charAt(0).toUpperCase() + formattedMessage.slice(1);
+                }
             }
             
-            return hasFieldError;
-        }, [errors, field.key]);
+            return { 
+                hasError: hasFieldError, 
+                errorMessage: formattedMessage 
+            };
+        }, [hasPersistedError, errors, field.key, field.label]);
 
 
 
@@ -378,8 +433,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
@@ -398,8 +456,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
@@ -417,8 +478,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, parseFloat(e.target.value) || 0)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             inputProps={{
@@ -441,7 +505,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             InputLabelProps={{
@@ -481,6 +548,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 value={currentValue || ''}
                                 label={getFieldLabel(field.label, field.required)}
                                 onChange={(e) => handleFieldChange(field, e.target.value)}
+                                onFocus={() => onFieldFocus?.(field.key)}
+                                onBlur={() => onFieldBlur?.()}
                                 sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                             >
                                 {!field.required && (
@@ -494,6 +563,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     </MenuItem>
                                 ))}
                             </Select>
+                            {hasError && isFieldFocused && errorMessage && (
+                                <FormHelperText>{errorMessage}</FormHelperText>
+                            )}
                         </FormControl>
                         {getIconContainer(field.description)}
                     </Box>
@@ -501,50 +573,64 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
             case 'checkbox':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box 
-                            onClick={() => handleFieldChange(field, !currentValue)}
-                            sx={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'space-between',
-                                width: '100%',
-                                py: 1,
-                                px: 2,
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                border: `1px solid ${hasError ? 'rgba(211, 47, 47, 0.5)' : 'rgba(255, 255, 255, 0.12)'}`,
-                                borderRadius: 1,
-                                minHeight: '40px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease-in-out',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                }
-                            }}
-                        >
-                            <Typography variant="body2" sx={{ 
-                                color: hasError ? 'error.main' : 'text.primary' 
-                            }}>
-                                {getFieldLabel(field.label, field.required)}
-                            </Typography>
-                            <Switch
-                                checked={!!currentValue}
-                                onChange={(e) => {
-                                    e.stopPropagation(); // Prevent double triggering
-                                    handleFieldChange(field, e.target.checked);
+                    <Box key={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box 
+                                onClick={() => handleFieldChange(field, !currentValue)}
+                                onFocus={() => onFieldFocus?.(field.key)}
+                                onBlur={() => onFieldBlur?.()}
+                                tabIndex={0}
+                                sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'space-between',
+                                    width: '100%',
+                                    py: 1,
+                                    px: 2,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                    border: `1px solid ${hasError ? 'rgba(211, 47, 47, 0.5)' : 'rgba(255, 255, 255, 0.12)'}`,
+                                    borderRadius: 1,
+                                    minHeight: '40px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease-in-out',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                        borderColor: 'rgba(96, 165, 250, 0.5)',
+                                    }
                                 }}
-                                sx={{
-                                    '& .MuiSwitch-switchBase.Mui-checked': {
-                                        color: 'primary.main',
-                                    },
-                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                        backgroundColor: 'primary.main',
-                                    },
-                                }}
-                            />
+                            >
+                                <Typography variant="body2" sx={{ 
+                                    color: hasError ? 'error.main' : 'text.primary' 
+                                }}>
+                                    {getFieldLabel(field.label, field.required)}
+                                </Typography>
+                                <Switch
+                                    checked={!!currentValue}
+                                    onChange={(e) => {
+                                        e.stopPropagation(); // Prevent double triggering
+                                        handleFieldChange(field, e.target.checked);
+                                    }}
+                                    sx={{
+                                        '& .MuiSwitch-switchBase.Mui-checked': {
+                                            color: 'primary.main',
+                                        },
+                                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                            backgroundColor: 'primary.main',
+                                        },
+                                    }}
+                                />
+                            </Box>
+                            {getIconContainer(field.description)}
                         </Box>
-                        {getIconContainer(field.description)}
+                        {hasError && isFieldFocused && errorMessage && (
+                            <Typography variant="caption" sx={{ 
+                                color: 'error.main',
+                                ml: 1.75,
+                                fontSize: '0.75rem'
+                            }}>
+                                {errorMessage}
+                            </Typography>
+                        )}
                     </Box>
                 );
 
@@ -557,8 +643,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, parseInt(e.target.value) || 0)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             inputProps={{
@@ -581,8 +670,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder || 'Enter email address'}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
@@ -599,9 +691,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="url"
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
                             placeholder={field.placeholder || 'https://example.com'}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
@@ -619,7 +714,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
+                            onFocus={() => onFieldFocus?.(field.key)}
+                            onBlur={() => onFieldBlur?.()}
                             error={hasError}
+                            helperText={hasError && isFieldFocused ? errorMessage : undefined}
                             variant="outlined"
                             size="small"
                             InputLabelProps={{

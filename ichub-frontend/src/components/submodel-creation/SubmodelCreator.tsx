@@ -62,13 +62,20 @@ import {
     DataObject as DataObjectIcon,
     Warning as WarningIcon,
     ChevronRight as ChevronRightIcon,
-    ExpandMore as ExpandMoreIcon
+    ExpandMore as ExpandMoreIcon,
+    CheckCircle as CheckCircleIcon,
+    CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
+    Refresh as RefreshIcon,
+    Rule as RuleIcon,
+    Place as PlaceIcon,
+    Search as SearchIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
 import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
 import JsonViewer from '../general/JsonViewer';
+import SchemaRulesViewer from './SchemaRulesViewer';
 
 interface SubmodelCreatorProps {
     open: boolean;
@@ -121,6 +128,9 @@ const darkTheme = createTheme({
     },
 });
 
+// Validation state type
+type ValidationState = 'initial' | 'validated' | 'errors';
+
 const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     open,
     onClose,
@@ -136,8 +146,19 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [formData, setFormData] = useState<any>({});
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [viewMode, setViewMode] = useState<'json' | 'errors'>('json');
+    const [viewMode, setViewMode] = useState<'json' | 'errors' | 'rules'>('json');
+    const [validationState, setValidationState] = useState<ValidationState>('initial');
+    const [isHoveringValidated, setIsHoveringValidated] = useState(false);
+    const [rulesSearchTerm, setRulesSearchTerm] = useState<string>('');
+    const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set()); // Track which fields have errors
+    const [focusedField, setFocusedField] = useState<string | null>(null); // Track currently focused/editing field
     const formRef = useRef<DynamicFormRef>(null);
+
+    // Handler for field focus that switches to JSON view
+    const handleFieldFocus = (fieldKey: string) => {
+        setFocusedField(fieldKey);
+        setViewMode('json'); // Switch to JSON view when editing a field
+    };
 
     // Function to handle clipboard copy
     const handleCopy = async (text: string, fieldName: string) => {
@@ -164,8 +185,9 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     // ErrorViewer component - Schema-aware version with grouped errors
     const ErrorViewer: React.FC<{ 
         errors: string[], 
-        onNavigateToField: (fieldKey: string) => void 
-    }> = ({ errors, onNavigateToField }) => {
+        onNavigateToField: (fieldKey: string) => void,
+        onSearchInRules: (fieldKey: string) => void
+    }> = ({ errors, onNavigateToField, onSearchInRules }) => {
         
         // State for controlling which error groups are expanded
         const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -324,6 +346,22 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
         const parsedErrors = errors.map(parseValidationError);
 
+        // Define section order (matches DynamicForm sections order)
+        const sectionOrder = [
+            'Metadata',
+            'Identification',
+            'Operation',
+            'Handling',
+            'Product Characteristics',
+            'Commercial Information',
+            'Materials',
+            'Sustainability',
+            'Sources & Documentation',
+            'Additional Data',
+            'General Information',
+            'General'
+        ];
+
         // Group errors by section
         const groupedErrors = parsedErrors.reduce((acc, error) => {
             const section = error.section || 'General';
@@ -334,16 +372,39 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             return acc;
         }, {} as Record<string, ParsedError[]>);
 
+        // Sort grouped errors by section order
+        const sortedGroupedErrors = Object.entries(groupedErrors).sort(([sectionA], [sectionB]) => {
+            const indexA = sectionOrder.indexOf(sectionA);
+            const indexB = sectionOrder.indexOf(sectionB);
+            
+            // If both sections are in the order array, sort by their positions
+            if (indexA !== -1 && indexB !== -1) {
+                return indexA - indexB;
+            }
+            // If only sectionA is in the order array, it comes first
+            if (indexA !== -1) return -1;
+            // If only sectionB is in the order array, it comes first
+            if (indexB !== -1) return 1;
+            // If neither is in the order array, sort alphabetically
+            return sectionA.localeCompare(sectionB);
+        });
+
         // Get section display name
         const getSectionDisplayName = (sectionName: string): string => {
             const sectionNames: Record<string, string> = {
                 'Metadata': 'Metadata',
                 'Identification': 'Identification',
                 'Operation': 'Operation',
+                'Handling': 'Handling',
                 'Characteristics': 'Product Characteristics',
+                'Product Characteristics': 'Product Characteristics',
                 'Commercial': 'Commercial Information',
+                'Commercial Information': 'Commercial Information',
                 'Materials': 'Materials',
                 'Sustainability': 'Sustainability',
+                'Sources & Documentation': 'Sources & Documentation',
+                'Additional Data': 'Additional Data',
+                'General Information': 'General Information',
                 'General': 'General'
             };
             return sectionNames[sectionName] || sectionName.replace(/([A-Z])/g, ' $1').trim();
@@ -387,8 +448,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
         return (
             <Box sx={{ height: '100%', overflow: 'auto' }}>
-                {/* Grouped Errors */}
-                {Object.entries(groupedErrors).map(([sectionName, sectionErrors]) => {
+                {/* Grouped Errors - Now sorted by section order */}
+                {sortedGroupedErrors.map(([sectionName, sectionErrors]) => {
                     const isExpanded = expandedGroups[sectionName] ?? false; // Default collapsed
                     const displayName = getSectionDisplayName(sectionName);
                     
@@ -445,17 +506,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                             border: '1px solid rgba(244, 67, 54, 0.2)',
                                             borderRadius: 2,
                                             overflow: 'hidden',
-                                            cursor: parsedError.fieldKey ? 'pointer' : 'default',
-                                            transition: 'all 0.2s ease',
-                                            ...(parsedError.fieldKey && {
-                                                '&:hover': {
-                                                    backgroundColor: 'rgba(244, 67, 54, 0.08)',
-                                                    borderColor: 'rgba(244, 67, 54, 0.3)',
-                                                    transform: 'translateX(4px)',
-                                                    boxShadow: '0 2px 6px rgba(244, 67, 54, 0.15)'
-                                                }
-                                            })
-                                        }} onClick={() => parsedError.fieldKey && onNavigateToField(parsedError.fieldKey)}>
+                                            transition: 'all 0.2s ease'
+                                        }}>
                                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                                                     <Box sx={{ 
@@ -508,25 +560,45 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                         )}
                                                     </Box>
                                                     
-                                                    {/* Navigation indicator */}
+                                                    {/* Action buttons */}
                                                     {parsedError.fieldKey && (
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-                                                            <Typography 
-                                                                variant="caption" 
-                                                                sx={{ 
-                                                                    color: 'primary.main',
-                                                                    fontSize: '0.7rem',
-                                                                    fontWeight: 600
-                                                                }}
-                                                            >
-                                                                Go to field
-                                                            </Typography>
-                                                            <ChevronRightIcon 
-                                                                sx={{ 
-                                                                    color: 'primary.main', 
-                                                                    fontSize: 14
-                                                                }} 
-                                                            />
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+                                                            <Tooltip title="Go to field in form" placement="left">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onNavigateToField(parsedError.fieldKey!);
+                                                                    }}
+                                                                    sx={{
+                                                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                                        color: 'primary.main',
+                                                                        '&:hover': {
+                                                                            backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <PlaceIcon sx={{ fontSize: 18 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Search in schema rules" placement="left">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onSearchInRules(parsedError.fieldKey!);
+                                                                    }}
+                                                                    sx={{
+                                                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                                        color: 'primary.main',
+                                                                        '&:hover': {
+                                                                            backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <SearchIcon sx={{ fontSize: 18 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
                                                         </Box>
                                                     )}
                                                 </Box>
@@ -551,7 +623,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                         <strong>{parsedErrors.length}</strong> validation issue{parsedErrors.length !== 1 ? 's' : ''} found across <strong>{Object.keys(groupedErrors).length}</strong> section{Object.keys(groupedErrors).length !== 1 ? 's' : ''}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', textAlign: 'center', display: 'block' }}>
-                        Click on any error to navigate to the corresponding field. Expand sections to view details.
+                        Use the action buttons to navigate to fields or search rules. Expand sections to view details.
                     </Typography>
                 </Box>
             </Box>
@@ -563,6 +635,10 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         if (selectedSchema && open) {
             const defaultData = selectedSchema.createDefault(manufacturerPartId);
             setFormData(defaultData);
+            
+            // Reset validation state on schema change
+            setValidationState('initial');
+            setValidationErrors([]);
             
             // 🧪 Debug: Log schema structure for verification (development mode)
             console.log('🔍 DPP Schema Analysis:');
@@ -590,91 +666,90 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                 });
             });
             
-            console.log('📊 Schema Validation Test Results:');
-            
-            // Immediately validate the default data
-            if (selectedSchema.validate) {
-                const validation = selectedSchema.validate(defaultData);
-                setValidationErrors(validation.errors);
-                
-                // 🧪 Test schema validation with specific DPP data
-                // Test invalid BPNL
-                const testInvalidBPNL = {
-                    metadata: {
-                        version: "1.0",
-                        economicOperatorId: "INVALID_BPNL", // ❌ Should fail BpnlTrait pattern
-                        passportIdentifier: "550e8400-e29b-41d4-a716-446655440000",
-                        predecessor: "550e8400-e29b-41d4-a716-446655440001",
-                        backupReference: "backup-ref",
-                        language: "en",
-                        issueDate: "2025-01-01",
-                        expirationDate: "2025-12-31"
-                    }
-                };
-                
-                const bpnlTest = selectedSchema.validate(testInvalidBPNL);
-                console.log('❌ BPNL Pattern Test:', bpnlTest.isValid ? 'FAILED - Should be invalid' : 'PASSED - Correctly detected invalid BPNL');
-                if (!bpnlTest.isValid) {
-                    console.log('   Errors:', bpnlTest.errors);
-                }
-                
-                // Test invalid UUID
-                const testInvalidUUID = {
-                    metadata: {
-                        version: "1.0",
-                        economicOperatorId: "BPNLABCDEF123456",
-                        passportIdentifier: "not-a-valid-uuid", // ❌ Should fail UuidV4Trait pattern
-                        predecessor: "also-not-uuid",
-                        backupReference: "backup-ref",
-                        language: "en",
-                        issueDate: "2025-01-01",
-                        expirationDate: "2025-12-31"
-                    }
-                };
-                
-                const uuidTest = selectedSchema.validate(testInvalidUUID);
-                console.log('❌ UUID Pattern Test:', uuidTest.isValid ? 'FAILED - Should be invalid' : 'PASSED - Correctly detected invalid UUID');
-                if (!uuidTest.isValid) {
-                    console.log('   Errors:', uuidTest.errors);
-                }
-                
-                // Test valid data
-                const testValidData = {
-                    metadata: {
-                        version: "1.0",
-                        economicOperatorId: "BPNLABCDEF123456", // ✅ Valid BPNL
-                        passportIdentifier: "550e8400-e29b-41d4-a716-446655440000", // ✅ Valid UUID
-                        predecessor: "550e8400-e29b-41d4-a716-446655440001", // ✅ Valid UUID
-                        backupReference: "backup-ref",
-                        language: "en",
-                        issueDate: "2025-01-01", // ✅ Valid date
-                        expirationDate: "2025-12-31" // ✅ Valid date
-                    }
-                };
-                
-                const validTest = selectedSchema.validate(testValidData);
-                console.log('✅ Valid Data Test:', validTest.isValid ? 'PASSED - Correctly accepted valid data' : 'FAILED - Should be valid');
-                if (!validTest.isValid) {
-                    console.log('   Errors:', validTest.errors);
-                }
-            } else {
-                setValidationErrors([]);
-            }
+            console.log('📊 Schema loaded. Validation will be triggered manually by user.');
         }
     }, [selectedSchema, manufacturerPartId, open]);
 
-    const handleFormChange = (newData: any) => {
+    const handleFormChange = (newData: any, changedFieldKey?: string) => {
         setFormData(newData);
         
-        // Validate the form data
-        if (selectedSchema?.validate) {
-            const validation = selectedSchema.validate(newData);
-            setValidationErrors(validation.errors);
+        // If a specific field changed and it had an error, remove it from fieldErrors
+        if (changedFieldKey && fieldErrors.has(changedFieldKey)) {
+            const newFieldErrors = new Set(fieldErrors);
+            newFieldErrors.delete(changedFieldKey);
+            setFieldErrors(newFieldErrors);
+            
+            // Also remove the error from validationErrors array
+            const newValidationErrors = validationErrors.filter(error => {
+                // Check if this error belongs to the changed field
+                return !(
+                    error.includes(`'${changedFieldKey}'`) || 
+                    error.includes(`"${changedFieldKey}"`)
+                );
+            });
+            setValidationErrors(newValidationErrors);
+            
+            // If no more errors, update validation state
+            if (newFieldErrors.size === 0) {
+                setValidationState('validated');
+            }
+        }
+        
+        // Reset validation state when form changes after validation (only if not in errors state)
+        // This ensures that any changes require re-validation
+        if (validationState === 'validated') {
+            setValidationState('initial');
+            
+            // Switch to JSON view to show the changes
+            setViewMode('json');
+        }
+    };
+
+    // Manual validation function triggered by button click
+    const handleValidate = () => {
+        if (!selectedSchema?.validate) {
+            return;
+        }
+
+        const validation = selectedSchema.validate(formData);
+        
+        // Remove duplicate errors (fix for nested/array field duplicate bug)
+        const uniqueErrors = Array.from(new Set(validation.errors));
+        setValidationErrors(uniqueErrors);
+
+        // Extract field keys from errors and store them
+        const errorFieldKeys = new Set<string>();
+        uniqueErrors.forEach(error => {
+            // Extract field key from error message using similar logic to ErrorViewer
+            const patterns = [
+                /Field '([^']+)' is required/i,
+                /'([^']+)'\s+is required/i,
+                /"([^"]+)"\s+is required/i,
+            ];
+            
+            for (const pattern of patterns) {
+                const match = error.match(pattern);
+                if (match && match[1]) {
+                    errorFieldKeys.add(match[1]);
+                    break;
+                }
+            }
+        });
+        setFieldErrors(errorFieldKeys);
+
+        if (validation.isValid) {
+            setValidationState('validated');
+            setFieldErrors(new Set()); // Clear field errors when valid
+            setViewMode('json'); // Show JSON on successful validation
+        } else {
+            setValidationState('errors');
+            setViewMode('errors'); // Show errors on failed validation
         }
     };
 
     const handleSubmit = async () => {
-        if (!selectedSchema || validationErrors.length > 0) {
+        // Only allow submission if validation has been performed and passed
+        if (!selectedSchema || validationState !== 'validated') {
             return;
         }
 
@@ -689,12 +764,22 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     };
 
     const handleNavigateToField = (fieldKey: string) => {
+        // Switch to JSON view when navigating to a field
+        setViewMode('json');
+        
         if (formRef.current) {
             formRef.current.scrollToField(fieldKey);
         }
     };
 
-    const isFormValid = validationErrors.length === 0 && Object.keys(formData).length > 0;
+    const handleSearchInRules = (fieldKey: string) => {
+        // Set the search term and switch to rules view
+        setRulesSearchTerm(fieldKey);
+        setViewMode('rules');
+    };
+
+    // Form is only valid if it has been validated successfully
+    const isFormValid = validationState === 'validated' && Object.keys(formData).length > 0;
 
     return (
         <ThemeProvider theme={darkTheme}>
@@ -896,95 +981,107 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                         </Paper>
 
                         {/* Main Content - Two Panel Layout */}
-                        <Box sx={{ flex: 1, display: 'flex', gap: 3, minHeight: '600px' }}>
-                            {/* Left Panel - Form */}
+                        <Box sx={{ flex: 1, display: 'flex', gap: 3, minHeight: '600px', position: 'relative' }}>
+                            {/* Left Panel - Form with Independent Scroll */}
                             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 <Card sx={{ 
-                                    flex: 1, 
                                     display: 'flex', 
                                     flexDirection: 'column',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.4)'
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                    position: 'relative'
                                 }}>
-                                    <CardContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                        {/* Form Header */}
-                                        <Box sx={{ 
-                                            p: 3, 
-                                            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 2
-                                        }}>
-                                            <SchemaIcon sx={{ color: 'primary.main' }} />
-                                            <Box>
-                                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                    Submodel Configuration
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                                    Fill in the details for your {selectedSchema?.metadata.name} submodel
-                                                </Typography>
-                                            </Box>
+                                    {/* Form Header - Sticky */}
+                                    <Box sx={{ 
+                                        p: 3, 
+                                        borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        position: 'sticky',
+                                        top: 0,
+                                        zIndex: 10,
+                                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                        backdropFilter: 'blur(10px)'
+                                    }}>
+                                        <SchemaIcon sx={{ color: 'primary.main' }} />
+                                        <Box>
+                                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                                Submodel Configuration
+                                            </Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                                Fill in the details for your {selectedSchema?.metadata.name} submodel
+                                            </Typography>
                                         </Box>
+                                    </Box>
 
-                                        {/* Form Content */}
-                                        <Box sx={{ 
-                                            flex: 1, 
-                                            overflow: 'auto', 
-                                            p: 3,
-                                            // Custom scrollbar styling
-                                            '&::-webkit-scrollbar': {
-                                                width: '8px',
-                                            },
-                                            '&::-webkit-scrollbar-track': {
-                                                background: 'rgba(255, 255, 255, 0.05)',
-                                                borderRadius: '4px',
-                                            },
-                                            '&::-webkit-scrollbar-thumb': {
-                                                background: 'rgba(96, 165, 250, 0.6)',
-                                                borderRadius: '4px',
-                                                '&:hover': {
-                                                    background: 'rgba(96, 165, 250, 0.8)',
-                                                }
-                                            },
-                                            '&::-webkit-scrollbar-thumb:active': {
-                                                background: 'rgba(96, 165, 250, 1)',
+                                    {/* Form Content - Independent Scroll */}
+                                    <Box sx={{ 
+                                        maxHeight: 'calc(100vh - 420px)',
+                                        overflow: 'auto', 
+                                        p: 3,
+                                        // Custom scrollbar styling - Gray color
+                                        '&::-webkit-scrollbar': {
+                                            width: '8px',
+                                        },
+                                        '&::-webkit-scrollbar-track': {
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            borderRadius: '4px',
+                                        },
+                                        '&::-webkit-scrollbar-thumb': {
+                                            background: 'rgba(158, 158, 158, 0.6)',
+                                            borderRadius: '4px',
+                                            '&:hover': {
+                                                background: 'rgba(158, 158, 158, 0.8)',
                                             }
-                                        }}>
-                                            {selectedSchema && (
-                                                <DynamicForm
-                                                    ref={formRef}
-                                                    schema={selectedSchema}
-                                                    data={formData}
-                                                    onChange={handleFormChange}
-                                                    errors={validationErrors}
-                                                />
-                                            )}
-                                        </Box>
-                                    </CardContent>
+                                        },
+                                        '&::-webkit-scrollbar-thumb:active': {
+                                            background: 'rgba(158, 158, 158, 1)',
+                                        }
+                                    }}>
+                                        {selectedSchema && (
+                                            <DynamicForm
+                                                ref={formRef}
+                                                schema={selectedSchema}
+                                                data={formData}
+                                                onChange={handleFormChange}
+                                                errors={validationErrors}
+                                                fieldErrors={fieldErrors}
+                                                focusedField={focusedField}
+                                                onFieldFocus={handleFieldFocus}
+                                                onFieldBlur={() => setFocusedField(null)}
+                                            />
+                                        )}
+                                    </Box>
                                 </Card>
                             </Box>
 
-                            {/* Right Panel - JSON Preview */}
+                            {/* Right Panel - JSON Preview with Sticky Header */}
                             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 <Card sx={{ 
-                                    flex: 1, 
                                     display: 'flex', 
                                     flexDirection: 'column',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.4)'
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                    position: 'relative'
                                 }}>
-                                    <CardContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                        {/* Preview Header */}
+                                    <CardContent sx={{ p: 0, display: 'flex', flexDirection: 'column' }}>
+                                        {/* Preview Header - Sticky */}
                                         <Box sx={{ 
                                             p: 3, 
                                             borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'space-between'
+                                            justifyContent: 'space-between',
+                                            position: 'sticky',
+                                            top: 0,
+                                            zIndex: 10,
+                                            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                            backdropFilter: 'blur(10px)'
                                         }}>
                                             {/* Left side - Title and description */}
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                 {viewMode === 'json' ? (
                                                     <DataObjectIcon sx={{ color: 'primary.main' }} />
-                                                ) : (
+                                                ) : viewMode === 'errors' ? (
                                                     <Badge 
                                                         badgeContent={validationErrors.length} 
                                                         color="error"
@@ -998,22 +1095,26 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                     >
                                                         <ErrorIcon sx={{ color: 'error.main' }} />
                                                     </Badge>
+                                                ) : (
+                                                    <RuleIcon sx={{ color: 'primary.main' }} />
                                                 )}
                                                 <Box>
                                                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                        {viewMode === 'json' ? 'JSON Preview' : 'Validation Errors'}
+                                                        {viewMode === 'json' && 'JSON Preview'}
+                                                        {viewMode === 'errors' && 'Validation Errors'}
+                                                        {viewMode === 'rules' && 'Schema Rules'}
                                                     </Typography>
                                                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                                        {viewMode === 'json' 
-                                                            ? 'Real-time preview of your submodel data'
-                                                            : `${validationErrors.length} validation issue${validationErrors.length !== 1 ? 's' : ''} found`
-                                                        }
+                                                        {viewMode === 'json' && 'Real-time preview of your submodel data'}
+                                                        {viewMode === 'errors' && `${validationErrors.length} validation issue${validationErrors.length !== 1 ? 's' : ''} found`}
+                                                        {viewMode === 'rules' && 'All schema rules and requirements'}
                                                     </Typography>
                                                 </Box>
                                             </Box>
 
                                             {/* Right side - Toggle buttons */}
-                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+                                                {/* JSON Button - No changes */}
                                                 <Button
                                                     variant={viewMode === 'json' ? 'contained' : 'outlined'}
                                                     size="small"
@@ -1033,51 +1134,138 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                 >
                                                     JSON
                                                 </Button>
-                                                <Button
-                                                    variant={viewMode === 'errors' ? 'contained' : 'outlined'}
-                                                    size="small"
-                                                    startIcon={
-                                                        <Badge 
-                                                            badgeContent={validationErrors.length} 
-                                                            color="error"
-                                                            sx={{ 
-                                                                '& .MuiBadge-badge': { 
-                                                                    fontSize: '0.65rem',
-                                                                    minWidth: '16px',
-                                                                    height: '16px'
-                                                                } 
-                                                            }}
-                                                        >
-                                                            <ErrorIcon />
-                                                        </Badge>
-                                                    }
-                                                    onClick={() => setViewMode('errors')}
-                                                    sx={{
-                                                        minWidth: '100px',
-                                                        textTransform: 'none',
-                                                        fontSize: '0.875rem',
-                                                        ...(viewMode === 'errors' && {
-                                                            backgroundColor: 'error.main',
+
+                                                {/* Dynamic Validate/Validated/Errors Button */}
+                                                {validationState === 'initial' && (
+                                                    <Button
+                                                        variant="contained"
+                                                        size="small"
+                                                        startIcon={<CheckBoxOutlineBlankIcon />}
+                                                        onClick={handleValidate}
+                                                        sx={{
+                                                            minWidth: '100px',
+                                                            textTransform: 'none',
+                                                            fontSize: '0.875rem',
+                                                            backgroundColor: '#f59e0b',
                                                             color: 'white',
                                                             '&:hover': {
-                                                                backgroundColor: 'error.dark'
+                                                                backgroundColor: '#d97706'
+                                                            }
+                                                        }}
+                                                    >
+                                                        Validate
+                                                    </Button>
+                                                )}
+
+                                                {validationState === 'validated' && (
+                                                    <Button
+                                                        variant="contained"
+                                                        size="small"
+                                                        startIcon={isHoveringValidated ? <RefreshIcon /> : <CheckCircleIcon />}
+                                                        onClick={handleValidate}
+                                                        onMouseEnter={() => setIsHoveringValidated(true)}
+                                                        onMouseLeave={() => setIsHoveringValidated(false)}
+                                                        sx={{
+                                                            minWidth: '120px',
+                                                            textTransform: 'none',
+                                                            fontSize: '0.875rem',
+                                                            backgroundColor: 'success.main',
+                                                            color: 'white',
+                                                            '&:hover': {
+                                                                backgroundColor: 'success.dark'
+                                                            }
+                                                        }}
+                                                    >
+                                                        {isHoveringValidated ? 'Re-validate' : 'Validated'}
+                                                    </Button>
+                                                )}
+
+                                                {validationState === 'errors' && (
+                                                    <Button
+                                                        variant={viewMode === 'errors' ? 'contained' : 'outlined'}
+                                                        size="small"
+                                                        startIcon={
+                                                            <Badge 
+                                                                badgeContent={validationErrors.length} 
+                                                                color="error"
+                                                                sx={{ 
+                                                                    '& .MuiBadge-badge': { 
+                                                                        fontSize: '0.65rem',
+                                                                        minWidth: '16px',
+                                                                        height: '16px'
+                                                                    } 
+                                                                }}
+                                                            >
+                                                                <ErrorIcon />
+                                                            </Badge>
+                                                        }
+                                                        onClick={() => setViewMode('errors')}
+                                                        sx={{
+                                                            minWidth: '100px',
+                                                            textTransform: 'none',
+                                                            fontSize: '0.875rem',
+                                                            ...(viewMode === 'errors' && {
+                                                                backgroundColor: 'error.main',
+                                                                color: 'white',
+                                                                '&:hover': {
+                                                                    backgroundColor: 'error.dark'
+                                                                }
+                                                            }),
+                                                            ...((viewMode !== 'errors') && {
+                                                                borderColor: 'error.main',
+                                                                color: 'error.main',
+                                                                '&:hover': {
+                                                                    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                                                                    borderColor: 'error.dark'
+                                                                }
+                                                            })
+                                                        }}
+                                                    >
+                                                        Errors
+                                                    </Button>
+                                                )}
+
+                                                {/* Rules Button - Always visible */}
+                                                <Button
+                                                    variant={viewMode === 'rules' ? 'contained' : 'outlined'}
+                                                    size="small"
+                                                    startIcon={<RuleIcon />}
+                                                    onClick={() => setViewMode('rules')}
+                                                    sx={{
+                                                        minWidth: '90px',
+                                                        textTransform: 'none',
+                                                        fontSize: '0.875rem',
+                                                        ...(viewMode === 'rules' && {
+                                                            backgroundColor: 'primary.main',
+                                                            '&:hover': {
+                                                                backgroundColor: 'primary.dark'
                                                             }
                                                         })
                                                     }}
                                                 >
-                                                    Errors
+                                                    Rules
                                                 </Button>
                                             </Box>
                                         </Box>
 
-                                        {/* Preview Content */}
-                                        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-                                            {viewMode === 'json' ? (
+                                        {/* Preview Content - Dynamic height based on content */}
+                                        <Box sx={{ p: 3 }}>
+                                            {viewMode === 'json' && (
                                                 <JsonViewer data={formData} />
-                                            ) : (
+                                            )}
+                                            {viewMode === 'errors' && (
                                                 <ErrorViewer 
                                                     errors={validationErrors}
                                                     onNavigateToField={handleNavigateToField}
+                                                    onSearchInRules={handleSearchInRules}
+                                                />
+                                            )}
+                                            {viewMode === 'rules' && selectedSchema && (
+                                                <SchemaRulesViewer 
+                                                    schema={selectedSchema}
+                                                    onNavigateToField={handleNavigateToField}
+                                                    initialSearchTerm={rulesSearchTerm}
+                                                    onSearchTermChange={setRulesSearchTerm}
                                                 />
                                             )}
                                         </Box>
@@ -1098,20 +1286,35 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                             border: '1px solid rgba(255, 255, 255, 0.12)'
                         }}>
                             <Box>
-                                {validationErrors.length === 0 && Object.keys(formData).length > 0 && (
-                                    <Typography variant="body2" sx={{ color: 'success.main' }}>
+                                {validationState === 'initial' && (
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <WarningIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+                                        Please validate your form before submitting
+                                    </Typography>
+                                )}
+                                {validationState === 'validated' && (
+                                    <Typography variant="body2" sx={{ color: 'success.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <CheckCircleIcon sx={{ fontSize: 18 }} />
                                         Form is valid and ready to submit
+                                    </Typography>
+                                )}
+                                {validationState === 'errors' && (
+                                    <Typography variant="body2" sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <ErrorIcon sx={{ fontSize: 18 }} />
+                                        {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found - fix and re-validate
                                     </Typography>
                                 )}
                             </Box>
                             
                             <Tooltip 
                                 title={
-                                    !isFormValid && !isSubmitting
-                                        ? `Please fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} before creating the submodel`
+                                    validationState === 'initial'
+                                        ? 'Please validate the form first'
+                                        : validationState === 'errors'
+                                        ? `Fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} and re-validate before creating the submodel`
                                         : isSubmitting
                                         ? 'Creating submodel...'
-                                        : 'Create submodel with current data'
+                                        : 'Create submodel with validated data'
                                 }
                                 placement="top"
                             >
