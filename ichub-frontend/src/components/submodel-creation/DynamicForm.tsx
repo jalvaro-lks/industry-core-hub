@@ -67,6 +67,7 @@ interface DynamicFormProps {
     focusedField?: string | null; // Currently focused field
     onFieldFocus?: (fieldKey: string) => void; // Callback when field is focused
     onFieldBlur?: () => void; // Callback when field loses focus
+    onInfoIconClick?: (fieldKey: string) => void; // Callback when info icon is clicked
 }
 
 interface DynamicFormRef {
@@ -81,7 +82,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     fieldErrors = new Set(),
     focusedField = null,
     onFieldFocus,
-    onFieldBlur
+    onFieldBlur,
+    onInfoIconClick
 }, ref) => {
     const formFields = schema.formFields as FormField[];
     const fieldRefs = useRef<Record<string, any>>({});
@@ -379,21 +381,25 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             }
         });
 
-        // Common description tooltip
-        const getDescriptionTooltip = (description?: string) => 
+
+        // Common description tooltip with info icon click
+        const getDescriptionTooltip = (description?: string, fieldKey?: string) => 
             description ? (
                 <Tooltip title={description} placement="top" arrow>
-                    <InfoIcon sx={{ 
-                        fontSize: 16, 
-                        color: 'text.secondary',
-                        cursor: 'help',
-                        opacity: 1
-                    }} />
+                    <InfoIcon 
+                        sx={{ 
+                            fontSize: 16, 
+                            color: 'text.secondary',
+                            cursor: 'pointer',
+                            opacity: 1
+                        }}
+                        onClick={fieldKey && onInfoIconClick ? (e) => { e.stopPropagation(); onInfoIconClick(fieldKey); } : undefined}
+                    />
                 </Tooltip>
             ) : undefined;
 
         // Common icon container positioned on the border
-        const getIconContainer = (description?: string) => 
+        const getIconContainer = (description?: string, fieldKey?: string) => 
             description ? (
                 <Box sx={{ 
                     position: 'absolute', 
@@ -411,7 +417,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     alignItems: 'center',
                     justifyContent: 'center'
                 }}>
-                    {getDescriptionTooltip(description)}
+                    {getDescriptionTooltip(description, fieldKey)}
                 </Box>
             ) : null;
 
@@ -433,7 +439,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -456,7 +462,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -483,7 +489,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -524,7 +530,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 }
                             }}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -558,7 +564,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 <FormHelperText>{errorMessage}</FormHelperText>
                             )}
                         </FormControl>
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -648,7 +654,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key)}
                     </Box>
                 );
 
@@ -789,7 +795,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             gap: 1
                         }}>
                             {getFieldLabel(field.label, field.required)}
-                            {getDescriptionTooltip(field.description)}
+                            {getDescriptionTooltip(field.description, field.key)}
                         </Typography>
                         
                         {/* Render nested object fields if available */}
@@ -844,7 +850,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 }}>
                                     {getFieldLabel(field.label, field.required)}
                                 </Typography>
-                                {getDescriptionTooltip(field.description)}
+                                {getDescriptionTooltip(field.description, field.key)}
                             </Box>
                             <Button
                                 size="small"

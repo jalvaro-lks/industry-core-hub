@@ -1009,6 +1009,12 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                 focusedField={focusedField}
                                                 onFieldFocus={handleFieldFocus}
                                                 onFieldBlur={() => setFocusedField(null)}
+                                                onInfoIconClick={(fieldKey) => {
+                                                    if (viewMode !== 'rules') {
+                                                        setViewMode('rules');
+                                                    }
+                                                    setRulesSearchTerm(fieldKey);
+                                                }}
                                             />
                                         )}
                                     </Box>

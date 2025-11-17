@@ -94,6 +94,9 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
     
 
     // Update search term when initialSearchTerm changes (from external search)
+    React.useEffect(() => {
+        setSearchTerm(initialSearchTerm || '');
+    }, [initialSearchTerm]);
 
 
     // Extract all rules from schema fields, splitting format rules
