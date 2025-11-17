@@ -154,10 +154,9 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [focusedField, setFocusedField] = useState<string | null>(null); // Track currently focused/editing field
     const formRef = useRef<DynamicFormRef>(null);
 
-    // Handler for field focus that switches to JSON view
+    // Handler for field focus (no scroll logic)
     const handleFieldFocus = (fieldKey: string) => {
         setFocusedField(fieldKey);
-        setViewMode('json'); // Switch to JSON view when editing a field
     };
 
     // Function to handle clipboard copy
@@ -1014,30 +1013,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                         </Box>
                                     </Box>
 
-                                    {/* Form Content - Independent Scroll */}
-                                    <Box sx={{ 
-                                        maxHeight: 'calc(100vh - 420px)',
-                                        overflow: 'auto', 
-                                        p: 3,
-                                        // Custom scrollbar styling - Gray color
-                                        '&::-webkit-scrollbar': {
-                                            width: '8px',
-                                        },
-                                        '&::-webkit-scrollbar-track': {
-                                            background: 'rgba(255, 255, 255, 0.05)',
-                                            borderRadius: '4px',
-                                        },
-                                        '&::-webkit-scrollbar-thumb': {
-                                            background: 'rgba(158, 158, 158, 0.6)',
-                                            borderRadius: '4px',
-                                            '&:hover': {
-                                                background: 'rgba(158, 158, 158, 0.8)',
-                                            }
-                                        },
-                                        '&::-webkit-scrollbar-thumb:active': {
-                                            background: 'rgba(158, 158, 158, 1)',
-                                        }
-                                    }}>
+                                    {/* Form Content - No scroll logic */}
+                                    <Box sx={{ p: 3 }}>
                                         {selectedSchema && (
                                             <DynamicForm
                                                 ref={formRef}
