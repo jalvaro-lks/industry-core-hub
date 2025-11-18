@@ -47,7 +47,9 @@ import {
     Badge,
     Accordion,
     AccordionSummary,
-    AccordionDetails
+    AccordionDetails,
+    DialogTitle,
+    DialogActions
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -70,7 +72,10 @@ import {
     Refresh as RefreshIcon,
     Rule as RuleIcon,
     Place as PlaceIcon,
-    Search as SearchIcon
+    Search as SearchIcon,
+    CleaningServices as CleaningServicesIcon,
+    Visibility as VisibilityIcon,
+    VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
@@ -146,6 +151,27 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     loading = false
 }) => {
     const [formData, setFormData] = useState<any>({});
+    // Requested button state
+    const [requestedActive, setRequestedActive] = useState(false);
+    const [clearDialogOpen, setClearDialogOpen] = useState(false);
+    // Helper to get default JSON for the selected schema
+    // Returns an object with all root sections from the schema, each as empty object/array
+    const getDefaultJson = () => {
+        if (selectedSchema && selectedSchema.formFields) {
+            // Get all unique root keys (before first dot)
+            const rootKeys = Array.from(new Set(selectedSchema.formFields.map(f => f.key.split('.')[0])));
+            // Try to infer type: if any field in section is array, use []; else {}
+            const result: Record<string, any> = {};
+            for (const key of rootKeys) {
+                const sectionFields = selectedSchema.formFields.filter(f => f.key.startsWith(key + '.'));
+                // If any field in this section is type array and has no further dot, use []
+                const isArray = sectionFields.some(f => f.type === 'array' && f.key === key);
+                result[key] = isArray ? [] : {};
+            }
+            return result;
+        }
+        return {};
+    };
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [viewMode, setViewMode] = useState<'json' | 'errors' | 'rules'>('json');
@@ -991,14 +1017,75 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                     Fill in the details for your {selectedSchema?.metadata.name} submodel
                                                 </Typography>
                                             </Box>
-                                            <Button
-                                                variant="outlined"
-                                                size="small"
-                                                onClick={() => setJsonImportOpen(true)}
-                                                startIcon={<DataObjectIcon />}
-                                            >
-                                                Import JSON
-                                            </Button>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                {/* REQUESTED button (left of IMPORT) */}
+                                                <Button
+                                                    variant={requestedActive ? 'contained' : 'outlined'}
+                                                    size="small"
+                                                    color={requestedActive ? 'primary' : 'inherit'}
+                                                    startIcon={requestedActive ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                                                    sx={{ minWidth: 120 }}
+                                                    onClick={() => setRequestedActive(prev => !prev)}
+                                                >
+                                                    Requested
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    onClick={() => setJsonImportOpen(true)}
+                                                    startIcon={<DataObjectIcon />}
+                                                >
+                                                    IMPORT
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    color="error"
+                                                    startIcon={<CleaningServicesIcon />}
+                                                    onClick={() => setClearDialogOpen(true)}
+                                                >
+                                                    CLEAR
+                                                </Button>
+                                    {/* Clear Form Confirmation Dialog */}
+                                    <Dialog open={clearDialogOpen} onClose={() => setClearDialogOpen(false)}>
+                                        <DialogTitle>Clear Form</DialogTitle>
+                                        <DialogContent>
+                                            {JSON.stringify(formData) === JSON.stringify(getDefaultJson()) ? (
+                                                <Typography>The form is already empty.</Typography>
+                                            ) : (
+                                                <Typography>Are you sure you want to clear all form fields? This will reset the form to its base values, but will not remove the JSON view content.</Typography>
+                                            )}
+                                        </DialogContent>
+                                        <DialogActions>
+                                            {JSON.stringify(formData) === JSON.stringify(getDefaultJson()) ? (
+                                                <Button onClick={() => setClearDialogOpen(false)} color="primary" autoFocus>
+                                                    Close
+                                                </Button>
+                                            ) : (
+                                                <>
+                                                    <Button onClick={() => setClearDialogOpen(false)} color="primary">
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => {
+                                                            setFormData(getDefaultJson());
+                                                            setValidationState('initial');
+                                                            setValidationErrors([]);
+                                                            setFieldErrors(new Set());
+                                                            setViewMode('json');
+                                                            setClearDialogOpen(false);
+                                                        }}
+                                                        color="error"
+                                                        variant="contained"
+                                                        startIcon={<CleaningServicesIcon />}
+                                                    >
+                                                        Clear Form
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </DialogActions>
+                                    </Dialog>
+                                            </Box>
                                         </Box>
 
                                     {/* JSON Import Dialog */}
