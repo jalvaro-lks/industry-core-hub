@@ -264,46 +264,7 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                         gap: 1,
                                                         mt: 'auto'
                                                     }}>
-                                                        {/* Semantic ID as chip */}
-                                                        {schema.metadata.semanticId && (
-                                                            <Tooltip
-                                                                title={`Click to copy semanticId: ${schema.metadata.semanticId}`}
-                                                                placement="top"
-                                                                arrow
-                                                                disableInteractive
-                                                                enterDelay={200}
-                                                                leaveDelay={0}
-                                                            >
-                                                                <Chip
-                                                                    label={schema.metadata.semanticId}
-                                                                    size="medium"
-                                                                    variant="outlined"
-                                                                    onClick={(e) => handleCopy(schema.metadata.semanticId, e)}
-                                                                    sx={{
-                                                                        fontSize: '10px',
-                                                                        height: '24px',
-                                                                        width: '100%',
-                                                                        borderColor: 'rgba(96, 165, 250, 0.4)',
-                                                                        color: 'rgba(96, 165, 250, 0.9)',
-                                                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                                                                        fontFamily: 'monospace',
-                                                                        cursor: 'pointer',
-                                                                        transition: 'all 0.2s ease',
-                                                                        '&:hover': {
-                                                                            borderColor: 'rgba(96, 165, 250, 0.8)',
-                                                                            backgroundColor: 'rgba(96, 165, 250, 0.2)',
-                                                                            transform: 'scale(1.02)'
-                                                                        },
-                                                                        '& .MuiChip-label': {
-                                                                            px: 1,
-                                                                            overflow: 'hidden',
-                                                                            textOverflow: 'ellipsis',
-                                                                            whiteSpace: 'nowrap'
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            </Tooltip>
-                                                        )}
+                                                        {/* Semantic ID chip removed as requested */}
                                                         {/* Namespace Chip */}
                                                         {schema.metadata.namespace && (
                                                             <Tooltip
