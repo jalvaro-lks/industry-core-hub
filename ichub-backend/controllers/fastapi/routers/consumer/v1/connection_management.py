@@ -20,7 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from connector import connector_consumer_manager
 
 from fastapi.responses import Response
@@ -32,7 +32,14 @@ from models.services.consumer.connection_management import (
 )
 
 
-router = APIRouter(prefix="/connection", tags=["Open Connection Management"])
+from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
+
+router = APIRouter(
+    prefix="/connection",
+    tags=["Open Connection Management"],
+    dependencies=[Depends(get_authentication_dependency())]
+)
+
 #connection_service = ConnectionService()
 
 # Create universal async wrapper - works with any manager

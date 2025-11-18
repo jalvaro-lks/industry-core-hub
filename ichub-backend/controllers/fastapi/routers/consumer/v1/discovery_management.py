@@ -20,7 +20,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 import json
 
 
@@ -35,7 +35,13 @@ from models.services.consumer.discovery_management import (
     DiscoverSubmodelSemanticIdDataRequest
 )
 
-router = APIRouter(prefix="/discover", tags=["Part Discovery Management"])
+from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
+
+router = APIRouter(
+    prefix="/discover",
+    tags=["Part Discovery Management"],
+    dependencies=[Depends(get_authentication_dependency())]
+)
 #connection_service = ConnectionService()
 
 from dtr import dtr_manager  # Use the original manager
