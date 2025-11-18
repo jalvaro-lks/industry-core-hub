@@ -88,6 +88,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     const formFields = schema.formFields as FormField[];
     const fieldRefs = useRef<Record<string, any>>({});
     const accordionRefs = useRef<Record<string, any>>({});
+    const containerRef = useRef<HTMLDivElement>(null);
     
     // State to control which main section is expanded (only one at a time, all collapsed by default)
     const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
@@ -1128,6 +1129,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
     return (
         <Box 
+            ref={containerRef}
             sx={{
                 // Custom scrollbar styling
                 '& ::-webkit-scrollbar': {
@@ -1159,6 +1161,45 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         expanded={expandedPanel === sectionName}
                         onChange={(event, isExpanded) => {
                             setExpandedPanel(isExpanded ? sectionName : null);
+                            if (isExpanded) {
+                                const el = accordionRefs.current[sectionName];
+                                const container = containerRef.current;
+                                // Scroll inmediato
+                                if (el && typeof el.scrollIntoView === 'function') {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                                // Scroll sobre el contenedor principal si existe
+                                if (container && el) {
+                                    setTimeout(() => {
+                                        // Scroll relativo al contenedor
+                                        const elRect = el.getBoundingClientRect();
+                                        const contRect = container.getBoundingClientRect();
+                                        container.scrollTop += (elRect.top - contRect.top);
+                                    }, 10);
+                                }
+                                // Scroll tras 300ms
+                                setTimeout(() => {
+                                    if (el && typeof el.scrollIntoView === 'function') {
+                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                    if (container && el) {
+                                        const elRect = el.getBoundingClientRect();
+                                        const contRect = container.getBoundingClientRect();
+                                        container.scrollTop += (elRect.top - contRect.top);
+                                    }
+                                }, 300);
+                                // Scroll tras 700ms
+                                setTimeout(() => {
+                                    if (el && typeof el.scrollIntoView === 'function') {
+                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                    if (container && el) {
+                                        const elRect = el.getBoundingClientRect();
+                                        const contRect = container.getBoundingClientRect();
+                                        container.scrollTop += (elRect.top - contRect.top);
+                                    }
+                                }, 700);
+                            }
                         }}
                         ref={(el) => {
                             if (el) accordionRefs.current[sectionName] = el;

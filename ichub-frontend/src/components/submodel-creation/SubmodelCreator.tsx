@@ -1008,8 +1008,11 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                         onImport={(json: any) => {
                                             setJsonImportError(undefined);
                                             if (!selectedSchema) return;
-                                            // TODO: Validate JSON using schema
                                             setFormData(json);
+                                            setValidationState('initial'); // Forzar que vuelva a estado inicial (requiere validar)
+                                            setValidationErrors([]);
+                                            setFieldErrors(new Set());
+                                            setViewMode('json'); // Cambiar a vista JSON
                                             setJsonImportOpen(false);
                                             // If invalid, set error:
                                             // setJsonImportError('Invalid JSON for this schema');
