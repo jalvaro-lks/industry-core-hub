@@ -1,7 +1,6 @@
 ###############################################################
-# Eclipse Tractus-X - Industry Core Hub
+# Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 LKS Next
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -19,25 +18,3 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 ###############################################################
-apiVersion: v2
-name: industry-core-hub
-type: application
-appVersion: "0.2.0"
-version: 0.3.5
-description: A Helm chart for Eclipse Tractus-X - Industry Core Hub
-home: https://github.com/eclipse-tractusx/industry-core-hub
-sources:
-  - https://github.com/eclipse-tractusx/industry-core-hub
-dependencies:
-  - condition: postgresql.enabled
-    name: postgresql
-    repository: https://charts.bitnami.com/bitnami
-    version: 12.12.x
-  - condition: pgadmin4.enabled
-    name: pgadmin4
-    repository: https://helm.runix.net
-    version: 1.25.x
-  - condition: keycloak.enabled
-    name: keycloak
-    repository: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
-    version: 23.0.0
