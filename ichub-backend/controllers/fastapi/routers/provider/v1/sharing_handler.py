@@ -20,15 +20,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from fastapi import APIRouter, Body, Header, Depends
+from fastapi import APIRouter, Depends
 
 from services.provider.sharing_service import SharingService
 from models.services.provider.sharing_management import (
     SharedPartBase,
     ShareCatalogPart,
-    SharedPartner
 )
-from typing import Optional, List
 from tools.exceptions import exception_responses
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 
