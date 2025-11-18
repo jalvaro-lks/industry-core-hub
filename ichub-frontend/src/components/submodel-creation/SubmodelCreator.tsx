@@ -1023,11 +1023,11 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                     variant={requestedActive ? 'contained' : 'outlined'}
                                                     size="small"
                                                     color={requestedActive ? 'primary' : 'inherit'}
-                                                    startIcon={requestedActive ? <VisibilityIcon /> : <VisibilityOffIcon />}
-                                                    sx={{ minWidth: 120 }}
+                                                    startIcon={requestedActive ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                                    sx={{ px: 2 }}
                                                     onClick={() => setRequestedActive(prev => !prev)}
                                                 >
-                                                    Requested
+                                                    {requestedActive ? 'Required' : 'All'}
                                                 </Button>
                                                 <Button
                                                     variant="outlined"
@@ -1127,6 +1127,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                     }
                                                     setRulesSearchTerm(fieldKey);
                                                 }}
+                                                onlyRequired={requestedActive}
                                             />
                                         )}
                                     </Box>

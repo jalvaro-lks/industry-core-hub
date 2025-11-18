@@ -58,7 +58,8 @@ import { FormField } from '../../schemas/json-schema-interpreter';
 // For backwards compatibility, use FormField as DPPFormField
 type DPPFormField = FormField;
 
-interface DynamicFormProps {
+export interface DynamicFormProps {
+    onlyRequired?: boolean;
     schema: SchemaDefinition;
     data: any;
     onChange: (data: any, changedFieldKey?: string) => void;
@@ -83,9 +84,42 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     focusedField = null,
     onFieldFocus,
     onFieldBlur,
-    onInfoIconClick
+    onInfoIconClick,
+    onlyRequired
 }, ref) => {
-    const formFields = schema.formFields as FormField[];
+    // Recursively filter required fields if onlyRequired is true
+    function filterRequiredFields(fields: FormField[]): FormField[] {
+        return fields
+            .filter(field => field.required)
+            .map(field => {
+                // For objects with nested fields
+                if (field.type === 'object' && Array.isArray(field.objectFields)) {
+                    return {
+                        ...field,
+                        objectFields: filterRequiredFields(field.objectFields)
+                    };
+                }
+                // For arrays with item fields
+                if (field.type === 'array' && Array.isArray(field.itemFields)) {
+                    return {
+                        ...field,
+                        itemFields: filterRequiredFields(field.itemFields)
+                    };
+                }
+                return field;
+            })
+            .filter(field => {
+                // Remove empty objects/arrays
+                if (field.type === 'object' && Array.isArray(field.objectFields) && field.objectFields.length === 0) return false;
+                if (field.type === 'array' && Array.isArray(field.itemFields) && field.itemFields.length === 0) return false;
+                return true;
+            });
+    }
+
+    let formFields = schema.formFields as FormField[];
+    if (typeof onlyRequired === 'boolean' && onlyRequired) {
+        formFields = filterRequiredFields(formFields);
+    }
     const fieldRefs = useRef<Record<string, any>>({});
     const accordionRefs = useRef<Record<string, any>>({});
     const containerRef = useRef<HTMLDivElement>(null);
@@ -246,14 +280,15 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         onChange(newData, field.key); // Pass the field key that changed
     };
 
-    const renderField = (field: FormField) => {
-        const currentValue = getValueByPath(data, field.key) || '';
-        const hasPersistedError = fieldErrors.has(field.key);
-        const isFieldFocused = focusedField === field.key;
-        // Show all error messages for this field
-        const { hasError, errorMessages } = useMemo(() => {
+    // Precompute error states for all fields
+    type ErrorState = { hasError: boolean; errorMessages: string[] };
+    const errorStateMap: Record<string, ErrorState> = {};
+    for (const sectionFields of Object.values(groupedFields)) {
+        for (const field of sectionFields) {
+            const hasPersistedError = fieldErrors.has(field.key);
             if (!hasPersistedError || errors.length === 0) {
-                return { hasError: false, errorMessages: [] };
+                errorStateMap[field.key] = { hasError: false, errorMessages: [] };
+                continue;
             }
             const fieldKey = field.key;
             const fieldLabel = field.label;
@@ -289,13 +324,18 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 }
                 return formatted;
             });
-            return {
+            errorStateMap[field.key] = {
                 hasError: formattedMessages.length > 0,
                 errorMessages: formattedMessages
             };
-        }, [hasPersistedError, errors, field.key, field.label]);
+        }
+    }
 
-
+    const renderField = (field: FormField) => {
+        const currentValue = getValueByPath(data, field.key) || '';
+        const hasPersistedError = fieldErrors.has(field.key);
+        const isFieldFocused = focusedField === field.key;
+        const { hasError, errorMessages } = errorStateMap[field.key] || { hasError: false, errorMessages: [] };
 
         // Check if field is required and empty for additional visual feedback
         const isRequiredAndEmpty = field.required && 
