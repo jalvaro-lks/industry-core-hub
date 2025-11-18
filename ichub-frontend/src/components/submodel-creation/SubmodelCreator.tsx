@@ -75,7 +75,8 @@ import {
     Search as SearchIcon,
     CleaningServices as CleaningServicesIcon,
     Visibility as VisibilityIcon,
-    VisibilityOff as VisibilityOffIcon
+    VisibilityOff as VisibilityOffIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
@@ -83,6 +84,7 @@ import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
 import JsonViewer from '../general/JsonViewer';
 import SchemaRulesViewer from './SchemaRulesViewer';
+import ScrollToTopFab from './ScrollToTopFab';
 
 interface SubmodelCreatorProps {
     open: boolean;
@@ -151,20 +153,14 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     loading = false
 }) => {
     const [formData, setFormData] = useState<any>({});
-    // Requested button state
     const [requestedActive, setRequestedActive] = useState(false);
     const [clearDialogOpen, setClearDialogOpen] = useState(false);
-    // Helper to get default JSON for the selected schema
-    // Returns an object with all root sections from the schema, each as empty object/array
     const getDefaultJson = () => {
         if (selectedSchema && selectedSchema.formFields) {
-            // Get all unique root keys (before first dot)
             const rootKeys = Array.from(new Set(selectedSchema.formFields.map(f => f.key.split('.')[0])));
-            // Try to infer type: if any field in section is array, use []; else {}
             const result: Record<string, any> = {};
             for (const key of rootKeys) {
                 const sectionFields = selectedSchema.formFields.filter(f => f.key.startsWith(key + '.'));
-                // If any field in this section is type array and has no further dot, use []
                 const isArray = sectionFields.some(f => f.type === 'array' && f.key === key);
                 result[key] = isArray ? [] : {};
             }
@@ -178,30 +174,25 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [validationState, setValidationState] = useState<ValidationState>('initial');
     const [isHoveringValidated, setIsHoveringValidated] = useState(false);
     const [rulesSearchTerm, setRulesSearchTerm] = useState<string>('');
-    const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set()); // Track which fields have errors
-    const [focusedField, setFocusedField] = useState<string | null>(null); // Track currently focused/editing field
+    const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+    const [focusedField, setFocusedField] = useState<string | null>(null);
     const [jsonImportOpen, setJsonImportOpen] = useState(false);
     const [jsonImportError, setJsonImportError] = useState<string | undefined>(undefined);
     const formRef = useRef<DynamicFormRef>(null);
+    const containerRef = React.useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
 
-    // Handler for field focus (no scroll logic)
     const handleFieldFocus = (fieldKey: string) => {
-    setFocusedField(fieldKey);
-    // If not already in JSON view, switch to it
-    setViewMode((prev) => prev !== 'json' ? 'json' : prev);
+        setFocusedField(fieldKey);
+        setViewMode((prev) => prev !== 'json' ? 'json' : prev);
     };
 
-    // Function to handle clipboard copy
     const handleCopy = async (text: string, fieldName: string) => {
         try {
             await navigator.clipboard.writeText(text);
-            console.log(`${fieldName} copied to clipboard`);
         } catch (error) {
-            console.error('Failed to copy:', error);
         }
     };
 
-    // Schema-aware error parsing interface
     interface ParsedError {
         message: string;
         fieldKey?: string;
@@ -213,7 +204,6 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         arrayIndex?: number;
     }
 
-    // ErrorViewer component - Schema-aware version with grouped errors
     const ErrorViewer: React.FC<{ 
         errors: string[], 
         onNavigateToField: (fieldKey: string) => void,
@@ -715,10 +705,10 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const validation = selectedSchema.validate(formData);
     // Debug: log all errors before and after deduplication
     // eslint-disable-next-line no-console
-    console.log('ALL validation.errors:', validation.errors);
+    // Debug: ALL validation.errors
     const uniqueErrors = Array.from(new Set(validation.errors));
     // eslint-disable-next-line no-console
-    console.log('UNIQUE validation.errors:', uniqueErrors);
+    // Debug: UNIQUE validation.errors
     setValidationErrors(uniqueErrors);
 
         // Extract field keys from errors and store them
@@ -761,7 +751,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         try {
             await onCreateSubmodel(formData);
         } catch (error) {
-            console.error('Error creating submodel:', error);
+            // Error creating submodel
         } finally {
             setIsSubmitting(false);
         }
@@ -839,13 +829,20 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                     </Toolbar>
                 </AppBar>
 
-                <DialogContent sx={{ 
-                    p: 0,
-                    backgroundColor: '#121212',
-                    height: 'calc(100vh - 140px)',
-                    overflow: 'auto'
-                }}>
-                    <Container maxWidth={false} sx={{ minHeight: '100%', p: 3, display: 'flex', flexDirection: 'column' }}>
+                <DialogContent
+                    sx={{ 
+                        p: 0,
+                        backgroundColor: '#121212',
+                        height: 'calc(100vh - 140px)',
+                        overflow: 'auto',
+                        position: 'relative' // Needed for absolute FAB
+                    }}
+                    ref={containerRef}
+                >
+                    <Container
+                        maxWidth={false}
+                        sx={{ minHeight: '100%', p: 3, display: 'flex', flexDirection: 'column' }}
+                    >
                         {/* Header Section - Manufacturer Part ID */}
                         <Paper sx={{ 
                             p: 3, 
@@ -984,6 +981,101 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                             </Box>
                         </Paper>
 
+                        {/* Footer Actions - moved up below Target Product */}
+                        <Box sx={{
+                            mt: 0,
+                            mb: 3,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            py: 1.5,
+                            px: 3,
+                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                            borderRadius: 2,
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 20,
+                            backdropFilter: 'blur(8px)',
+                        }}>
+                            <Box>
+                                {validationState === 'initial' && (
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <WarningIcon sx={{ fontSize: 18, color: 'warning.main' }} />
+                                        Please validate your form before submitting
+                                    </Typography>
+                                )}
+                                {validationState === 'validated' && (
+                                    <Typography variant="body2" sx={{ color: 'success.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <CheckCircleIcon sx={{ fontSize: 18 }} />
+                                        Form is valid and ready to submit
+                                    </Typography>
+                                )}
+                                {validationState === 'errors' && (
+                                    <Typography variant="body2" sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <ErrorIcon sx={{ fontSize: 18 }} />
+                                        {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found - fix and re-validate
+                                    </Typography>
+                                )}
+                            </Box>
+                            
+                            <Tooltip 
+                                title={
+                                    validationState === 'initial'
+                                        ? 'Please validate the form first'
+                                        : validationState === 'errors'
+                                        ? `Fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} and re-validate before creating the submodel`
+                                        : isSubmitting
+                                        ? 'Creating submodel...'
+                                        : 'Create submodel with validated data'
+                                }
+                                placement="top"
+                            >
+                                <span>
+                                    <Button
+                                        variant="contained"
+                                        size="large"
+                                        startIcon={<SaveIcon />}
+                                        onClick={handleSubmit}
+                                        disabled={!isFormValid || isSubmitting}
+                                        sx={{
+                                            background: isFormValid && !isSubmitting 
+                                                ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                                                : 'rgba(100, 100, 100, 0.3)',
+                                            borderRadius: '10px',
+                                            textTransform: 'none',
+                                            color: '#ffffff',
+                                            px: 4,
+                                            py: 1.5,
+                                            fontSize: '1rem',
+                                            fontWeight: 600,
+                                            boxShadow: isFormValid && !isSubmitting 
+                                                ? '0 4px 16px rgba(34, 197, 94, 0.3)'
+                                                : 'none',
+                                            marginRight: 2, // Add extra right margin
+                                            '&:hover': {
+                                                background: isFormValid && !isSubmitting 
+                                                    ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)'
+                                                    : 'rgba(100, 100, 100, 0.3)',
+                                                transform: isFormValid && !isSubmitting ? 'translateY(-1px)' : 'none',
+                                                boxShadow: isFormValid && !isSubmitting 
+                                                    ? '0 6px 20px rgba(34, 197, 94, 0.4)'
+                                                    : 'none',
+                                            },
+                                            '&:disabled': {
+                                                backgroundColor: '#333',
+                                                color: 'rgba(255, 255, 255, 0.5)',
+                                                cursor: 'not-allowed',
+                                            },
+                                            transition: 'all 0.2s ease-in-out',
+                                        }}
+                                    >
+                                        {isSubmitting ? 'Creating Submodel...' : 'Create Submodel'}
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                        </Box>
+
                         {/* Main Content - Two Panel Layout */}
                         <Box sx={{ flex: 1, display: 'flex', gap: 3, minHeight: '600px', position: 'relative' }}>
                             {/* Left Panel - Form with Independent Scroll */}
@@ -1007,7 +1099,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                         backgroundColor: 'rgba(0, 0, 0, 0.4)',
                                         backdropFilter: 'blur(10px)'
                                     }}>
-                                        <SchemaIcon sx={{ color: 'primary.main' }} />
+                                        <EditIcon sx={{ color: 'primary.main' }} />
                                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                                             <Box>
                                                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -1353,94 +1445,11 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                             </Box>
                         </Box>
 
-                        {/* Footer Actions */}
-                        <Box sx={{ 
-                            mt: 3, 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            p: 3,
-                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                            borderRadius: 2,
-                            border: '1px solid rgba(255, 255, 255, 0.12)'
-                        }}>
-                            <Box>
-                                {validationState === 'initial' && (
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <WarningIcon sx={{ fontSize: 18, color: 'warning.main' }} />
-                                        Please validate your form before submitting
-                                    </Typography>
-                                )}
-                                {validationState === 'validated' && (
-                                    <Typography variant="body2" sx={{ color: 'success.main', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <CheckCircleIcon sx={{ fontSize: 18 }} />
-                                        Form is valid and ready to submit
-                                    </Typography>
-                                )}
-                                {validationState === 'errors' && (
-                                    <Typography variant="body2" sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <ErrorIcon sx={{ fontSize: 18 }} />
-                                        {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} found - fix and re-validate
-                                    </Typography>
-                                )}
-                            </Box>
-                            
-                            <Tooltip 
-                                title={
-                                    validationState === 'initial'
-                                        ? 'Please validate the form first'
-                                        : validationState === 'errors'
-                                        ? `Fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} and re-validate before creating the submodel`
-                                        : isSubmitting
-                                        ? 'Creating submodel...'
-                                        : 'Create submodel with validated data'
-                                }
-                                placement="top"
-                            >
-                                <span>
-                                    <Button
-                                        variant="contained"
-                                        size="large"
-                                        startIcon={<SaveIcon />}
-                                        onClick={handleSubmit}
-                                        disabled={!isFormValid || isSubmitting}
-                                        sx={{
-                                            background: isFormValid && !isSubmitting 
-                                                ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-                                                : 'rgba(100, 100, 100, 0.3)',
-                                            borderRadius: '10px',
-                                            textTransform: 'none',
-                                            color: '#ffffff',
-                                            px: 4,
-                                            py: 1.5,
-                                            fontSize: '1rem',
-                                            fontWeight: 600,
-                                            boxShadow: isFormValid && !isSubmitting 
-                                                ? '0 4px 16px rgba(34, 197, 94, 0.3)'
-                                                : 'none',
-                                            '&:hover': {
-                                                background: isFormValid && !isSubmitting 
-                                                    ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)'
-                                                    : 'rgba(100, 100, 100, 0.3)',
-                                                transform: isFormValid && !isSubmitting ? 'translateY(-1px)' : 'none',
-                                                boxShadow: isFormValid && !isSubmitting 
-                                                    ? '0 6px 20px rgba(34, 197, 94, 0.4)'
-                                                    : 'none',
-                                            },
-                                            '&:disabled': {
-                                                backgroundColor: 'rgba(100, 100, 100, 0.3)',
-                                                color: 'rgba(255, 255, 255, 0.5)',
-                                                cursor: 'not-allowed',
-                                            },
-                                            transition: 'all 0.2s ease-in-out',
-                                        }}
-                                    >
-                                        {isSubmitting ? 'Creating Submodel...' : 'Create Submodel'}
-                                    </Button>
-                                </span>
-                            </Tooltip>
-                        </Box>
+                        {/* Footer Actions removed from bottom, now only present below Target Product */}
+                        {/* FAB must be rendered as a child of DialogContent, not Container */}
+                        {/* So move it outside Container, but inside DialogContent */}
                     </Container>
+                    <ScrollToTopFab containerRef={containerRef} />
                 </DialogContent>
             </Dialog>
         </ThemeProvider>
