@@ -930,58 +930,58 @@ export function interpretJSONSchema(schema: JSONSchema): {
 
         // Numeric validations
         if (val.min !== undefined && Number(value) < val.min) {
-          errors.push(`${field.label} must be at least ${val.min}`);
+          errors.push(`Field '${field.key}' must be at least ${val.min}`);
         }
         if (val.max !== undefined && Number(value) > val.max) {
-          errors.push(`${field.label} must be at most ${val.max}`);
+          errors.push(`Field '${field.key}' must be at most ${val.max}`);
         }
         if (val.exclusiveMin !== undefined && Number(value) <= val.exclusiveMin) {
-          errors.push(`${field.label} must be greater than ${val.exclusiveMin}`);
+          errors.push(`Field '${field.key}' must be greater than ${val.exclusiveMin}`);
         }
         if (val.exclusiveMax !== undefined && Number(value) >= val.exclusiveMax) {
-          errors.push(`${field.label} must be less than ${val.exclusiveMax}`);
+          errors.push(`Field '${field.key}' must be less than ${val.exclusiveMax}`);
         }
         if (val.multipleOf !== undefined && Number(value) % val.multipleOf !== 0) {
-          errors.push(`${field.label} must be a multiple of ${val.multipleOf}`);
+          errors.push(`Field '${field.key}' must be a multiple of ${val.multipleOf}`);
         }
 
         // String validations
         if (val.minLength !== undefined && String(value).length < val.minLength) {
-          errors.push(`${field.label} must be at least ${val.minLength} characters`);
+          errors.push(`Field '${field.key}' must be at least ${val.minLength} characters`);
         }
         if (val.maxLength !== undefined && String(value).length > val.maxLength) {
-          errors.push(`${field.label} must be at most ${val.maxLength} characters`);
+          errors.push(`Field '${field.key}' must be at most ${val.maxLength} characters`);
         }
         if (val.pattern && !new RegExp(val.pattern).test(String(value))) {
-          errors.push(`${field.label} format is invalid`);
+          errors.push(`Field '${field.key}' format is invalid`);
         }
 
         // Array validations
         if (Array.isArray(value)) {
           if (val.minItems !== undefined && value.length < val.minItems) {
-            errors.push(`${field.label} must have at least ${val.minItems} items`);
+            errors.push(`Field '${field.key}' must have at least ${val.minItems} items`);
           }
           if (val.maxItems !== undefined && value.length > val.maxItems) {
-            errors.push(`${field.label} must have at most ${val.maxItems} items`);
+            errors.push(`Field '${field.key}' must have at most ${val.maxItems} items`);
           }
           if (val.uniqueItems && new Set(value).size !== value.length) {
-            errors.push(`${field.label} items must be unique`);
+            errors.push(`Field '${field.key}' items must be unique`);
           }
         }
 
         // Enum validation
         if (val.enum && !val.enum.includes(value)) {
-          errors.push(`${field.label} must be one of: ${val.enum.join(', ')}`);
+          errors.push(`Field '${field.key}' must be one of: ${val.enum.join(', ')}`);
         }
 
         // Const validation
         if (val.const !== undefined && value !== val.const) {
-          errors.push(`${field.label} must be exactly: ${val.const}`);
+          errors.push(`Field '${field.key}' must be exactly: ${val.const}`);
         }
 
         // Format validation
         if (val.format) {
-          const formatErrors = validateFormat(value, val.format, field.label);
+          const formatErrors = validateFormat(value, val.format, `Field '${field.key}'`);
           errors.push(...formatErrors);
         }
       }

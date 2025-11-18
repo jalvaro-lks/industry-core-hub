@@ -202,29 +202,41 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             // Extract field information using schema structure
             const findFieldInSchema = (fieldName: string): { key: string, label: string, path: string, section: string } | null => {
                 if (!selectedSchema?.formFields) return null;
-                
-                // Look for exact match first
-                const exactMatch = selectedSchema.formFields.find(field => 
-                    field.key === fieldName || 
-                    field.label === fieldName ||
-                    field.key.endsWith(`.${fieldName}`)
-                );
-                
-                if (exactMatch) {
+                // 1. Exact match by key (full path)
+                const exactKeyMatch = selectedSchema.formFields.find(field => field.key === fieldName);
+                if (exactKeyMatch) {
                     return {
-                        key: exactMatch.key,
-                        label: exactMatch.label,
-                        path: exactMatch.key,
-                        section: exactMatch.section || 'General'
+                        key: exactKeyMatch.key,
+                        label: exactKeyMatch.label,
+                        path: exactKeyMatch.key,
+                        section: exactKeyMatch.section || 'General'
                     };
                 }
-                
-                // Look for partial matches in nested fields
+                // 2. Exact match by label
+                const exactLabelMatch = selectedSchema.formFields.find(field => field.label === fieldName);
+                if (exactLabelMatch) {
+                    return {
+                        key: exactLabelMatch.key,
+                        label: exactLabelMatch.label,
+                        path: exactLabelMatch.key,
+                        section: exactLabelMatch.section || 'General'
+                    };
+                }
+                // 3. Ends with (for nested fields)
+                const endsWithMatch = selectedSchema.formFields.find(field => field.key.endsWith(`.${fieldName}`));
+                if (endsWithMatch) {
+                    return {
+                        key: endsWithMatch.key,
+                        label: endsWithMatch.label,
+                        path: endsWithMatch.key,
+                        section: endsWithMatch.section || 'General'
+                    };
+                }
+                // 4. Partial match (fallback, less priority)
                 const partialMatch = selectedSchema.formFields.find(field => 
                     field.key.toLowerCase().includes(fieldName.toLowerCase()) ||
                     field.label.toLowerCase().includes(fieldName.toLowerCase())
                 );
-                
                 if (partialMatch) {
                     return {
                         key: partialMatch.key,
@@ -233,7 +245,6 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                         section: partialMatch.section || 'General'
                     };
                 }
-                
                 return null;
             };
             
