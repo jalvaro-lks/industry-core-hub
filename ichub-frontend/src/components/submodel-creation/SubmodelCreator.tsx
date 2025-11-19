@@ -76,7 +76,8 @@ import {
     CleaningServices as CleaningServicesIcon,
     Visibility as VisibilityIcon,
     VisibilityOff as VisibilityOffIcon,
-    Edit as EditIcon
+    Edit as EditIcon,
+    CheckBox as CheckBoxIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
@@ -1332,7 +1333,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                     <Button
                                                         variant="contained"
                                                         size="small"
-                                                        startIcon={isHoveringValidated ? <RefreshIcon /> : <CheckCircleIcon />}
+                                                        startIcon={isHoveringValidated ? <RefreshIcon /> : <CheckBoxIcon />}
                                                         onClick={handleValidate}
                                                         onMouseEnter={() => setIsHoveringValidated(true)}
                                                         onMouseLeave={() => setIsHoveringValidated(false)}

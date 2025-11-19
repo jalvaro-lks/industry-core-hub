@@ -35,7 +35,6 @@ import {
     AccordionSummary,
     AccordionDetails,
     Chip,
-    Tooltip,
     Switch,
     FormControlLabel,
     Button,
@@ -44,16 +43,22 @@ import {
     CardContent,
     Collapse
 } from '@mui/material';
+import CustomTooltip from './CustomTooltip';
 import {
     ExpandMore as ExpandMoreIcon,
     Info as InfoIcon,
     CalendarToday as CalendarTodayIcon,
     Add as AddIcon,
     Delete as DeleteIcon,
-    DragIndicator as DragIndicatorIcon
+    DragIndicator as DragIndicatorIcon,
+    Fingerprint as FingerprintIcon
 } from '@mui/icons-material';
 import { SchemaDefinition } from '../../schemas';
-import { FormField } from '../../schemas/json-schema-interpreter';
+import { FormField as BaseFormField } from '../../schemas/json-schema-interpreter';
+
+// Extend FormField to allow urn property for UI logic
+type FormField = BaseFormField & { urn?: string };
+import { getValueByPath, setValueByPath } from './objectPathUtils';
 
 // For backwards compatibility, use FormField as DPPFormField
 type DPPFormField = FormField;
@@ -213,67 +218,17 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 setTimeout(() => {
                     const element = fieldRefs.current[fieldKey];
                     if (element) {
-                        element.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center' 
-                        });
-                        // Add a visual highlight effect
-                        element.style.transition = 'box-shadow 0.3s ease';
-                        element.style.boxShadow = '0 0 0 3px rgba(96, 165, 250, 0.5)';
-                        setTimeout(() => {
-                            element.style.boxShadow = '';
-                        }, 2000);
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
-                }, 300);
+                }, 350);
             } else {
-                // Section is already expanded, scroll immediately
                 const element = fieldRefs.current[fieldKey];
                 if (element) {
-                    element.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'center' 
-                    });
-                    // Add a visual highlight effect
-                    element.style.transition = 'box-shadow 0.3s ease';
-                    element.style.boxShadow = '0 0 0 3px rgba(96, 165, 250, 0.5)';
-                    setTimeout(() => {
-                        element.style.boxShadow = '';
-                    }, 2000);
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
         }
     }));
-
-    // Get value from nested object path (e.g., "productIdentifier.manufacturerPartId")
-    const getValueByPath = (obj: any, path: string): any => {
-        return path.split('.').reduce((current, key) => current && current[key], obj);
-    };
-
-    // Set value in nested object path
-    const setValueByPath = (obj: any, path: string, value: any): any => {
-        const keys = path.split('.');
-        const result = { ...obj };
-        let current = result;
-
-        for (let i = 0; i < keys.length - 1; i++) {
-            const key = keys[i];
-            if (!current[key] || typeof current[key] !== 'object') {
-                current[key] = {};
-            } else {
-                current[key] = { ...current[key] };
-            }
-            current = current[key];
-        }
-
-        const lastKey = keys[keys.length - 1];
-        if (value === '' || value === null || value === undefined) {
-            delete current[lastKey];
-        } else {
-            current[lastKey] = value;
-        }
-
-        return result;
-    };
 
     const handleFieldChange = (field: FormField, value: any) => {
         const newData = setValueByPath(data, field.key, value);
@@ -331,6 +286,43 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         }
     }
 
+    // Common description tooltip with info icon click
+    // Show info icon with combined tooltip (description + URN if present)
+    const getDescriptionTooltip = (description?: string, fieldKey?: string, urn?: string): React.ReactElement | null => {
+        if (!description && !urn) return null;
+        return (
+            <CustomTooltip title="Description" description={description} urn={urn}>
+                <InfoIcon
+                    sx={{
+                        fontSize: 16,
+                        color: 'text.secondary',
+                        cursor: 'pointer',
+                        opacity: 1
+                    }}
+                    onClick={fieldKey && onInfoIconClick ? (e) => { e.stopPropagation(); onInfoIconClick(fieldKey); } : undefined}
+                />
+            </CustomTooltip>
+        );
+    };
+
+    // Icon container: right outside the field, show icons only if present
+    // Only show info icon with combined tooltip (description + URN)
+    const getIconContainer = (description?: string, fieldKey?: string, urn?: string) => {
+        if (!description && !urn) return null;
+        const tooltip = getDescriptionTooltip(description, fieldKey, urn);
+        if (!tooltip) return null;
+        return (
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                ml: 1.5,
+                gap: 0.5
+            }}>
+                {tooltip && tooltip}
+            </Box>
+        );
+    };
+
     const renderField = (field: FormField) => {
         const currentValue = getValueByPath(data, field.key) || '';
         const hasPersistedError = fieldErrors.has(field.key);
@@ -385,51 +377,37 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         });
 
 
-        // Common description tooltip with info icon click
-        const getDescriptionTooltip = (description?: string, fieldKey?: string) => 
-            description ? (
-                <Tooltip title={description} placement="top" arrow>
-                    <InfoIcon 
-                        sx={{ 
-                            fontSize: 16, 
-                            color: 'text.secondary',
-                            cursor: 'pointer',
-                            opacity: 1
-                        }}
-                        onClick={fieldKey && onInfoIconClick ? (e) => { e.stopPropagation(); onInfoIconClick(fieldKey); } : undefined}
-                    />
-                </Tooltip>
-            ) : undefined;
 
-        // Common icon container positioned on the border
-        const getIconContainer = (description?: string, fieldKey?: string) => 
-            description ? (
-                <Box sx={{ 
-                    position: 'absolute', 
-                    right: 32, 
-                    top: -10,
-                    zIndex: 1,
-                    backgroundColor: 'background.paper',
-                    borderRadius: '12px',
-                    padding: '3px',
-                    border: '1px solid rgba(158, 63, 63, 0)',
-                    boxShadow: '0 1px 2px rgba(65, 65, 65, 0)',
-                    width: '22px',
-                    height: '22px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
-                    {getDescriptionTooltip(description, fieldKey)}
-                </Box>
-            ) : null;
+    // Common description tooltip with info icon click
+    // Show info icon with combined tooltip (description + URN if present)
+    // This implementation always returns a valid React element or null
+    // (Do not redefine this function, use the one defined above)
+    // Remove this duplicate and use the main getDescriptionTooltip above.
+
+    // Icon container: right outside the field, show icons only if present
+    // Only show info icon with combined tooltip (description + URN)
+    const getIconContainer = (description?: string, fieldKey?: string, urn?: string) => {
+        if (!description && !urn) return null;
+        const tooltip = getDescriptionTooltip(description, fieldKey, urn);
+        if (!tooltip) return null;
+        return (
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                ml: 1.5,
+                gap: 0.5
+            }}>
+                {tooltip}
+            </Box>
+        );
+    };
 
         switch (field.type) {
             case 'text':
                 return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
+                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
-                            fullWidth
+                            fullWidth={false}
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
                             onChange={(e) => handleFieldChange(field, e.target.value)}
@@ -442,17 +420,17 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             ) : undefined}
                             variant="outlined"
                             size="small"
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'textarea':
                 return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
+                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
-                            fullWidth
+                            fullWidth={false}
                             multiline
                             maxRows={4}
                             label={getFieldLabel(field.label, field.required)}
@@ -467,21 +445,21 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             ) : undefined}
                             variant="outlined"
                             size="small"
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'number':
                 return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
+                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
-                            fullWidth
+                            fullWidth={false}
                             type="number"
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
-                            onChange={(e) => handleFieldChange(field, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleFieldChange(field, e.target.value)}
                             onFocus={() => onFieldFocus?.(field.key)}
                             onBlur={() => onFieldBlur?.()}
                             placeholder={field.placeholder}
@@ -491,22 +469,17 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             ) : undefined}
                             variant="outlined"
                             size="small"
-                            inputProps={{
-                                min: field.validation?.min || 0,
-                                max: field.validation?.max || undefined,
-                                step: "any"
-                            }}
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'date':
                 return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
+                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
-                            fullWidth
+                            fullWidth={false}
                             type="date"
                             label={getFieldLabel(field.label, field.required)}
                             value={currentValue}
@@ -535,20 +508,23 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={{
                                 ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                flex: 1,
+                                minWidth: 0,
+                                maxWidth: 'calc(100% - 32px)',
                                 '& input[type="date"]::-webkit-calendar-picker-indicator': {
                                     filter: 'invert(1)',
                                     cursor: 'pointer'
                                 }
                             }}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'select':
                 return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <FormControl fullWidth size="small" error={hasError}>
+                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                        <FormControl size="small" error={hasError} sx={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}>
                             <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
                                 {getFieldLabel(field.label, field.required)}
                             </InputLabel>
@@ -577,7 +553,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 </FormHelperText>
                             )}
                         </FormControl>
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
@@ -630,7 +606,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     }}
                                 />
                             </Box>
-                            {getIconContainer(field.description, field.key)}
+                            {getIconContainer(field.description, field.key, field.urn)}
                         </Box>
                         {hasError && isFieldFocused && errorMessages.length > 0 && (
                             <Typography variant="caption" sx={{ 
@@ -669,7 +645,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
@@ -693,7 +669,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
             case 'url':
@@ -716,7 +692,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             size="small"
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
             case 'datetime':
@@ -741,7 +717,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
@@ -762,7 +738,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, undefined, field.urn)}
                     </Box>
                 );
 
@@ -792,7 +768,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 ))}
                             </Select>
                         </FormControl>
-                        {getIconContainer(field.description)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
@@ -818,7 +794,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                         />
-                        {getIconContainer(field.description, field.key)}
+                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
@@ -861,7 +837,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 }}>
                                     {getFieldLabel(field.label, field.required)}
                                 </Typography>
-                                {getDescriptionTooltip(field.description, field.key)}
+                                {getIconContainer(field.description, field.key, field.urn)}
                             </Box>
                             <Button
                                 size="small"
@@ -930,34 +906,38 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                                         // Render object fields
                                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                                             {field.itemFields.map((subField: any) => {
-                                                                const subFieldValue = item[subField.key] || '';
+                                                                // Usar solo la última parte de la key para el objeto del array
+                                                                const simpleKey = subField.key.includes('.') ? subField.key.split('.').pop() : subField.key;
+                                                                const subFieldValue = item[simpleKey] || '';
                                                                 return (
-                                                                    <TextField
-                                                                        key={subField.key}
-                                                                        fullWidth
-                                                                        size="small"
-                                                                        label={getFieldLabel(subField.label, subField.required)}
-                                                                        value={subFieldValue}
-                                                                        onChange={(e) => {
-                                                                            const newItem = { ...item, [subField.key]: e.target.value };
-                                                                            updateArrayItem(index, newItem);
-                                                                        }}
-                                                                        placeholder={subField.placeholder}
-                                                                        type={subField.type === 'number' ? 'number' : 'text'}
-                                                                        multiline={subField.type === 'textarea'}
-                                                                        maxRows={subField.type === 'textarea' ? 3 : 1}
-                                                                        sx={{
-                                                                            '& .MuiOutlinedInput-root': {
-                                                                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                                                                '&:hover fieldset': {
-                                                                                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                                                                                },
-                                                                                '&.Mui-focused fieldset': {
-                                                                                    borderColor: 'primary.main',
-                                                                                },
-                                                                            }
-                                                                        }}
-                                                                    />
+                                                                    <Box key={subField.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                        <TextField
+                                                                            fullWidth
+                                                                            size="small"
+                                                                            label={getFieldLabel(subField.label, subField.required)}
+                                                                            value={subFieldValue}
+                                                                            onChange={(e) => {
+                                                                                const newItem = { ...item, [simpleKey]: e.target.value };
+                                                                                updateArrayItem(index, newItem);
+                                                                            }}
+                                                                            placeholder={subField.placeholder}
+                                                                            type={subField.type === 'number' ? 'number' : 'text'}
+                                                                            multiline={subField.type === 'textarea'}
+                                                                            maxRows={subField.type === 'textarea' ? 3 : 1}
+                                                                            sx={{
+                                                                                '& .MuiOutlinedInput-root': {
+                                                                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                                                                    '&:hover fieldset': {
+                                                                                        borderColor: 'rgba(96, 165, 250, 0.5)',
+                                                                                    },
+                                                                                    '&.Mui-focused fieldset': {
+                                                                                        borderColor: 'primary.main',
+                                                                                    },
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        {getIconContainer(subField.description, subField.key, subField.urn)}
+                                                                    </Box>
                                                                 );
                                                             })}
                                                         </Box>
@@ -1261,6 +1241,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             expandIcon={<ExpandMoreIcon sx={{ color: 'text.secondary' }} />}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                {/* Info/fingerprint icons only if present for section (only own URN/description) */}
+                                {(() => {
+                                    const sectionPseudoField = sectionFields.find(f => f.key === sectionName);
+                                    const sectionUrn = sectionPseudoField?.urn || (sectionPseudoField && (sectionPseudoField as any)["x-samm-aspect-model-urn"]);
+                                    const sectionDescription = sectionPseudoField?.description;
+                                    return getIconContainer(sectionDescription, undefined, sectionUrn);
+                                })()}
                                 <Typography variant="h6" sx={{ 
                                     fontWeight: 600,
                                     color: 'text.primary'

@@ -101,6 +101,7 @@ export interface FormField {
   type: 'text' | 'textarea' | 'number' | 'integer' | 'date' | 'datetime' | 'time' | 'email' | 'url' | 'password' | 'select' | 'multiselect' | 'checkbox' | 'radio' | 'array' | 'object';
   section: string;
   description?: string;
+  urn?: string;
   placeholder?: string;
   required: boolean;
   readonly?: boolean;
@@ -669,13 +670,19 @@ function processSchemaProperty(
   // This prevents cross-contamination between contexts (e.g., metadata vs sustainability)
   if (property.type === 'object' && property.properties) {
     const nestedRequiredFields = property.required || [];
-    
-    // DEBUG: Log nested object processing for critical contexts
-    if (fullKey.includes('metadata') || fullKey.includes('sustainability')) {
-      console.log(`🏗️  Processing nested object: ${fullKey}`);
-      console.log(`   Nested required fields: [${nestedRequiredFields.join(', ')}]`);
+    // If the object itself has a URN, add a pseudo-field for the object header
+    const objectUrn = property['x-samm-aspect-model-urn'];
+    if (objectUrn) {
+      fields.push({
+        key: fullKey,
+        label: generateLabel(key),
+        type: 'object',
+        section,
+        description: property.description,
+        required: isRequired,
+        urn: objectUrn
+      } as FormField);
     }
-    
     const nestedFields = processProperties(
       property.properties,
       schema,
@@ -721,7 +728,8 @@ function processArrayProperty(
     section,
     description: property.description,
     required: isRequired,
-    placeholder: `Add ${generateLabel(key).toLowerCase()}`
+    placeholder: `Add ${generateLabel(key).toLowerCase()}`,
+    urn: property['x-samm-aspect-model-urn']
   };
   
   // Process array items
@@ -781,7 +789,8 @@ function createFormField(
     section,
     description: property.description,
     required: isRequired,
-    placeholder: `Enter ${generateLabel(key).toLowerCase()}`
+    placeholder: `Enter ${generateLabel(key).toLowerCase()}`,
+    urn: property['x-samm-aspect-model-urn']
   };
   
   // Add enum/const options
