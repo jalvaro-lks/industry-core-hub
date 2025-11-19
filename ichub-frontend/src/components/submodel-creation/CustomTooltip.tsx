@@ -14,8 +14,23 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ title = 'Description', de
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLSpanElement | null>(null);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+
+  // Permite mantener el tooltip abierto si el puntero está sobre el tooltip
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleOpen = () => {
+    if (closeTimeout.current) {
+      clearTimeout(closeTimeout.current);
+      closeTimeout.current = null;
+    }
+    setOpen(true);
+  };
+  // Cierra el tooltip con un pequeño retardo para permitir transiciones entre icono y tooltip
+  const handleClose = () => {
+    if (closeTimeout.current) clearTimeout(closeTimeout.current);
+    closeTimeout.current = setTimeout(() => setOpen(false), 180);
+  };
 
   // Color azul oscuro del tooltip personalizado
   const shadowColor = '#23272f';
@@ -26,8 +41,8 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ title = 'Description', de
     <span
       ref={anchorRef}
       style={{ display: 'inline-flex', alignItems: 'center' }}
-      onMouseEnter={handleOpen}
-      onMouseLeave={handleClose}
+  onMouseEnter={handleOpen}
+  onMouseLeave={handleClose}
     >
       <span
         style={{
@@ -43,21 +58,38 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ title = 'Description', de
           style: { ...children.props.style, cursor: 'pointer' },
         })}
       </span>
-  <Popper open={open} anchorEl={anchorRef.current} placement="top" style={{ zIndex: 1500, marginBottom: shadowSize }} modifiers={[{ name: 'offset', options: { offset: [0, shadowSize] } }]}>
+      <Popper open={open} anchorEl={anchorRef.current} placement="top" style={{ zIndex: 1500, marginBottom: shadowSize }} modifiers={[{ name: 'offset', options: { offset: [0, shadowSize] } }]}
+        onMouseEnter={handleOpen}
+        onMouseLeave={handleClose}
+      >
         <ClickAwayListener onClickAway={handleClose}>
-          <Paper elevation={4} sx={{ p: 2, minWidth: 180, maxWidth: 260, background: '#23272f', border: '1px solid #333', borderRadius: 2 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5, fontSize: '13px' }}>
-              {title}
-            </Typography>
-            {description && (
-              <Typography variant="body2" sx={{ color: 'text.primary', mb: urn ? 1 : 0, fontSize: '12px' }}>
-                {description}
+          <div
+            ref={tooltipRef}
+            style={{
+              paddingTop: 16,
+              paddingBottom: 16,
+              marginTop: -16,
+              marginBottom: -16,
+              pointerEvents: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <Paper elevation={4} sx={{ p: 2, minWidth: 180, maxWidth: 260, background: '#23272f', border: '1px solid #333', borderRadius: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5, fontSize: '13px' }}>
+                {title}
               </Typography>
-            )}
-            {urn && (
-              <CopyableUrnChip urn={urn} />
-            )}
-          </Paper>
+              {description && (
+                <Typography variant="body2" sx={{ color: 'text.primary', mb: urn ? 1 : 0, fontSize: '12px' }}>
+                  {description}
+                </Typography>
+              )}
+              {urn && (
+                <CopyableUrnChip urn={urn} />
+              )}
+            </Paper>
+          </div>
         </ClickAwayListener>
       </Popper>
     </span>
