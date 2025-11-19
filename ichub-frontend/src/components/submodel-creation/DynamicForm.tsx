@@ -1243,10 +1243,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
                                 {/* Info/fingerprint icons only if present for section (only own URN/description) */}
                                 {(() => {
-                                    const sectionPseudoField = sectionFields.find(f => f.key === sectionName);
-                                    const sectionUrn = sectionPseudoField?.urn || (sectionPseudoField && (sectionPseudoField as any)["x-samm-aspect-model-urn"]);
-                                    const sectionDescription = sectionPseudoField?.description;
-                                    return getIconContainer(sectionDescription, undefined, sectionUrn);
+                                    // Priorizar el pseudo-campo de sección (key === sectionName y type === 'object')
+                                    let infoField = sectionFields.find(f => f.key === sectionName && f.type === 'object');
+                                    // Si no existe, usar el primer campo con descripción o URN
+                                    if (!infoField) infoField = sectionFields.find(f => f.description || f.urn);
+                                    if (!infoField) return null;
+                                    return getIconContainer(infoField.description, undefined, infoField.urn);
                                 })()}
                                 <Typography variant="h6" sx={{ 
                                     fontWeight: 600,

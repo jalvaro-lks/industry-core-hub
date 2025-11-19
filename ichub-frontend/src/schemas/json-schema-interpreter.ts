@@ -425,7 +425,7 @@ function getSectionName(key: string, property: JSONSchemaProperty, parentKey?: s
     parameters: 'Parameters',
     details: 'Details',
     information: 'Information',
-    data: 'Data',
+  data: 'Additional Data',
     content: 'Content',
     
     // Specific domain sections
@@ -673,12 +673,18 @@ function processSchemaProperty(
     // If the object itself has a URN, add a pseudo-field for the object header
     const objectUrn = property['x-samm-aspect-model-urn'];
     if (objectUrn) {
+      // Patch: For top-level sections, use the short description from the root schema's properties
+      let sectionDescription = property.description;
+      // Only override if this is a top-level property (fullKey has no dot)
+      if (fullKey && !fullKey.includes('.') && schema.properties && schema.properties[key] && schema.properties[key].description) {
+        sectionDescription = schema.properties[key].description;
+      }
       fields.push({
         key: fullKey,
         label: generateLabel(key),
         type: 'object',
         section,
-        description: property.description,
+        description: sectionDescription,
         required: isRequired,
         urn: objectUrn
       } as FormField);

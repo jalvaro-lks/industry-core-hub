@@ -1,6 +1,6 @@
 import CopyableUrnChip from './CopyableUrnChip';
 import React, { useState, useRef } from 'react';
-import { Box, Typography, Chip, Popper, Paper, ClickAwayListener } from '@mui/material';
+import { Box, Typography, Chip, Popper, Paper, ClickAwayListener, Snackbar, Alert } from '@mui/material';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 
 interface CustomTooltipProps {
@@ -12,13 +12,12 @@ interface CustomTooltipProps {
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ title = 'Description', description, urn, children }) => {
   const [open, setOpen] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [copiedValue, setCopiedValue] = useState<string | null>(null);
   const anchorRef = useRef<HTMLSpanElement | null>(null);
-
-
-  // Permite mantener el tooltip abierto si el puntero está sobre el tooltip
   const tooltipRef = useRef<HTMLDivElement | null>(null);
-
   const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleOpen = () => {
     if (closeTimeout.current) {
       clearTimeout(closeTimeout.current);
@@ -26,73 +25,92 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ title = 'Description', de
     }
     setOpen(true);
   };
-  // Cierra el tooltip con un pequeño retardo para permitir transiciones entre icono y tooltip
   const handleClose = () => {
     if (closeTimeout.current) clearTimeout(closeTimeout.current);
     closeTimeout.current = setTimeout(() => setOpen(false), 180);
   };
 
-  // Color azul oscuro del tooltip personalizado
+  // Snackbar handler for URN copy
+  const handleCopySuccess = (urn: string) => {
+    setCopiedValue(urn);
+    setCopySuccess(true);
+  };
+
   const shadowColor = '#23272f';
   const shadowSize = 5;
 
-  // Use a wrapper span for event handling
   return (
-    <span
-      ref={anchorRef}
-      style={{ display: 'inline-flex', alignItems: 'center' }}
-  onMouseEnter={handleOpen}
-  onMouseLeave={handleClose}
-    >
+    <>
       <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          boxShadow: open ? `0 0 0 ${shadowSize}px ${shadowColor}` : 'none',
-          borderRadius: '50%',
-          transition: 'box-shadow 0.15s',
-          boxSizing: 'content-box',
-        }}
-      >
-        {React.cloneElement(children, {
-          style: { ...children.props.style, cursor: 'pointer' },
-        })}
-      </span>
-      <Popper open={open} anchorEl={anchorRef.current} placement="top" style={{ zIndex: 1500, marginBottom: shadowSize }} modifiers={[{ name: 'offset', options: { offset: [0, shadowSize] } }]}
+        ref={anchorRef}
+        style={{ display: 'inline-flex', alignItems: 'center' }}
         onMouseEnter={handleOpen}
         onMouseLeave={handleClose}
       >
-        <ClickAwayListener onClickAway={handleClose}>
-          <div
-            ref={tooltipRef}
-            style={{
-              paddingTop: 16,
-              paddingBottom: 16,
-              marginTop: -16,
-              marginBottom: -16,
-              pointerEvents: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-          >
-            <Paper elevation={4} sx={{ p: 2, minWidth: 180, maxWidth: 260, background: '#23272f', border: '1px solid #333', borderRadius: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5, fontSize: '13px' }}>
-                {title}
-              </Typography>
-              {description && (
-                <Typography variant="body2" sx={{ color: 'text.primary', mb: urn ? 1 : 0, fontSize: '12px' }}>
-                  {description}
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            boxShadow: open ? `0 0 0 ${shadowSize}px ${shadowColor}` : 'none',
+            borderRadius: '50%',
+            transition: 'box-shadow 0.15s',
+            boxSizing: 'content-box',
+          }}
+        >
+          {React.cloneElement(children, {
+            style: { ...children.props.style, cursor: 'pointer' },
+          })}
+        </span>
+        <Popper open={open} anchorEl={anchorRef.current} placement="top" style={{ zIndex: 1500, marginBottom: shadowSize }} modifiers={[{ name: 'offset', options: { offset: [0, shadowSize] } }]}
+          onMouseEnter={handleOpen}
+          onMouseLeave={handleClose}
+        >
+          <ClickAwayListener onClickAway={handleClose}>
+            <div
+              ref={tooltipRef}
+              style={{
+                paddingTop: 16,
+                paddingBottom: 16,
+                marginTop: -16,
+                marginBottom: -16,
+                pointerEvents: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
+              <Paper elevation={4} sx={{ p: 2, minWidth: 180, maxWidth: 350, background: '#23272f', border: '1px solid #333', borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'primary.main', mb: 0.5, fontSize: '13px' }}>
+                  {title}
                 </Typography>
-              )}
-              {urn && (
-                <CopyableUrnChip urn={urn} />
-              )}
-            </Paper>
-          </div>
-        </ClickAwayListener>
-      </Popper>
-    </span>
+                {description && (
+                  <Typography variant="body2" sx={{ color: 'text.primary', mb: urn ? 1 : 0, fontSize: '12px' }}>
+                    {description}
+                  </Typography>
+                )}
+                {urn && (
+                  <CopyableUrnChip urn={urn} onCopySuccess={handleCopySuccess} />
+                )}
+              </Paper>
+            </div>
+          </ClickAwayListener>
+        </Popper>
+      </span>
+      <Snackbar
+        open={copySuccess}
+        autoHideDuration={2000}
+        onClose={() => setCopySuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setCopySuccess(false)}
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          Copied to clipboard: {copiedValue}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
