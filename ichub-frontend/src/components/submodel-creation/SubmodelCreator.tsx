@@ -49,7 +49,10 @@ import {
     AccordionSummary,
     AccordionDetails,
     DialogTitle,
-    DialogActions
+    DialogActions,
+    Backdrop,
+    CircularProgress,
+    LinearProgress
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -776,8 +779,19 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     // Form is only valid if it has been validated successfully
     const isFormValid = validationState === 'validated' && Object.keys(formData).length > 0;
 
+    // Local loading states for block-level spinners
+    const [formLoading, setFormLoading] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
+
+    // Show global loading if submitting or loading prop is true
+    const globalLoading = isSubmitting || loading;
+
     return (
         <ThemeProvider theme={darkTheme}>
+            {/* Global loading overlay */}
+            <Backdrop open={!!globalLoading} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 2 }}>
+                <CircularProgress color="inherit" />
+            </Backdrop>
             <Dialog
                 open={open}
                 onClose={onClose}
@@ -1202,7 +1216,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                     </Box>
 
                                     {/* Form Content - No scroll logic */}
-                                    <Box sx={{ p: 3 }}>
+                                    <Box sx={{ p: 3, position: 'relative' }}>
+                                        {formLoading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 2 }} />}
                                         {selectedSchema && (
                                             <DynamicForm
                                                 ref={formRef}
@@ -1235,7 +1250,8 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                     backgroundColor: 'rgba(0, 0, 0, 0.4)',
                                     position: 'relative'
                                 }}>
-                                    <CardContent sx={{ p: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <CardContent sx={{ p: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                                        {previewLoading && <LinearProgress color="secondary" sx={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 2 }} />}
                                         {/* Preview Header - Sticky */}
                                         <Box sx={{ 
                                             p: 3, 
