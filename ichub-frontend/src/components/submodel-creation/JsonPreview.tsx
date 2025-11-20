@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Box,
     Typography,
@@ -31,7 +31,8 @@ import {
     IconButton,
     Accordion,
     AccordionSummary,
-    AccordionDetails
+    AccordionDetails,
+    Tooltip
 } from '@mui/material';
 import {
     Error as ErrorIcon,
@@ -40,23 +41,146 @@ import {
     Code as CodeIcon,
     NavigateNext as NavigateNextIcon,
     ExpandMore as ExpandMoreIcon,
-    Link as LinkIcon
+    Link as LinkIcon,
+    ContentCopy as ContentCopyIcon,
+    Check as CheckIcon,
+    Download as DownloadIcon
 } from '@mui/icons-material';
+import { downloadJson } from '../../utils/downloadJson';
 
 interface JsonPreviewProps {
     data: any;
     errors?: string[];
     onNavigateToField?: (fieldKey: string) => void;
+    interactive?: boolean; // Si true, activa interactividad (hover en keys)
 }
 
-const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigateToField }) => {
+const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigateToField, interactive = false }) => {
     const [errorsExpanded, setErrorsExpanded] = useState(false);
-    const formatJsonString = (obj: any): string => {
-        try {
-            return JSON.stringify(obj, null, 2);
-        } catch (error) {
-            return 'Error formatting JSON';
+    const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+    const [copySuccess, setCopySuccess] = useState(false);
+    const [clickedLine, setClickedLine] = useState<number | null>(null);
+    const [clickedAddress, setClickedAddress] = useState<string>('');
+
+    const handleCopyJson = () => {
+        navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        });
+    };
+    const handleDownloadJson = () => {
+        downloadJson(data, 'submodel.json');
+    };
+
+    // Preprocesado: genera un array de { line, address } para cada línea del JSON
+    // Añadimos tipo de línea para lógica de navegación
+    type JsonLine = { line: string; address: string | null; type: 'object-open' | 'object-close' | 'array-open' | 'array-close' | 'primitive' | 'key-array-open' | 'key-object-open' | 'key-primitive' };
+    const getJsonLinesWithAddress = (data: any): JsonLine[] => {
+        const lines: JsonLine[] = [];
+        const pathStack: (string | number)[] = [];
+        function walk(node: any, indent: number, parentIsArray: boolean) {
+            const pad = (n: number) => '  '.repeat(n);
+            if (Array.isArray(node)) {
+                lines.push({
+                    line: pad(indent) + '[',
+                    address: pathStack.length > 0 ? pathStack.join('.') : null,
+                    type: 'array-open'
+                });
+                for (let i = 0; i < node.length; i++) {
+                    pathStack.push(i);
+                    walk(node[i], indent + 1, true);
+                    pathStack.pop();
+                }
+                lines.push({
+                    line: pad(indent) + ']',
+                    address: pathStack.length > 0 ? pathStack.join('.') : null,
+                    type: 'array-close'
+                });
+            } else if (node !== null && typeof node === 'object') {
+                lines.push({
+                    line: pad(indent) + '{',
+                    address: pathStack.length > 0 ? pathStack.join('.') : null,
+                    type: 'object-open'
+                });
+                const keys = Object.keys(node);
+                keys.forEach((key, idx) => {
+                    pathStack.push(key);
+                    const value = node[key];
+                    let valueIsPrimitive = (typeof value !== 'object' || value === null);
+                    let valueIsArray = Array.isArray(value);
+                    let valueIsObject = !valueIsArray && typeof value === 'object' && value !== null;
+                    let keyStr = pad(indent + 1) + '"' + key + '": ';
+                    if (valueIsPrimitive) {
+                        let valStr = JSON.stringify(value);
+                        lines.push({
+                            line: keyStr + valStr + (idx < keys.length - 1 ? ',' : ''),
+                            address: pathStack.join('.'),
+                            type: 'key-primitive'
+                        });
+                    } else if (valueIsArray) {
+                        lines.push({
+                            line: keyStr + '[',
+                            address: pathStack.join('.'),
+                            type: 'key-array-open'
+                        });
+                        for (let i = 0; i < value.length; i++) {
+                            pathStack.push(i);
+                            walk(value[i], indent + 2, true);
+                            pathStack.pop();
+                        }
+                        lines.push({
+                            line: pad(indent + 1) + ']' + (idx < keys.length - 1 ? ',' : ''),
+                            address: pathStack.join('.'),
+                            type: 'array-close'
+                        });
+                    } else if (valueIsObject) {
+                        lines.push({
+                            line: keyStr + '{',
+                            address: pathStack.join('.'),
+                            type: 'key-object-open'
+                        });
+                        walk(value, indent + 2, false);
+                        lines.push({
+                            line: pad(indent + 1) + '}' + (idx < keys.length - 1 ? ',' : ''),
+                            address: pathStack.join('.'),
+                            type: 'object-close'
+                        });
+                    }
+                    pathStack.pop();
+                });
+                lines.push({
+                    line: pad(indent) + '}',
+                    address: pathStack.length > 0 ? pathStack.join('.') : null,
+                    type: 'object-close'
+                });
+            } else {
+                lines.push({
+                    line: pad(indent) + JSON.stringify(node),
+                    address: pathStack.length > 0 ? pathStack.join('.') : null,
+                    type: 'primitive'
+                });
+            }
         }
+        walk(data, 0, false);
+        return lines;
+    };
+
+    // Memoizar para evitar recálculo
+    const jsonLinesWithAddress = useMemo(() => getJsonLinesWithAddress(data), [data]);
+
+    // Función para colorear cada línea (imitando VSCode)
+    const highlightJsonLine = (line: string) => {
+        let html = line
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        html = html.replace(/("[^"]+?")(?=\s*:)/g, (m) => `<span style=\"color:#9CDCFE\">${m}</span>`);
+        html = html.replace(/(:\s*)"(.*?)"/g, (m, p1, p2) => `${p1}<span style=\"color:#CE9178\">"${p2}"</span>`);
+        html = html.replace(/(:\s*)(-?\d+(?:\.\d+)?)/g, (m, p1, p2) => `${p1}<span style=\"color:#B5CEA8\">${p2}</span>`);
+        html = html.replace(/(:\s*)(true|false|null)/g, (m, p1, p2) => `${p1}<span style=\"color:#569CD6\">${p2}</span>`);
+        html = html.replace(/([{}\[\]])/g, '<span style=\"color:#FFD700\">$1</span>');
+        html = html.replace(/(,)/g, '<span style=\"color:#D4D4D4\">$1</span>');
+        return html;
     };
 
     // Map error messages to field keys for navigation
@@ -105,26 +229,6 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            {/* Status Indicator - Only show when no errors */}
-            {!hasErrors && (
-                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {hasData ? (
-                        <>
-                            <CheckCircleIcon sx={{ color: 'success.main', fontSize: 20 }} />
-                            <Typography variant="body2" sx={{ color: 'success.main' }}>
-                                Valid JSON structure
-                            </Typography>
-                        </>
-                    ) : (
-                        <>
-                            <CodeIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                Waiting for data...
-                            </Typography>
-                        </>
-                    )}
-                </Box>
-            )}
 
             {/* Error Messages Accordion - Minimalist */}
             {hasErrors && (
@@ -252,7 +356,6 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                     borderRadius: 1,
                     overflow: 'auto',
                     position: 'relative',
-                    // Custom scrollbar styling
                     '&::-webkit-scrollbar': {
                         width: '8px',
                     },
@@ -271,7 +374,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                         background: 'rgba(96, 165, 250, 1)',
                     }
                 }}>
-                    {/* JSON Syntax Highlighting Header */}
+                    {/* JSON Syntax Highlighting Header + Copy/Download */}
                     <Box sx={{
                         position: 'sticky',
                         top: 0,
@@ -292,40 +395,127 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                         }}>
                             JSON Output
                         </Typography>
-                        <Chip
-                            label={`${Object.keys(data || {}).length} fields`}
-                            size="small"
-                            sx={{
-                                ml: 'auto',
-                                height: 20,
-                                fontSize: '0.7rem',
-                                backgroundColor: 'rgba(96, 165, 250, 0.2)',
-                                color: 'primary.main'
-                            }}
-                        />
+                        <Box sx={{ flex: 1 }} />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title={copySuccess ? 'Copied!' : 'Copy JSON'}>
+                                <IconButton
+                                    size="small"
+                                    onClick={handleCopyJson}
+                                    sx={{
+                                        color: copySuccess ? '#4CAF50' : '#CCCCCC',
+                                        backgroundColor: copySuccess ? 'rgba(76, 175, 80, 0.1)' : 'transparent',
+                                        '&:hover': {
+                                            backgroundColor: copySuccess 
+                                                ? 'rgba(76, 175, 80, 0.2)' 
+                                                : 'rgba(255, 255, 255, 0.1)'
+                                        },
+                                        transition: 'all 0.2s ease-in-out'
+                                    }}
+                                >
+                                    {copySuccess ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Download JSON">
+                                <IconButton
+                                    size="small"
+                                    onClick={handleDownloadJson}
+                                    sx={{
+                                        color: '#CCCCCC',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                                        },
+                                        transition: 'all 0.2s ease-in-out'
+                                    }}
+                                >
+                                    <DownloadIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
                     </Box>
 
                     {/* JSON Content */}
-                    <Box sx={{ p: 2 }}>
+                    <Box sx={{ p: 0 }}>
                         {hasData ? (
-                            <pre style={{
-                                margin: 0,
-                                padding: 0,
-                                fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-                                fontSize: '0.875rem',
-                                lineHeight: 1.6,
-                                color: '#ffffff',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word'
-                            }}>
-                                <code style={{
-                                    background: 'none',
-                                    padding: 0,
-                                    color: 'inherit'
+                            <Box sx={{ display: 'flex', fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace', fontSize: '0.875rem', lineHeight: 1.6, color: '#ffffff', background: 'none', border: 'none', width: '100%' }}>
+                                {/* Columna de números de línea */}
+                                <Box sx={{
+                                    background: '#18181a',
+                                    color: '#858585',
+                                    userSelect: 'none',
+                                    textAlign: 'right',
+                                    pt: 2,
+                                    pb: 2,
+                                    borderRight: '1px solid #23272f',
+                                    minWidth: '40px',
+                                    fontSize: '0.875rem',
+                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+                                    letterSpacing: '0.5px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-end',
+                                    pl: '5px',
+                                    pr: '5px',
                                 }}>
-                                    {formatJsonString(data)}
-                                </code>
-                            </pre>
+                                    {jsonLinesWithAddress.map((_, idx) => (
+                                        <Box key={idx} sx={{
+                                            height: '1.6em',
+                                            lineHeight: '1.6em',
+                                            width: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'flex-end',
+                                            background: hoveredLine === idx ? 'rgba(96,165,250,0.08)' : 'none',
+                                            transition: 'background 0.15s',
+                                            fontFamily: 'inherit',
+                                            fontSize: 'inherit'
+                                        }}>{idx + 1}</Box>
+                                    ))}
+                                </Box>
+                                {/* JSON coloreado con navegación precisa */}
+                                <Box sx={{ flex: 1, pl: 2, pt: 2, pb: 2, overflowX: 'auto' }}>
+                                    {jsonLinesWithAddress.map(({ line, address, type }, idx) => {
+                                        let navAddress = address;
+                                        if ((type === 'object-open' || type === 'key-object-open' || type === 'key-array-open' || type === 'array-open') && address) {
+                                            for (let j = idx + 1; j < jsonLinesWithAddress.length; j++) {
+                                                const l = jsonLinesWithAddress[j];
+                                                if (l.address && l.address.startsWith(address) && l.type === 'key-primitive') {
+                                                    navAddress = l.address;
+                                                    break;
+                                                }
+                                            }
+                                            navAddress = address;
+                                        }
+                                        return (
+                                            <Box
+                                                key={idx}
+                                                component="div"
+                                                sx={{
+                                                    height: '1.6em',
+                                                    lineHeight: '1.6em',
+                                                    whiteSpace: 'pre',
+                                                    background: hoveredLine === idx ? 'rgba(96,165,250,0.08)' : 'none',
+                                                    transition: 'background 0.15s',
+                                                    cursor: navAddress ? 'pointer' : 'default'
+                                                }}
+                                                onMouseEnter={() => setHoveredLine(idx)}
+                                                onMouseLeave={() => setHoveredLine(null)}
+                                                onClick={() => {
+                                                    if (navAddress) {
+                                                        setClickedLine(idx);
+                                                        setClickedAddress(navAddress);
+                                                        if (onNavigateToField) {
+                                                            onNavigateToField(navAddress);
+                                                        }
+                                                        setTimeout(() => setClickedLine(null), 1500);
+                                                    }
+                                                }}
+                                            >
+                                                <span dangerouslySetInnerHTML={{ __html: highlightJsonLine(line) }} />
+                                            </Box>
+                                        );
+                                    })}
+                                </Box>
+                            </Box>
                         ) : (
                             <Box sx={{
                                 display: 'flex',
@@ -380,7 +570,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                             }}
                         />
                         <Chip
-                            label={`${formatJsonString(data).length} characters`}
+                            label={`${JSON.stringify(data, null, 2).length} characters`}
                             size="small"
                             variant="outlined"
                             sx={{

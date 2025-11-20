@@ -86,7 +86,6 @@ import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
 import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
-import JsonViewer from '../general/JsonViewer';
 import SchemaRulesViewer from './SchemaRulesViewer';
 import ScrollToTopFab from './ScrollToTopFab';
 
@@ -1439,7 +1438,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                         {/* Preview Content - Dynamic height based on content */}
                                         <Box sx={{ p: 3 }}>
                                             {viewMode === 'json' && (
-                                                <JsonViewer data={formData} />
+                                                <JsonPreview data={formData} interactive={true} onNavigateToField={handleNavigateToField} />
                                             )}
                                             {viewMode === 'errors' && (
                                                 <ErrorViewer 
