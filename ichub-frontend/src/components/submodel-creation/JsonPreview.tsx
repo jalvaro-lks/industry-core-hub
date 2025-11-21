@@ -55,118 +55,127 @@ interface JsonPreviewProps {
     interactive?: boolean; // Si true, activa interactividad (hover en keys)
 }
 
+
+
 const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigateToField, interactive = false }) => {
+    // Función para copiar el JSON mostrado
+    const handleCopyJson = () => {
+        const jsonString = JSON.stringify(data, null, 2);
+        navigator.clipboard.writeText(jsonString).then(() => {
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+        });
+    };
+
+    // Función para descargar el JSON mostrado
+    const handleDownloadJson = () => {
+        const jsonString = JSON.stringify(data, null, 2);
+        downloadJson(jsonString, 'submodel.json');
+    };
     const [errorsExpanded, setErrorsExpanded] = useState(false);
     const [hoveredLine, setHoveredLine] = useState<number | null>(null);
     const [copySuccess, setCopySuccess] = useState(false);
     const [clickedLine, setClickedLine] = useState<number | null>(null);
     const [clickedAddress, setClickedAddress] = useState<string>('');
 
-    const handleCopyJson = () => {
-        navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
-            setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000);
-        });
-    };
-    const handleDownloadJson = () => {
-        downloadJson(data, 'submodel.json');
-    };
+    // Lógica de generación dinámica de preview JSON
+    // Extrae las secciones (claves de primer nivel) del objeto data
+    // y las muestra siempre, aunque estén vacías
 
-    // Preprocesado: genera un array de { line, address } para cada línea del JSON
-    // Añadimos tipo de línea para lógica de navegación
-    type JsonLine = { line: string; address: string | null; type: 'object-open' | 'object-close' | 'array-open' | 'array-close' | 'primitive' | 'key-array-open' | 'key-object-open' | 'key-primitive' };
-    const getJsonLinesWithAddress = (data: any): JsonLine[] => {
-        const lines: JsonLine[] = [];
-        const pathStack: (string | number)[] = [];
-        function walk(node: any, indent: number, parentIsArray: boolean) {
-            const pad = (n: number) => '  '.repeat(n);
-            if (Array.isArray(node)) {
-                lines.push({
-                    line: pad(indent) + '[',
-                    address: pathStack.length > 0 ? pathStack.join('.') : null,
-                    type: 'array-open'
-                });
-                for (let i = 0; i < node.length; i++) {
-                    pathStack.push(i);
-                    walk(node[i], indent + 1, true);
-                    pathStack.pop();
-                }
-                lines.push({
-                    line: pad(indent) + ']',
-                    address: pathStack.length > 0 ? pathStack.join('.') : null,
-                    type: 'array-close'
-                });
-            } else if (node !== null && typeof node === 'object') {
-                lines.push({
-                    line: pad(indent) + '{',
-                    address: pathStack.length > 0 ? pathStack.join('.') : null,
-                    type: 'object-open'
-                });
-                const keys = Object.keys(node);
-                keys.forEach((key, idx) => {
-                    pathStack.push(key);
-                    const value = node[key];
-                    let valueIsPrimitive = (typeof value !== 'object' || value === null);
-                    let valueIsArray = Array.isArray(value);
-                    let valueIsObject = !valueIsArray && typeof value === 'object' && value !== null;
-                    let keyStr = pad(indent + 1) + '"' + key + '": ';
-                    if (valueIsPrimitive) {
-                        let valStr = JSON.stringify(value);
-                        lines.push({
-                            line: keyStr + valStr + (idx < keys.length - 1 ? ',' : ''),
-                            address: pathStack.join('.'),
-                            type: 'key-primitive'
-                        });
-                    } else if (valueIsArray) {
-                        lines.push({
-                            line: keyStr + '[',
-                            address: pathStack.join('.'),
-                            type: 'key-array-open'
-                        });
-                        for (let i = 0; i < value.length; i++) {
-                            pathStack.push(i);
-                            walk(value[i], indent + 2, true);
-                            pathStack.pop();
-                        }
-                        lines.push({
-                            line: pad(indent + 1) + ']' + (idx < keys.length - 1 ? ',' : ''),
-                            address: pathStack.join('.'),
-                            type: 'array-close'
-                        });
-                    } else if (valueIsObject) {
-                        lines.push({
-                            line: keyStr + '{',
-                            address: pathStack.join('.'),
-                            type: 'key-object-open'
-                        });
-                        walk(value, indent + 2, false);
-                        lines.push({
-                            line: pad(indent + 1) + '}' + (idx < keys.length - 1 ? ',' : ''),
-                            address: pathStack.join('.'),
-                            type: 'object-close'
-                        });
-                    }
-                    pathStack.pop();
-                });
-                lines.push({
-                    line: pad(indent) + '}',
-                    address: pathStack.length > 0 ? pathStack.join('.') : null,
-                    type: 'object-close'
-                });
-            } else {
-                lines.push({
-                    line: pad(indent) + JSON.stringify(node),
-                    address: pathStack.length > 0 ? pathStack.join('.') : null,
-                    type: 'primitive'
-                });
-            }
+    // Utilidad para escapar caracteres especiales en strings JSON
+    function escapeJsonString(str: string) {
+        return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+    }
+
+    // Formatea un valor como JSON (string, number, boolean, null, objeto, array)
+    function formatJsonValue(value: any, indent: number): string[] {
+        const pad = (n: number) => '  '.repeat(n);
+        if (value === null) return ['null'];
+        if (typeof value === 'string') return ['"' + escapeJsonString(value) + '"'];
+        if (typeof value === 'number' || typeof value === 'boolean') return [String(value)];
+        if (Array.isArray(value)) {
+            if (value.length === 0) return ['[]'];
+            const lines: string[] = ['['];
+            value.forEach((item, idx) => {
+                const itemLines = formatJsonValue(item, indent + 1);
+                itemLines[0] = pad(indent + 1) + itemLines[0];
+                lines.push(...itemLines.map((l, i) => (i === 0 ? l : pad(indent + 1) + l)));
+                if (idx < value.length - 1) lines[lines.length - 1] += ',';
+            });
+            lines.push(pad(indent) + ']');
+            return lines;
         }
-        walk(data, 0, false);
-        return lines;
-    };
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            if (keys.length === 0) return ['{}'];
+            const lines: string[] = ['{'];
+            keys.forEach((key, idx) => {
+                const valLines = formatJsonValue(value[key], indent + 1);
+                let firstLine = pad(indent + 1) + '"' + escapeJsonString(key) + '": ' + valLines[0];
+                lines.push(firstLine);
+                for (let i = 1; i < valLines.length; i++) {
+                    lines.push(pad(indent + 2) + valLines[i]);
+                }
+                if (idx < keys.length - 1) lines[lines.length - 1] += ',';
+            });
+            // Cambia: la llave de cierre debe estar alineada con la apertura del objeto (indent + 1 si es objeto anidado, indent si es raíz)
+            lines.push(pad(indent) + '}');
+            return lines;
+        }
+        return [String(value)];
+    }
 
-    // Memoizar para evitar recálculo
-    const jsonLinesWithAddress = useMemo(() => getJsonLinesWithAddress(data), [data]);
+    // Construye las líneas del preview, una por sección (clave de primer nivel)
+    function buildJsonPreviewLines(data: any): { section: string, lines: string[], path: string }[] {
+        if (!data || typeof data !== 'object') return [];
+        const keys = Object.keys(data);
+        if (keys.length === 0) return [];
+        return keys.map(section => {
+            const value = data[section];
+            let lines: string[];
+            if (value === undefined || value === null || (typeof value === 'object' && Object.keys(value).length === 0 && !Array.isArray(value))) {
+                lines = [section + ': {}'];
+            } else {
+                const valueLines = formatJsonValue(value, 0);
+                if (valueLines.length === 1 && valueLines[0] === '{}') {
+                    lines = [section + ': {}'];
+                } else if (valueLines.length === 1 && valueLines[0] === '[]') {
+                    lines = [section + ': []'];
+                } else {
+                    // Primera línea: section: {
+                    lines = [section + ': ' + valueLines[0]];
+                    // Resto de líneas (si hay)
+                    for (let i = 1; i < valueLines.length; i++) {
+                        // Para la llave/corchete de cierre, si es la última línea y es '}' o ']', quitar indent extra
+                        if ((i === valueLines.length - 1) && (/^\s*[}\]]$/.test(valueLines[i]))) {
+                            // El label de sección no tiene indentación, así que la llave de cierre tampoco
+                            lines.push(valueLines[i].replace(/^\s+/, ''));
+                        } else {
+                            lines.push(valueLines[i]);
+                        }
+                    }
+                }
+            }
+            return { section, lines, path: section };
+        });
+    }
+
+    // Construir las líneas del preview
+    const previewSections = useMemo(() => buildJsonPreviewLines(data), [data]);
+    // Para la UI: aplanar todas las líneas y asociarles su path para interacción
+    const jsonLinesWithAddress = useMemo(() => {
+        const result: { line: string, address: string | null, section: string }[] = [];
+        previewSections.forEach(({ section, lines, path }) => {
+            lines.forEach((line, idx) => {
+                result.push({
+                    line,
+                    address: idx === 0 ? path : null, // Solo la línea de sección tiene interacción
+                    section
+                });
+            });
+        });
+        return result;
+    }, [previewSections]);
 
     // Función para colorear cada línea (imitando VSCode)
     const highlightJsonLine = (line: string) => {
@@ -174,6 +183,9 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
+        // Resalta el label de sección (al inicio de línea, antes de los dos puntos)
+        html = html.replace(/^([a-zA-Z0-9_\-]+)(:)/, (m, p1, p2) => `<span style=\"color:#9CDCFE\">${p1}</span>${p2}`);
+        // Resalta claves normales
         html = html.replace(/("[^"]+?")(?=\s*:)/g, (m) => `<span style=\"color:#9CDCFE\">${m}</span>`);
         html = html.replace(/(:\s*)"(.*?)"/g, (m, p1, p2) => `${p1}<span style=\"color:#CE9178\">"${p2}"</span>`);
         html = html.replace(/(:\s*)(-?\d+(?:\.\d+)?)/g, (m, p1, p2) => `${p1}<span style=\"color:#B5CEA8\">${p2}</span>`);
@@ -225,7 +237,8 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
     };
 
     const hasErrors = errors.length > 0;
-    const hasData = data && Object.keys(data).length > 0;
+    // Hay datos si hay al menos una sección
+    const hasData = jsonLinesWithAddress.length > 0;
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -473,18 +486,9 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                                 </Box>
                                 {/* JSON coloreado con navegación precisa */}
                                 <Box sx={{ flex: 1, pl: 2, pt: 2, pb: 2, overflowX: 'auto' }}>
-                                    {jsonLinesWithAddress.map(({ line, address, type }, idx) => {
-                                        let navAddress = address;
-                                        if ((type === 'object-open' || type === 'key-object-open' || type === 'key-array-open' || type === 'array-open') && address) {
-                                            for (let j = idx + 1; j < jsonLinesWithAddress.length; j++) {
-                                                const l = jsonLinesWithAddress[j];
-                                                if (l.address && l.address.startsWith(address) && l.type === 'key-primitive') {
-                                                    navAddress = l.address;
-                                                    break;
-                                                }
-                                            }
-                                            navAddress = address;
-                                        }
+                                    {jsonLinesWithAddress.map(({ line, address }, idx) => {
+                                        // Solo la línea de sección (address !== null) es interactiva
+                                        const navAddress = address;
                                         return (
                                             <Box
                                                 key={idx}
