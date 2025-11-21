@@ -160,22 +160,76 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
         });
     }
 
-    // Construir las líneas del preview
-    const previewSections = useMemo(() => buildJsonPreviewLines(data), [data]);
-    // Para la UI: aplanar todas las líneas y asociarles su path para interacción
-    const jsonLinesWithAddress = useMemo(() => {
+    // Construir las líneas del preview con paths para navegación en atributos
+    function buildJsonLinesWithAddress(data: any): { line: string, address: string | null, section: string }[] {
         const result: { line: string, address: string | null, section: string }[] = [];
-        previewSections.forEach(({ section, lines, path }) => {
-            lines.forEach((line, idx) => {
-                result.push({
-                    line,
-                    address: idx === 0 ? path : null, // Solo la línea de sección tiene interacción
-                    section
-                });
-            });
+        if (!data || typeof data !== 'object') return result;
+        const keys = Object.keys(data);
+        keys.forEach(section => {
+            const value = data[section];
+            // Si la sección está vacía
+            if (value === undefined || value === null || (typeof value === 'object' && Object.keys(value).length === 0 && !Array.isArray(value))) {
+                result.push({ line: section + ': {}', address: section, section });
+            } else {
+                // Sección con contenido
+                // Recursivo para aplanar líneas y asociar paths
+                const valueLines = formatJsonValueWithPath(value, 0, section);
+                // Primera línea: section: {
+                result.push({ line: section + ': ' + valueLines[0].line, address: valueLines[0].address, section });
+                for (let i = 1; i < valueLines.length; i++) {
+                    result.push({ ...valueLines[i], section });
+                }
+            }
         });
         return result;
-    }, [previewSections]);
+    }
+
+    // Formatea un valor como JSON y asocia path a cada línea navegable
+    function formatJsonValueWithPath(value: any, indent: number, path: string): { line: string, address: string | null }[] {
+        const pad = (n: number) => '  '.repeat(n);
+        if (value === null) return [{ line: 'null', address: path }];
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            // Valor primitivo: navegable
+            return [{ line: (typeof value === 'string' ? '"' + escapeJsonString(value) + '"' : String(value)), address: path }];
+        }
+        if (Array.isArray(value)) {
+            if (value.length === 0) return [{ line: '[]', address: path }];
+            const lines: { line: string, address: string | null }[] = [{ line: '[', address: path }];
+            value.forEach((item, idx) => {
+                const itemPath = path + '[' + idx + ']';
+                const itemLines = formatJsonValueWithPath(item, indent + 1, itemPath);
+                // La línea de apertura del item (si es objeto o array) será navegable con su path
+                itemLines[0].line = pad(indent + 1) + itemLines[0].line;
+                lines.push(...itemLines.map((l, i) => (i === 0 ? l : { ...l, line: pad(indent + 1) + l.line } )));
+                if (idx < value.length - 1) lines[lines.length - 1].line += ',';
+            });
+            lines.push({ line: pad(indent) + ']', address: path });
+            return lines;
+        }
+        if (typeof value === 'object') {
+            const keys = Object.keys(value);
+            if (keys.length === 0) return [{ line: '{}', address: path }];
+            const lines: { line: string, address: string | null }[] = [{ line: '{', address: path }];
+            keys.forEach((key, idx) => {
+                const val = value[key];
+                const valPath = path + '.' + key;
+                const valLines = formatJsonValueWithPath(val, indent + 1, valPath);
+                // La línea de apertura del objeto/array hijo también es navegable
+                let firstLine = { line: pad(indent + 1) + '"' + escapeJsonString(key) + '": ' + valLines[0].line, address: valPath };
+                lines.push(firstLine);
+                for (let i = 1; i < valLines.length; i++) {
+                    lines.push({ line: pad(indent + 2) + valLines[i].line, address: valLines[i].address });
+                }
+                if (idx < keys.length - 1) lines[lines.length - 1].line += ',';
+            });
+            // Cierre alineado
+            lines.push({ line: pad(indent) + '}', address: path });
+            return lines;
+        }
+        return [{ line: String(value), address: path }];
+    }
+
+    const jsonLinesWithAddress = useMemo(() => buildJsonLinesWithAddress(data), [data]);
 
     // Función para colorear cada línea (imitando VSCode)
     const highlightJsonLine = (line: string) => {
@@ -487,7 +541,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                                 {/* JSON coloreado con navegación precisa */}
                                 <Box sx={{ flex: 1, pl: 2, pt: 2, pb: 2, overflowX: 'auto' }}>
                                     {jsonLinesWithAddress.map(({ line, address }, idx) => {
-                                        // Solo la línea de sección (address !== null) es interactiva
+                                        // Ahora cualquier línea con address (atributo primitivo) es interactiva
                                         const navAddress = address;
                                         return (
                                             <Box
