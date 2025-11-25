@@ -772,32 +772,6 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     </Box>
                 );
 
-            case 'datetime':
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <TextField
-                            fullWidth
-                            type="datetime-local"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                        />
-                        {getIconContainer(field.description, field.key, field.urn)}
-                    </Box>
-                );
-
             case 'array':
                 const arrayValue = getValueByPath(data, field.key) || [];
                 const ensureArray = Array.isArray(arrayValue) ? arrayValue : [];
