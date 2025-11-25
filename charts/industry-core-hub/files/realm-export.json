@@ -9,18 +9,209 @@
   "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "offlineSessionMaxLifespan": 5184000,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "clientOfflineSessionIdleTimeout": 0,
+  "clientOfflineSessionMaxLifespan": 0,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": false,
+  "verifyEmail": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
   "bruteForceProtected": false,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-ichub",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+          "realm": ["offline_access", "uma_authorization"]
+        },
+        "clientRole": false
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "groups": [],
+  "defaultRole": {
+    "name": "default-roles-ichub",
+    "description": "${role_default-roles}",
+    "composite": true,
+    "clientRole": false
+  },
+  "requiredCredentials": ["password"],
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "otpSupportedApplications": ["totpAppGoogleName", "totpAppFreeOTPName"],
+  "webAuthnPolicyRpEntityName": "keycloak",
+  "webAuthnPolicySignatureAlgorithms": ["ES256"],
+  "webAuthnPolicyRpId": "",
+  "webAuthnPolicyAttestationConveyancePreference": "not specified",
+  "webAuthnPolicyAuthenticatorAttachment": "not specified",
+  "webAuthnPolicyRequireResidentKey": "not specified",
+  "webAuthnPolicyUserVerificationRequirement": "not specified",
+  "webAuthnPolicyCreateTimeout": 0,
+  "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+  "webAuthnPolicyAcceptableAaguids": [],
+  "scopeMappings": [],
+  "clientScopeMappings": {},
+  "clients": [
+    {
+      "id": "ichub-api-client-001",
+      "clientId": "industry-core-hub-api",
+      "name": "Industry Core Hub API Client",
+      "description": "OAuth2 client for Industry Core Hub Backend API",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ichub-client-secret-2024",
+      "redirectUris": [
+        "http://localhost:8000/*",
+        "http://localhost:9000/*",
+        "http://ichub-backend.tx.test/*",
+        "*"
+      ],
+      "webOrigins": [
+        "http://localhost:8000",
+        "http://localhost:9000",
+        "http://ichub-backend.tx.test",
+        "*"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "1800",
+        "client.secret.creation.time": "1735724400"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "id": "ichub-frontend-client-002",
+      "clientId": "industry-core-hub-frontend",
+      "name": "Industry Core Hub Frontend Client",
+      "description": "Public OAuth2 client for Industry Core Hub Frontend Application",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:5173/*",
+        "http://ichub-frontend.tx.test/*",
+        "http://industry-core-hub-frontend.tx.test/*",
+        "*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://ichub-frontend.tx.test",
+        "http://industry-core-hub-frontend.tx.test",
+        "*"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*##http://ichub-frontend.tx.test/*##http://industry-core-hub-frontend.tx.test/*",
+        "pkce.code.challenge.method": "S256"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+  "clientScopes": [],
   "users": [
     {
-      "id": "admin-user-001",
-      "createdTimestamp": 1735724400000,
       "username": "ichub-admin",
       "enabled": true,
       "totp": false,
@@ -33,11 +224,9 @@
       },
       "credentials": [
         {
-          "id": "admin-cred-001",
           "type": "password",
           "userLabel": "Initial password",
-          "createdDate": 1735724400000,
-          "secretData": "{\"value\":\"$2a$10$rz1XxQ6xbpEzCgvlJWLm/O5IZn8cCnRJGFWI0nWLuN8TtBhRyqZti\",\"salt\":\"6OJ3QpqWP6Dt6bvR6qROQg==\",\"additionalParameters\":{}}",
+          "secretData": "{{ADMIN_PASSWORD_HASH}}",
           "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
         }
       ],
@@ -48,111 +237,271 @@
         "offline_access",
         "uma_authorization"
       ],
-      "clientRoles": {
-        "realm-management": [
-          "realm-admin"
-        ],
-        "account": [
-          "manage-account",
-          "view-profile"
-        ]
-      },
+      "clientRoles": {},
       "notBefore": 0,
       "groups": []
     }
   ],
-  "clients": [
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "referrerPolicy": "no-referrer",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "smtpServer": {},
+  "eventsEnabled": false,
+  "eventsListeners": ["jboss-logging"],
+  "enabledEventTypes": [],
+  "adminEventsEnabled": false,
+  "adminEventsDetailsEnabled": false,
+  "identityProviders": [],
+  "identityProviderMappers": [],
+  "components": {},
+  "internationalizationEnabled": false,
+  "supportedLocales": [],
+  "authenticationFlows": [
     {
-      "id": "ichub-api-client-001",
-      "clientId": "industry-core-hub-api",
-      "name": "Industry Core Hub API Client",
-      "description": "OAuth2 client for Industry Core Hub Backend API",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "ichub-client-secret-2024",
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "bearerOnly": false,
-      "serviceAccountsEnabled": true,
-      "directAccessGrantsEnabled": true,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "consentRequired": false,
-      "frontchannelLogout": true,
-      "redirectUris": [
-        "http://localhost:8000/*",
-        "http://ichub-backend.tx.test/*",
-        "*"
-      ],
-      "webOrigins": [
-        "http://localhost:8000",
-        "http://ichub-backend.tx.test",
-        "*"
-      ],
-      "defaultClientScopes": [
-        "web-origins",
-        "acr",
-        "profile",
-        "roles",
-        "email"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access"
-      ],
-      "attributes": {
-        "access.token.lifespan": "1800",
-        "client.secret.creation.time": "1735724400"
-      }
+      "alias": "browser",
+      "description": "browser based authentication",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "requirement": "ALTERNATIVE",
+          "priority": 25,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "auth-username-password-form",
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        }
+      ]
     },
     {
-      "id": "ichub-frontend-client-002",
-      "clientId": "industry-core-hub-frontend",
-      "name": "Industry Core Hub Frontend Client",
-      "description": "Public OAuth2 client for Industry Core Hub Frontend Application",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "protocol": "openid-connect",
-      "publicClient": true,
-      "bearerOnly": false,
-      "serviceAccountsEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "consentRequired": false,
-      "frontchannelLogout": true,
-      "redirectUris": [
-        "http://localhost:3000/*",
-        "http://ichub-frontend.tx.test/*",
-        "http://industry-core-hub-frontend.tx.test/*",
-        "http://localhost:5173/*",
-        "*"
-      ],
-      "webOrigins": [
-        "http://localhost:3000",
-        "http://ichub-frontend.tx.test",
-        "http://industry-core-hub-frontend.tx.test",
-        "http://localhost:5173",
-        "*"
-      ],
-      "defaultClientScopes": [
-        "web-origins",
-        "acr",
-        "profile",
-        "roles",
-        "email"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access"
-      ],
-      "attributes": {
-        "access.token.lifespan": "1800",
-        "post.logout.redirect.uris": "http://localhost:3000/*##http://ichub-frontend.tx.test/*##http://industry-core-hub-frontend.tx.test/*##http://localhost:5173/*",
-        "pkce.code.challenge.method": "S256"
-      }
+      "alias": "direct grant",
+      "description": "OpenID Connect Resource Owner Grant",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        }
+      ]
+    },
+    {
+      "alias": "registration",
+      "description": "registration flow",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "registration-page-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "flowAlias": "registration form",
+          "userSetupAllowed": false,
+          "autheticatorFlow": true
+        }
+      ]
+    },
+    {
+      "alias": "registration form",
+      "description": "registration form",
+      "providerId": "form-flow",
+      "topLevel": false,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "registration-user-creation",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "registration-profile-action",
+          "requirement": "REQUIRED",
+          "priority": 40,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "registration-password-action",
+          "requirement": "REQUIRED",
+          "priority": 50,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        }
+      ]
+    },
+    {
+      "alias": "reset credentials",
+      "description": "Reset credentials for a user if they forgot their password or something",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "reset-credentials-choose-user",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "reset-credential-email",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "reset-password",
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        }
+      ]
+    },
+    {
+      "alias": "clients",
+      "description": "Base authentication for clients",
+      "providerId": "client-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "client-secret",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "client-jwt",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "client-secret-jwt",
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        },
+        {
+          "authenticator": "client-x509",
+          "requirement": "ALTERNATIVE",
+          "priority": 40,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        }
+      ]
+    },
+    {
+      "alias": "docker auth",
+      "description": "Used by Docker clients to authenticate against the IDP",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": true,
+      "authenticationExecutions": [
+        {
+          "authenticator": "docker-http-basic-authenticator",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false,
+          "autheticatorFlow": false
+        }
+      ]
     }
-  ]
+  ],
+  "authenticatorConfig": [],
+  "requiredActions": [
+    {
+      "alias": "CONFIGURE_TOTP",
+      "name": "Configure OTP",
+      "providerId": "CONFIGURE_TOTP",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
+      "alias": "TERMS_AND_CONDITIONS",
+      "name": "Terms and Conditions",
+      "providerId": "TERMS_AND_CONDITIONS",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 20,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "UPDATE_PROFILE",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    },
+    {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 50,
+      "config": {}
+    }
+  ],
+  "browserFlow": "browser",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients",
+  "dockerAuthenticationFlow": "docker auth",
+  "attributes": {},
+  "keycloakVersion": "23.0.0"
 }

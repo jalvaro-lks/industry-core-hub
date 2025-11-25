@@ -69,8 +69,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
 
     // Función para descargar el JSON mostrado
     const handleDownloadJson = () => {
-        const jsonString = JSON.stringify(data, null, 2);
-        downloadJson(jsonString, 'submodel.json');
+        downloadJson(data, 'submodel.json');
     };
     const [errorsExpanded, setErrorsExpanded] = useState(false);
     const [hoveredLine, setHoveredLine] = useState<number | null>(null);

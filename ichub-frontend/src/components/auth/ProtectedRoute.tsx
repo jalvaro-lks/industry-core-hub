@@ -24,6 +24,7 @@
 import React from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import useAuth from '../../hooks/useAuth';
+import ErrorPage from '../common/ErrorPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -72,24 +73,17 @@ export function ProtectedRoute({
   // Show error if authentication failed
   if (error) {
     return (
-      <Box 
-        display="flex" 
-        flexDirection="column"
-        justifyContent="center" 
-        alignItems="center" 
-        minHeight="60vh"
-        gap={2}
-      >
-        <Typography variant="h5" color="error">
-          Authentication Error
-        </Typography>
-        <Typography variant="body1" color="textSecondary" textAlign="center">
-          {error}
-        </Typography>
-        <Typography variant="body2" color="textSecondary">
-          Please try refreshing the page or contact support if the problem persists.
-        </Typography>
-      </Box>
+      <ErrorPage
+        title="Authentication Error"
+        message={error}
+        causes={[
+          'Session expired or invalid',
+          'Authentication service unavailable',
+          'Permission denied'
+        ]}
+        showRefreshButton={true}
+        helpText="Please try refreshing the page or contact support if the problem persists."
+      />
     );
   }
 
@@ -105,11 +99,11 @@ export function ProtectedRoute({
         minHeight="100vh"
         gap={3}
         sx={{ 
-          background: 'black',
-          color: 'white'
+          background: 'white',
+          color: 'black'
         }}
       >
-        <CircularProgress size={80} sx={{ color: 'white' }} />
+        <CircularProgress size={80} sx={{ color: 'black' }} />
         <Typography variant="h4" fontWeight="bold">
           Industry Core Hub
         </Typography>

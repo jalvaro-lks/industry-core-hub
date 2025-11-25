@@ -22,7 +22,7 @@
  ********************************************************************************/
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getDPPFieldGroups, getDPPRequiredFields } from '../../schemas/dpp/dpp-v6.1.0';
+import { createInitialFormData } from '../../utils/schemaUtils';
 import JsonImportDialog from './JsonImportDialog';
 import {
     Dialog,
@@ -71,8 +71,6 @@ import {
     ChevronRight as ChevronRightIcon,
     ExpandMore as ExpandMoreIcon,
     CheckCircle as CheckCircleIcon,
-    CheckBoxOutlineBlank as CheckBoxOutlineBlankIcon,
-    Refresh as RefreshIcon,
     Rule as RuleIcon,
     Place as PlaceIcon,
     Search as SearchIcon,
@@ -80,7 +78,7 @@ import {
     Visibility as VisibilityIcon,
     VisibilityOff as VisibilityOffIcon,
     Edit as EditIcon,
-    CheckBox as CheckBoxIcon
+    Upload as UploadIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
 import SchemaSelector from './SchemaSelector';
@@ -88,6 +86,7 @@ import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
 import SchemaRulesViewer from './SchemaRulesViewer';
 import ScrollToTopFab from './ScrollToTopFab';
+import { ValidationButton } from './ValidationButton';
 
 interface SubmodelCreatorProps {
     open: boolean;
@@ -175,7 +174,6 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [viewMode, setViewMode] = useState<'json' | 'errors' | 'rules'>('json');
     const [validationState, setValidationState] = useState<ValidationState>('initial');
-    const [isHoveringValidated, setIsHoveringValidated] = useState(false);
     const [rulesSearchTerm, setRulesSearchTerm] = useState<string>('');
     const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
     const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -668,18 +666,9 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     // Initialize form data with default values when schema changes
     useEffect(() => {
         if (selectedSchema && open) {
-            // Detect top-level keys (object keys) that have at least one required field
-            const requiredFields = getDPPRequiredFields();
-            const topLevelKeys = new Set(
-                requiredFields
-                    .map((f: any) => f.key.split('.')[0])
-                    .filter(Boolean)
-            );
-            const groups: Record<string, any> = {};
-            topLevelKeys.forEach((key) => {
-                groups[key] = {};
-            });
-            setFormData(groups); // JSON starts with empty objects for required groups using schema keys
+            // Use generic utility to create initial form data structure from schema
+            const initialData = createInitialFormData(selectedSchema);
+            setFormData(initialData); // JSON starts with empty objects for required groups using schema keys
             setValidationState('initial');
             setValidationErrors([]);
         }
@@ -1032,21 +1021,31 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                     </Typography>
                                 )}
                             </Box>
-                            
-                            <Tooltip 
-                                title={
-                                    validationState === 'initial'
-                                        ? 'Please validate the form first'
-                                        : validationState === 'errors'
-                                        ? `Fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} and re-validate before creating the submodel`
-                                        : isSubmitting
-                                        ? 'Creating submodel...'
-                                        : 'Create submodel with validated data'
-                                }
-                                placement="top"
-                            >
-                                <span>
-                                    <Button
+                            <Box sx={{ display: 'flex', gap: 0 }}>
+                                <ValidationButton
+                                    validationState={validationState}
+                                    validationErrorsCount={validationErrors.length}
+                                    onValidate={handleValidate}
+                                    onShowErrors={() => setViewMode('errors')}
+                                    tooltipInitial="Click to validate your form data against schema requirements"
+                                    tooltipValidated="Form validated successfully - ready to create submodel"
+                                    tooltipValidatedHover="Click to re-validate the form with current data"
+                                    tooltipErrors={`${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} found - click to view details`}
+                                />
+                                <Tooltip 
+                                    title={
+                                        validationState === 'initial'
+                                            ? 'Please validate the form first'
+                                            : validationState === 'errors'
+                                            ? `Fix ${validationErrors.length} validation error${validationErrors.length !== 1 ? 's' : ''} and re-validate before creating the submodel`
+                                            : isSubmitting
+                                            ? 'Creating submodel...'
+                                            : 'Create submodel with validated data'
+                                    }
+                                    placement="top"
+                                >
+                                    <span>
+                                        <Button
                                         variant="contained"
                                         size="large"
                                         startIcon={<SaveIcon />}
@@ -1086,8 +1085,9 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                     >
                                         {isSubmitting ? 'Creating Submodel...' : 'Create Submodel'}
                                     </Button>
-                                </span>
-                            </Tooltip>
+                                    </span>
+                                </Tooltip>
+                            </Box>
                         </Box>
 
                         {/* Main Content - Two Panel Layout */}
@@ -1116,12 +1116,21 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                         <EditIcon sx={{ color: 'primary.main' }} />
                                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                                             <Box>
-                                                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                                    Submodel Configuration
-                                                </Typography>
+                                                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                                                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                                        Submodel Configuration
+                                                    </Typography>
+                                                    {requestedActive && (
+                                                        <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 600 }}>
+                                                                • Displaying Required Only
+                                                        </Typography>
+                                                    )}
+                                                </Box>
                                                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                                                     Fill in the details for your {selectedSchema?.metadata.name} submodel
                                                 </Typography>
+
+                                                
                                             </Box>
                                             <Box sx={{ display: 'flex', gap: 1 }}>
                                                 {/* REQUESTED button (left of IMPORT) */}
@@ -1129,17 +1138,17 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                     variant={requestedActive ? 'contained' : 'outlined'}
                                                     size="small"
                                                     color={requestedActive ? 'primary' : 'inherit'}
-                                                    startIcon={requestedActive ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                                    startIcon={requestedActive ? <VisibilityIcon /> : <VisibilityOffIcon />}
                                                     sx={{ px: 2 }}
                                                     onClick={() => setRequestedActive(prev => !prev)}
                                                 >
-                                                    {requestedActive ? 'Required' : 'All'}
+                                                    {requestedActive ? 'Display All' : 'Required'}
                                                 </Button>
                                                 <Button
                                                     variant="outlined"
                                                     size="small"
                                                     onClick={() => setJsonImportOpen(true)}
-                                                    startIcon={<DataObjectIcon />}
+                                                    startIcon={<UploadIcon />}
                                                 >
                                                     IMPORT
                                                 </Button>
@@ -1321,96 +1330,6 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                 >
                                                     JSON
                                                 </Button>
-
-                                                {/* Dynamic Validate/Validated/Errors Button */}
-                                                {validationState === 'initial' && (
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        startIcon={<CheckBoxOutlineBlankIcon />}
-                                                        onClick={handleValidate}
-                                                        sx={{
-                                                            minWidth: '100px',
-                                                            textTransform: 'none',
-                                                            fontSize: '0.875rem',
-                                                            backgroundColor: '#f59e0b',
-                                                            color: 'white',
-                                                            '&:hover': {
-                                                                backgroundColor: '#d97706'
-                                                            }
-                                                        }}
-                                                    >
-                                                        Validate
-                                                    </Button>
-                                                )}
-
-                                                {validationState === 'validated' && (
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        startIcon={isHoveringValidated ? <RefreshIcon /> : <CheckBoxIcon />}
-                                                        onClick={handleValidate}
-                                                        onMouseEnter={() => setIsHoveringValidated(true)}
-                                                        onMouseLeave={() => setIsHoveringValidated(false)}
-                                                        sx={{
-                                                            minWidth: '120px',
-                                                            textTransform: 'none',
-                                                            fontSize: '0.875rem',
-                                                            backgroundColor: 'success.main',
-                                                            color: 'white',
-                                                            '&:hover': {
-                                                                backgroundColor: 'success.dark'
-                                                            }
-                                                        }}
-                                                    >
-                                                        {isHoveringValidated ? 'Re-validate' : 'Validated'}
-                                                    </Button>
-                                                )}
-
-                                                {validationState === 'errors' && (
-                                                    <Button
-                                                        variant={viewMode === 'errors' ? 'contained' : 'outlined'}
-                                                        size="small"
-                                                        startIcon={
-                                                            <Badge 
-                                                                badgeContent={validationErrors.length} 
-                                                                color="error"
-                                                                sx={{ 
-                                                                    '& .MuiBadge-badge': { 
-                                                                        fontSize: '0.65rem',
-                                                                        minWidth: '16px',
-                                                                        height: '16px'
-                                                                    } 
-                                                                }}
-                                                            >
-                                                                <ErrorIcon />
-                                                            </Badge>
-                                                        }
-                                                        onClick={() => setViewMode('errors')}
-                                                        sx={{
-                                                            minWidth: '100px',
-                                                            textTransform: 'none',
-                                                            fontSize: '0.875rem',
-                                                            ...(viewMode === 'errors' && {
-                                                                backgroundColor: 'error.main',
-                                                                color: 'white',
-                                                                '&:hover': {
-                                                                    backgroundColor: 'error.dark'
-                                                                }
-                                                            }),
-                                                            ...((viewMode !== 'errors') && {
-                                                                borderColor: 'error.main',
-                                                                color: 'error.main',
-                                                                '&:hover': {
-                                                                    backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                                                                    borderColor: 'error.dark'
-                                                                }
-                                                            })
-                                                        }}
-                                                    >
-                                                        Errors
-                                                    </Button>
-                                                )}
 
                                                 {/* Rules Button - Always visible */}
                                                 <Button

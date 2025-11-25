@@ -23,25 +23,38 @@
 
 from tractusx_sdk.dataspace.managers import AuthManager, OAuth2Manager
 from managers.config.config_manager import ConfigManager
+from managers.config.log_manager import LoggingManager
 from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import HTTPException, Request, status, Depends
 
+logger = LoggingManager.get_logger('staging')
 auth_manager: AuthManager | OAuth2Manager = None
 
 if ConfigManager.get_config("authorization.enabled"):
     if not ConfigManager.get_config("authorization.keycloak.enabled"):
+        logger.info("[API Key Manager] Authorization enabled with API Key authentication")
+        logger.info(f"[API Key Manager] API Key header: {ConfigManager.get_config('authorization.api_key.key')}")
         auth_manager = AuthManager(
             api_key_header=ConfigManager.get_config("authorization.api_key.key"),
             configured_api_key=ConfigManager.get_config("authorization.api_key.value"),
             auth_enabled=ConfigManager.get_config("authorization.enabled")
         )
     else:
+        keycloak_url = ConfigManager.get_config("authorization.keycloak.auth_url")
+        keycloak_realm = ConfigManager.get_config("authorization.keycloak.realm")
+        keycloak_client_id = ConfigManager.get_config("authorization.keycloak.client_id")
+        logger.info(f"[OAuth2 Manager] Authorization enabled with Keycloak OAuth2 authentication + keycloak : {keycloak_url} + realm: {keycloak_realm}")
+        
         auth_manager = OAuth2Manager(
-            auth_url=ConfigManager.get_config("authorization.keycloak.auth_url"),
-            realm=ConfigManager.get_config("authorization.keycloak.realm"),
-            clientid=ConfigManager.get_config("authorization.keycloak.client_id"),
+            auth_url=keycloak_url,
+            realm=keycloak_realm,
+            clientid=keycloak_client_id,
             clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
         )
+else:
+    logger.warning("=" * 80)
+    logger.warning("[AUTH] Authorization is DISABLED - API endpoints are publicly accessible")
+    logger.warning("=" * 80)
 
 api_key_header = APIKeyHeader(name=ConfigManager.get_config("authorization.api_key.key"), auto_error=False)
 bearer_security = HTTPBearer(auto_error=False)
@@ -53,15 +66,29 @@ def get_authentication_dependency():
         api_key: str = Depends(api_key_header),
         bearer_token: HTTPAuthorizationCredentials = Depends(bearer_security)
     ) -> bool:
+        # Always allow OPTIONS requests for CORS preflight
+        if request.method == "OPTIONS":
+            return True
 
         if auth_manager is None:
             return True
 
-        if api_key or bearer_token:
-            return auth_manager.is_authenticated(request=request)
-        
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required: provide either X-Api-Key header or Bearer token"
-        )
+        try:
+            if api_key or bearer_token:
+                return auth_manager.is_authenticated(request=request)
+            
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required: provide either X-Api-Key header or Bearer token"
+            )
+        except HTTPException:
+            # Re-raise HTTP exceptions as-is
+            raise
+        except Exception as e:
+            # Log unexpected errors and return 401 instead of 500
+            logger.error(f"Authentication error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication failed"
+            )
     return authenticate

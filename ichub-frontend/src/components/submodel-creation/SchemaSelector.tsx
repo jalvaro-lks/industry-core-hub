@@ -50,7 +50,6 @@ import {
     AccountTree as AccountTreeIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition, SCHEMA_REGISTRY } from '../../schemas';
-import { parseSemanticId } from '../../utils/semantics';
 
 interface SchemaSelectorProps {
     open: boolean;

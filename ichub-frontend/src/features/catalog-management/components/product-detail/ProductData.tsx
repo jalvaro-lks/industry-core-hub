@@ -45,7 +45,7 @@ import DarkSubmodelViewer from './DarkSubmodelViewer';
 import { SchemaSelector, SubmodelCreator } from '../../../../components/submodel-creation';
 import { SchemaDefinition } from '../../../../schemas';
 import { useEffect, useState } from 'react';
-import { fetchCatalogPartTwinDetails, registerCatalogPartTwin, createCatalogPartSubmodel } from '../../api';
+import { fetchCatalogPartTwinDetails, registerCatalogPartTwin, createTwinAspect } from '../../api';
 import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '../../types/twin-types';
 
 interface ProductDataProps {
@@ -219,15 +219,16 @@ const ProductData = ({ part, sharedParts, twinDetails: propTwinDetails, onPartUp
                 throw new Error('No schema selected');
             }
 
-            // Call the API to create the submodel
-            const result = await createCatalogPartSubmodel(
-                part.manufacturerId,
-                part.manufacturerPartId,
-                {
-                    semanticId: selectedSchema.metadata.semanticId,
-                    schemaKey: selectedSchemaKey,
-                    data: submodelData
-                }
+            // Check if twin exists
+            if (!twinDetails || !twinDetails.globalId) {
+                throw new Error('Twin must be created before adding submodels. Please create a twin first.');
+            }
+
+            // Call the API to create the twin aspect
+            const result = await createTwinAspect(
+                twinDetails.globalId,
+                selectedSchema.metadata.semanticId,
+                submodelData
             );
 
             if (result.success) {

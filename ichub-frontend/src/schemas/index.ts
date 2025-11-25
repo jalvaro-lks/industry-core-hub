@@ -23,23 +23,17 @@
 
 /**
  * Schema registry for managing different schema types and versions
+ * 
+ * Schemas are dynamically loaded from JSON schema files using the schemaLoader utility.
+ * To add a new schema:
+ * 1. Place the JSON schema file in the schemas/ directory (e.g., DigitalProductPassport-schema.json)
+ * 2. Import it and add to the schemas array below with optional custom metadata
+ * 3. The schema will be automatically interpreted and registered based on its semantic ID
  */
 
-import { 
-  DPP_SCHEMA_METADATA, 
-  DPPSchema, 
-  DPP_COMPREHENSIVE_FORM_FIELDS, 
-  createDefaultDPP, 
-  validateDPP,
-  getDPPFieldGroups,
-  getDPPRequiredFields,
-  getDPPOptionalFields
-} from './dpp/dpp-v6.1.0';
-
-// Helper function to get value from nested object path
-const getValueByPath = (obj: any, path: string): any => {
-  return path.split('.').reduce((current, key) => current && current[key], obj);
-};
+import { loadSchemas } from './schemaLoader';
+import digitalProductPassportSchema from './DigitalProductPassport-schema.json';
+import { JSONSchema } from './json-schema-interpreter';
 
 export interface SchemaMetadata {
   name: string;
@@ -60,17 +54,27 @@ export interface SchemaDefinition<T = any> {
 }
 
 /**
- * Registry of all available schemas
+ * Define schemas to load
+ * 
+ * Everything is automatically extracted from the JSON schema file:
+ *   - semanticId, version, namespace: From x-samm-aspect-model-urn
+ *   - name, description: From schema's title and description fields
+ *   - formFields, validation: Generated from schema structure
+ * 
+ * Simply import the JSON schema file and add it to this array.
  */
-const SCHEMA_REGISTRY: Record<string, SchemaDefinition> = {
-  'dpp-v6.1.0': {
-    metadata: DPP_SCHEMA_METADATA,
-    formFields: DPP_COMPREHENSIVE_FORM_FIELDS,
-    createDefault: createDefaultDPP,
-    validate: validateDPP
-  }
-  // Future schemas can be added here
-};
+const schemasToLoad = [
+  digitalProductPassportSchema as JSONSchema
+  // Add more schemas here:
+  // serialPartSchema as JSONSchema,
+  // batchSchema as JSONSchema,
+];
+
+/**
+ * Registry of all available schemas
+ * Automatically populated by loading and interpreting JSON schemas
+ */
+const SCHEMA_REGISTRY: Record<string, SchemaDefinition> = loadSchemas(schemasToLoad);
 
 /**
  * Get all available schemas
@@ -87,11 +91,38 @@ export const getSchema = (key: string): SchemaDefinition | undefined => {
 };
 
 /**
+ * Get schema by semantic ID
+ * Useful when you have the full semantic ID URN from a data model
+ */
+export const getSchemaBySemanticId = (semanticId: string): SchemaDefinition | undefined => {
+  return Object.values(SCHEMA_REGISTRY).find(
+    schema => schema.metadata.semanticId === semanticId
+  );
+};
+
+/**
+ * Get schema by namespace and version
+ * Example: getSchemaByNamespaceAndVersion('io.catenax.generic.digital_product_passport', '6.1.0')
+ */
+export const getSchemaByNamespaceAndVersion = (
+  namespace: string, 
+  version: string
+): SchemaDefinition | undefined => {
+  return Object.values(SCHEMA_REGISTRY).find(
+    schema => schema.metadata.namespace === namespace && schema.metadata.version === version
+  );
+};
+
+/**
+ * Get all schema versions for a specific namespace
+ */
+export const getSchemaVersionsByNamespace = (namespace: string): SchemaDefinition[] => {
+  return Object.values(SCHEMA_REGISTRY).filter(
+    schema => schema.metadata.namespace === namespace
+  );
+};
+
+/**
  * Export the schema registry for direct access
  */
 export { SCHEMA_REGISTRY };
-
-/**
- * Schema types export
- */
-export type { DPPSchema, DPPFormField } from './dpp/dpp-v6.1.0';

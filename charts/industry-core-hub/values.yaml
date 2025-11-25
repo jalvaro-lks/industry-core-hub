@@ -806,6 +806,23 @@ keycloak:
     enabled: true
     # -- Method: "startup" for --import-realm flag or "job" for post-install job
     method: "job"
+  # -- Realm user configuration (passwords will be hashed at deployment time)
+  realm:
+    name: "ICHub"
+    users:
+      - username: "ichub-admin"
+        password: "changeme"
+        email: "ichub-admin@example.com"
+        firstName: "Industry"
+        lastName: "Admin"
+        emailVerified: true
+        enabled: true
+        attributes:
+          BPN: ["BPNL000000000000"]
+        realmRoles:
+          - "default-roles-ichub"
+          - "offline_access"
+          - "uma_authorization"
   # -- Environment variables for startup import (only if method is "startup")
   extraEnvVars: []
 

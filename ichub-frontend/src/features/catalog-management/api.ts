@@ -126,7 +126,60 @@ export const fetchSubmodelContent = async (semanticId: string, submodelId: strin
 };
 
 /**
- * Create a new submodel for a catalog part
+ * Create a new submodel aspect for a digital twin
+ */
+export const createTwinAspect = async (
+  globalId: string,
+  semanticId: string,
+  payload: any,
+  submodelId?: string
+): Promise<{ success: boolean; submodelId?: string; message?: string }> => {
+  try {
+    const requestBody: {
+      globalId: string;
+      semanticId: string;
+      payload: any;
+      submodelId?: string;
+    } = {
+      globalId,
+      semanticId,
+      payload
+    };
+
+    // Only include submodelId if it's provided
+    if (submodelId) {
+      requestBody.submodelId = submodelId;
+    }
+
+    const response = await httpClient.post(
+      `${backendUrl}/twin-management/twin-aspect`,
+      requestBody
+    );
+    
+    return {
+      success: true,
+      submodelId: response.data.submodelId,
+      message: 'Twin aspect created successfully'
+    };
+  } catch (error) {
+    console.error('Error creating twin aspect:', error);
+    
+    if (axios.isAxiosError(error)) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.response?.data?.detail || 'Failed to create twin aspect'
+      };
+    }
+    
+    return {
+      success: false,
+      message: 'An unexpected error occurred while creating the twin aspect'
+    };
+  }
+};
+
+/**
+ * Create a new submodel for a catalog part (deprecated - use createTwinAspect)
  */
 export const createCatalogPartSubmodel = async (
   manufacturerId: string,
