@@ -41,6 +41,72 @@ spec:
         app.kubernetes.io/component: keycloak-import
     spec:
       restartPolicy: OnFailure
+      initContainers:
+        - name: prepare-realm
+          image: python:3.11-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            {{- range $user := .Values.keycloak.realm.users }}
+            - name: {{ $user.username | upper | replace "-" "_" }}_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-keycloak-realm-users
+                  key: {{ $user.username }}-password
+            {{- end }}
+          volumeMounts:
+            - name: realm-data
+              mountPath: /import
+            - name: processed-realm
+              mountPath: /output
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              echo "Installing bcrypt library..."
+              pip install bcrypt --quiet
+              
+              echo "Generating password hash..."
+              python3 <<'PYTHON_SCRIPT'
+              import bcrypt
+              import json
+              import os
+              import base64
+              
+              # Read the realm template
+              with open('/import/realm-export.json', 'r') as f:
+                  realm_data = json.load(f)
+              
+              # Get password from environment and decode from base64
+              password = base64.b64decode(os.environ['ICHUB_ADMIN_PASSWORD']).decode('utf-8')
+              
+              # Generate bcrypt hash (Keycloak uses bcrypt with 10 rounds by default)
+              salt = bcrypt.gensalt(rounds=10)
+              password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
+              
+              # Prepare the secretData JSON structure
+              secret_data = {
+                  "value": password_hash.decode('utf-8'),
+                  "salt": base64.b64encode(salt).decode('utf-8'),
+                  "additionalParameters": {}
+              }
+              
+              # Update the user credentials
+              for user in realm_data.get('users', []):
+                  if user.get('username') == 'ichub-admin':
+                      for cred in user.get('credentials', []):
+                          if cred.get('type') == 'password':
+                              cred['secretData'] = json.dumps(secret_data)
+              
+              # Write the processed realm
+              with open('/output/realm-export.json', 'w') as f:
+                  json.dump(realm_data, f, indent=2)
+              
+              print("Password hash generated and realm template processed")
+              PYTHON_SCRIPT
+              
+              echo "Realm template ready for import"
       containers:
         - name: realm-import
           image: curlimages/curl:8.5.0
@@ -53,7 +119,7 @@ spec:
             - name: KEYCLOAK_ADMIN_PASSWORD
               value: "{{ .Values.keycloak.auth.adminPassword }}"
           volumeMounts:
-            - name: realm-data
+            - name: processed-realm
               mountPath: /import
           command:
             - /bin/sh
@@ -122,9 +188,11 @@ spec:
         - name: realm-data
           configMap:
             name: {{ .Release.Name }}-realm-data
+        - name: processed-realm
+          emptyDir: {}
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
+        runAsNonRoot: false
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
 {{- end }}
