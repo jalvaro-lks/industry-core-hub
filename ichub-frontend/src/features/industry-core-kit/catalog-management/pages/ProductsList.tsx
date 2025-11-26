@@ -33,7 +33,7 @@ import ShareDialog from "@/features/industry-core-kit/catalog-management/compone
 import CreateProductListDialog from "@/features/industry-core-kit/catalog-management/components/product-list/CreateProductListDialog";
 import { fetchCatalogParts, registerCatalogPartTwin } from "@/features/industry-core-kit/catalog-management/api";
 import { mapApiPartDataToPartType } from "../utils/utils";
-import { CatalogPartTwinCreateType } from "@/features/industry-core-kit/catalog-management/pages/types/twin-types";
+import { CatalogPartTwinCreateType } from "@/features/industry-core-kit/catalog-management/types/twin-types";
 
 const ProductsList = () => {
   const [carParts, setCarParts] = useState<PartType[]>([]);

@@ -31,7 +31,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import { DiscoveryCardChip } from "./DiscoveryCardChip";
 import { ErrorNotFound } from '@/components/general/ErrorNotFound';
 import LoadingSpinner from '@/components/general/LoadingSpinner';
-import { AASData } from '@/features/industry-core-kit/utils/utils';
+import { AASData } from '@/features/industry-core-kit/part-discovery/utils/utils';
 
 export interface AppContent {
   id?: string;

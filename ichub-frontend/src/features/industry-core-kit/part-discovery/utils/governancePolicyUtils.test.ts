@@ -23,7 +23,7 @@
 /** Created using an LLM (Github Copilot) review by a human committer */
 
 import { describe, it, expect } from 'vitest';
-import { generateOdrlPolicies, getGovernancePolicyForSemanticId, getDefaultGovernancePolicy } from '@/features/industry-core-kit/part-discovery/utils/utils/governancePolicyUtils';
+import { generateOdrlPolicies, getGovernancePolicyForSemanticId, getDefaultGovernancePolicy } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 import type { GovernanceConfig } from '@/services/EnvironmentService';
 
 describe('Governance Policy Utils', () => {

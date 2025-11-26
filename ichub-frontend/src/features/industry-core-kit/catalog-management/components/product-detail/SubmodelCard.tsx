@@ -36,7 +36,7 @@ import {
     DataObject as DataObjectIcon
 } from '@mui/icons-material';
 
-import { TwinAspectRead } from '@/types/twin-types';
+import { TwinAspectRead } from '@/features/industry-core-kit/catalog-management/types/twin-types';
 import { parseSemanticId } from '@/utils/semantics';
 
 interface SubmodelCardProps {

@@ -26,8 +26,8 @@ import { Box, TextField, Alert, Dialog, DialogTitle, DialogContent, DialogAction
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import { PartnerDialogProps } from '@/features/industry-core-kit/partner-management/types/dialog-types';
-import { createPartner } from '@/features/industry-core-kit/partner-management/api';
+import { PartnerDialogProps } from '@/features/business-partner-kit/partner-management/types/dialog-types';
+import { createPartner } from '@/features/business-partner-kit/partner-management/api';
 import { useEscapeDialog } from '@/hooks/useEscapeKey';
 
 const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDialogProps) => {

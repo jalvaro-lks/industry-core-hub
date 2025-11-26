@@ -24,7 +24,7 @@
  * Generic utilities for working with Catena-X semantic models
  */
 
-import { ParsedSemanticId } from '@/features/industry-core-kit/part-discovery/components/submodel-addons/shared/types';
+import { ParsedSemanticId } from '@/features/industry-core-kit/part-discovery/components/submodel-addons/types';
 import { compareVersions } from '@/features/industry-core-kit/part-discovery/components/submodel-addons/utils/version-utils';
 
 /**

@@ -28,12 +28,12 @@ import SendIcon from '@mui/icons-material/Send';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
-import { ProductDetailDialogProps } from '../../../types/dialog-types';
-import { PartnerInstance } from "@/features/industry-core-kit/partner-management/types/types";
-import { PartnerAutocomplete } from '@/features/industry-core-kit/partner-management/components';
+import { ProductDetailDialogProps } from '@/features/industry-core-kit/catalog-management/types/dialog-types';
+import { PartnerInstance } from "@/features/business-partner-kit/partner-management/types/types";
+import { PartnerAutocomplete } from '@/features/business-partner-kit/partner-management/components';
 
 import { shareCatalogPart } from '@/features/industry-core-kit/catalog-management/api';
-import { fetchPartners } from '@/features/industry-core-kit/partner-management/api';
+import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
 import { useEscapeDialog } from '@/hooks/useEscapeKey';
 
 const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {

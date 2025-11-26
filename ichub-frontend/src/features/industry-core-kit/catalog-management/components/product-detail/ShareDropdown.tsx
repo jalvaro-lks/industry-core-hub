@@ -47,7 +47,7 @@ import {
 } from '@mui/icons-material';
 import { PRODUCT_OPTIONS } from '@/features/industry-core-kit/catalog-management/types/shared';
 import { PartType, StatusVariants } from "@/features/industry-core-kit/catalog-management/types/types";
-import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '@/types/twin-types';
+import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '@/features/industry-core-kit/catalog-management/types/twin-types';
 import { registerCatalogPartTwin } from "@/features/industry-core-kit/catalog-management/api";
 
 interface ShareDropdownProps {

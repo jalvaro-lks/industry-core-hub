@@ -23,8 +23,8 @@
 import React from 'react';
 import { Button, CircularProgress } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { PartnerInstance } from '@/features/industry-core-kit/partner-management/types/types';
-import { PartnerAutocomplete } from '@/features/industry-core-kit/partner-management/components';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
+import { PartnerAutocomplete } from '@/features/business-partner-kit/partner-management/components';
 
 interface PartnerSearchProps {
   bpnl: string;

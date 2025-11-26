@@ -49,9 +49,9 @@ import {
 
 import PageNotification from '@/components/general/PageNotification';
 import { addSerializedPart } from '@/features/industry-core-kit/serialized-parts/api';
-import { fetchPartners } from '@/features/industry-core-kit/partner-management/api';
-import { PartnerInstance } from '@/features/industry-core-kit/partner-management/types/types';
-import { PartnerAutocomplete } from '@/features/industry-core-kit/partner-management/components';
+import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
+import { PartnerAutocomplete } from '@/features/business-partner-kit/partner-management/components';
 import { AxiosError } from '@/types/axiosError';
 import { getParticipantId } from '@/services/EnvironmentService';
 import { useEscapeDialog } from '@/hooks/useEscapeKey';

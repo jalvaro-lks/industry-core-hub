@@ -24,7 +24,7 @@ import { Box, Grid2, Typography, Alert, CircularProgress } from '@mui/material';
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAllSerializedParts } from '@/features/industry-core-kit/serialized-parts/api';
 import SerializedPartsTable from '@/features/industry-core-kit/serialized-parts/components/SerializedPartsTable';
-import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/pages/types';
+import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
 
 const SerializedParts = () => {
   const [serializedParts, setSerializedParts] = useState<SerializedPart[]>([]);

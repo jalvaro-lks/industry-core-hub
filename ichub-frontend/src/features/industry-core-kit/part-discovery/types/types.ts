@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { AASData } from '@/features/industry-core-kit/part-discovery/types/utils/utils';
+import { AASData } from '@/features/industry-core-kit/part-discovery/utils/utils';
 
 // Re-export shared product types from catalog-management for discovery context
 export type { 

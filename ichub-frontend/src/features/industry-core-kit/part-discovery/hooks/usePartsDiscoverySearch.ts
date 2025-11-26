@@ -26,12 +26,12 @@ import {
   discoverSingleShell,
   ShellDiscoveryPaginator,
   SingleShellDiscoveryResponse 
-} from '@/features/industry-core-kit/part-discovery/hooks/api';
+} from '@/features/industry-core-kit/part-discovery/api';
 import { 
   ShellDiscoveryResponse,
-} from '@/features/industry-core-kit/part-discovery/hooks/utils/utils';
-import { convertToPartCards, convertToSerializedParts } from '@/features/industry-core-kit/part-discovery/hooks/utils/data-converters';
-import { createShellToDtrMap } from '@/features/industry-core-kit/part-discovery/hooks/utils/dtr-utils';
+} from '@/features/industry-core-kit/part-discovery/utils/utils';
+import { convertToPartCards, convertToSerializedParts } from '@/features/industry-core-kit/part-discovery/utils/data-converters';
+import { createShellToDtrMap } from '@/features/industry-core-kit/part-discovery/utils/dtr-utils';
 import { 
   PartCardData, 
   SerializedPartData, 

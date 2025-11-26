@@ -1,7 +1,6 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 LKS Next
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -21,33 +20,18 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-export interface KitFeatureItem {
-  id: string;
-  name: string;
-  description: string;
-  icon?: React.ReactElement; // Icon for the feature
-  enabled: boolean;
-  default?: boolean; // If true, this feature cannot be toggled off
-  module?: any; // The imported feature module (FeatureConfig)
-}
+import { Badge } from '@mui/icons-material';
+import { FeatureConfig } from '@/types/routing';
+import PassportConsumption from './pages/PassportConsumption';
 
-export interface KitFeature {
-  id: string;
-  name: string;
-  description: string;
-  status: 'available' | 'coming-soon' | 'beta';
-  icon: React.ReactElement;
-  image?: string;
-  features: KitFeatureItem[];
-  domain: 'core' | 'sustainability' | 'supply-chain' | 'participant-management' | 'industry-core';
-  version?: string;
-  createdAt?: string;
-  lastUpdated?: string;
-  documentation?: string;
-}
-
-export interface KitFeaturesState {
-  kits: KitFeature[];
-  loading: boolean;
-  error: string | null;
-}
+export const passportConsumptionFeature: FeatureConfig = {
+  icon: <Badge />,
+  navigationPath: '/passports',
+  disabled: false,
+  routes: [
+    {
+      path: '/passports',
+      element: <PassportConsumption />
+    }
+  ]
+};

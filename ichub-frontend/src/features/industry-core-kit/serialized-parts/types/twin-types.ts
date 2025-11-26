@@ -21,7 +21,7 @@
  ********************************************************************************/
 
 import { UUIDTypes } from 'uuid';
-import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types/types';
+import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
 
 interface BusinessPartner {
   name: string;

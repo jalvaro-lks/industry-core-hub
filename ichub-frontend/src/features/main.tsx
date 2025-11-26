@@ -27,137 +27,186 @@ import {
   Link,
   DeviceHub,
   Timeline,
-  Build,
-  Science
+  Group,
+  EnergySavingsLeaf,
+  Storefront,
+  Dashboard,
+  FindInPage,
+  GroupAdd,
+  Badge,
+  Policy
 } from '@mui/icons-material';
 import { kitFeaturesFeature } from './kit-features/routes';
 import { FeatureConfig, NavigationItem } from '@/types/routing';
 import { KitFeature } from './kit-features/types';
 
+// Import KIT images
+import IndustryCoreKitImage from '@/features/kit-features/assets/kit-images/industry-core-kit.svg';
+import BusinessPartnerKitImage from '@/features/kit-features/assets/kit-images/business-partner-kit.svg';
+import EcoPassKitImage from '@/features/kit-features/assets/kit-images/eco-pass-kit.svg';
+import DataGovernanceKitImage from '@/features/kit-features/assets/kit-images/data-governance-kit.svg';
+import PcfKitImage from '@/features/kit-features/assets/kit-images/pcf-kit.svg';
+import DataChainKitImage from '@/features/kit-features/assets/kit-images/data-chain-kit.svg';
+import DcmKitImage from '@/features/kit-features/assets/kit-images/dcm-kit.svg';
+import TraceabilityKitImage from '@/features/kit-features/assets/kit-images/traceability-kit.svg';
+
 // Import feature modules
 import { catalogManagementFeature } from './industry-core-kit/catalog-management/routes';
 import { partDiscoveryFeature } from './industry-core-kit/part-discovery/routes';
-import { partnerManagementFeature } from './industry-core-kit/partner-management/routes';
+import { partnerManagementFeature } from './business-partner-kit/partner-management/routes';
 import { serializedPartsFeature } from './industry-core-kit/serialized-parts/routes';
+import { passportConsumptionFeature } from './eco-pass-kit/passport-consumption/routes';
 
 // KIT configurations with feature toggles
 export const kits: KitFeature[] = [
-  // 1. Industry Core KIT
   {
     id: 'industry-core',
     name: 'Industry Core KIT',
     description: 'Core functionality for industrial data management, partner discovery, and catalog management.',
     status: 'available',
     icon: <Hub />,
-    image: '/src/assets/kit-images/industry-core-kit.svg',
+    image: IndustryCoreKitImage,
     features: [
-      { id: 'catalog-management', name: 'Catalog Management', description: 'Manage service catalogs and registrations', enabled: true, default: true, module: catalogManagementFeature },
-      { id: 'serialized-parts', name: 'Serialized Parts', description: 'Track and manage serialized components', enabled: true, default: true, module: serializedPartsFeature },
-      { id: 'dataspace-discovery', name: 'Dataspace Discovery', description: 'Discover and connect to data spaces', enabled: true, default: true, module: partDiscoveryFeature },
-      { id: 'participants', name: 'Participants Management', description: 'Manage ecosystem participants', enabled: true, default: true, module: partnerManagementFeature }
+      {
+        module: catalogManagementFeature,
+        id: 'catalog-management',
+        name: 'Provide Catalog/Type Parts',
+        description: 'Provide, Share and Manage Parts in Catalog / Type Level.',
+        icon: <Storefront />,
+        enabled: true,
+        default: true
+      },
+      {
+        module: serializedPartsFeature,
+        id: 'serialized-parts',
+        name: 'Provide Serialized/Instance Parts',
+        description: 'Provide, Share and Manage Parts in Serialized / Instance Level',
+        icon: <Dashboard />,
+        enabled: true,
+        default: true
+      },
+      {
+        module: partDiscoveryFeature,
+        id: 'dataspace-discovery',
+        name: 'Consume Data via Dataspace Discovery',
+        description: 'Search, Discover and Visualize Digital Twins & Submodels from your partners connected to the same dataspace as you',
+        icon: <FindInPage />,
+        enabled: true,
+        default: true
+      },
     ],
-    category: 'core',
+    domain: 'industry-core',
     version: '1.0.0',
-    lastUpdated: '2024-10-15'
+    createdAt: '2025-06-01',
+    lastUpdated: '2025-12-03',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/industry-core-kit/adoption-view'
+  },
+  {
+    id: 'business-partner',
+    name: 'Business Partner KIT',
+    description: 'Comprehensive business partners data management, contact list and validation of participants.',
+    status: 'available',
+    icon: <Group />,
+    image: BusinessPartnerKitImage,
+    features: [
+        {
+        module: partnerManagementFeature,
+        id: 'participants',
+        name: 'Contact List',
+        description: 'Manage your simple dataspace partner contact list, to enable easier consumption and collaboration.',
+        icon: <GroupAdd />,
+        enabled: true,
+        default: true
+      }
+    ],
+    version: '1.0.0',
+    createdAt: '2025-06-01',
+    lastUpdated: '2025-12-03',
+    domain: 'participant-management',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/business-partner-kit/adoption-view'
   },
   {
     id: 'eco-pass',
     name: 'Eco Pass KIT',
-    description: 'Environmental sustainability tracking and carbon footprint management for supply chains.',
+    description: "Leverage the transparency of digital product passports to strengthen sustainability & compliance.",
     status: 'available',
     icon: <Recycling />,
-    image: '/src/assets/kit-images/eco-pass-kit.svg',
+    image: EcoPassKitImage,
     features: [
-      { id: 'carbon-footprint', name: 'Carbon Footprint', description: 'Environmental impact tracking', enabled: false },
-      { id: 'environmental-impact', name: 'Environmental Impact', description: 'Assess environmental impacts', enabled: false },
-      { id: 'sustainability-reports', name: 'Sustainability Reports', description: 'Generate sustainability reports', enabled: false },
-      { id: 'green-metrics', name: 'Green Metrics', description: 'Track green performance metrics', enabled: false }
+      {
+        module: passportConsumptionFeature,
+        id: 'pass-consumption',
+        name: 'Passport Consumption & Visualization',
+        description: 'Retrieve passport from a dataspace participant via QR code or ID and display it.',
+        icon: <Badge />,
+        enabled: false,
+        default: false
+      },
     ],
-    category: 'sustainability'
+    createdAt: '2025-11-26',
+    lastUpdated: '2025-12-03',
+    domain: 'sustainability',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/eco-pass-kit/adoption-view'
   },
-  // 2. PCF KIT
+  {
+    id: 'data-governance',
+    name: 'Data Governance KIT',
+    description: 'Manage your data sovereignty, policies, contracts, compliance, and governance.',
+    status: 'coming-soon',
+    icon: <Policy />,
+    image: DataGovernanceKitImage,
+    features: [],
+    domain: 'dataspace-foundation',
+    version: '0.0.0',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/data-governance-kit/adoption-view'
+  },
   {
     id: 'pcf',
     name: 'PCF KIT',
     description: 'Product Carbon Footprint calculation and lifecycle assessment tools.',
     status: 'coming-soon',
-    icon: <Science />,
-    image: '/src/assets/kit-images/pcf-kit.svg',
-    features: [
-      { id: 'carbon-calculation', name: 'Carbon Calculation', description: 'Calculate product carbon footprints', enabled: false },
-      { id: 'lifecycle-assessment', name: 'Lifecycle Assessment', description: 'Perform comprehensive LCA analysis', enabled: false },
-      { id: 'emission-tracking', name: 'Emission Tracking', description: 'Track and monitor emissions', enabled: false },
-      { id: 'reports', name: 'Sustainability Reports', description: 'Generate detailed sustainability reports', enabled: false }
-    ],
-    category: 'sustainability',
-    version: '0.9.0',
-    lastUpdated: '2024-10-10'
+    icon: <EnergySavingsLeaf />,
+    image: PcfKitImage,
+    features: [],
+    domain: 'sustainability',
+    version: '0.0.0',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/product-carbon-footprint-exchange-kit/adoption-view'
   },
-  // 3. Data Chain KIT
   {
     id: 'data-chain',
     name: 'Data Chain KIT',
-    description: 'Secure data sharing and interoperability across automotive value chains.',
+    description: 'Access data distributed across the dataspace.',
     status: 'coming-soon',
     icon: <Link />,
-    image: '/src/assets/kit-images/data-chain-kit.svg',
-    features: [
-      { id: 'data-sharing', name: 'Data Sharing', description: 'Secure data sharing capabilities', enabled: false },
-      { id: 'interoperability', name: 'Interoperability', description: 'Cross-platform interoperability', enabled: false },
-      { id: 'chain-management', name: 'Chain Management', description: 'Manage data chains', enabled: false },
-      { id: 'data-governance', name: 'Data Governance', description: 'Data governance and policies', enabled: false }
-    ],
-    category: 'collaboration'
+    image: DataChainKitImage,
+    features: [],
+    version: '0.0.0',
+    domain: 'supply-chain',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/data-chain-kit/adoption-view'
   },
-  // 4. Business Partner KIT
-  {
-    id: 'business-partner',
-    name: 'Business Partner KIT',
-    description: 'Comprehensive business partner data management and validation.',
-    status: 'coming-soon',
-    icon: <Build />,
-    image: '/src/assets/kit-images/business-partner-kit.svg',
-    features: [
-      { id: 'partner-data', name: 'Partner Data', description: 'Manage partner information', enabled: false },
-      { id: 'validation', name: 'Validation', description: 'Validate partner data', enabled: false },
-      { id: 'master-data', name: 'Master Data', description: 'Master data management', enabled: false },
-      { id: 'golden-record', name: 'Golden Record', description: 'Create golden records', enabled: false }
-    ],
-    category: 'core'
-  },
-  // 5. DCM KIT
   {
     id: 'dcm',
     name: 'DCM KIT',
     description: 'Demand and Capacity Management for optimizing supply chain operations.',
     status: 'coming-soon',
     icon: <DeviceHub />,
-    image: '/src/assets/kit-images/dcm-kit.svg',
-    features: [
-      { id: 'demand-planning', name: 'Demand Planning', description: 'Plan and forecast demand', enabled: false },
-      { id: 'capacity-planning', name: 'Capacity Planning', description: 'Optimize capacity planning', enabled: false },
-      { id: 'resource-optimization', name: 'Resource Optimization', description: 'Optimize resource allocation', enabled: false },
-      { id: 'analytics', name: 'Analytics', description: 'Advanced analytics and insights', enabled: false }
-    ],
-    category: 'core'
+    image: DcmKitImage,
+    features: [],
+    version: '0.0.0',
+    domain: 'supply-chain',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/demand-and-capacity-management-kit/adoption-view/overview'
   },
-  // 7. Traceability KIT
   {
     id: 'traceability',
     name: 'Traceability KIT',
-    description: 'End-to-end traceability of parts and components throughout the supply chain.',
+    description: 'End-to-end traceability of parts, alerts and components throughout the supply chain.',
     status: 'coming-soon',
     icon: <Timeline />,
-    image: '/src/assets/kit-images/traceability-kit.svg',
-    features: [
-      { id: 'part-tracking', name: 'Part Tracking', description: 'Track parts through supply chain', enabled: false },
-      { id: 'supply-chain-visibility', name: 'Supply Chain Visibility', description: 'Full supply chain visibility', enabled: false },
-      { id: 'origin-verification', name: 'Origin Verification', description: 'Verify part origins', enabled: false },
-      { id: 'recall-management', name: 'Recall Management', description: 'Manage product recalls', enabled: false }
-    ],
-    category: 'traceability',
-    version: '1.0.0',
-    lastUpdated: '2024-10-24'
+    image: TraceabilityKitImage,
+    features: [],
+    version: '0.0.0',
+    domain: 'industry-core',
+    documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/Traceability%20Kit/Adoption%20View%20Traceability%20Kit'
   }
 ];
 
@@ -166,17 +215,21 @@ const getEnabledFeatures = (): FeatureConfig[] => {
   return kits
     .flatMap(kit => kit.features)
     .filter(feature => feature.enabled && feature.module)
-    .map(feature => feature.module!);
+    .map(feature => ({
+      ...feature.module!,
+      name: feature.name,
+      icon: feature.icon || feature.module!.icon
+    }));
 };
 
 // Import all feature configurations (only enabled ones)
 export const allFeatures: FeatureConfig[] = [
   ...getEnabledFeatures(),
-  // Add placeholder for status feature (disabled)
+  // Add placeholder for additional features (disabled - opens features panel)
   {
-    name: 'Status',
+    name: 'Add Features',
     icon: <Assignment />,
-    navigationPath: '/status',
+    navigationPath: '/add-features',
     disabled: true,
     routes: []
   }
@@ -185,13 +238,15 @@ export const allFeatures: FeatureConfig[] = [
 export const kitFeaturesConfig = kitFeaturesFeature;
 
 // Extract just the navigation items for the sidebar (backward compatibility)
-export const features: NavigationItem[] = allFeatures.map(feature => ({
-  icon: feature.icon,
-  path: feature.navigationPath,
-  disabled: feature.disabled
-}));
+export const features: NavigationItem[] = allFeatures
+  .filter(feature => feature.icon) // Only include features with icons
+  .map(feature => ({
+    icon: feature.icon!,
+    path: feature.navigationPath,
+    disabled: feature.disabled
+  }));
 
 // Get all routes from all features
 export const getAllRoutes = () => {
-return [...allFeatures.flatMap(feature => feature.routes), ...kitFeaturesConfig.routes];
+  return [...allFeatures.flatMap(feature => feature.routes), ...kitFeaturesConfig.routes];
 };

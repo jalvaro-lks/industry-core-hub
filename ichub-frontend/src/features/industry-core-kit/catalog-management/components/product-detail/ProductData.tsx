@@ -46,7 +46,7 @@ import { SchemaSelector, SubmodelCreator } from '@/components/submodel-creation'
 import { SchemaDefinition } from '@/schemas';
 import { useEffect, useState } from 'react';
 import { fetchCatalogPartTwinDetails, registerCatalogPartTwin, createTwinAspect } from '@/features/industry-core-kit/catalog-management/api';
-import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '@/types/twin-types';
+import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '@/features/industry-core-kit/catalog-management/types/twin-types';
 
 interface ProductDataProps {
     part: PartType;

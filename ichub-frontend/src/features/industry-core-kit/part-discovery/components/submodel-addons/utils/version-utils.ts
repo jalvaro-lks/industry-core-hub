@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { SemanticVersion, VersionRange, ParsedSemanticId } from '@/features/industry-core-kit/part-discovery/components/submodel-addons/utils/types';
+import { SemanticVersion, VersionRange, ParsedSemanticId } from '@/features/industry-core-kit/part-discovery/components/submodel-addons/types';
 
 /**
  * Parse a semantic ID string into its components

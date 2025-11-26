@@ -47,5 +47,5 @@ export enum PRODUCT_OPTIONS {
 // Re-export feature-specific types for backward compatibility
 // These will be removed in future versions - use direct imports from features instead
 export type { PartType, ApiPartData } from './types';
-export type { PartnerInstance, SharedPartner } from '@/features/industry-core-kit/partner-management/types/types';
+export type { PartnerInstance, SharedPartner } from '@/features/business-partner-kit/partner-management/types/types';
 export type { TwinReadType, CatalogPartTwinCreateType } from './twin-types';

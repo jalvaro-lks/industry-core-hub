@@ -20,13 +20,10 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { People } from '@mui/icons-material';
 import PartnersList from './pages/PartnersList';
 import { FeatureConfig } from '@/types/routing';
 
 export const partnerManagementFeature: FeatureConfig = {
-  name: 'Partner Management',
-  icon: <People />,
   navigationPath: '/partners',
   disabled: false,
   routes: [

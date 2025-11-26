@@ -20,14 +20,12 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Storefront } from '@mui/icons-material';
 import ProductsList from './pages/ProductsList';
 import ProductsDetails from './pages/ProductsDetails';
 import { FeatureConfig } from '@/types/routing';
 
 export const catalogManagementFeature: FeatureConfig = {
   name: 'Catalog Management',
-  icon: <Storefront />,
   navigationPath: '/catalog',
   disabled: false,
   routes: [
@@ -45,14 +43,6 @@ export const catalogManagementFeature: FeatureConfig = {
       meta: {
         title: 'Product Details',
         description: 'View detailed product information'
-      }
-    },
-    {
-      index: true,
-      element: <ProductsList />,
-      meta: {
-        title: 'Home - Product Catalog',
-        description: 'Default home page showing product catalog'
       }
     }
   ]

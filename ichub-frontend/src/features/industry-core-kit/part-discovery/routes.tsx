@@ -20,13 +20,11 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { FindInPage } from '@mui/icons-material';
 import PartsDiscovery from './pages/PartsDiscovery';
 import { FeatureConfig } from '@/types/routing';
 
 export const partDiscoveryFeature: FeatureConfig = {
   name: 'Parts Discovery',
-  icon: <FindInPage />,
   navigationPath: '/dataspace-discovery',
   disabled: false,
   routes: [

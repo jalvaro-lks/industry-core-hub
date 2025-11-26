@@ -31,7 +31,7 @@ import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 
-import { ProductDetailDialogProps } from '../../../types/dialog-types';
+import { ProductDetailDialogProps } from '@/features/industry-core-kit/catalog-management/types/dialog-types';
 import { useEscapeDialog } from '@/hooks/useEscapeKey';
 
 const JsonViewerDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {

@@ -22,14 +22,14 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 //import { useNavigate } from "react-router-dom";
-import { PartnerInstance } from "@/features/industry-core-kit/partner-management/pages/types/types";
+import { PartnerInstance } from "@/features/business-partner-kit/partner-management/types/types";
 import TablePagination from '@mui/material/TablePagination';
-import { Typography, Grid2, Button, Alert, Box } from '@mui/material';
+import { Typography, Grid2, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
-import { PartnerCard } from "@/features/industry-core-kit/partner-management/components/partners-list/PartnerCard";
-import CreatePartnerDialog from "@/features/industry-core-kit/partner-management/components/general/CreatePartnerDialog";
-import { fetchPartners } from '@/features/industry-core-kit/partner-management/api';
+import { PartnerCard } from "@/features/business-partner-kit/partner-management/components/partners-list/PartnerCard";
+import CreatePartnerDialog from "@/features/business-partner-kit/partner-management/components/general/CreatePartnerDialog";
+import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
 import {ErrorNotFound} from '@/components/general/ErrorNotFound';
 import LoadingSpinner from '@/components/general/LoadingSpinner';
 
@@ -159,7 +159,7 @@ const PartnersList = () => {
       <Grid2 className="product-catalog" container spacing={1} direction="row">
         <Grid2 className="title flex flex-content-center">
           <Typography className="text">
-            Partners View
+            Contact List
           </Typography>
         </Grid2>
 

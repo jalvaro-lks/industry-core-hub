@@ -65,9 +65,9 @@ import {
   AASData,
   getAASDataSummary
 } from '@/features/industry-core-kit/part-discovery/utils/utils';
-import { fetchPartners } from '@/features/industry-core-kit/partner-management/api';
-import { PartnerInstance } from '@/features/industry-core-kit/partner-management/types/types';
-import { PartnerAutocomplete } from '@/features/industry-core-kit/partner-management/components';
+import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
+import { PartnerAutocomplete } from '@/features/business-partner-kit/partner-management/components';
 
 interface PartCardData {
   id: string;

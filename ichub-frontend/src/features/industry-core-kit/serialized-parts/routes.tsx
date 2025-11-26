@@ -20,13 +20,11 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { Dashboard } from '@mui/icons-material';
 import SerializedParts from './pages/SerializedParts';
 import { FeatureConfig } from '@/types/routing';
 
 export const serializedPartsFeature: FeatureConfig = {
   name: 'Serialized Parts',
-  icon: <Dashboard />,
   navigationPath: '/serialized-parts',
   disabled: false,
   routes: [

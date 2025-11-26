@@ -45,7 +45,7 @@ import LoadingSpinner from '@/components/general/LoadingSpinner';
 
 import { PartType } from "@/features/industry-core-kit/catalog-management/types/types";
 import { PRODUCT_STATUS } from "@/features/industry-core-kit/catalog-management/types/shared";
-import { CatalogPartTwinDetailsRead } from "@/features/industry-core-kit/catalog-management/pages/types/twin-types";
+import { CatalogPartTwinDetailsRead } from "@/features/industry-core-kit/catalog-management/types/twin-types";
 
 import { SharedPartner } from "@/features/industry-core-kit/catalog-management/types/types"
 

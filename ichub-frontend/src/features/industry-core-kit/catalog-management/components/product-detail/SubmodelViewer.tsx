@@ -43,7 +43,7 @@ import {
     ChevronRight as ChevronRightIcon,
     Add as AddIcon
 } from '@mui/icons-material';
-import { CatalogPartTwinDetailsRead } from '@/types/twin-types';
+import { CatalogPartTwinDetailsRead } from '@/features/industry-core-kit/catalog-management/types/twin-types';
 import { parseSemanticId } from '@/utils/semantics';
 
 interface SubmodelViewerProps {

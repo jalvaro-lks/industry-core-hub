@@ -22,6 +22,7 @@
 ********************************************************************************/
 
 import KitFeaturesPage from './pages/KitFeaturesPage';
+import KitDetailPage from './pages/KitDetailPage';
 import { FeatureConfig } from '@/types/routing';
 import CustomAppsIcon from '../../components/icons/CustomAppsIcon';
 
@@ -32,11 +33,28 @@ export const kitFeaturesFeature: FeatureConfig = {
   disabled: false,
   routes: [
     {
+      path: '/',
+      index: true,
+      element: <KitFeaturesPage />,
+      meta: {
+        title: 'KIT Features',
+        description: 'Manage and configure Tractus-X KITs'
+      }
+    },
+    {
       path: '/kit-features',
       element: <KitFeaturesPage />,
       meta: {
         title: 'KIT Features',
         description: 'Manage and configure Tractus-X KITs'
+      }
+    },
+    {
+      path: '/kit-features/:kitId',
+      element: <KitDetailPage />,
+      meta: {
+        title: 'KIT Details',
+        description: 'View and manage KIT features'
       }
     }
   ]

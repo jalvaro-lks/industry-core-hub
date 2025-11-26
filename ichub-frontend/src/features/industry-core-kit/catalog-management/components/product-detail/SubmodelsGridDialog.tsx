@@ -42,7 +42,7 @@ import {
     ViewModule as ViewModuleIcon,
     Schema as SchemaIcon
 } from '@mui/icons-material';
-import { CatalogPartTwinDetailsRead } from '@/types/twin-types';
+import { CatalogPartTwinDetailsRead } from '@/features/industry-core-kit/catalog-management/types/twin-types';
 import SubmodelCard from './SubmodelCard';
 import DarkSubmodelViewer from './DarkSubmodelViewer';
 import { useEscapeDialog } from '@/hooks/useEscapeKey';

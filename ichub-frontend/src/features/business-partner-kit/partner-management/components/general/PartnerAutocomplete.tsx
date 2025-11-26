@@ -33,7 +33,7 @@ import {
   IconButton
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { PartnerInstance } from '@/features/industry-core-kit/partner-management/types/types';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
 
 export interface PartnerAutocompleteProps {
   /** Current BPNL value */
