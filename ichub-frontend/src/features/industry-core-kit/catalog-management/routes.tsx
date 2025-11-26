@@ -1,7 +1,6 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 LKS Next
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -21,22 +20,39 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import KitFeaturesPage from './pages/KitFeaturesPage';
+import { Storefront } from '@mui/icons-material';
+import ProductsList from './pages/ProductsList';
+import ProductsDetails from './pages/ProductsDetails';
 import { FeatureConfig } from '@/types/routing';
-import CustomAppsIcon from '../../components/icons/CustomAppsIcon';
 
-export const kitFeaturesFeature: FeatureConfig = {
-  name: 'KIT Features',
-  icon: <CustomAppsIcon />,
-  navigationPath: '/kit-features',
+export const catalogManagementFeature: FeatureConfig = {
+  name: 'Catalog Management',
+  icon: <Storefront />,
+  navigationPath: '/catalog',
   disabled: false,
   routes: [
     {
-      path: '/kit-features',
-      element: <KitFeaturesPage />,
+      path: '/catalog',
+      element: <ProductsList />,
       meta: {
-        title: 'KIT Features',
-        description: 'Manage and configure Tractus-X KITs'
+        title: 'Product Catalog',
+        description: 'Manage and view product catalog'
+      }
+    },
+    {
+      path: '/product/:manufacturerId/:manufacturerPartId',
+      element: <ProductsDetails />,
+      meta: {
+        title: 'Product Details',
+        description: 'View detailed product information'
+      }
+    },
+    {
+      index: true,
+      element: <ProductsList />,
+      meta: {
+        title: 'Home - Product Catalog',
+        description: 'Default home page showing product catalog'
       }
     }
   ]

@@ -26,6 +26,8 @@ export interface KitFeatureItem {
   name: string;
   description: string;
   enabled: boolean;
+  default?: boolean; // If true, this feature cannot be toggled off
+  module?: any; // The imported feature module (FeatureConfig)
 }
 
 export interface KitFeature {

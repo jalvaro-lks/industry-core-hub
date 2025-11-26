@@ -1,7 +1,6 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 LKS Next
  * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
@@ -21,22 +20,22 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import KitFeaturesPage from './pages/KitFeaturesPage';
+import { FindInPage } from '@mui/icons-material';
+import PartsDiscovery from './pages/PartsDiscovery';
 import { FeatureConfig } from '@/types/routing';
-import CustomAppsIcon from '../../components/icons/CustomAppsIcon';
 
-export const kitFeaturesFeature: FeatureConfig = {
-  name: 'KIT Features',
-  icon: <CustomAppsIcon />,
-  navigationPath: '/kit-features',
+export const partDiscoveryFeature: FeatureConfig = {
+  name: 'Parts Discovery',
+  icon: <FindInPage />,
+  navigationPath: '/dataspace-discovery',
   disabled: false,
   routes: [
     {
-      path: '/kit-features',
-      element: <KitFeaturesPage />,
+      path: '/dataspace-discovery',
+      element: <PartsDiscovery />,
       meta: {
-        title: 'KIT Features',
-        description: 'Manage and configure Tractus-X KITs'
+        title: 'Parts Discovery',
+        description: 'Discover parts in the dataspace'
       }
     }
   ]

@@ -23,7 +23,7 @@
 import { Box, Chip, Snackbar, Alert, Card, CardContent, Divider, Tooltip, IconButton, CircularProgress } from '@mui/material'
 import Grid2 from '@mui/material/Grid2';
 import { Typography } from '@mui/material';
-import { PartType, StatusVariants } from '../../types/types';
+import { PartType, StatusVariants } from '@/features/industry-core-kit/catalog-management/types/types';
 import { PieChart } from '@mui/x-charts/PieChart';
 import WifiTetheringErrorIcon from '@mui/icons-material/WifiTetheringError';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -38,15 +38,15 @@ import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { SharedPartner } from '../../types/types';
+import { SharedPartner } from '@/features/industry-core-kit/catalog-management/types/types';
 import SharedTable from './SharedTable';
 import SubmodelViewer from './SubmodelViewer';
 import DarkSubmodelViewer from './DarkSubmodelViewer';
 import { SchemaSelector, SubmodelCreator } from '@/components/submodel-creation';
 import { SchemaDefinition } from '@/schemas';
 import { useEffect, useState } from 'react';
-import { fetchCatalogPartTwinDetails, registerCatalogPartTwin, createTwinAspect } from '../../api';
-import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '../../types/twin-types';
+import { fetchCatalogPartTwinDetails, registerCatalogPartTwin, createTwinAspect } from '@/features/industry-core-kit/catalog-management/api';
+import { CatalogPartTwinDetailsRead, CatalogPartTwinCreateType } from '@/types/twin-types';
 
 interface ProductDataProps {
     part: PartType;

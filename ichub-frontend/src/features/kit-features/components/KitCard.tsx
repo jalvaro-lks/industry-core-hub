@@ -305,7 +305,7 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
                       </Tooltip>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {kit.id === 'industry-core' && (
+                      {feature.default && (
                         <Lock sx={{ 
                           fontSize: '0.75rem', 
                           color: 'rgba(66, 165, 245, 0.7)',
@@ -315,7 +315,7 @@ const KitCard: React.FC<KitCardProps> = ({ kit, onFeatureToggle, isCenter = fals
                       <Switch
                         checked={feature.enabled}
                         onChange={(e) => handleFeatureToggle(feature.id, e.target.checked)}
-                        disabled={kit.id === 'industry-core'}
+                        disabled={feature.default}
                         size="small"
                         sx={{
                         '& .MuiSwitch-track': {
