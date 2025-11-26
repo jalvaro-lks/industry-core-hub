@@ -22,7 +22,7 @@
 apiVersion: v2
 name: industry-core-hub
 type: application
-appVersion: "0.3.0-RC2"
+appVersion: "0.3.0-rc2"
 version: 0.3.7
 description: A Helm chart for Eclipse Tractus-X - Industry Core Hub
 home: https://github.com/eclipse-tractusx/industry-core-hub
