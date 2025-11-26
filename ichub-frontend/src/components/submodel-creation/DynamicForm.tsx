@@ -59,6 +59,8 @@ import { FormField as BaseFormField } from '../../schemas/json-schema-interprete
 // Extend FormField to allow urn property for UI logic
 type FormField = BaseFormField & { urn?: string };
 import { getValueByPath, setValueByPath } from './objectPathUtils';
+import { scrollToElement } from '../../utils/fieldNavigation';
+import '../../styles/fieldNavigation.css';
 
 // For backwards compatibility, use FormField as DPPFormField
 type DPPFormField = FormField;
@@ -212,20 +214,19 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         scrollToField: (fieldKey: string) => {
             // First, find and expand the section containing this field
             const sectionName = findFieldSection(fieldKey);
+            const performScroll = () => {
+                const element = fieldRefs.current[fieldKey] as HTMLElement | null;
+                if (!element) return;
+                // Use centralized helper: scroll, focus (if input), and highlight
+                scrollToElement({ element, container: containerRef.current, focus: true, highlightClass: 'field-nav-highlight', durationMs: 2000, block: 'center' });
+            };
+
             if (sectionName && expandedPanel !== sectionName) {
                 setExpandedPanel(sectionName);
-                // Wait for expansion animation to complete before scrolling
-                setTimeout(() => {
-                    const element = fieldRefs.current[fieldKey];
-                    if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 350);
+                // Wait for expansion animation to complete before scrolling. Use a short delay to allow render.
+                setTimeout(() => performScroll(), 320);
             } else {
-                const element = fieldRefs.current[fieldKey];
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+                performScroll();
             }
         }
     }));
@@ -344,17 +345,18 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
         // Función actualizada: Separar styling de errores reales vs campos requeridos
         const getFieldStyles = (required: boolean, isEmpty: boolean = false, hasError: boolean = false) => ({
-            '& .MuiOutlinedInput-root': {
+            '& .MuiOutlinedInput-root, & .MuiInputBase-root, & .MuiSelect-root': {
                 backgroundColor: 'rgba(19, 19, 19, 0.02)',
-                '&:hover fieldset': {
+                // Hover should affect the visible outline for both OutlinedInput and Selects
+                '&:hover fieldset, &:hover .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'rgba(96, 165, 250, 0.5)',
                 },
-                '&.Mui-focused fieldset': {
+                '&.Mui-focused fieldset, &.Mui-focused .MuiOutlinedInput-notchedOutline': {
                     borderColor: hasError ? 'error.main' : 'primary.main',
                 },
                 // Borde rojo solo para errores reales, no solo por ser requerido
                 ...(hasError && {
-                    '& fieldset': {
+                    '& fieldset, & .MuiOutlinedInput-notchedOutline': {
                         borderColor: 'error.main',
                         borderWidth: '2px',
                     }
@@ -1156,43 +1158,15 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         onChange={(event, isExpanded) => {
                             setExpandedPanel(isExpanded ? sectionName : null);
                             if (isExpanded) {
-                                const el = accordionRefs.current[sectionName];
+                                const el = accordionRefs.current[sectionName] as HTMLElement | null;
                                 const container = containerRef.current;
-                                // Scroll inmediato
-                                if (el && typeof el.scrollIntoView === 'function') {
-                                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }
-                                // Scroll sobre el contenedor principal si existe
-                                if (container && el) {
-                                    setTimeout(() => {
-                                        // Scroll relativo al contenedor
-                                        const elRect = el.getBoundingClientRect();
-                                        const contRect = container.getBoundingClientRect();
-                                        container.scrollTop += (elRect.top - contRect.top);
-                                    }, 10);
-                                }
-                                // Scroll tras 300ms
+                                // Use centralized helper to scroll the container to the expanded section.
+                                // Small delay gives the accordion time to animate/measure.
                                 setTimeout(() => {
-                                    if (el && typeof el.scrollIntoView === 'function') {
-                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    if (el) {
+                                        scrollToElement({ element: el, container, focus: false, highlightClass: '', durationMs: 0, block: 'start' });
                                     }
-                                    if (container && el) {
-                                        const elRect = el.getBoundingClientRect();
-                                        const contRect = container.getBoundingClientRect();
-                                        container.scrollTop += (elRect.top - contRect.top);
-                                    }
-                                }, 300);
-                                // Scroll tras 700ms
-                                setTimeout(() => {
-                                    if (el && typeof el.scrollIntoView === 'function') {
-                                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }
-                                    if (container && el) {
-                                        const elRect = el.getBoundingClientRect();
-                                        const contRect = container.getBoundingClientRect();
-                                        container.scrollTop += (elRect.top - contRect.top);
-                                    }
-                                }, 700);
+                                }, 120);
                             }
                         }}
                         ref={(el) => {
