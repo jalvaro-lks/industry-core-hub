@@ -120,8 +120,16 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
             const next = { ...prev, [schemaKey]: !prev[schemaKey] };
             // If collapsing (was expanded and now will be false), reset scroll of the description
             if (prev[schemaKey]) {
-                const el = document.getElementById(`desc-${schemaKey}`);
-                if (el) el.scrollTop = 0;
+                try {
+                    const el = typeof document !== 'undefined' ? document.getElementById(`desc-${schemaKey}`) : null;
+                    if (el && typeof (el as HTMLElement).scrollTo === 'function') {
+                        (el as HTMLElement).scrollTo({ top: 0, behavior: 'auto' as ScrollBehavior });
+                    } else if (el) {
+                        (el as HTMLElement).scrollTop = 0;
+                    }
+                } catch (err) {
+                    // ignore in non-browser environments
+                }
             }
             return next;
         });
