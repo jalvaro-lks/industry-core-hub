@@ -160,7 +160,6 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
                 {onCreateSubmodel && (
                     <Button
                         variant="contained"
-                        size="small"
                         startIcon={<AddIcon />}
                         onClick={onCreateSubmodel}
                         sx={{
@@ -168,9 +167,6 @@ const SubmodelViewer: React.FC<SubmodelViewerProps> = ({ twinDetails, onViewFull
                             borderRadius: '10px',
                             textTransform: 'none',
                             fontWeight: 600,
-                            fontSize: '11px',
-                            py: 0.75,
-                            px: 2,
                             boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
                             '&:hover': {
                                 background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',

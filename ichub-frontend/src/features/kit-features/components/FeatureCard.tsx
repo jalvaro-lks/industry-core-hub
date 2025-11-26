@@ -253,7 +253,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
               fontWeight: 500,
               py: 0.75,
               fontSize: '0.875rem',
-              borderRadius: '8px',
+              borderRadius: 1,
               textTransform: 'none',
               '&:hover': {
                 backgroundColor: feature.default ? '#1976d2' : '#388e3c'

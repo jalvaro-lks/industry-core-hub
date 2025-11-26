@@ -306,7 +306,7 @@ const KitFeaturesPage: React.FC = () => {
             fontWeight: 400
           }}
         >
-          Enable or disable specific features within each KIT to customize your application capabilities.
+          Enable or disable specific features within a KIT to unlock the complete potential of dataspaces.<br />
           Explore the carousel below to discover available features.
         </Typography>
       </Box>

@@ -40,7 +40,8 @@ import {
 import {
     Close as CloseIcon,
     ViewModule as ViewModuleIcon,
-    Schema as SchemaIcon
+    Schema as SchemaIcon,
+    Add as AddIcon
 } from '@mui/icons-material';
 import { CatalogPartTwinDetailsRead } from '@/features/industry-core-kit/catalog-management/types/twin-types';
 import SubmodelCard from './SubmodelCard';
@@ -52,6 +53,7 @@ interface SubmodelsGridDialogProps {
     onClose: () => void;
     twinDetails: CatalogPartTwinDetailsRead | null;
     partName?: string;
+    onCreateSubmodel?: () => void;
 }
 
 // Dark theme for the dialog - matching application patterns
@@ -98,7 +100,8 @@ const SubmodelsGridDialog: React.FC<SubmodelsGridDialogProps> = ({
     open,
     onClose,
     twinDetails,
-    partName
+    partName,
+    onCreateSubmodel
 }) => {
     const [selectedSubmodel, setSelectedSubmodel] = useState<{
         id: string;
@@ -229,6 +232,71 @@ const SubmodelsGridDialog: React.FC<SubmodelsGridDialogProps> = ({
                         ) : (
                             // Submodels Grid
                             <Grid2 container spacing={3}>
+                                {/* Add Submodel Card */}
+                                {onCreateSubmodel && (
+                                    <Grid2 
+                                        size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
+                                    >
+                                        <Box
+                                            onClick={onCreateSubmodel}
+                                            sx={{
+                                                height: '100%',
+                                                minHeight: '280px',
+                                                backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                                                border: '2px dashed rgba(66, 165, 245, 0.5)',
+                                                borderRadius: 2,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 2,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                                                    borderColor: 'rgba(66, 165, 245, 0.8)',
+                                                    transform: 'translateY(-4px)',
+                                                    boxShadow: '0 8px 24px rgba(25, 118, 210, 0.3)',
+                                                },
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    width: 80,
+                                                    height: 80,
+                                                    borderRadius: '50%',
+                                                    backgroundColor: 'rgba(66, 165, 245, 0.2)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'all 0.3s ease',
+                                                }}
+                                            >
+                                                <AddIcon sx={{ fontSize: 48, color: '#42a5f5' }} />
+                                            </Box>
+                                            <Typography
+                                                variant="h6"
+                                                sx={{
+                                                    color: 'primary.main',
+                                                    fontWeight: 600,
+                                                    textAlign: 'center',
+                                                }}
+                                            >
+                                                Add Submodel
+                                            </Typography>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    color: 'text.secondary',
+                                                    textAlign: 'center',
+                                                    px: 2,
+                                                }}
+                                            >
+                                                Create a new submodel aspect
+                                            </Typography>
+                                        </Box>
+                                    </Grid2>
+                                )}
                                 {Object.entries(twinDetails.aspects).map(([semanticId, aspect]) => (
                                     <Grid2 
                                         key={semanticId} 

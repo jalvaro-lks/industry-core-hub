@@ -42,6 +42,8 @@ import SubmodelsGridDialog from "@/features/industry-core-kit/catalog-management
 import ShareDialog from "@/features/industry-core-kit/catalog-management/components/shared/ShareDialog";
 import {ErrorNotFound} from '@/components/general/ErrorNotFound';
 import LoadingSpinner from '@/components/general/LoadingSpinner';
+import { SchemaSelector, SubmodelCreator } from '@/components/submodel-creation';
+import { SchemaDefinition } from '@/schemas';
 
 import { PartType } from "@/features/industry-core-kit/catalog-management/types/types";
 import { PRODUCT_STATUS } from "@/features/industry-core-kit/catalog-management/types/shared";
@@ -49,7 +51,7 @@ import { CatalogPartTwinDetailsRead } from "@/features/industry-core-kit/catalog
 
 import { SharedPartner } from "@/features/industry-core-kit/catalog-management/types/types"
 
-import { fetchCatalogPart, fetchCatalogPartTwinDetails } from "@/features/industry-core-kit/catalog-management/api";
+import { fetchCatalogPart, fetchCatalogPartTwinDetails, createTwinAspect } from "@/features/industry-core-kit/catalog-management/api";
 import { mapApiPartDataToPartType, mapSharePartCustomerPartIds} from "../utils/utils";
 import { useEscapeNavigation } from '@/hooks/useEscapeKey';
 
@@ -66,6 +68,10 @@ const ProductsDetails = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [addSerializedPartDialogOpen, setAddSerializedPartDialogOpen] = useState(false);
   const [submodelsGridDialogOpen, setSubmodelsGridDialogOpen] = useState(false);
+  const [schemaSelectorOpen, setSchemaSelectorOpen] = useState(false);
+  const [submodelCreatorOpen, setSubmodelCreatorOpen] = useState(false);
+  const [selectedSchema, setSelectedSchema] = useState<SchemaDefinition | null>(null);
+  const [selectedSchemaKey, setSelectedSchemaKey] = useState<string>('');
   const [notification, setNotification] = useState<{ open: boolean; severity: "success" | "error"; title: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sharedPartners, setSharedPartners] = useState<SharedPartner[]>([]);
@@ -173,6 +179,75 @@ const ProductsDetails = () => {
     setSubmodelsGridDialogOpen(false);
   };
 
+  const handleCreateSubmodel = () => {
+    setSchemaSelectorOpen(true);
+  };
+
+  const handleSchemaSelect = (schemaKey: string, schema: SchemaDefinition) => {
+    setSelectedSchemaKey(schemaKey);
+    setSelectedSchema(schema);
+    setSchemaSelectorOpen(false);
+    setSubmodelCreatorOpen(true);
+  };
+
+  const handleBackToSchemaSelector = () => {
+    setSubmodelCreatorOpen(false);
+    setSchemaSelectorOpen(true);
+  };
+
+  const handleCloseSchemaSelector = () => {
+    setSchemaSelectorOpen(false);
+    setSelectedSchema(null);
+    setSelectedSchemaKey('');
+  };
+
+  const handleCloseSubmodelCreator = () => {
+    setSubmodelCreatorOpen(false);
+    setSelectedSchema(null);
+    setSelectedSchemaKey('');
+  };
+
+  const handleCreateSubmodelSubmit = async (submodelData: Record<string, unknown>) => {
+    try {
+      if (!selectedSchema) {
+        throw new Error('No schema selected');
+      }
+
+      if (!twinDetails || !twinDetails.globalId) {
+        throw new Error('Twin must be created before adding submodels. Please create a twin first.');
+      }
+
+      // Call the API to create the twin aspect
+      const result = await createTwinAspect(
+        twinDetails.globalId,
+        selectedSchema.metadata.semanticId,
+        submodelData
+      );
+
+      if (result.success) {
+        setNotification({ 
+          open: true, 
+          severity: 'success', 
+          title: `Submodel created successfully with ${selectedSchema.metadata.name} schema!`
+        });
+        
+        handleCloseSubmodelCreator();
+        
+        // Refresh the data
+        await fetchData();
+      } else {
+        throw new Error(result.message || 'Failed to create submodel');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create submodel';
+      setNotification({ 
+        open: true, 
+        severity: 'error', 
+        title: errorMessage
+      });
+    }
+  };
+
   const handleCloseNotification = () => {
     setNotification(null);
   };
@@ -256,7 +331,30 @@ const ProductsDetails = () => {
           onClose={handleCloseSubmodelsGridDialog} 
           twinDetails={twinDetails}
           partName={partType?.name}
+          onCreateSubmodel={handleCreateSubmodel}
         />
+
+        {/* Schema Selector Dialog */}
+        <SchemaSelector
+          open={schemaSelectorOpen}
+          onClose={handleCloseSchemaSelector}
+          onSchemaSelect={handleSchemaSelect}
+          manufacturerPartId={partType?.manufacturerPartId}
+        />
+
+        {/* Submodel Creator Dialog */}
+        {selectedSchema && (
+          <SubmodelCreator
+            open={submodelCreatorOpen}
+            onClose={handleCloseSubmodelCreator}
+            onBack={handleBackToSchemaSelector}
+            onCreateSubmodel={handleCreateSubmodelSubmit}
+            selectedSchema={selectedSchema}
+            schemaKey={selectedSchemaKey}
+            manufacturerPartId={partType?.manufacturerPartId}
+            twinId={twinDetails?.globalId}
+          />
+        )}
       </Grid2>
 
       {/* Copy notification snackbar */}
