@@ -21,7 +21,7 @@ export function scrollToElement(options: ScrollOptions) {
     container = null,
     focus = false,
     highlightClass = 'field-nav-highlight',
-    durationMs = 2000,
+    durationMs = 3000,
     block = 'center'
   } = options || {};
 
@@ -98,11 +98,18 @@ export function scrollToElement(options: ScrollOptions) {
     const selectors = [
       '.MuiOutlinedInput-root',
       '.MuiInputBase-root',
+      '.MuiSelect-root',
       'input',
       'textarea',
       'select',
       '.MuiSwitch-root',
-      '.MuiSelect-root'
+      '.MuiCheckbox-root',
+      '.MuiFormControlLabel-root',
+      '.MuiChip-root',
+      '.MuiCard-root',
+      '[data-array-item]',
+      '[data-section]',
+      '[data-schema-card]'
     ];
     let highlightTarget: HTMLElement | null = null;
     for (const s of selectors) {
@@ -110,6 +117,72 @@ export function scrollToElement(options: ScrollOptions) {
       if (found) { highlightTarget = found; break; }
     }
     if (!highlightTarget) highlightTarget = target;
+
+    // If there's an explicit boolean wrapper (label + switch) nearby, prefer it
+    // so the whole attribute block is highlighted instead of just the inner control.
+    let preferWrapper = false;
+    try {
+      // First try to find a boolean wrapper from the highlightTarget itself (covers case
+      // where we selected an inner control like the switch). If not found, fall back to
+      // the original target's ancestors.
+      let booleanWrapper: HTMLElement | null = null;
+      if (highlightTarget && (highlightTarget.closest as any)) {
+        booleanWrapper = highlightTarget.closest('[data-boolean]') as HTMLElement | null;
+      }
+      if (!booleanWrapper && target && (target.closest as any)) {
+        booleanWrapper = target.closest('[data-boolean]') as HTMLElement | null;
+      }
+      if (booleanWrapper) {
+        // Prefer the inner child inside the boolean wrapper that contains the actual
+        // switch/checkbox control. This excludes sibling elements like the info icon.
+        // Find the immediate child of the booleanWrapper that contains the actual control.
+        // This avoids selecting sibling columns (e.g. info icon column) as the highlight target.
+        const children = Array.from(booleanWrapper.children) as HTMLElement[];
+        let chosenChild: HTMLElement | null = null;
+        for (const ch of children) {
+          if (ch.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]')) {
+            // If the immediate child contains the control but also contains other siblings
+            // (like an info icon), prefer the direct child of this node that contains the control.
+            const subChildren = Array.from(ch.children) as HTMLElement[];
+            let directChildWithControl: HTMLElement | null = null;
+            for (const sub of subChildren) {
+              if (sub.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]')) {
+                directChildWithControl = sub;
+                break;
+              }
+            }
+            chosenChild = directChildWithControl || ch;
+            break;
+          }
+        }
+        if (chosenChild) {
+          highlightTarget = chosenChild;
+          preferWrapper = true;
+        } else {
+          // Fallback: if no immediate child contains the control, try the previous approach
+          const innerControl = booleanWrapper.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]') as HTMLElement | null;
+          if (innerControl) {
+            // Walk up until we hit a direct child of booleanWrapper
+            let node: HTMLElement | null = innerControl;
+            while (node && node.parentElement && node.parentElement !== booleanWrapper) {
+              node = node.parentElement;
+            }
+            if (node && node.parentElement === booleanWrapper) {
+              highlightTarget = node;
+              preferWrapper = true;
+            } else {
+              highlightTarget = booleanWrapper;
+              preferWrapper = true;
+            }
+          } else {
+            highlightTarget = booleanWrapper;
+            preferWrapper = true;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
 
     const animClass = 'field-nav-animatable';
     const hoverClass = 'field-nav-hover';
@@ -120,11 +193,25 @@ export function scrollToElement(options: ScrollOptions) {
     // Also add the hover-like class to the nearest input/select root so the outline matches hover
     let hoverTarget: HTMLElement | null = null;
     try {
-      hoverTarget = (highlightTarget.closest && (highlightTarget.closest('.MuiOutlinedInput-root, .MuiInputBase-root, .MuiSelect-root') as HTMLElement)) || null;
+      // Include switch/checkbox and label wrappers so booleans receive the hover outline
+      hoverTarget = (highlightTarget.closest && (highlightTarget.closest('.MuiOutlinedInput-root, .MuiInputBase-root, .MuiSelect-root, .MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root') as HTMLElement)) || null;
+      // If not found, try to find explicit data-* wrappers (e.g. data-boolean, data-array-item, data-section, data-schema-card)
+      if (!hoverTarget && highlightTarget.closest) {
+        try {
+          hoverTarget = highlightTarget.closest('[data-boolean], [data-array-item], [data-section], [data-schema-card]') as HTMLElement | null;
+        } catch (e) {
+          // ignore
+          hoverTarget = null;
+        }
+      }
     } catch (err) {
       hoverTarget = null;
     }
     if (!hoverTarget) hoverTarget = highlightTarget;
+    // If we preferred a boolean wrapper, ensure the hover target is that wrapper
+    if (preferWrapper && highlightTarget) {
+      hoverTarget = highlightTarget;
+    }
     hoverTarget.classList.add(hoverClass);
 
     const t = setTimeout(() => {
@@ -145,8 +232,8 @@ export function scrollToElement(options: ScrollOptions) {
         if (!removed) {
           clearTimeout(t);
           highlightTarget && highlightTarget.classList.remove(highlightClass);
-          // also remove hover and animatable
-          highlightTarget && highlightTarget.classList.remove('field-nav-hover');
+          // also remove hover and animatable (hover may be applied to hoverTarget)
+          hoverTarget && hoverTarget.classList.remove('field-nav-hover');
           highlightTarget && highlightTarget.classList.remove('field-nav-animatable');
         }
       }

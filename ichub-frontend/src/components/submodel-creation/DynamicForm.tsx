@@ -217,8 +217,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             const performScroll = () => {
                 const element = fieldRefs.current[fieldKey] as HTMLElement | null;
                 if (!element) return;
-                // Use centralized helper: scroll, focus (if input), and highlight
-                scrollToElement({ element, container: containerRef.current, focus: true, highlightClass: 'field-nav-highlight', durationMs: 2000, block: 'center' });
+                // Use centralized helper: scroll, focus (if input), and highlight (3s)
+                scrollToElement({ element, container: containerRef.current, focus: true, highlightClass: 'field-nav-highlight', durationMs: 3000, block: 'center' });
             };
 
             if (sectionName && expandedPanel !== sectionName) {
@@ -378,32 +378,6 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             }
         });
 
-
-
-    // Common description tooltip with info icon click
-    // Show info icon with combined tooltip (description + URN if present)
-    // This implementation always returns a valid React element or null
-    // (Do not redefine this function, use the one defined above)
-    // Remove this duplicate and use the main getDescriptionTooltip above.
-
-    // Icon container: right outside the field, show icons only if present
-    // Only show info icon with combined tooltip (description + URN)
-    const getIconContainer = (description?: string, fieldKey?: string, urn?: string) => {
-        if (!description && !urn) return null;
-        const tooltip = getDescriptionTooltip(description, fieldKey, urn);
-        if (!tooltip) return null;
-        return (
-            <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                ml: 1.5,
-                gap: 0.5
-            }}>
-                {tooltip}
-            </Box>
-        );
-    };
-
         switch (field.type) {
             case 'text':
                 return (
@@ -561,7 +535,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
 
             case 'checkbox':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Box key={field.key} data-boolean={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box 
                                 onClick={() => handleFieldChange(field, !currentValue)}
@@ -850,7 +824,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         ) : (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {ensureArray.map((item, index) => (
-                                    <Card key={index} sx={{
+                                    <Card key={index} data-array-item sx={{
                                         backgroundColor: 'rgba(255, 255, 255, 0.03)',
                                         border: '1px solid rgba(255, 255, 255, 0.1)',
                                         borderRadius: 2
@@ -1172,6 +1146,8 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         ref={(el) => {
                             if (el) accordionRefs.current[sectionName] = el;
                         }}
+                        // Make the accordion discoverable by the field navigation helper
+                        data-section={sectionName}
                         sx={{
                             mb: 2,
                             backgroundColor: 'rgba(255, 255, 255, 0.02)',
