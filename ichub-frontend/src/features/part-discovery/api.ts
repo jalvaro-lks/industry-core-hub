@@ -22,14 +22,14 @@
 
 /** Created using an LLM (Github Copilot) review by a human committer */
 
-import httpClient from '@/services/HttpClient';
+import httpClient from '../../services/HttpClient';
 import { 
   getIchubBackendUrl,
   GovernanceConfig,
   GovernanceConstraint,
   GovernanceRule,
   GovernancePolicy
-} from '@/services/EnvironmentService';
+} from '../../services/EnvironmentService';
 import { ApiPartData } from './types/types';
 import { CatalogPartTwinCreateType, TwinReadType } from './types/types';
 import { ShellDiscoveryResponse, getNextPageCursor, getPreviousPageCursor, hasNextPage, hasPreviousPage } from './utils/utils';

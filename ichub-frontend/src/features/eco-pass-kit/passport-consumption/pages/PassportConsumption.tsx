@@ -42,12 +42,10 @@ const PassportConsumption: React.FC = () => {
   const handleSearch = () => {
     if (passportId.trim()) {
       setSearchInitiated(true);
-      console.log('Searching for passport:', passportId);
     }
   };
 
   const handleQRScan = () => {
-    console.log('QR Scanner functionality to be implemented');
     // TODO: Implement QR code scanner
   };
 

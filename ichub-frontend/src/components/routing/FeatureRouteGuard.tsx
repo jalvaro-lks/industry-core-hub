@@ -66,7 +66,6 @@ export const FeatureRouteGuard: React.FC = () => {
 
     // If not valid, redirect to kit-features
     if (!isValidRoute) {
-      console.log(`Route ${currentPath} is no longer available, redirecting to /kit-features`);
       navigate('/kit-features', { replace: true });
     }
   }, [location.pathname, enabledFeatures, navigate]);

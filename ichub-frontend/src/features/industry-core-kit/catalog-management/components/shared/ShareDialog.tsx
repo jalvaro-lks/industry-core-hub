@@ -109,13 +109,6 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
 
     setIsLoading(true);
     try {
-      console.log('Calling shareCatalogPart with:', {
-        manufacturerId: partData.manufacturerId,
-        manufacturerPartId: partData.manufacturerPartId,
-        bpnl: bpnl.trim(),
-        customerPartId: customPartId.trim() || undefined
-      });
-      
       await shareCatalogPart(
         partData.manufacturerId,
         partData.manufacturerPartId,

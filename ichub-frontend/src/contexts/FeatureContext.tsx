@@ -62,9 +62,6 @@ export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...prev,
       [featureId]: enabled
     }));
-    
-    console.log(`Feature ${featureId} in ${kitId} KIT ${enabled ? 'enabled' : 'disabled'}`);
-    console.log('Updated feature states:', { ...featureStates, [featureId]: enabled });
   };
 
   const enabledFeatures = useMemo(() => {
@@ -77,7 +74,6 @@ export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children })
         icon: feature.icon || feature.module!.icon
       }));
     
-    console.log('Enabled features updated:', features.length, features.map(f => f.name));
     return features;
   }, [featureStates]);
 

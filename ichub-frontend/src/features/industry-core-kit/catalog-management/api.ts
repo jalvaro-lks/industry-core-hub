@@ -193,11 +193,6 @@ export const createCatalogPartSubmodel = async (
   try {
     // TODO: Replace with actual API endpoint when backend is ready
     // For now, this is a placeholder that simulates the API call
-    console.log('Creating submodel with data:', {
-      manufacturerId,
-      manufacturerPartId,
-      submodelData
-    });
 
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1500));

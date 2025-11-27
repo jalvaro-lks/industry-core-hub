@@ -109,12 +109,6 @@ const ProductsList = () => {
   };
 
   const handleMore = (manufacturerId: string, manufacturerPartId: string) => {
-    console.log(
-      "More options for item with manufacturerId:",
-      manufacturerId,
-      "manufacturerPartId:",
-      manufacturerPartId
-    );
     // More options logic
   };
 
