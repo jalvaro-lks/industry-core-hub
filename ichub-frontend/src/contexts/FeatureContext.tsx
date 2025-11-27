@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, ReactNode } from 'react';
 import { kits } from '@/features/main';
 import { FeatureConfig } from '@/types/routing';
 
@@ -36,9 +36,22 @@ interface FeatureContextType {
 
 const FeatureContext = createContext<FeatureContextType | undefined>(undefined);
 
+const FEATURE_STORAGE_KEY = 'ichub_feature_states';
+
 export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Initialize feature states from kits configuration
+  // Initialize feature states from localStorage or kits configuration
   const [featureStates, setFeatureStates] = useState<FeatureState>(() => {
+    // Try to load from localStorage first
+    const stored = localStorage.getItem(FEATURE_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (error) {
+        console.error('Failed to parse stored feature states:', error);
+      }
+    }
+    
+    // Fallback to default states from kits configuration
     const states: FeatureState = {};
     kits.forEach(kit => {
       kit.features.forEach(feature => {
@@ -47,6 +60,11 @@ export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
     return states;
   });
+
+  // Persist feature states to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(FEATURE_STORAGE_KEY, JSON.stringify(featureStates));
+  }, [featureStates]);
 
   const toggleFeature = (kitId: string, featureId: string, enabled: boolean) => {
     // Find the feature to check if it's a default feature

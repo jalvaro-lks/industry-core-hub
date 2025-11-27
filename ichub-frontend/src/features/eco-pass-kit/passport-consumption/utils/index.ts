@@ -18,30 +18,8 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-import { Badge } from '@mui/icons-material';
-import { FeatureConfig } from '@/types/routing';
-import PassportConsumption from './pages/PassportConsumption';
-import PassportProvidedVisualization from './pages/PassportProvidedVisualization';
-
-export const passportConsumptionFeature: FeatureConfig = {
-  name: 'Passport Consumption & Visualization',
-  icon: <Badge />,
-  navigationPath: '/passport',
-  disabled: false,
-  routes: [
-    {
-      path: '/passport',
-      element: <PassportConsumption />
-    },
-    {
-      path: '/passport/:id',
-      element: <PassportConsumption />
-    },
-    {
-      path: '/passport/demo-provided',
-      element: <PassportProvidedVisualization />
-    }
-  ]
-};
+export { SchemaParser } from './schemaParser';
+export { getIconForProperty, getCategoryIcon } from './iconMapper';
+export * from './dataFormatter';

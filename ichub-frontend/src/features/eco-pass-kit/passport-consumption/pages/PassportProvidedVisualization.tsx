@@ -18,30 +18,33 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-import { Badge } from '@mui/icons-material';
-import { FeatureConfig } from '@/types/routing';
-import PassportConsumption from './pages/PassportConsumption';
-import PassportProvidedVisualization from './pages/PassportProvidedVisualization';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PassportVisualization } from '../components/PassportVisualization';
+import { JsonSchema } from '../types';
+import { mockProvidedPassport } from '../mockData';
+import schema from '../../../../schemas/DigitalProductPassport-schema.json';
 
-export const passportConsumptionFeature: FeatureConfig = {
-  name: 'Passport Consumption & Visualization',
-  icon: <Badge />,
-  navigationPath: '/passport',
-  disabled: false,
-  routes: [
-    {
-      path: '/passport',
-      element: <PassportConsumption />
-    },
-    {
-      path: '/passport/:id',
-      element: <PassportConsumption />
-    },
-    {
-      path: '/passport/demo-provided',
-      element: <PassportProvidedVisualization />
-    }
-  ]
+/**
+ * Demo page to visualize the user-provided passport data model
+ */
+const PassportProvidedVisualization: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    navigate('/passport');
+  };
+
+  return (
+    <PassportVisualization
+      schema={schema as JsonSchema}
+      data={mockProvidedPassport}
+      passportId="demo-provided"
+      onBack={handleBack}
+    />
+  );
 };
+
+export default PassportProvidedVisualization;
