@@ -994,13 +994,22 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     // Create a friendly label for the group
                     const groupLabel = key.charAt(0).toUpperCase() + key.slice(1)
                         .replace(/([A-Z])/g, ' $1')
-                        .replace(/^\s/, '');
+                        .replace(/^s/, '');
 
                     const groupId = `${node.path}-${depth}`;
                     const isGroupExpanded = expandedGroups[groupId] ?? true; // Default expanded
 
+                    // Add data-object attribute for parent object containers (not for root)
+                    const groupBoxProps: any = {
+                        key: node.path,
+                        sx: { mb: 2 }
+                    };
+                    if (depth > 0) {
+                        groupBoxProps['data-object'] = node.path;
+                    }
+
                     return (
-                        <Box key={node.path} sx={{ mb: 2 }}>
+                        <Box {...groupBoxProps}>
                             {/* Parent Group Container */}
                             <Box
                                 sx={{
@@ -1058,6 +1067,14 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                         >
                                             {groupLabel}
                                         </Typography>
+                                        {/* Info icon for object group if metadata present (now to the right of the label) */}
+                                        {(() => {
+                                            const metaField = node.field;
+                                            if (metaField && (metaField.description || metaField.urn)) {
+                                                return getIconContainer(metaField.description, metaField.key, metaField.urn);
+                                            }
+                                            return null;
+                                        })()}
                                         <Chip 
                                             label={Object.keys(node.children).length} 
                                             size="small" 

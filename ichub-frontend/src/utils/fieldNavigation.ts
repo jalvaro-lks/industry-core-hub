@@ -116,7 +116,19 @@ export function scrollToElement(options: ScrollOptions) {
       const found = target.querySelector(s) as HTMLElement | null;
       if (found) { highlightTarget = found; break; }
     }
-    if (!highlightTarget) highlightTarget = target;
+    // If navigating to a parent field (object/section) without a direct value, prefer the data-section or data-object container
+    if (!highlightTarget || highlightTarget === target) {
+      // Try to find a parent [data-section] or [data-object] container
+      const sectionWrapper = target.closest('[data-section]') as HTMLElement | null;
+      const objectWrapper = target.closest('[data-object]') as HTMLElement | null;
+      if (sectionWrapper) {
+        highlightTarget = sectionWrapper;
+      } else if (objectWrapper) {
+        highlightTarget = objectWrapper;
+      } else {
+        highlightTarget = target;
+      }
+    }
 
     // If there's an explicit boolean wrapper (label + switch) nearby, prefer it
     // so the whole attribute block is highlighted instead of just the inner control.
