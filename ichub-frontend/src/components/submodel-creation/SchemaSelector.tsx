@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React, { useState } from 'react';
+import { scrollToElement } from '../../utils/fieldNavigation';
 import {
     Dialog,
     DialogContent,
@@ -76,6 +77,39 @@ const darkTheme = createTheme({
             primary: '#ffffff',
             secondary: '#b3b3b3',
         },
+        danger: {
+            danger: undefined,
+            dangerHover: undefined,
+            dangerBadge: undefined
+        },
+        textField: {
+            placeholderText: undefined,
+            helperText: undefined,
+            background: undefined,
+            backgroundHover: undefined
+        },
+        chip: {
+            release: '',
+            active: '',
+            inactive: '',
+            created: '',
+            inReview: '',
+            enabled: '',
+            default: '',
+            bgRelease: '',
+            bgActive: '',
+            bgInactive: '',
+            bgCreated: '',
+            bgInReview: '',
+            bgEnabled: '',
+            bgDefault: '',
+            warning: '',
+            registered: '',
+            bgRegistered: '',
+            borderDraft: '',
+            black: '',
+            none: ''
+        }
     },
     components: {
         MuiDialog: {
@@ -122,10 +156,9 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
             if (prev[schemaKey]) {
                 try {
                     const el = typeof document !== 'undefined' ? document.getElementById(`desc-${schemaKey}`) : null;
-                    if (el && typeof (el as HTMLElement).scrollTo === 'function') {
-                        (el as HTMLElement).scrollTo({ top: 0, behavior: 'auto' as ScrollBehavior });
-                    } else if (el) {
-                        (el as HTMLElement).scrollTop = 0;
+                    if (el) {
+                        // Use helper to reset scroll position without animation
+                        scrollToElement({ element: el as HTMLElement, container: el as HTMLElement, focus: false, highlightClass: '', durationMs: 0, block: 'start' });
                     }
                 } catch (err) {
                     // ignore in non-browser environments
@@ -212,7 +245,7 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                         key={schemaKey} 
                                         size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
                                     >
-                                        <Card sx={{
+                                        <Card data-schema-card={schemaKey} sx={{
                                             backgroundColor: 'rgba(0, 0, 0, 0.4)',
                                             border: '1px solid rgba(255, 255, 255, 0.12)',
                                             borderRadius: 2,
