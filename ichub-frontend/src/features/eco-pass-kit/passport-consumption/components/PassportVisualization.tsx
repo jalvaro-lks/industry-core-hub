@@ -41,6 +41,7 @@ import { ArrowBack, Info, Download, ContentCopy } from '@mui/icons-material';
 import { JsonSchema } from '../types';
 import { SchemaParser } from '../utils/schemaParser';
 import { DynamicRenderer } from './DynamicRenderer';
+import { CompositionChart } from './CompositionChart';
 import { getCategoryIcon } from '../utils/iconMapper';
 
 interface PassportVisualizationProps {
@@ -64,6 +65,76 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
   const parser = useMemo(() => new SchemaParser(schema), [schema]);
   const tabs = useMemo(() => parser.generateTabs(data), [parser, data]);
   const metrics = useMemo(() => parser.extractMetrics(data), [parser, data]);
+  
+  // Extract composition data for visualization
+  const compositionData = useMemo(() => {
+    const items: Array<{ name: string; value: number; unit: string }> = [];
+    
+    // Try to extract from materials - prioritize criticalRawMaterials
+    if (data.materials && typeof data.materials === 'object') {
+      const materials = data.materials as Record<string, unknown>;
+      
+      // Check for criticalRawMaterials first
+      if (materials.criticalRawMaterials && Array.isArray(materials.criticalRawMaterials)) {
+        materials.criticalRawMaterials.forEach((item: any) => {
+          if (item.name && item.percentage) {
+            items.push({
+              name: String(item.name),
+              value: Number(item.percentage),
+              unit: '%'
+            });
+          }
+        });
+      }
+      
+      // Fallback to primaryMaterials if available
+      if (items.length === 0 && materials.primaryMaterials && Array.isArray(materials.primaryMaterials)) {
+        materials.primaryMaterials.forEach((item: any) => {
+          if (item.name && item.percentage) {
+            items.push({
+              name: String(item.name),
+              value: Number(item.percentage),
+              unit: '%'
+            });
+          }
+        });
+      }
+      
+      // Generic composition fallback
+      if (items.length === 0 && materials.composition && Array.isArray(materials.composition)) {
+        materials.composition.forEach((item: any) => {
+          if (item.material && (item.percentage || item.weight)) {
+            items.push({
+              name: String(item.material),
+              value: Number(item.percentage || item.weight || 0),
+              unit: item.percentage ? '%' : 'kg'
+            });
+          }
+        });
+      }
+    }
+    
+    // Final fallback: extract from sustainability data
+    if (items.length === 0 && data.sustainability && typeof data.sustainability === 'object') {
+      const sustain = data.sustainability as Record<string, unknown>;
+      if (sustain.productFootprint && typeof sustain.productFootprint === 'object') {
+        const footprint = sustain.productFootprint as Record<string, unknown>;
+        if (footprint.carbon && Array.isArray(footprint.carbon)) {
+          footprint.carbon.forEach((item: any, idx: number) => {
+            if (item.value) {
+              items.push({
+                name: item.lifecycle || `Lifecycle ${idx + 1}`,
+                value: Number(item.value),
+                unit: String(item.unit || 'kg')
+              });
+            }
+          });
+        }
+      }
+    }
+    
+    return items;
+  }, [data]);
 
   // Handle copy to clipboard
   const handleCopy = (text: string, label: string) => {
@@ -157,9 +228,27 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
             Back
           </Button>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flex: '1 1 auto', minWidth: 0 }}>
-            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-              ID: {passportId}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.7rem', sm: '0.75rem' }, fontWeight: 500 }}>
+                ID:
+              </Typography>
+              <Chip
+                label={passportId}
+                sx={{
+                  backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                  color: '#fff',
+                  fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                  fontWeight: 600,
+                  height: { xs: 24, sm: 28 },
+                  fontFamily: 'monospace',
+                  borderRadius: 1.5,
+                  '& .MuiChip-label': { 
+                    px: { xs: 1.5, sm: 2 },
+                    py: 0
+                  }
+                }}
+              />
+            </Box>
             {schema['x-samm-aspect-model-urn'] && (
               <Typography
                 variant="caption"
@@ -277,14 +366,14 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
                     </Typography>
                   </Box>
                   {categoryMetrics.map((metric, idx) => (
-                    <Box key={idx} sx={{ mb: idx < categoryMetrics.length - 1 ? { xs: 1.5, sm: 2 } : 0 }}>
+                    <Box key={idx} sx={{ mb: idx < categoryMetrics.length - 1 ? { xs: 1, sm: 1.25 } : 0 }}>
                       <Typography
                         variant="caption"
-                        sx={{ color: 'rgba(255, 255, 255, 0.6)', display: 'block', mb: 0.5, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                        sx={{ color: 'rgba(255, 255, 255, 0.6)', display: 'block', mb: 0.25, fontSize: { xs: '0.65rem', sm: '0.7rem' } }}
                       >
                         {metric.label}
                       </Typography>
-                      <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1.1rem' } }}>
+                      <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
                         {metric.value}
                       </Typography>
                     </Box>
@@ -293,6 +382,29 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
               </Grid2>
             );
           })}
+          
+          {/* Composition Visualization */}
+          {compositionData.length > 0 && (
+            <Grid2 size={{ xs: 12, sm: 6, md: 6, lg: 3 }}>
+              <Card
+                sx={{
+                  background: '#252525',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: 2,
+                  p: { xs: 1.5, sm: 2.5 },
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <CompositionChart 
+                  title="Materials" 
+                  items={compositionData}
+                  compact
+                />
+              </Card>
+            </Grid2>
+          )}
         </Grid2>
       </Paper>
 
@@ -411,9 +523,10 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
                 textTransform: 'none',
                 fontSize: '0.875rem',
                 fontWeight: 500,
-                minHeight: 56,
+                minHeight: 42,
                 px: 2,
-                minWidth: 120,
+                py: 1,
+                minWidth: 100,
                 '&.Mui-selected': {
                   color: '#4a90e2'
                 },

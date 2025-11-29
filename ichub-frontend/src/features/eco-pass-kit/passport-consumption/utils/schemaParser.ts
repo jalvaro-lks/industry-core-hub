@@ -65,16 +65,8 @@ export class SchemaParser {
    * Generate human-readable label from property key and description
    */
   private generateLabel(key: string, property: JsonSchemaProperty): string {
-    // Use description if available
-    if (property.description) {
-      // Extract first sentence or first 50 chars
-      const firstSentence = property.description.split('.')[0];
-      if (firstSentence.length < 50) {
-        return firstSentence;
-      }
-    }
-    
-    // Convert camelCase to Title Case
+    // Always use the key/field name converted to Title Case
+    // The description can be read separately for full context
     return toTitleCase(key);
   }
 
@@ -429,7 +421,7 @@ export class SchemaParser {
       const metadata = data.metadata as Record<string, unknown>;
       if (metadata.version) {
         metrics.push({
-          category: 'ASPECT VERSION',
+          category: 'GENERAL',
           value: String(metadata.version),
           label: 'Current version'
         });
@@ -439,7 +431,7 @@ export class SchemaParser {
         const dateStr = String(metadata.issueDate);
         const formattedDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
         metrics.push({
-          category: 'ASPECT VERSION',
+          category: 'GENERAL',
           value: formattedDate,
           label: 'Issued'
         });

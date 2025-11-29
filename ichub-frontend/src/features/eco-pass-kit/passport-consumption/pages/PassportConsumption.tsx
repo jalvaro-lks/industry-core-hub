@@ -40,7 +40,13 @@ import {
   QrCodeScanner,
   Search,
   Close as CloseIcon,
-  Videocam as VideocamIcon
+  Videocam as VideocamIcon,
+  CheckCircle,
+  RadioButtonUnchecked,
+  Downloading,
+  Security,
+  VerifiedUser,
+  Storage
 } from '@mui/icons-material';
 import { Html5Qrcode } from 'html5-qrcode';
 import { PassportVisualization } from '../components/PassportVisualization';
@@ -48,6 +54,21 @@ import { JsonSchema } from '../types';
 import { mockBatteryPassport } from '../mockData';
 // Import the schema
 import schema from '../../../../schemas/DigitalProductPassport-schema.json';
+
+interface LoadingStep {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+}
+
+const LOADING_STEPS: LoadingStep[] = [
+  { id: 'lookup', label: 'Looking up Asset', icon: Search, description: 'Searching in the dataspace registry' },
+  { id: 'retrieve', label: 'Retrieving Data', icon: Downloading, description: 'Fetching passport from provider' },
+  { id: 'verify', label: 'Verifying Data', icon: Security, description: 'Validating digital signatures' },
+  { id: 'parse', label: 'Parsing Content', icon: Storage, description: 'Processing passport structure' },
+  { id: 'complete', label: 'Ready', icon: VerifiedUser, description: 'Passport loaded successfully' }
+];
 
 const PassportConsumption: React.FC = () => {
   const [passportId, setPassportId] = useState('');
@@ -59,15 +80,15 @@ const PassportConsumption: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [showVisualization, setShowVisualization] = useState(false);
   const [passportData, setPassportData] = useState<Record<string, unknown> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const params = useParams();
   const navigate = useNavigate();
 
   const handleSearch = async () => {
     if (passportId.trim()) {
-      // Navigate to passport route which will trigger the loading effect
-      navigate(`/passport/${encodeURIComponent(passportId)}`);
-
       // Stop scanner if active
       if (scannerMode && scannerRef.current && isScanning) {
         try {
@@ -78,6 +99,34 @@ const PassportConsumption: React.FC = () => {
           console.error('Error stopping scanner:', error);
         }
       }
+
+      // Start loading sequence
+      setIsLoading(true);
+      setLoadingError(null);
+      setCurrentStep(0);
+
+      try {
+        // Simulate step-by-step loading (replace with actual API calls)
+        for (let step = 0; step < LOADING_STEPS.length; step++) {
+          setCurrentStep(step);
+          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
+          
+          // In production, check API status here:
+          // const status = await checkPassportStatus(passportId);
+          // if (status.error) throw new Error(status.error);
+        }
+
+        // Fetch passport data
+        const mockData = await fetchMockPassportData(passportId);
+        setPassportData(mockData);
+        setIsLoading(false);
+        
+        // Navigate to passport route after successful load
+        navigate(`/passport/${encodeURIComponent(passportId)}`);
+      } catch (error) {
+        setLoadingError(error instanceof Error ? error.message : 'Failed to load passport');
+        setIsLoading(false);
+      }
     }
   };
 
@@ -86,6 +135,9 @@ const PassportConsumption: React.FC = () => {
     setShowVisualization(false);
     setPassportData(null);
     setPassportId('');
+    setIsLoading(false);
+    setCurrentStep(0);
+    setLoadingError(null);
     navigate('/passport');
   };
 
@@ -214,14 +266,12 @@ const PassportConsumption: React.FC = () => {
   // If route contains :id, automatically load that passport
   useEffect(() => {
     const id = params?.id as string | undefined;
-    if (id) {
+    if (id && !isLoading && !showVisualization) {
       setPassportId(id);
-      (async () => {
-        const mockData = await fetchMockPassportData(id);
-        setPassportData(mockData);
-        setShowVisualization(true);
-      })();
+      // Trigger the search which will show loading state
+      setTimeout(() => handleSearch(), 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.id]);
 
   // Show visualization if data is loaded
@@ -233,6 +283,216 @@ const PassportConsumption: React.FC = () => {
         passportId={passportId}
         onBack={handleBack}
       />
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Box 
+        sx={{ 
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          px: { xs: 2, sm: 3, md: 4 }
+        }}
+      >
+        <Card
+          sx={{
+            maxWidth: '600px',
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: { xs: '16px', md: '20px' },
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+              <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
+                Loading Passport
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace' }}>
+                {passportId}
+              </Typography>
+            </Box>
+
+            {/* Progress Steps - Horizontal */}
+            <Box sx={{ mb: 4 }}>
+              {/* Step Icons Row */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                {LOADING_STEPS.map((step, index) => {
+                  const Icon = step.icon;
+                  const isActive = index === currentStep;
+                  const isCompleted = index < currentStep;
+                  const isPending = index > currentStep;
+
+                  return (
+                    <React.Fragment key={step.id}>
+                      {/* Step Icon */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          flex: 1,
+                          position: 'relative',
+                          transition: 'all 0.3s ease',
+                          opacity: isPending ? 0.4 : 1
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: { xs: 36, sm: 44 },
+                            height: { xs: 36, sm: 44 },
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: isCompleted
+                              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                              : isActive
+                              ? 'rgba(102, 126, 234, 0.2)'
+                              : 'rgba(255, 255, 255, 0.05)',
+                            border: isActive ? '2px solid #667eea' : 'none',
+                            transition: 'all 0.3s ease',
+                            position: 'relative',
+                            zIndex: 2,
+                            ...(isActive && {
+                              animation: 'pulse 2s ease-in-out infinite',
+                              '@keyframes pulse': {
+                                '0%, 100%': { boxShadow: '0 0 0 0 rgba(102, 126, 234, 0.4)' },
+                                '50%': { boxShadow: '0 0 0 8px rgba(102, 126, 234, 0)' }
+                              }
+                            })
+                          }}
+                        >
+                          {isCompleted ? (
+                            <CheckCircle sx={{ fontSize: { xs: 20, sm: 24 }, color: '#fff' }} />
+                          ) : isActive ? (
+                            <Icon sx={{ fontSize: { xs: 20, sm: 24 }, color: '#667eea' }} />
+                          ) : (
+                            <RadioButtonUnchecked sx={{ fontSize: { xs: 20, sm: 24 }, color: 'rgba(255, 255, 255, 0.3)' }} />
+                          )}
+                        </Box>
+                        
+                        {/* Step Label */}
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: isActive || isCompleted ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                            fontWeight: isActive ? 600 : 500,
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                            mt: 1,
+                            textAlign: 'center',
+                            transition: 'all 0.3s ease',
+                            display: { xs: 'none', sm: 'block' }
+                          }}
+                        >
+                          {step.label}
+                        </Typography>
+                      </Box>
+
+                      {/* Connector Line */}
+                      {index < LOADING_STEPS.length - 1 && (
+                        <Box
+                          sx={{
+                            height: 2,
+                            flex: 1,
+                            mx: { xs: 0.5, sm: 1 },
+                            background: isCompleted
+                              ? 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
+                              : 'rgba(255, 255, 255, 0.1)',
+                            transition: 'all 0.5s ease',
+                            position: 'relative',
+                            top: { xs: -18, sm: -22 }
+                          }}
+                        />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </Box>
+
+              {/* Active Step Description */}
+              {LOADING_STEPS[currentStep] && (
+                <Box
+                  sx={{
+                    textAlign: 'center',
+                    p: 2,
+                    borderRadius: '10px',
+                    background: 'rgba(102, 126, 234, 0.1)',
+                    border: '1px solid rgba(102, 126, 234, 0.2)'
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#fff',
+                      fontWeight: 600,
+                      mb: 0.5,
+                      fontSize: { xs: '0.85rem', sm: '0.9rem' }
+                    }}
+                  >
+                    {LOADING_STEPS[currentStep].label}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                    }}
+                  >
+                    {LOADING_STEPS[currentStep].description}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
+            {/* Cancel Button */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Button
+                variant="outlined"
+                onClick={handleBack}
+                sx={{
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  textTransform: 'none',
+                  px: 3,
+                  py: 1,
+                  borderRadius: '10px',
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+            </Box>
+
+            {/* Error Display */}
+            {loadingError && (
+              <Alert
+                severity="error"
+                sx={{
+                  mt: 3,
+                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                  border: '1px solid rgba(244, 67, 54, 0.3)',
+                  borderRadius: '10px',
+                  '& .MuiAlert-icon': { color: '#f44336' },
+                  '& .MuiAlert-message': { color: '#fff' }
+                }}
+              >
+                {loadingError}
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
     );
   }
 

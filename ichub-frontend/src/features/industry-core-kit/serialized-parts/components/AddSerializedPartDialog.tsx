@@ -44,7 +44,8 @@ import {
     Close as CloseIcon,
     Speed as SpeedIcon,
     Settings as SettingsIcon,
-    ArrowForward as ArrowForwardIcon
+    ArrowForward as ArrowForwardIcon,
+    PersonAdd as PersonAddIcon
 } from '@mui/icons-material';
 
 import PageNotification from '@/components/general/PageNotification';
@@ -176,6 +177,17 @@ interface AddSerializedPartDialogProps {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validate that partners are available
+        if (partners.length === 0) {
+            setNotification({
+                open: true,
+                severity: 'error',
+                title: 'No partners available. Please create a partner first.',
+            });
+            setTimeout(() => setNotification(null), 6000);
+            return;
+        }
         
         // Validate that manufacturerPartId is not empty
         if (!formData.manufacturerPartId.trim()) {
@@ -392,6 +404,10 @@ interface AddSerializedPartDialogProps {
                                 options={manufacturerPartIdOptions}
                                 value={formData.manufacturerPartId}
                                 onChange={(_, newValue) => setFormData({ ...formData, manufacturerPartId: newValue || '' })}
+                                onInputChange={(_, newInputValue) => {
+                                    // Update formData when user types directly in the field
+                                    setFormData({ ...formData, manufacturerPartId: newInputValue });
+                                }}
                                 freeSolo
                                 fullWidth
                                 renderInput={(params) => (
@@ -432,19 +448,52 @@ interface AddSerializedPartDialogProps {
                             }}>
                                 Sharing Partner
                             </Typography>
-                            <PartnerAutocomplete
-                                value={formData.businessPartnerNumber}
-                                availablePartners={partners}
-                                selectedPartner={selectedPartner}
-                                isLoadingPartners={false}
-                                partnersError={false}
-                                hasError={false}
-                                label="Select Sharing Partner"
-                                placeholder="Select a partner to share with"
-                                required={true}
-                                onBpnlChange={(bpnl) => setFormData({ ...formData, businessPartnerNumber: bpnl })}
-                                onPartnerChange={setSelectedPartner}
-                            />
+                            {partners.length === 0 ? (
+                                <Box sx={{ 
+                                    p: 3, 
+                                    border: '2px dashed', 
+                                    borderColor: 'warning.main',
+                                    borderRadius: 2,
+                                    backgroundColor: 'warning.light',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 2
+                                }}>
+                                    <Typography variant="body1" color="warning.dark" textAlign="center">
+                                        No partners available. You need to create at least one partner before creating a serialized part.
+                                    </Typography>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<PersonAddIcon />}
+                                        onClick={() => {
+                                            onClose();
+                                            navigate('/partners');
+                                        }}
+                                        sx={{
+                                            textTransform: 'none',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        Create Partner in Contact List
+                                    </Button>
+                                </Box>
+                            ) : (
+                                <PartnerAutocomplete
+                                    value={formData.businessPartnerNumber}
+                                    availablePartners={partners}
+                                    selectedPartner={selectedPartner}
+                                    isLoadingPartners={false}
+                                    partnersError={false}
+                                    hasError={false}
+                                    label="Select Sharing Partner"
+                                    placeholder="Select a partner to share with"
+                                    required={true}
+                                    onBpnlChange={(bpnl) => setFormData({ ...formData, businessPartnerNumber: bpnl })}
+                                    onPartnerChange={setSelectedPartner}
+                                />
+                            )}
                         </Grid>
 
                         <Grid item xs={12}>
@@ -759,6 +808,7 @@ interface AddSerializedPartDialogProps {
                         variant="contained"
                         color="primary"
                         size="large"
+                        disabled={partners.length === 0}
                         sx={{
                             minWidth: '100px',
                             textTransform: 'none',

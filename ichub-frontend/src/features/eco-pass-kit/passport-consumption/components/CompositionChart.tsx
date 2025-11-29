@@ -33,6 +33,7 @@ interface CompositionItem {
 interface CompositionChartProps {
   title: string;
   items: CompositionItem[];
+  compact?: boolean;
 }
 
 const CHART_COLORS = [
@@ -46,7 +47,7 @@ const CHART_COLORS = [
   '#30cfd0'
 ];
 
-export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items }) => {
+export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items, compact = false }) => {
   // Calculate total
   const total = items.reduce((sum, item) => sum + item.value, 0);
 
@@ -59,6 +60,9 @@ export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items
 
   // Sort by percentage descending
   const sortedItems = [...itemsWithPercentages].sort((a, b) => b.percentage - a.percentage);
+
+  // In compact mode, show only top 3 items
+  const displayItems = compact ? sortedItems.slice(0, 3) : sortedItems;
 
   // Calculate cumulative percentages for pie chart segments
   let cumulativePercentage = 0;
@@ -90,6 +94,70 @@ export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items
       'L 0 0'
     ].join(' ');
   };
+
+  if (compact) {
+    return (
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, mb: { xs: 1, sm: 1.5 } }}>
+          <Typography
+            variant="overline"
+            sx={{
+              color: 'rgba(255, 255, 255, 0.6)',
+              fontWeight: 500,
+              fontSize: { xs: '0.65rem', sm: '0.7rem' },
+              letterSpacing: { xs: '0.3px', sm: '0.5px' }
+            }}
+          >
+            {title}
+          </Typography>
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flex: 1 }}>
+          {/* Compact Pie Chart */}
+          <Box sx={{ width: { xs: 80, sm: 100 }, height: { xs: 80, sm: 100 }, flexShrink: 0 }}>
+            <svg viewBox="-1 -1 2 2" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
+              {segments.map((segment, index) => (
+                <path
+                  key={index}
+                  d={createArc(segment.startPercentage, segment.endPercentage)}
+                  fill={segment.color}
+                  opacity={0.9}
+                />
+              ))}
+            </svg>
+          </Box>
+
+          {/* Compact Legend */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: { xs: 0.5, sm: 0.75 } }}>
+            {displayItems.map((item, index) => (
+              <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: item.color,
+                    flexShrink: 0
+                  }}
+                />
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: { xs: '0.65rem', sm: '0.7rem' }, flex: 1 }}>
+                  {item.name}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.65rem', sm: '0.7rem' } }}>
+                  {item.percentage.toFixed(1)}%
+                </Typography>
+              </Box>
+            ))}
+            {sortedItems.length > 3 && (
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: { xs: '0.6rem', sm: '0.65rem' }, mt: 0.5 }}>
+                +{sortedItems.length - 3} more
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Paper

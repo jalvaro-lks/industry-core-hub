@@ -117,7 +117,7 @@ const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> 
               <Icon sx={{ fontSize: { xs: 18, sm: 20 } }} />
             </Box>
             <Box sx={{ flex: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography
                   variant="subtitle1"
                   sx={{
@@ -128,6 +128,18 @@ const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> 
                 >
                   {property.label}
                 </Typography>
+                <Chip
+                  label={property.key}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(102, 126, 234, 0.15)',
+                    color: '#667eea',
+                    fontSize: '0.65rem',
+                    height: 20,
+                    fontFamily: 'monospace',
+                    '& .MuiChip-label': { px: 1, py: 0 }
+                  }}
+                />
                 {property.description && (
                   <ClickAwayListener onClickAway={() => setTooltipOpen(false)}>
                     <Tooltip
@@ -179,31 +191,17 @@ const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> 
                   </ClickAwayListener>
                 )}
               </Box>
-              {property.description ? (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    display: 'block',
-                    mt: 0.5,
-                    lineHeight: 1.4
-                  }}
-                >
-                  {property.description}
-                </Typography>
-              ) : (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                    display: 'block'
-                  }}
-                >
-                  {hasOnlyPrimitives ? `${itemCount} field${itemCount !== 1 ? 's' : ''}` : `${itemCount} item${itemCount !== 1 ? 's' : ''}`}
-                </Typography>
-              )}
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                  display: 'block',
+                  mt: 0.5
+                }}
+              >
+                {hasOnlyPrimitives ? `${itemCount} field${itemCount !== 1 ? 's' : ''}` : `${itemCount} item${itemCount !== 1 ? 's' : ''}`}
+              </Typography>
               {property.semanticId && (
                 <Typography
                   variant="caption"
@@ -274,20 +272,34 @@ const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> 
                         }}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: { xs: 0.75, sm: 1 }, mb: 0.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 0.75, sm: 1 }, flex: 1 }}>
-                            <ChildIcon sx={{ fontSize: { xs: 14, sm: 16 }, color: 'rgba(255, 255, 255, 0.4)' }} />
-                            <Typography
-                              variant="caption"
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 }, flex: 1, flexWrap: 'wrap' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
+                              <ChildIcon sx={{ fontSize: { xs: 14, sm: 16 }, color: 'rgba(255, 255, 255, 0.4)' }} />
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                                  fontWeight: 500,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: { xs: '0.3px', sm: '0.5px' }
+                                }}
+                              >
+                                {child.label}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={child.key}
+                              size="small"
                               sx={{
-                                color: 'rgba(255, 255, 255, 0.5)',
-                                fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                                fontWeight: 500,
-                                textTransform: 'uppercase',
-                                letterSpacing: { xs: '0.3px', sm: '0.5px' }
+                                backgroundColor: 'rgba(102, 126, 234, 0.15)',
+                                color: '#667eea',
+                                fontSize: '0.6rem',
+                                height: 18,
+                                fontFamily: 'monospace',
+                                '& .MuiChip-label': { px: 0.75, py: 0 }
                               }}
-                            >
-                              {child.label}
-                            </Typography>
+                            />
                           </Box>
                           {child.description && (
                             <ClickAwayListener onClickAway={() => setTooltipOpen(false)}>
@@ -470,20 +482,33 @@ export const DynamicRenderer: React.FC<DynamicRendererProps> = ({ properties, le
               <Icon sx={{ fontSize: { xs: 18, sm: 20 } }} />
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    textTransform: 'uppercase',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.5px',
-                    display: 'block'
-                  }}
-                >
-                  {property.label}
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      textTransform: 'uppercase',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.5px'
+                    }}
+                  >
+                    {property.label}
+                  </Typography>
+                  <Chip
+                    label={property.key}
+                    size="small"
+                    sx={{
+                      backgroundColor: 'rgba(102, 126, 234, 0.15)',
+                      color: '#667eea',
+                      fontSize: '0.6rem',
+                      height: 18,
+                      fontFamily: 'monospace',
+                      '& .MuiChip-label': { px: 0.75, py: 0 }
+                    }}
+                  />
+                </Box>
                 {property.description && (
                   <ClickAwayListener onClickAway={() => setSimpleTooltipOpen(false)}>
                     <Tooltip
