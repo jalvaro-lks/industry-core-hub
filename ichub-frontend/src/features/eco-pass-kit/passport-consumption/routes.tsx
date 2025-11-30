@@ -37,10 +37,6 @@ export const passportConsumptionFeature: FeatureConfig = {
     },
     {
       path: '/passport/:id',
-      element: <PassportConsumption />
-    },
-    {
-      path: '/passport/demo-provided',
       element: <PassportProvidedVisualization />
     }
   ]

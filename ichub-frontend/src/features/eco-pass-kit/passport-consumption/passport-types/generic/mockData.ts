@@ -20,8 +20,6 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { data } from "react-router-dom";
-
 /**
  * Mock data for generic digital product passport
  */
@@ -63,37 +61,45 @@ export const mockGenericPassport = {
   },
   commercial: {
     placedOnMarket: '2000-01-01',
-    purpose: ['automotive']
+    purchaseOrder: 'eOMtThyhVNLWUZNRcBaQKxI',
+    purpose: ['automotive'],
+    recallInformation: {
+      recallInformationDocumentation: [
+        {
+          contentType: 'URL',
+          header: 'Example Document XYZ',
+          content: 'https://dummy.link'
+        }
+      ],
+      applicable: true
+    }
   },
   identification: {
     batch: [
-      {
-        value: 'BID12345678',
-        key: 'batchId'
-      }
+      { value: 'BID12345678', key: 'batchId' }
     ],
     codes: [
-      {
-        value: '8703 24 10 00',
-        key: 'TARIC'
-      }
+      { value: '8703 24 10 00', key: 'TARIC' }
     ],
     type: {
-      manufacturerPartId: 'Batt-Part-1234',
-      nameAtManufacturer: 'Sample Battery Passport'
+      manufacturerPartId: '123-0.740-3434-A',
+      nameAtManufacturer: 'Mirror left'
     },
     classification: [
       {
-        classificationStandard: 'IEC',
-        classificationID: 'IEC 61234',
-        classificationDescription: 'Rechargeable lithium-ion battery'
+        classificationStandard: 'GIN 20510-21513',
+        classificationID: '1004712',
+        classificationDescription:
+          'Generic standard for classification of parts in the automotive industry.'
+      },
+      {
+        classificationStandard: 'ECLASS 12.0',
+        classificationID: '21-11-01-02',
+        classificationDescription: 'Exterior mirror for motor vehicles.'
       }
     ],
     serial: [
-      {
-        value: 'BAT123456789',
-        key: 'partInstanceId'
-      }
+      { value: 'SN12345678', key: 'partInstanceId' }
     ],
     dataCarrier: {
       carrierType: 'QR',
@@ -109,166 +115,302 @@ export const mockGenericPassport = {
     }
   ],
   materials: {
+    substancesOfConcern: {
+      applicable: true,
+      content: [
+        {
+          unit: 'unit:partPerMillion',
+          hazardClassification: {
+            category: 'category 1A',
+            statement: 'Causes severe skin burns and eye damage.',
+            class: 'Skin corrosion'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' }
+          ],
+          concentrationRange: [ { max: 2.6, min: 2.1 } ],
+          location: 'Housing',
+          concentration: 5.3,
+          exemption: 'shall not apply to product x containing not more than 1,5 ml of liquid',
+          id: [ { type: 'CAS', name: 'phenolphthalein', id: '201-004-7' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          hazardClassification: {
+            category: 'category 2',
+            statement: 'May cause respiratory irritation.',
+            class: 'Specific target organ toxicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Example Material A Doc', content: 'https://dummy.link/materialA' }
+          ],
+          concentrationRange: [ { max: 1.5, min: 0.5 } ],
+          location: 'Frame',
+          concentration: 1.1,
+          exemption: 'not applicable',
+          id: [ { type: 'CAS', name: 'Material A', id: '100-000-0' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          hazardClassification: {
+            category: 'category 3',
+            statement: 'Harmful if swallowed.',
+            class: 'Acute toxicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Example Material B Doc', content: 'https://dummy.link/materialB' }
+          ],
+          concentrationRange: [ { max: 3.0, min: 2.0 } ],
+          location: 'Coating',
+          concentration: 2.4,
+          exemption: 'allowed under threshold limits',
+          id: [ { type: 'CAS', name: 'Material B', id: '200-111-3' } ]
+        },
+        {
+          unit: 'unit:percent',
+          hazardClassification: {
+            category: 'category 1B',
+            statement: 'May cause cancer.',
+            class: 'Carcinogenicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Lead compound warning', content: 'https://dummy.link/lead-warning' }
+          ],
+          concentrationRange: [ { max: 0.5, min: 0.1 } ],
+          location: 'Solder joints',
+          concentration: 0.3,
+          exemption: 'RoHS exemption 7(c)-I',
+          id: [ { type: 'CAS', name: 'Lead', id: '7439-92-1' } ]
+        },
+        {
+          unit: 'unit:milligramPerKilogram',
+          hazardClassification: {
+            category: 'category 2',
+            statement: 'Suspected of damaging fertility.',
+            class: 'Reproductive toxicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Phthalate documentation', content: 'https://dummy.link/phthalate' }
+          ],
+          concentrationRange: [ { max: 1500, min: 800 } ],
+          location: 'Plastic components',
+          concentration: 1200,
+          exemption: 'below regulatory threshold',
+          id: [ { type: 'CAS', name: 'DEHP', id: '117-81-7' } ]
+        },
+      ]
+    },
     materialComposition: {
       applicable: true,
       content: [
         {
           unit: 'unit:partPerMillion',
-          recycled: 12.5,
+          recycled: 30.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Mirror glass datasheet', content: 'https://dummy.link/mirror-glass' }
+          ],
+          concentration: 320000,
+          id: [ { type: 'CAS', name: 'Soda-lime glass (mirror glass)', id: '65997-17-3' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 20.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'ABS housing material', content: 'https://dummy.link/abs-housing' }
+          ],
+          concentration: 280000,
+          id: [ { type: 'CAS', name: 'ABS (mirror housing)', id: '9003-56-9' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 40.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Aluminium bracket alloy', content: 'https://dummy.link/aluminium-bracket' },
+            { contentType: 'URL', header: 'Reciclation information', content: 'https://dummy.link/aluminium-bracket' }
+          ],
+          concentration: 180000,
+          id: [ 
+            { type: 'CAS', name: 'Aluminium alloy (mounting bracket)', id: '7429-90-5' },
+            { type: 'EC', name: 'Aluminium', id: '231-072-3' },
+            { type: 'IUPAC', name: 'Aluminum', id: 'Al' }
+          ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 35.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Steel fasteners & mechanism', content: 'https://dummy.link/steel-mechanism' }
+          ],
+          concentration: 120000,
+          id: [ { type: 'CAS', name: 'Steel (fasteners, adjustment mechanism)', id: '7439-89-6' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 15.0,
           critical: true,
-          renewable: 23.5,
-          documentation: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ],
-          concentration: 5.3,
-          id: [ { type: 'CAS', name: 'phenolphthalein', id: '201-004-7' } ]
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Copper wiring & motor', content: 'https://dummy.link/copper-wiring' }
+          ],
+          concentration: 60000,
+          id: [ { type: 'CAS', name: 'Copper (wiring, motor windings)', id: '7440-50-8' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 0.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Polyurethane backing foam', content: 'https://dummy.link/pu-foam' }
+          ],
+          concentration: 40000,
+          id: [ { type: 'CAS', name: 'Polyurethane foam (backing, vibration damping)', id: '9009-54-5' } ]
+        },
+        {
+          unit: 'unit:percent',
+          recycled: 5.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Rubber gasket material', content: 'https://dummy.link/rubber-gasket' }
+          ],
+          concentration: 1.5,
+          id: [ { type: 'CAS', name: 'EPDM rubber (sealing gaskets)', id: '25038-36-2' } ]
+        },
+        {
+          unit: 'unit:gram',
+          recycled: 0.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Adhesive specifications', content: 'https://dummy.link/adhesive' }
+          ],
+          concentration: 15,
+          id: [ { type: 'CAS', name: 'Epoxy adhesive', id: '25068-38-6' } ]
         }
       ]
-    },
-    criticalRawMaterials: [
-      {
-        name: 'Cobalt',
-        percentage: 8.5,
-        origin: 'Democratic Republic of Congo',
-        certified: true
-      },
-      {
-        name: 'Lithium',
-        percentage: 4.2,
-        origin: 'Australia',
-        certified: true
-      },
-      {
-        name: 'Nickel',
-        percentage: 25.5,
-        origin: 'Indonesia',
-        certified: true
-      }
-    ],
-    hazardousMaterials: [
-      {
-        name: 'Lithium Hexafluorophosphate',
-        casNumber: '21324-40-3',
-        concentration: 1.2
-      }
-    ]
+    }
   },
   handling: {
     applicable: true,
     content: {
       producer: [ { id: 'BPNL0123456789ZZ' } ],
-      sparePart: [
-        {
-          manufacturerPartId: 'Batt-Part-1234',
-          nameAtManufacturer: 'Lithium Battery Pack'
-        }
-      ]
+      sparePart: [ { manufacturerPartId: '123-0.740-3434-A', nameAtManufacturer: 'Mirror left' } ]
     }
   },
   additionalData: [
     {
-      description: 'Description of an attribute',
-      label: 'Maximum permitted battery power',
+      description: 'Mirror adjustment specifications with nested configuration',
+      label: 'Mirror Adjustment System',
       type: { dataType: 'object' },
       children: [{
-        description: 'Description of an attribute',
-        label: 'Maximum permitted battery power',
-        type: { typeUnit: 'unit:percentage', dataType: 'array' },
-        data: ["20", "21", "22", "23"],
-        }]
+        description: 'Adjustment range in degrees',
+        label: 'Adjustment Range',
+        type: { typeUnit: 'unit:degree', dataType: 'array' },
+        data: ['45', '60', '75', '90'],
+      }]
     },
     {
-      description: 'Description of an attribute',
-      label: 'Maximum permitted battery power',
+      description: 'Heating element technical specifications',
+      label: 'Mirror Heating System',
       type: { dataType: 'object' },
       children: [{
-        description: 'Description of an attribute',
-        label: 'Maximum permitted battery power',
+        description: 'Heating performance data',
+        label: 'Heating Performance',
         type: { dataType: 'object' },
-        children:[{
-            description: 'Description of an attribute',
-            label: 'Maximum permitted battery power',
-            type: { dataType: 'string' },
-            data: "THIS IS A STRING"
+        children: [{
+          description: 'Operating voltage',
+          label: 'Voltage',
+          type: { dataType: 'string', typeUnit: 'unit:volt' },
+          data: '12'
         },
         {
-            description: 'Description of an attribute',
-            label: 'Maximum permitted battery power',
-            type: { dataType: 'string' },
-            data: "THIS IS A STRING"
-        }
-        ]
-    }]
+          description: 'Power consumption',
+          label: 'Power',
+          type: { dataType: 'string', typeUnit: 'unit:watt' },
+          data: '45'
+        }]
+      }]
     },
     {
-      description: 'Energy storage breakdown with nested components',
-      label: 'Energy Modules',
+      description: 'Mirror coating layers with detailed composition',
+      label: 'Coating Layers',
       type: { dataType: 'array' },
       children: [
         {
-          description: 'Module level information',
-          label: 'Module A',
+          description: 'Layer stack information',
+          label: 'Layer 1 - Reflective',
           type: { dataType: 'object' },
           children: [
             {
-              description: 'Cells inside the module',
-              label: 'Cells',
+              description: 'Material properties',
+              label: 'Properties',
               type: { dataType: 'array' },
               children: [
                 {
-                  description: 'Single cell data',
-                  label: 'Cell 1',
+                  description: 'Individual property data',
+                  label: 'Property 1',
                   type: { dataType: 'object' },
                   children: [
                     {
-                      description: 'Nominal capacity',
-                      label: 'Capacity',
-                      type: { dataType: 'string', typeUnit: 'unit:ampereHour' },
-                      data: '3.4'
+                      description: 'Reflectivity percentage',
+                      label: 'Reflectivity',
+                      type: { dataType: 'string', typeUnit: 'unit:percent' },
+                      data: '95'
                     },
                     {
-                      description: 'Cell state',
-                      label: 'Health',
+                      description: 'Material durability rating',
+                      label: 'Durability',
                       type: { dataType: 'string' },
-                      data: 'GOOD'
+                      data: 'HIGH'
                     }
                   ]
                 },
                 {
-                  description: 'Single cell data',
-                  label: 'Cell 2',
+                  description: 'Individual property data',
+                  label: 'Property 2',
                   type: { dataType: 'object' },
                   children: [
                     {
-                      description: 'Nominal capacity',
-                      label: 'Capacity',
-                      type: { dataType: 'string', typeUnit: 'unit:ampereHour' },
-                      data: '3.3'
+                      description: 'Layer thickness',
+                      label: 'Thickness',
+                      type: { dataType: 'string', typeUnit: 'unit:micrometre' },
+                      data: '2.5'
                     },
                     {
-                      description: 'Cell state',
-                      label: 'Health',
+                      description: 'Application method',
+                      label: 'Method',
                       type: { dataType: 'string' },
-                      data: 'GOOD'
+                      data: 'SPUTTERING'
                     }
                   ]
                 }
               ]
             },
             {
-              description: 'Module metadata',
-              label: 'Configuration',
+              description: 'Manufacturing metadata',
+              label: 'Manufacturing Info',
               type: { dataType: 'object' },
               children: [
                 {
-                  description: 'Firmware associated to module',
-                  label: 'Firmware',
+                  description: 'Production line identifier',
+                  label: 'Line ID',
                   type: { dataType: 'string' },
-                  data: 'v1.2.3'
+                  data: 'COAT-LINE-03'
                 },
                 {
-                  description: 'Module serial number',
-                  label: 'Serial',
+                  description: 'Quality control batch',
+                  label: 'QC Batch',
                   type: { dataType: 'string' },
-                  data: 'MOD-A-12345'
+                  data: 'QC-2024-11-001'
                 }
               ]
             }
@@ -277,38 +419,38 @@ export const mockGenericPassport = {
       ]
     },
     {
-      description: 'Traceability with multiple nested levels',
-      label: 'Supply Chain',
+      description: 'Supply chain traceability for mirror components',
+      label: 'Component Traceability',
       type: { dataType: 'object' },
       children: [
         {
-          description: 'Suppliers involved in the product',
-          label: 'Suppliers',
+          description: 'Glass supplier information',
+          label: 'Glass Suppliers',
           type: { dataType: 'array' },
           children: [
             {
-              description: 'First tier supplier',
-              label: 'Supplier Tier 1',
+              description: 'Primary glass supplier',
+              label: 'Supplier - Glass Corp',
               type: { dataType: 'object' },
               children: [
                 {
-                  description: 'Location details',
-                  label: 'Sites',
+                  description: 'Manufacturing facilities',
+                  label: 'Production Sites',
                   type: { dataType: 'array' },
                   children: [
                     {
-                      description: 'Main site',
-                      label: 'Plant One',
+                      description: 'Main production facility',
+                      label: 'Plant Munich',
                       type: { dataType: 'object' },
                       children: [
                         {
-                          description: 'Country code',
+                          description: 'ISO country code',
                           label: 'Country',
                           type: { dataType: 'string' },
                           data: 'DE'
                         },
                         {
-                          description: 'City name',
+                          description: 'City location',
                           label: 'City',
                           type: { dataType: 'string' },
                           data: 'Munich'
@@ -322,15 +464,15 @@ export const mockGenericPassport = {
           ]
         },
         {
-          description: 'Audit references',
-          label: 'Audit Trail',
+          description: 'Quality certifications',
+          label: 'Certifications',
           type: { dataType: 'array' },
           children: [
             {
-              description: 'Quality audit identifiers',
-              label: 'Audit IDs',
+              description: 'Certification identifiers',
+              label: 'Cert IDs',
               type: { dataType: 'array' },
-              data: ['QMS-2023-001', 'QMS-2024-002']
+              data: ['ISO-9001-2024', 'IATF-16949-2024']
             }
           ]
         }
@@ -360,7 +502,7 @@ export const mockGenericPassport = {
           performanceClass: 'A',
           manufacturingPlant: [ { facility: 'BPNA1234567890AA' } ],
           type: 'Climate Change Total',
-          value: 12.678,
+          value: 44.56,
           declaration: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ]
         }
       ],
@@ -393,3 +535,4 @@ export const mockGenericPassport = {
     durabilityScore: 'A'
   }
 };
+

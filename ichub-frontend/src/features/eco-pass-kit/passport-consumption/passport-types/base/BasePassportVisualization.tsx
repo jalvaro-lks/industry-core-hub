@@ -269,7 +269,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               variant="outlined"
               sx={{
                 borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'rgba(255, 255, 255, 0.8)',
+                color: 'rgba(255, 255, 255, 0.8) !important',
                 minWidth: { xs: 'auto', sm: 'auto' },
                 px: { xs: 1.5, sm: 2 },
                 py: { xs: 0.75, sm: 1 },
@@ -279,7 +279,8 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                 borderRadius: '8px',
                 '&:hover': {
                   borderColor: 'rgba(255, 255, 255, 0.4)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  color: 'rgba(255, 255, 255, 0.8) !important'
                 },
                 '& .MuiButton-startIcon': {
                   marginRight: { xs: 0, sm: 1 }
@@ -293,7 +294,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                 Back
               </Box>
             </Button>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
               <Typography 
                 variant="h6" 
                 sx={{ 
@@ -323,33 +324,81 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                   }}
                 />
               )}
+              <Chip
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                      ID:
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        fontFamily: 'monospace',
+                        fontSize: '0.7rem',
+                        color: '#fff',
+                        fontWeight: 600
+                      }}
+                    >
+                      {passportId}
+                    </Typography>
+                  </Box>
+                }
+                deleteIcon={<ContentCopy sx={{ fontSize: 14 }} />}
+                onDelete={() => handleCopy(passportId, 'Passport ID')}
+                size="small"
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  height: 24,
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  '& .MuiChip-deleteIcon': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&:hover': {
+                      color: '#fff'
+                    }
+                  },
+                  '& .MuiChip-label': {
+                    px: 1.5,
+                    py: 0
+                  }
+                }}
+              />
             </Box>
           </Box>
 
           {/* Center - IDs as chips */}
           <Box sx={{ 
-            display: { xs: 'none', md: 'flex' }, 
+            display: 'flex', 
             alignItems: 'center', 
             gap: 1,
             flex: 1,
             justifyContent: 'center',
             minWidth: 0,
-            px: 2
+            px: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
           }}>
             <Chip
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                  <Typography variant="caption" sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, color: 'rgba(255, 255, 255, 0.7)', display: { xs: 'none', sm: 'inline' } }}>
                     Global Asset ID:
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, color: 'rgba(255, 255, 255, 0.7)', display: { xs: 'inline', sm: 'none' } }}>
+                    ID:
                   </Typography>
                   <Typography 
                     variant="caption" 
                     sx={{ 
                       fontFamily: 'monospace',
-                      fontSize: '0.7rem',
-                      overflow: 'visible',
+                      fontSize: { xs: '0.65rem', md: '0.7rem' },
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
-                      color: '#fff'
+                      color: '#fff',
+                      maxWidth: { xs: '100px', sm: '150px', md: '200px' }
                     }}
                   >
                     {globalAssetId}
@@ -403,7 +452,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               onDelete={() => handleCopy(aasId, 'AAS ID')}
               size="small"
               sx={{
-                display: { xs: 'none', lg: 'flex' },
+                display: { xs: 'none', md: 'flex' },
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
@@ -655,7 +704,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               justifyContent: 'space-between',
               textTransform: 'none',
               borderColor: 'rgba(255, 255, 255, 0.2)',
-              color: '#fff',
+              color: '#fff !important',
               py: 1.5,
               px: 2,
               borderRadius: '10px',
@@ -663,7 +712,8 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               fontSize: '0.9rem',
               '&:hover': {
                 borderColor: 'rgba(102, 126, 234, 0.5)',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)'
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                color: '#fff !important'
               }
             }}
           >
@@ -685,20 +735,24 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               '& .MuiMenuItem-root': {
                 px: 2,
                 py: 1.5,
-                color: 'rgba(255, 255, 255, 0.7)',
+                color: '#fff !important',
                 transition: 'all 0.2s ease',
                 '&:hover': {
                   backgroundColor: 'rgba(102, 126, 234, 0.15)',
-                  color: '#fff'
+                  color: '#fff !important'
                 },
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(102, 126, 234, 0.25)',
-                  color: '#fff',
+                  color: '#fff !important',
                   fontWeight: 600,
                   '&:hover': {
-                    backgroundColor: 'rgba(102, 126, 234, 0.3)'
+                    backgroundColor: 'rgba(102, 126, 234, 0.3)',
+                    color: '#fff !important'
                   }
                 }
+              },
+              '& .MuiListItemText-primary': {
+                color: '#fff !important'
               }
             }
           }}
@@ -721,7 +775,8 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                   primary={tab.label}
                   primaryTypographyProps={{
                     fontSize: '0.9rem',
-                    fontWeight: activeTab === index ? 600 : 500
+                    fontWeight: activeTab === index ? 600 : 500,
+                    color: '#fff !important'
                   }}
                 />
               </MenuItem>

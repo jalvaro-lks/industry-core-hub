@@ -22,6 +22,8 @@
 
 import React, { useState } from 'react';
 import { Box, Typography, Grid2, Paper, Chip, IconButton, Tooltip, ClickAwayListener, Collapse, LinearProgress, Link, Divider } from '@mui/material';
+import { PieChart } from '@mui/x-charts/PieChart';
+import { BarChart } from '@mui/x-charts/BarChart';
 import { 
   Science, 
   ExpandMore, 
@@ -29,7 +31,7 @@ import {
   Warning, 
   CheckCircle, 
   Recycling,
-  Eco,
+  EnergySavingsLeaf,
   LocationOn,
   Description,
   Error as ErrorIcon,
@@ -113,26 +115,440 @@ export const MaterialsRenderer: React.FC<MaterialsRendererProps> = ({ rawData })
     );
   }
 
+  // Prepare chart data for material composition
+  const compositionColors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
+  
+  // Group materials by unit
+  const materialsByUnit = materials.materialComposition?.content.reduce((acc, material) => {
+    const unit = material.unit || 'unit n/a';
+    if (!acc[unit]) {
+      acc[unit] = [];
+    }
+    acc[unit].push(material);
+    return acc;
+  }, {} as Record<string, MaterialCompositionItem[]>) || {};
+
+  const hasMultipleCompositionUnits = Object.keys(materialsByUnit).length > 1;
+  const primaryCompositionUnit = Object.keys(materialsByUnit)[0] || 'unit';
+
+  const compositionChartData = materials.materialComposition?.content.map((material, index) => {
+    const materialName = material.id?.[0]?.name || `Material ${index + 1}`;
+    const concentrationPercent = (material.concentration / 10000);
+    return {
+      id: index,
+      value: concentrationPercent,
+      label: materialName.length > 30 ? materialName.substring(0, 27) + '...' : materialName,
+      color: material.critical ? '#ff9800' : compositionColors[index % compositionColors.length]
+    };
+  }) || [];
+
+  const substancesColors = ['#ff6b6b', '#ee5a6f', '#f06595', '#cc5de8', '#845ef7', '#5c7cfa', '#339af0'];
+  
+  // Group substances by unit for proper visualization
+  const substancesByUnit = materials.substancesOfConcern?.content.reduce((acc, substance) => {
+    const unit = substance.unit || 'unit n/a';
+    if (!acc[unit]) {
+      acc[unit] = [];
+    }
+    acc[unit].push(substance);
+    return acc;
+  }, {} as Record<string, SubstanceOfConcern[]>) || {};
+
+  const substancesChartData = materials.substancesOfConcern?.content.map((substance, index) => {
+    const substanceName = substance.id?.[0]?.name || `Substance ${index + 1}`;
+    const unit = substance.unit || 'N/A';
+    return {
+      substance: substanceName,
+      concentration: substance.concentration,
+      unit: unit,
+      label: `${substanceName} (${unit})`,
+      color: substancesColors[index % substancesColors.length]
+    };
+  }) || [];
+
+  // Determine if there are multiple units
+  const hasMultipleUnits = Object.keys(substancesByUnit).length > 1;
+  const primaryUnit = Object.keys(substancesByUnit)[0] || 'unit';
+
+  const hasComposition = materials.materialComposition?.applicable && materials.materialComposition.content.length > 0;
+  const hasSubstances = materials.substancesOfConcern?.applicable && materials.substancesOfConcern.content.length > 0;
+
   return (
     <Box>
-      {/* Substances of Concern Section */}
+      {/* Pie Charts Overview */}
+      {(hasComposition || hasSubstances) && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 3 }}>
+            Materials Overview
+          </Typography>
+          <Grid2 container spacing={3}>
+            {/* Material Composition Pie Chart */}
+            {hasComposition && (
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    background: 'rgba(102, 126, 234, 0.05)',
+                    border: '1px solid rgba(102, 126, 234, 0.2)',
+                    borderRadius: 2,
+                    p: 3
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Science sx={{ color: '#667eea', fontSize: 24 }} />
+                    <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+                      Material Composition
+                    </Typography>
+                    <Chip
+                      label={`${materials.materialComposition.content.length} materials`}
+                      size="small"
+                      sx={{
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        color: '#667eea',
+                        fontSize: '0.7rem',
+                        height: 22
+                      }}
+                    />
+                    {hasMultipleCompositionUnits && (
+                      <Chip
+                        label="Multiple units"
+                        size="small"
+                        icon={<InfoOutlined sx={{ fontSize: 14 }} />}
+                        sx={{
+                          backgroundColor: 'rgba(102, 126, 234, 0.15)',
+                          color: '#667eea',
+                          fontSize: '0.65rem',
+                          height: 22
+                        }}
+                      />
+                    )}
+                  </Box>
+                  {hasMultipleCompositionUnits ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minHeight: 300 }}>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontStyle: 'italic', mb: 1 }}>
+                        Materials use different units. Showing separate chart for each unit.
+                      </Typography>
+                      {Object.entries(materialsByUnit).map(([unit, materials]) => {
+                        const unitChartData = materials.map((material, idx) => {
+                          const materialName = material.id?.[0]?.name || `Material ${idx + 1}`;
+                          const concentrationPercent = unit === 'unit:partPerMillion' ? (material.concentration / 10000) : material.concentration;
+                          return {
+                            id: idx,
+                            value: concentrationPercent,
+                            label: materialName.length > 30 ? materialName.substring(0, 27) + '...' : materialName,
+                            color: material.critical ? '#ff9800' : compositionColors[idx % compositionColors.length]
+                          };
+                        });
+                        
+                        return (
+                          <Box key={unit} sx={{ mb: 2 }}>
+                            <Typography variant="body2" sx={{ color: '#667eea', fontWeight: 600, mb: 2 }}>
+                              {unit}
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                              <PieChart
+                                series={[
+                                  {
+                                    data: unitChartData,
+                                    highlightScope: { faded: 'global', highlighted: 'item' },
+                                    faded: { innerRadius: 30, additionalRadius: -30, color: 'rgba(255, 255, 255, 0.2)' },
+                                    arcLabel: (item) => `${item.value.toFixed(1)}${unit === 'unit:partPerMillion' ? '%' : ''}`,
+                                    arcLabelMinAngle: 35,
+                                  },
+                                ]}
+                                width={400}
+                                height={250}
+                                slotProps={{
+                                  legend: {
+                                    direction: 'column',
+                                    position: { vertical: 'middle', horizontal: 'right' },
+                                    padding: 0,
+                                    itemMarkWidth: 12,
+                                    itemMarkHeight: 12,
+                                    markGap: 6,
+                                    itemGap: 8,
+                                    labelStyle: {
+                                      fontSize: 11,
+                                      fill: '#fff',
+                                      fontWeight: 600
+                                    }
+                                  }
+                                }}
+                                sx={{
+                                  '& .MuiChartsLegend-mark': {
+                                    rx: 2
+                                  },
+                                  '& .MuiChartsLegend-label': {
+                                    fill: '#fff !important',
+                                    color: '#fff !important'
+                                  },
+                                  '& .MuiChartsLegend-series text': {
+                                    fill: '#fff !important'
+                                  },
+                                  '& text': {
+                                    fill: '#fff !important',
+                                    color: '#fff !important'
+                                  },
+                                  '& tspan': {
+                                    fill: '#fff !important'
+                                  },
+                                  '& .MuiChartsAxis-label': {
+                                    fill: '#fff !important'
+                                  }
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+                      <PieChart
+                        series={[
+                          {
+                            data: compositionChartData,
+                            highlightScope: { faded: 'global', highlighted: 'item' },
+                            faded: { innerRadius: 30, additionalRadius: -30, color: 'rgba(255, 255, 255, 0.2)' },
+                            arcLabel: (item) => `${item.value.toFixed(1)}%`,
+                            arcLabelMinAngle: 35,
+                          },
+                        ]}
+                        width={400}
+                        height={300}
+                        slotProps={{
+                          legend: {
+                            direction: 'column',
+                            position: { vertical: 'middle', horizontal: 'right' },
+                            padding: 0,
+                            itemMarkWidth: 14,
+                            itemMarkHeight: 14,
+                            markGap: 8,
+                            itemGap: 12,
+                            labelStyle: {
+                              fontSize: 13,
+                              fill: '#fff',
+                              fontWeight: 600
+                            }
+                          }
+                        }}
+                        sx={{
+                          '& .MuiChartsLegend-mark': {
+                            rx: 2
+                          },
+                          '& .MuiChartsLegend-label': {
+                            fill: '#fff !important',
+                            color: '#fff !important'
+                          },
+                          '& .MuiChartsLegend-series text': {
+                            fill: '#fff !important'
+                          },
+                          '& text': {
+                            fill: '#fff !important',
+                            color: '#fff !important'
+                          },
+                          '& tspan': {
+                            fill: '#fff !important'
+                          }
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Paper>
+              </Grid2>
+            )}
+
+            {/* Substances of Concern Bar Chart */}
+            {hasSubstances && (
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    background: 'rgba(255, 152, 0, 0.05)',
+                    border: '1px solid rgba(255, 152, 0, 0.2)',
+                    borderRadius: 2,
+                    p: 3
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Warning sx={{ color: '#ff9800', fontSize: 24 }} />
+                    <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+                      Substances of Concern
+                    </Typography>
+                    <Chip
+                      label={`${materials.substancesOfConcern.content.length} substances`}
+                      size="small"
+                      sx={{
+                        backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                        color: '#ffb74d',
+                        fontSize: '0.7rem',
+                        height: 22
+                      }}
+                    />
+                    {hasMultipleUnits && (
+                      <Chip
+                        label="Multiple units"
+                        size="small"
+                        icon={<InfoOutlined sx={{ fontSize: 14 }} />}
+                        sx={{
+                          backgroundColor: 'rgba(255, 152, 0, 0.15)',
+                          color: '#ffb74d',
+                          fontSize: '0.65rem',
+                          height: 22
+                        }}
+                      />
+                    )}
+                  </Box>
+                  {hasMultipleUnits ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minHeight: 300 }}>
+                      <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontStyle: 'italic', mb: 1 }}>
+                        Substances use different units. Showing separate chart for each unit.
+                      </Typography>
+                      {Object.entries(substancesByUnit).map(([unit, substances]) => {
+                        const unitChartData = substances.map((substance, idx) => {
+                          const substanceName = substance.id?.[0]?.name || `Substance ${idx + 1}`;
+                          return {
+                            substance: substanceName,
+                            concentration: substance.concentration,
+                          };
+                        });
+                        
+                        return (
+                          <Box key={unit} sx={{ mb: 2 }}>
+                            <Typography variant="body2" sx={{ color: '#ffb74d', fontWeight: 600, mb: 2 }}>
+                              {unit}
+                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                              <BarChart
+                                dataset={unitChartData}
+                                yAxis={[{
+                                  scaleType: 'band',
+                                  dataKey: 'substance',
+                                  tickLabelStyle: {
+                                    fontSize: 11,
+                                    fill: '#fff'
+                                  }
+                                }]}
+                                xAxis={[{
+                                  label: `Concentration (${unit})`,
+                                  labelStyle: {
+                                    fill: '#fff',
+                                    fontSize: 12
+                                  },
+                                  tickLabelStyle: {
+                                    fill: '#fff',
+                                    fontSize: 11
+                                  }
+                                }]}
+                                series={[
+                                  {
+                                    dataKey: 'concentration',
+                                    color: '#ff6b6b'
+                                  }
+                                ]}
+                                layout="horizontal"
+                                width={600}
+                                height={Math.max(200, substances.length * 50)}
+                                margin={{ left: 200, bottom: 40, top: 20, right: 40 }}
+                                slotProps={{
+                                  legend: {
+                                    hidden: true
+                                  }
+                                }}
+                                sx={{
+                                  '& .MuiChartsAxis-line': {
+                                    stroke: 'rgba(255, 255, 255, 0.3)'
+                                  },
+                                  '& .MuiChartsAxis-tick': {
+                                    stroke: 'rgba(255, 255, 255, 0.3)'
+                                  },
+                                  '& .MuiChartsAxis-label': {
+                                    fill: '#fff !important'
+                                  },
+                                  '& .MuiChartsAxis-tickLabel': {
+                                    fill: '#fff !important'
+                                  },
+                                  '& text': {
+                                    fill: '#fff !important',
+                                    color: '#fff !important'
+                                  },
+                                  '& tspan': {
+                                    fill: '#fff !important'
+                                  }
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+                      <BarChart
+                        dataset={substancesChartData}
+                        yAxis={[{
+                          scaleType: 'band',
+                          dataKey: 'substance',
+                          tickLabelStyle: {
+                            fontSize: 11,
+                            fill: '#fff'
+                          }
+                        }]}
+                        xAxis={[{
+                          label: `Concentration (${primaryUnit})`,
+                          labelStyle: {
+                            fill: '#fff',
+                            fontSize: 12
+                          },
+                          tickLabelStyle: {
+                            fill: '#fff',
+                            fontSize: 11
+                          }
+                        }]}
+                        series={[
+                          {
+                            dataKey: 'concentration',
+                            color: '#ff6b6b'
+                          }
+                        ]}
+                        layout="horizontal"
+                        width={600}
+                        height={Math.max(300, materials.substancesOfConcern.content.length * 50)}
+                        margin={{ left: 200, bottom: 40, top: 20, right: 40 }}
+                        slotProps={{
+                          legend: {
+                            hidden: true
+                          }
+                        }}
+                        sx={{
+                          '& .MuiChartsAxis-line': {
+                            stroke: 'rgba(255, 255, 255, 0.3)'
+                          },
+                          '& .MuiChartsAxis-tick': {
+                            stroke: 'rgba(255, 255, 255, 0.3)'
+                          },
+                          '& text': {
+                            fill: '#fff !important'
+                          }
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Paper>
+              </Grid2>
+            )}
+          </Grid2>
+        </Box>
+      )}
+
+      {/* Substances of Concern Details */}
       {materials.substancesOfConcern?.applicable && materials.substancesOfConcern.content.length > 0 && (
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
             <Warning sx={{ color: '#ff9800', fontSize: 28 }} />
             <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600 }}>
-              Substances of Concern
+              Substances of Concern - Details
             </Typography>
-            <Chip
-              label={`${materials.substancesOfConcern.content.length} substances`}
-              size="small"
-              sx={{
-                backgroundColor: 'rgba(255, 152, 0, 0.15)',
-                color: '#ffb74d',
-                fontSize: '0.7rem',
-                height: 24
-              }}
-            />
           </Box>
           <Grid2 container spacing={{ xs: 1.5, sm: 2 }}>
             {materials.substancesOfConcern.content.map((substance, index) => (
@@ -142,13 +558,13 @@ export const MaterialsRenderer: React.FC<MaterialsRendererProps> = ({ rawData })
         </Box>
       )}
 
-      {/* Material Composition Section */}
+      {/* Material Composition Details */}
       {materials.materialComposition?.applicable && materials.materialComposition.content.length > 0 && (
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
             <Science sx={{ color: '#667eea', fontSize: 28 }} />
             <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600 }}>
-              Material Composition
+              Material Composition - Details
             </Typography>
             <Chip
               label={`${materials.materialComposition.content.length} materials`}
@@ -248,18 +664,43 @@ const SubstanceOfConcernCard: React.FC<{ substance: SubstanceOfConcern; index: n
                 {materialName}
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-                <Chip
-                  label={`${materialType}: ${materialId}`}
-                  size="small"
-                  sx={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    fontSize: '0.65rem',
-                    height: 20,
-                    fontFamily: 'monospace',
-                    '& .MuiChip-label': { px: 1, py: 0 }
-                  }}
-                />
+                {substance.id && substance.id.length > 0 ? (
+                  substance.id.map((identifier, idx) => {
+                    const firstIdName = substance.id[0]?.name;
+                    const showName = substance.id.length > 1 && identifier.name && identifier.name !== firstIdName;
+                    return (
+                      <Chip
+                        key={idx}
+                        label={showName
+                          ? `${identifier.type}: ${identifier.name} (${identifier.id})`
+                          : `${identifier.type}: ${identifier.id}`
+                        }
+                        size="small"
+                        sx={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          color: 'rgba(255, 255, 255, 0.9)',
+                          fontSize: '0.65rem',
+                          height: 20,
+                          fontFamily: 'monospace',
+                          '& .MuiChip-label': { px: 1, py: 0 }
+                        }}
+                      />
+                    );
+                  })
+                ) : (
+                  <Chip
+                    label={`${materialType}: ${materialId}`}
+                    size="small"
+                    sx={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontSize: '0.65rem',
+                      height: 20,
+                      fontFamily: 'monospace',
+                      '& .MuiChip-label': { px: 1, py: 0 }
+                    }}
+                  />
+                )}
                 <Chip
                   label={substance.hazardClassification.category}
                   size="small"
@@ -528,18 +969,43 @@ const MaterialCompositionCard: React.FC<{ material: MaterialCompositionItem; ind
                 {materialName}
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
-                <Chip
-                  label={`${materialType}: ${materialId}`}
-                  size="small"
-                  sx={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    fontSize: '0.65rem',
-                    height: 20,
-                    fontFamily: 'monospace',
-                    '& .MuiChip-label': { px: 1, py: 0 }
-                  }}
-                />
+                {material.id && material.id.length > 0 ? (
+                  material.id.map((identifier, idx) => {
+                    const firstIdName = material.id[0]?.name;
+                    const showName = material.id.length > 1 && identifier.name && identifier.name !== firstIdName;
+                    return (
+                      <Chip
+                        key={idx}
+                        label={showName
+                          ? `${identifier.type}: ${identifier.name} (${identifier.id})`
+                          : `${identifier.type}: ${identifier.id}`
+                        }
+                        size="small"
+                        sx={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                          color: 'rgba(255, 255, 255, 0.9)',
+                          fontSize: '0.65rem',
+                          height: 20,
+                          fontFamily: 'monospace',
+                          '& .MuiChip-label': { px: 1, py: 0 }
+                        }}
+                      />
+                    );
+                  })
+                ) : (
+                  <Chip
+                    label={`${materialType}: ${materialId}`}
+                    size="small"
+                    sx={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontSize: '0.65rem',
+                      height: 20,
+                      fontFamily: 'monospace',
+                      '& .MuiChip-label': { px: 1, py: 0 }
+                    }}
+                  />
+                )}
                 <Chip
                   label={`${concentrationPercent}%`}
                   size="small"
@@ -652,7 +1118,7 @@ const MaterialCompositionCard: React.FC<{ material: MaterialCompositionItem; ind
             {/* Renewable Content */}
             <Box sx={{ mb: 2.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Eco sx={{ fontSize: 16, color: '#66bb6a' }} />
+                <EnergySavingsLeaf sx={{ fontSize: 16, color: '#66bb6a' }} />
                 <Typography
                   variant="caption"
                   sx={{

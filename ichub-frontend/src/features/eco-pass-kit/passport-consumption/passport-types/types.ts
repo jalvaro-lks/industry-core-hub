@@ -152,6 +152,31 @@ export class PassportTypeRegistry {
   }
   
   /**
+   * Get passport type config by semantic ID
+   * Semantic IDs typically follow the format: urn:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
+   * This method extracts the URN portion and matches against registered passport types
+   */
+  static getBySemanticId(semanticId: string): PassportTypeConfig | undefined {
+    if (!semanticId) return undefined;
+    
+    // Extract URN portion before the # (if present)
+    const urnPart = semanticId.split('#')[0];
+    
+    // Try exact match first
+    let config = this.getBySpecUrn(semanticId);
+    if (config) return config;
+    
+    // Try matching just the URN portion
+    config = this.getBySpecUrn(urnPart);
+    if (config) return config;
+    
+    // Try partial match (in case of version differences)
+    return Array.from(this.configs.values()).find(c => 
+      semanticId.includes(c.specUrn) || c.specUrn.includes(urnPart)
+    );
+  }
+  
+  /**
    * Detect passport type from data
    */
   static detectType(data: Record<string, unknown>): PassportTypeConfig | undefined {

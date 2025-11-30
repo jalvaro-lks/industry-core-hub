@@ -188,6 +188,38 @@ export const mockProvidedPassport = {
           exemption: 'allowed under threshold limits',
           id: [ { type: 'CAS', name: 'Material B', id: '200-111-3' } ]
         },
+        {
+          unit: 'unit:percent',
+          hazardClassification: {
+            category: 'category 1B',
+            statement: 'May cause cancer.',
+            class: 'Carcinogenicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Lead compound warning', content: 'https://dummy.link/lead-warning' }
+          ],
+          concentrationRange: [ { max: 0.5, min: 0.1 } ],
+          location: 'Solder joints',
+          concentration: 0.3,
+          exemption: 'RoHS exemption 7(c)-I',
+          id: [ { type: 'CAS', name: 'Lead', id: '7439-92-1' } ]
+        },
+        {
+          unit: 'unit:milligramPerKilogram',
+          hazardClassification: {
+            category: 'category 2',
+            statement: 'Suspected of damaging fertility.',
+            class: 'Reproductive toxicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Phthalate documentation', content: 'https://dummy.link/phthalate' }
+          ],
+          concentrationRange: [ { max: 1500, min: 800 } ],
+          location: 'Plastic components',
+          concentration: 1200,
+          exemption: 'below regulatory threshold',
+          id: [ { type: 'CAS', name: 'DEHP', id: '117-81-7' } ]
+        },
       ]
     },
     materialComposition: {
@@ -221,10 +253,15 @@ export const mockProvidedPassport = {
           critical: false,
           renewable: 0.0,
           documentation: [
-            { contentType: 'URL', header: 'Aluminium bracket alloy', content: 'https://dummy.link/aluminium-bracket' }
+            { contentType: 'URL', header: 'Aluminium bracket alloy', content: 'https://dummy.link/aluminium-bracket' },
+            { contentType: 'URL', header: 'Reciclation information', content: 'https://dummy.link/aluminium-bracket' }
           ],
           concentration: 180000,
-          id: [ { type: 'CAS', name: 'Aluminium alloy (mounting bracket)', id: '7429-90-5' } ]
+          id: [ 
+            { type: 'CAS', name: 'Aluminium alloy (mounting bracket)', id: '7429-90-5' },
+            { type: 'EC', name: 'Aluminium', id: '231-072-3' },
+            { type: 'IUPAC', name: 'Aluminum', id: 'Al' }
+          ]
         },
         {
           unit: 'unit:partPerMillion',
@@ -258,6 +295,28 @@ export const mockProvidedPassport = {
           ],
           concentration: 40000,
           id: [ { type: 'CAS', name: 'Polyurethane foam (backing, vibration damping)', id: '9009-54-5' } ]
+        },
+        {
+          unit: 'unit:percent',
+          recycled: 5.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Rubber gasket material', content: 'https://dummy.link/rubber-gasket' }
+          ],
+          concentration: 1.5,
+          id: [ { type: 'CAS', name: 'EPDM rubber (sealing gaskets)', id: '25038-36-2' } ]
+        },
+        {
+          unit: 'unit:gram',
+          recycled: 0.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Adhesive specifications', content: 'https://dummy.link/adhesive' }
+          ],
+          concentration: 15,
+          id: [ { type: 'CAS', name: 'Epoxy adhesive', id: '25068-38-6' } ]
         }
       ]
     }
@@ -465,7 +524,7 @@ export const mockProvidedPassport = {
           performanceClass: 'A',
           manufacturingPlant: [ { facility: 'BPNA1234567890AA' } ],
           type: 'Climate Change Total',
-          value: 12.678,
+          value: 44.56,
           declaration: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ]
         }
       ],
@@ -498,3 +557,4 @@ export const mockProvidedPassport = {
     durabilityScore: 'A'
   }
 };
+

@@ -96,33 +96,8 @@ const PassportConsumption: React.FC = () => {
         }
       }
 
-      // Start loading sequence
-      setIsLoading(true);
-      setLoadingError(null);
-      setCurrentStep(0);
-
-      try {
-        // Simulate step-by-step loading (replace with actual API calls)
-        for (let step = 0; step < LOADING_STEPS.length; step++) {
-          setCurrentStep(step);
-          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
-          
-          // In production, check API status here:
-          // const status = await checkPassportStatus(passportId);
-          // if (status.error) throw new Error(status.error);
-        }
-
-        // Fetch passport data
-        const mockData = await fetchMockPassportData(passportId);
-        setPassportData(mockData);
-        setIsLoading(false);
-        
-        // Navigate to passport route after successful load
-        navigate(`/passport/${encodeURIComponent(passportId)}`);
-      } catch (error) {
-        setLoadingError(error instanceof Error ? error.message : 'Failed to load passport');
-        setIsLoading(false);
-      }
+      // Navigate immediately to passport route, loading will happen there
+      navigate(`/passport/${encodeURIComponent(passportId)}`);
     }
   };
 
@@ -267,10 +242,44 @@ const PassportConsumption: React.FC = () => {
   // If route contains :id, automatically load that passport
   useEffect(() => {
     const id = params?.id as string | undefined;
-    if (id && !isLoading && !showVisualization) {
+    if (id) {
+      // Reset state for new passport
       setPassportId(id);
-      // Trigger the search which will show loading state
-      setTimeout(() => handleSearch(), 100);
+      setPassportData(null);
+      setShowVisualization(false);
+      setIsLoading(true);
+      setLoadingError(null);
+      setCurrentStep(0);
+      
+      const loadPassport = async () => {
+        try {
+          // Simulate step-by-step loading (replace with actual API calls)
+          for (let step = 0; step < LOADING_STEPS.length - 1; step++) {
+            setCurrentStep(step);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+            
+            // In production, check API status here:
+            // const status = await checkPassportStatus(id);
+            // if (status.error) throw new Error(status.error);
+          }
+
+          // Fetch passport data
+          const mockData = await fetchMockPassportData(id);
+          
+          // Show final step
+          setCurrentStep(LOADING_STEPS.length - 1);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          setPassportData(mockData);
+          setIsLoading(false);
+          setShowVisualization(true);
+        } catch (error) {
+          setLoadingError(error instanceof Error ? error.message : 'Failed to load passport');
+          setIsLoading(false);
+        }
+      };
+      
+      loadPassport();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.id]);
@@ -555,7 +564,7 @@ const PassportConsumption: React.FC = () => {
               fontSize: { xs: '1.75rem', sm: '2.25rem', md: '3rem' }
             }}
           >
-            Digital Product Pass
+            Digital Product Passport
           </Typography>
           <Typography 
             variant="body1" 

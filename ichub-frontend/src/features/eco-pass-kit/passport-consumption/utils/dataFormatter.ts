@@ -39,7 +39,12 @@ export const formatDate = (dateStr: string): string => {
 /**
  * Format numbers with appropriate decimal places
  */
-export const formatNumber = (num: number, decimals: number = 2): string => {
+export const formatNumber = (num: number, decimals?: number): string => {
+  // If no decimals specified, show the exact value without rounding
+  if (decimals === undefined) {
+    return String(num);
+  }
+  
   return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: decimals

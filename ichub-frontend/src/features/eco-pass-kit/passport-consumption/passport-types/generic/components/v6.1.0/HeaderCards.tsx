@@ -21,15 +21,17 @@
  ********************************************************************************/
 
 import React from 'react';
-import { Card, Box, Typography, Chip } from '@mui/material';
-import { Info, Factory, Public, CalendarToday } from '@mui/icons-material';
+import { Card, Box, Typography, Chip, createTheme, ThemeProvider } from '@mui/material';
+import { Info, Factory, Public, CalendarToday, Recycling } from '@mui/icons-material';
+import { PieChart } from '@mui/x-charts/PieChart';
+import { QRCodeSVG } from 'qrcode.react';
 import { HeaderCardProps } from '../../../base';
 
 /**
  * General Information Card
  * Displays product name, passport identifier, issuance/expiration dates, version, and status
  */
-export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
+export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data, passportId }) => {
   const identification = data.identification as Record<string, any> | undefined;
   const metadata = data.metadata as Record<string, any> | undefined;
   const sustainability = data.sustainability as Record<string, any> | undefined;
@@ -78,6 +80,24 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem', lg: '1.1rem' }, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {productName}
           </Typography>
+        </Box>
+        <Box
+          sx={{
+            p: 1,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid rgba(102, 126, 234, 0.3)'
+          }}
+        >
+          <QRCodeSVG 
+            value={passportId} 
+            size={80}
+            level="M"
+            includeMargin={false}
+          />
         </Box>
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -161,16 +181,25 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
 
 /**
  * Manufacturing Information Card
- * Displays manufacturer ID, manufacturing date, part ID, and product name
+ * Displays manufacturer ID, manufacturing date, part ID, product name, and physical dimensions
  */
 export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
   const operation = data.operation as Record<string, any> | undefined;
   const identification = data.identification as Record<string, any> | undefined;
+  const characteristics = data.characteristics as Record<string, any> | undefined;
   
   const manufacturerId = operation?.manufacturer?.manufacturer || 'N/A';
   const manufacturingDate = operation?.manufacturer?.manufacturingDate || 'N/A';
   const manufacturerPartId = identification?.type?.manufacturerPartId || 'N/A';
   const nameAtManufacturer = identification?.type?.nameAtManufacturer || 'N/A';
+
+  // Physical dimensions
+  const physicalDimension = characteristics?.physicalDimension || {};
+  const width = physicalDimension.width ? `${physicalDimension.width.value} ${physicalDimension.width.unit?.replace('unit:', '') || 'mm'}` : 'N/A';
+  const length = physicalDimension.length ? `${physicalDimension.length.value} ${physicalDimension.length.unit?.replace('unit:', '') || 'mm'}` : 'N/A';
+  const height = physicalDimension.height ? `${physicalDimension.height.value} ${physicalDimension.height.unit?.replace('unit:', '') || 'mm'}` : 'N/A';
+  const volume = physicalDimension.volume ? `${physicalDimension.volume.value} ${physicalDimension.volume.unit?.replace('unit:', '') || 'm³'}` : 'N/A';
+  const diameter = physicalDimension.diameter ? `${physicalDimension.diameter.value} ${physicalDimension.diameter.unit?.replace('unit:', '') || 'mm'}` : 'N/A';
 
   return (
     <Card
@@ -212,21 +241,23 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
         </Box>
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-            Date of Manufacturing
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-            {manufacturingDate}
-          </Typography>
-        </Box>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-            Manufacturer Part ID
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'monospace' }}>
-            {manufacturerPartId}
-          </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: 1, minWidth: '45%' }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+              Date of Manufacturing
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
+              {manufacturingDate}
+            </Typography>
+          </Box>
+          <Box sx={{ flex: 1, minWidth: '45%' }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+              Manufacturer Part ID
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'monospace' }}>
+              {manufacturerPartId}
+            </Typography>
+          </Box>
         </Box>
         <Box>
           <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
@@ -236,6 +267,123 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
             {nameAtManufacturer}
           </Typography>
         </Box>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1, justifyContent: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            minWidth: 80,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Width
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: '#f59e0b',
+              fontWeight: 700,
+              fontSize: '1rem',
+              textAlign: 'center'
+            }}>
+              {width}
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            minWidth: 80,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Length
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: '#f59e0b',
+              fontWeight: 700,
+              fontSize: '1rem',
+              textAlign: 'center'
+            }}>
+              {length}
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            minWidth: 80,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Height
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: '#f59e0b',
+              fontWeight: 700,
+              fontSize: '1rem',
+              textAlign: 'center'
+            }}>
+              {height}
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            minWidth: 80,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Volume
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: '#f59e0b',
+              fontWeight: 700,
+              fontSize: '1rem',
+              textAlign: 'center'
+            }}>
+              {volume}
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            minWidth: 80,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Diameter
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: '#f59e0b',
+              fontWeight: 700,
+              fontSize: '1rem',
+              textAlign: 'center'
+            }}>
+              {diameter}
+            </Typography>
+          </Box>
+        </Box>
       </Box>
     </Card>
   );
@@ -243,15 +391,56 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
 
 /**
  * Sustainability Card
- * Displays CO2 footprint and durability score
+ * Displays CO2 footprint, durability score, and percentage of recyclable materials
  */
 export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
   const sustainability = data.sustainability as Record<string, any> | undefined;
+  const materials = data.materials as Record<string, any> | undefined;
   
-  const co2Footprint = sustainability?.productFootprint?.carbon?.[0]?.value 
-    ? `${sustainability.productFootprint.carbon[0].value} ${sustainability.productFootprint.carbon[0].unit || 'kg CO2'}`
-    : 'N/A';
+  // Calculate total footprints by summing all values in each array
+  const calculateFootprint = (footprintArray: any[]) => {
+    if (!footprintArray || footprintArray.length === 0) return null;
+    
+    let total = 0;
+    let unit = '';
+    
+    footprintArray.forEach((item: any) => {
+      if (item.value) {
+        total += parseFloat(item.value);
+        if (!unit && item.unit) {
+          unit = item.unit;
+        }
+      }
+    });
+    
+    return total > 0 ? { value: total, unit } : null;
+  };
+  
+  const carbonFootprint = calculateFootprint(sustainability?.productFootprint?.carbon);
+  const environmentalFootprint = calculateFootprint(sustainability?.productFootprint?.environmental);
+  const materialFootprint = calculateFootprint(sustainability?.productFootprint?.material);
+  
   const durabilityScore = sustainability?.durabilityScore || 'N/A';
+
+  // Calculate percentage of recyclable materials based on weighted average
+  const calculateRecyclablePercentage = () => {
+    const materialComposition = materials?.materialComposition?.content || [];
+    if (materialComposition.length === 0) return 0;
+
+    let totalWeightedRecycled = 0;
+    let totalConcentration = 0;
+
+    materialComposition.forEach((item: any) => {
+      const concentration = item.concentration || 0;
+      const recycled = item.recycled || 0;
+      totalWeightedRecycled += (concentration * recycled);
+      totalConcentration += concentration;
+    });
+
+    return totalConcentration > 0 ? (totalWeightedRecycled / totalConcentration) : 0;
+  };
+
+  const recyclablePercentage = calculateRecyclablePercentage();
 
   return (
     <Card
@@ -269,7 +458,8 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
         }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 2 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
         <Box
           sx={{
             p: 1,
@@ -282,58 +472,155 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
         >
           <Public sx={{ fontSize: 20, color: '#22c55e' }} />
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            CARBON FOOTPRINT
-          </Typography>
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem' }, lineHeight: 1.3 }}>
-            {co2Footprint}
-          </Typography>
-        </Box>
+        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          SUSTAINABILITY
+        </Typography>
       </Box>
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+
+      {/* Footprint Values - Top Row */}
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
+        {carbonFootprint && (
+          <Box sx={{
+            flex: 1,
+            minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 0.5, textAlign: 'center' }}>
+              Carbon
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', textAlign: 'center' }}>
+              {carbonFootprint.value} {carbonFootprint.unit}
+            </Typography>
+          </Box>
+        )}
+        {environmentalFootprint && (
+          <Box sx={{
+            flex: 1,
+            minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 0.5, textAlign: 'center' }}>
+              Environmental
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', textAlign: 'center' }}>
+              {environmentalFootprint.value} {environmentalFootprint.unit}
+            </Typography>
+          </Box>
+        )}
+        {materialFootprint && (
+          <Box sx={{
+            flex: 1,
+            minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 0.5, textAlign: 'center' }}>
+              Material
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', textAlign: 'center' }}>
+              {materialFootprint.value} {materialFootprint.unit}
+            </Typography>
+          </Box>
+        )}
+        {!carbonFootprint && !environmentalFootprint && !materialFootprint && (
+          <Box sx={{ width: '100%', textAlign: 'center', py: 2 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
+              No footprint data available
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* Scores - Bottom Row */}
+      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
         <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
+          flex: 1,
+          minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
           p: 2,
           borderRadius: '8px',
           backgroundColor: 'rgba(34, 197, 94, 0.15)',
           border: '1px solid rgba(34, 197, 94, 0.3)',
-          minWidth: { xs: 80, sm: 90 },
-          flex: 1
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textAlign: 'center', mb: 1 }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 1, textAlign: 'center' }}>
             Durability Score
           </Typography>
           <Typography variant="h4" sx={{
             color: '#22c55e',
             fontWeight: 700,
-            fontSize: { xs: '1.75rem', sm: '2rem' }
+            fontSize: { xs: '1.5rem', sm: '1.75rem' }
           }}>
             {durabilityScore}
           </Typography>
         </Box>
         <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
+          flex: 1,
+          minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
           p: 2,
           borderRadius: '8px',
           backgroundColor: 'rgba(34, 197, 94, 0.15)',
           border: '1px solid rgba(34, 197, 94, 0.3)',
-          minWidth: { xs: 80, sm: 90 },
-          flex: 1
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textAlign: 'center', mb: 1 }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 1, textAlign: 'center' }}>
             Reparability Score
           </Typography>
           <Typography variant="h4" sx={{
             color: '#22c55e',
             fontWeight: 700,
-            fontSize: { xs: '1.75rem', sm: '2rem' }
+            fontSize: { xs: '1.5rem', sm: '1.75rem' }
           }}>
             {sustainability?.reparabilityScore || 'N/A'}
+          </Typography>
+        </Box>
+        <Box sx={{ 
+          flex: 1,
+          minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
+          p: 2,
+          borderRadius: '8px',
+          backgroundColor: 'rgba(34, 197, 94, 0.15)',
+          border: '1px solid rgba(34, 197, 94, 0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <Recycling sx={{ fontSize: 18, color: '#22c55e', mb: 0.5 }} />
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.6rem', textAlign: 'center', mb: 0.5 }}>
+            Recyclable
+          </Typography>
+          <Typography variant="h4" sx={{
+            color: '#22c55e',
+            fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '1.75rem' }
+          }}>
+            {recyclablePercentage.toFixed(1)}%
           </Typography>
         </Box>
       </Box>
@@ -343,7 +630,7 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
 
 /**
  * Materials Card
- * Displays material composition and substances of concern pie charts
+ * Displays material composition pie chart with single unit type
  */
 export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
   const materials = data.materials as Record<string, any> | undefined;
@@ -351,54 +638,59 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
   // Material Composition data
   const materialComposition = materials?.materialComposition?.content || [];
   
-  // Substances of Concern data
-  const substancesOfConcern = materials?.substancesOfConcern?.content || [];
-  
-  // Calculate totals for material composition - using concentration values
-  const compositionData = materialComposition.map((item: any) => ({
-    name: item.id?.[0]?.name || 'Unknown',
-    value: item.concentration ? (item.concentration / 10000) : 0 // Convert PPM to percentage
-  })).filter((item: any) => item.value > 0);
-  
-  // Calculate totals for substances of concern - using concentration values
-  const concernData = substancesOfConcern.map((item: any) => ({
-    name: item.id?.[0]?.name || 'Unknown',
-    value: item.concentration || 0
-  })).filter((item: any) => item.value > 0);
+  // Group materials by unit
+  const materialsByUnit: Record<string, any[]> = materialComposition.reduce((acc: Record<string, any[]>, item: any) => {
+    const unit = item.unit || 'unit n/a';
+    if (!acc[unit]) {
+      acc[unit] = [];
+    }
+    acc[unit].push(item);
+    return acc;
+  }, {});
+
+  // Select the unit with the most materials, or the first one in case of a tie
+  const selectedUnit = Object.keys(materialsByUnit).length > 0
+    ? Object.keys(materialsByUnit).reduce((maxUnit, currentUnit) => 
+        materialsByUnit[currentUnit].length > materialsByUnit[maxUnit].length 
+          ? currentUnit 
+          : maxUnit
+      )
+    : null;
+
+  // Filter materials to the selected unit
+  const compositionData = selectedUnit
+    ? materialsByUnit[selectedUnit].map((item: any) => ({
+        name: item.id?.[0]?.name || 'Unknown',
+        value: item.concentration || 0,
+        unit: item.unit || 'unit n/a'
+      })).filter((item: any) => item.value > 0)
+    : [];
 
   const hasCompositionData = compositionData.length > 0;
-  const hasConcernData = concernData.length > 0;
 
-  const renderPieChart = (data: any[], colors: string[]) => {
-    const total = data.reduce((sum: number, item: any) => sum + item.value, 0);
-    if (total === 0) return null;
+  const compositionColors = ['#8b5cf6', '#6366f1', '#a78bfa', '#c4b5fd', '#ddd6fe', '#e9d5ff', '#f3e8ff'];
 
-    let currentAngle = -90;
-    return data.map((item, index) => {
-      const percentage = (item.value / total) * 100;
-      const angle = (percentage / 100) * 360;
-      const startAngle = currentAngle;
-      const endAngle = currentAngle + angle;
-      currentAngle = endAngle;
-
-      const startRad = (startAngle * Math.PI) / 180;
-      const endRad = (endAngle * Math.PI) / 180;
-      const x1 = 50 + 40 * Math.cos(startRad);
-      const y1 = 50 + 40 * Math.sin(startRad);
-      const x2 = 50 + 40 * Math.cos(endRad);
-      const y2 = 50 + 40 * Math.sin(endRad);
-      const largeArc = angle > 180 ? 1 : 0;
-
-      return (
-        <path
-          key={index}
-          d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
-          fill={colors[index % colors.length]}
-          opacity="0.9"
-        />
-      );
-    });
-  };
+  // Create a theme for white text in charts
+  const chartTheme = createTheme({
+    palette: {
+      mode: 'dark',
+      text: {
+        primary: '#ffffff',
+        secondary: '#ffffff',
+      },
+    },
+    components: {
+      MuiChartsLegend: {
+        styleOverrides: {
+          root: {
+            '& text': {
+              fill: '#ffffff !important',
+            },
+          },
+        },
+      },
+    },
+  });
 
   return (
     <Card
@@ -438,64 +730,78 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
       
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {/* Material Composition */}
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', mb: 1, display: 'block', textAlign: 'center' }}>
-            Material Composition
-          </Typography>
-          {hasCompositionData ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-              <Box sx={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
-                <svg width="70" height="70" viewBox="0 0 100 100">
-                  {renderPieChart(compositionData, ['#8b5cf6', '#6366f1', '#a78bfa', '#c4b5fd', '#ddd6fe'])}
-                </svg>
-              </Box>
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                {compositionData.slice(0, 3).map((item: any, index: number) => (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ['#8b5cf6', '#6366f1', '#a78bfa'][index], flexShrink: 0 }} />
-                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
-                      {item.name} {item.value.toFixed(1)}%
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+        {hasCompositionData ? (
+          <ThemeProvider theme={chartTheme}>
+            <Box sx={{
+              '& svg text': {
+                fill: 'white !important',
+              },
+              '& .MuiChartsLegend-series text': {
+                fill: 'white !important',
+              }
+            }}>
+              <PieChart
+              series={[
+                {
+                  data: compositionData.map((item: any, index: number) => ({
+                    id: index,
+                    value: item.value,
+                    label: item.name,
+                    color: compositionColors[index % compositionColors.length]
+                  })),
+                  highlightScope: { faded: 'global', highlighted: 'item' },
+                }
+              ]}
+              width={300}
+              height={200}
+              colors={compositionColors}
+              slotProps={{
+                legend: {
+                  direction: 'column',
+                  position: { vertical: 'bottom', horizontal: 'middle' },
+                  padding: 0,
+                  itemMarkWidth: 12,
+                  itemMarkHeight: 12,
+                  markGap: 8,
+                  itemGap: 8,
+                  labelStyle: {
+                    fontSize: '11px',
+                    fill: 'white',
+                  },
+                },
+              }}
+              sx={{
+                '& .MuiChartsLegend-series text': {
+                  fill: 'white !important',
+                  fontSize: '11px !important',
+                },
+                '& .MuiPieArc-root': {
+                  stroke: 'rgba(255, 255, 255, 0.1)',
+                  strokeWidth: 1,
+                },
+              }}
+              />
+              {selectedUnit && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'rgba(255, 255, 255, 0.6)', 
+                    fontSize: '0.7rem', 
+                    textAlign: 'center',
+                    display: 'block',
+                    mt: -1
+                  }}
+                >
+                  {selectedUnit}
+                </Typography>
+              )}
             </Box>
-          ) : (
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 1 }}>
-              No data
-            </Typography>
-          )}
-        </Box>
-
-        {/* Substances of Concern */}
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', mb: 1, display: 'block', textAlign: 'center' }}>
-            Substances of Concern
+          </ThemeProvider>
+        ) : (
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 1 }}>
+            No data
           </Typography>
-          {hasConcernData ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-              <Box sx={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
-                <svg width="70" height="70" viewBox="0 0 100 100">
-                  {renderPieChart(concernData, ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#fbbf24'])}
-                </svg>
-              </Box>
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                {concernData.slice(0, 3).map((item: any, index: number) => (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ['#ef4444', '#f97316', '#f59e0b'][index], flexShrink: 0 }} />
-                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
-                      {item.name} {item.value.toFixed(1)}%
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          ) : (
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 1 }}>
-              No data
-            </Typography>
-          )}
-        </Box>
+        )}
       </Box>
     </Card>
   );

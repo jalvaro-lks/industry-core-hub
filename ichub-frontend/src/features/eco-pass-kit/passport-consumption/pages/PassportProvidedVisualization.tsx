@@ -20,34 +20,213 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Box, Typography, Button } from '@mui/material';
 import { PassportTypeRegistry } from '../passport-types';
-import { mockProvidedPassport } from '../mockData';
-import { mockDigitalTwinData, mockCounterPartyId } from '../mockDigitalTwinData';
+import { fetchPassportWithDigitalTwin, PassportResponse } from '../api/passportApi';
+import PassportLoadingSteps, { LOADING_STEPS } from '../components/PassportLoadingSteps';
 
 /**
  * Demo page to visualize the user-provided passport data model
- * Now uses the new modular passport visualization architecture
+ * Now uses the new modular passport visualization architecture with API loading
  */
 const PassportProvidedVisualization: React.FC = () => {
   const navigate = useNavigate();
+  const params = useParams();
+  const passportId = params?.id as string | undefined;
+  
+  const [loading, setLoading] = useState(true);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [passportData, setPassportData] = useState<PassportResponse | null>(null);
+
+  useEffect(() => {
+    const loadPassportData = async () => {
+      if (!passportId) {
+        setError('No passport ID provided');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        setCurrentStep(0);
+        
+        // Simulate step-by-step loading
+        for (let step = 0; step < LOADING_STEPS.length - 1; step++) {
+          setCurrentStep(step);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Fetch passport data from API (currently returns mock data)
+        const response = await fetchPassportWithDigitalTwin(passportId);
+        
+        // Show final step
+        setCurrentStep(LOADING_STEPS.length - 1);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setPassportData(response);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load passport data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPassportData();
+  }, [passportId]);
 
   const handleBack = () => {
     navigate('/passport');
   };
 
-  // Detect passport type from the data
-  const passportConfig = PassportTypeRegistry.detectType(mockProvidedPassport);
+  // Loading state with step-by-step progress
+  if (loading) {
+    return (
+      <PassportLoadingSteps
+        passportId={passportId}
+        currentStep={currentStep}
+        onCancel={() => navigate('/passport')}
+      />
+    );
+  }
+
+  // Error state
+  if (error || !passportData) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#0d0d0d',
+          gap: 2,
+          p: 3
+        }}
+      >
+        <Typography
+          variant="h5"
+          sx={{
+            color: '#f44336',
+            fontWeight: 600,
+            mb: 1
+          }}
+        >
+          Error Loading Passport
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'rgba(255, 255, 255, 0.7)',
+            textAlign: 'center',
+            maxWidth: 500
+          }}
+        >
+          {error || 'Unable to load passport data'}
+        </Typography>
+        <Box
+          component="button"
+          onClick={handleBack}
+          sx={{
+            mt: 2,
+            px: 3,
+            py: 1.5,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '0.95rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+            }
+          }}
+        >
+          Go Back
+        </Box>
+      </Box>
+    );
+  }
+
+  // Detect passport type from semantic ID (if available), otherwise from data structure
+  let passportConfig = passportData.semanticId 
+    ? PassportTypeRegistry.getBySemanticId(passportData.semanticId)
+    : undefined;
+  
+  // Fallback to data structure detection if semantic ID doesn't match
+  if (!passportConfig) {
+    passportConfig = PassportTypeRegistry.detectType(passportData.data);
+  }
+  
+  // Final fallback to base/generic visualization
+  if (!passportConfig) {
+    passportConfig = PassportTypeRegistry.get('generic');
+  }
   
   if (!passportConfig) {
     return (
-      <div style={{ padding: '2rem', color: '#fff', textAlign: 'center' }}>
-        <h2>Error: Unable to determine passport type</h2>
-        <button onClick={handleBack} style={{ marginTop: '1rem' }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#0d0d0d',
+          gap: 2,
+          p: 3
+        }}
+      >
+        <Typography
+          variant="h5"
+          sx={{
+            color: '#f44336',
+            fontWeight: 600,
+            mb: 1
+          }}
+        >
+          Unable to Determine Passport Type
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'rgba(255, 255, 255, 0.7)',
+            textAlign: 'center'
+          }}
+        >
+          The passport data format is not recognized
+        </Typography>
+        <Box
+          component="button"
+          onClick={handleBack}
+          sx={{
+            mt: 2,
+            px: 3,
+            py: 1.5,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '0.95rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+            }
+          }}
+        >
           Go Back
-        </button>
-      </div>
+        </Box>
+      </Box>
     );
   }
 
@@ -56,13 +235,13 @@ const PassportProvidedVisualization: React.FC = () => {
   return (
     <VisualizationComponent
       schema={passportConfig.schema}
-      data={mockProvidedPassport}
-      passportId="demo-provided"
+      data={passportData.data}
+      passportId={passportId || ''}
       onBack={handleBack}
       passportName={passportConfig.name}
       passportVersion={passportConfig.version}
-      digitalTwinData={mockDigitalTwinData}
-      counterPartyId={mockCounterPartyId}
+      digitalTwinData={passportData.digitalTwin}
+      counterPartyId={passportData.counterPartyId}
     />
   );
 };
