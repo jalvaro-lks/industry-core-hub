@@ -111,8 +111,6 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
   // Extract metadata
   const metadata = data.metadata as Record<string, any> | undefined;
   const semanticId = metadata?.['x-samm-aspect-model-urn'] || metadata?.specVersion || 'N/A';
-  const aasId = metadata?.backupReference || 'N/A';
-  const globalAssetId = metadata?.passportIdentifier || passportId;
 
   // Handle copy to clipboard
   const handleCopy = (text: string, label: string) => {
@@ -233,12 +231,9 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
       sx={{ 
         height: '100%',
         width: '100%',
-        maxWidth: '100%',
         display: 'flex', 
         flexDirection: 'column', 
-        background: '#0d0d0d',
-        position: 'relative',
-        overflow: 'hidden'
+        background: '#0d0d0d'
       }}
     >
       {/* Header - Sticky Container */}
@@ -262,221 +257,130 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
             py: { xs: 1.5, sm: 2 }
           }}
         >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-          {/* Left side - Back button and title */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={onBack}
-              variant="outlined"
+        <Grid2 container spacing={{ xs: 2, md: 3 }} alignItems="center" justifyContent="space-between">
+          {/* Left side - Back button, title, semantic + passport ID */}
+          <Grid2 xs={12} md={8}>
+            <Box
               sx={{
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'rgba(255, 255, 255, 0.8)',
-                minWidth: { xs: 'auto', sm: 'auto' },
-                px: { xs: 1.5, sm: 2 },
-                py: { xs: 0.75, sm: 1 },
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                fontWeight: 500,
-                textTransform: 'none',
-                borderRadius: '8px',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.4)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                },
-                '& .MuiButton-startIcon': {
-                  marginRight: { xs: 0, sm: 1 }
-                },
-                '& .MuiButton-startIcon > svg': {
-                  fontSize: { xs: '18px', sm: '20px' }
-                }
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 1.25, sm: 1.75 },
+                flexWrap: 'wrap'
               }}
             >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Back
-              </Box>
-            </Button>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography 
-                variant="h6" 
-                sx={{ 
-                  color: '#fff', 
-                  fontWeight: 600,
-                  fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
-                  whiteSpace: 'nowrap'
+              <Button
+                startIcon={<ArrowBack />}
+                onClick={onBack}
+                variant="outlined"
+                sx={{
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  minWidth: { xs: 'auto', sm: 'auto' },
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.75, sm: 1 },
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  borderRadius: '8px',
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                  },
+                  '& .MuiButton-startIcon': {
+                    marginRight: { xs: 0, sm: 1 }
+                  },
+                  '& .MuiButton-startIcon > svg': {
+                    fontSize: { xs: '18px', sm: '20px' }
+                  }
                 }}
               >
-                {passportName}
-              </Typography>
-              {passportVersion && (
-                <Chip
-                  label={passportVersion}
-                  size="small"
-                  sx={{
-                    backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    border: '1px solid rgba(102, 126, 234, 0.4)',
-                    height: 22,
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    '& .MuiChip-label': {
-                      px: 1,
-                      py: 0
-                    }
-                  }}
-                />
-              )}
-              <Chip
-                label={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                      ID:
-                    </Typography>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        fontFamily: 'monospace',
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Back
+                </Box>
+              </Button>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      color: '#fff', 
+                      fontWeight: 600,
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {passportName}
+                  </Typography>
+                  {passportVersion && (
+                    <Chip
+                      label={passportVersion}
+                      size="small"
+                      sx={{
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.9)',
+                        border: '1px solid rgba(102, 126, 234, 0.4)',
+                        height: 22,
                         fontSize: '0.7rem',
-                        color: '#fff',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        '& .MuiChip-label': {
+                          px: 1,
+                          py: 0
+                        }
                       }}
-                    >
-                      {passportId}
-                    </Typography>
-                  </Box>
-                }
-                deleteIcon={<ContentCopy sx={{ fontSize: 14 }} />}
-                onDelete={() => handleCopy(passportId, 'Passport ID')}
-                size="small"
-                sx={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  height: 24,
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  '& .MuiChip-deleteIcon': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    '&:hover': {
-                      color: '#fff'
+                    />
+                  )}
+                  <Chip
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                          ID:
+                        </Typography>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            fontFamily: 'monospace',
+                            fontSize: '0.7rem',
+                            color: '#fff',
+                            fontWeight: 600
+                          }}
+                        >
+                          {passportId}
+                        </Typography>
+                      </Box>
                     }
-                  },
-                  '& .MuiChip-label': {
-                    px: 1.5,
-                    py: 0
-                  }
-                }}
-              />
-            </Box>
-          </Box>
-
-          {/* Center - IDs as chips */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1,
-            flex: 1,
-            justifyContent: 'center',
-            minWidth: 0,
-            px: { xs: 1, sm: 2 },
-            flexWrap: 'wrap'
-          }}>
-            <Chip
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, color: 'rgba(255, 255, 255, 0.7)', display: { xs: 'none', sm: 'inline' } }}>
-                    Global Asset ID:
-                  </Typography>
-                  <Typography variant="caption" sx={{ fontSize: { xs: '0.65rem', md: '0.7rem' }, color: 'rgba(255, 255, 255, 0.7)', display: { xs: 'inline', sm: 'none' } }}>
-                    ID:
-                  </Typography>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ 
-                      fontFamily: 'monospace',
-                      fontSize: { xs: '0.65rem', md: '0.7rem' },
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                    deleteIcon={<ContentCopy sx={{ fontSize: 14 }} />}
+                    onDelete={() => handleCopy(passportId, 'Passport ID')}
+                    size="small"
+                    sx={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
                       color: '#fff',
-                      maxWidth: { xs: '100px', sm: '150px', md: '200px' }
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      height: 24,
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                      '& .MuiChip-deleteIcon': {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        '&:hover': {
+                          color: '#fff'
+                        }
+                      },
+                      '& .MuiChip-label': {
+                        px: 1.5,
+                        py: 0
+                      }
                     }}
-                  >
-                    {globalAssetId}
-                  </Typography>
+                  />
                 </Box>
-              }
-              deleteIcon={<ContentCopy sx={{ fontSize: 14 }} />}
-              onDelete={() => handleCopy(globalAssetId, 'Global Asset ID')}
-              size="small"
-              sx={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                height: 26,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                '& .MuiChip-deleteIcon': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  '&:hover': {
-                    color: '#fff'
-                  }
-                },
-                '& .MuiChip-label': {
-                  px: 1.5,
-                  py: 0
-                }
-              }}
-            />
-            <Chip
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                    AAS ID:
-                  </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
                   <Typography 
                     variant="caption" 
                     sx={{ 
-                      fontFamily: 'monospace',
-                      fontSize: '0.7rem',
-                      overflow: 'visible',
-                      whiteSpace: 'nowrap',
-                      color: '#fff'
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      fontSize: '0.7rem'
                     }}
                   >
-                    {aasId}
-                  </Typography>
-                </Box>
-              }
-              deleteIcon={<ContentCopy sx={{ fontSize: 14 }} />}
-              onDelete={() => handleCopy(aasId, 'AAS ID')}
-              size="small"
-              sx={{
-                display: { xs: 'none', md: 'flex' },
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                height: 26,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                '& .MuiChip-deleteIcon': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  '&:hover': {
-                    color: '#fff'
-                  }
-                },
-                '& .MuiChip-label': {
-                  px: 1.5,
-                  py: 0
-                }
-              }}
-            />
-            <Chip
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
                     Semantic ID:
                   </Typography>
                   <Typography 
@@ -484,123 +388,97 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                     sx={{ 
                       fontFamily: 'monospace',
                       fontSize: '0.7rem',
-                      overflow: 'visible',
-                      whiteSpace: 'nowrap',
-                      color: '#fff'
+                      color: 'rgba(255, 255, 255, 0.7)'
                     }}
                   >
                     {semanticId}
                   </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleCopy(semanticId, 'Semantic ID')}
+                    sx={{
+                      padding: '2px',
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      '&:hover': {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                      }
+                    }}
+                  >
+                    <ContentCopy sx={{ fontSize: 12 }} />
+                  </IconButton>
                 </Box>
-              }
-              deleteIcon={<ContentCopy sx={{ fontSize: 14 }} />}
-              onDelete={() => handleCopy(semanticId, 'Semantic ID')}
-              size="small"
-              sx={{
-                display: { xs: 'none', xl: 'flex' },
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
-                color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                height: 26,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                '& .MuiChip-deleteIcon': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  '&:hover': {
-                    color: '#fff'
-                  }
-                },
-                '& .MuiChip-label': {
-                  px: 1.5,
-                  py: 0
-                }
-              }}
-            />
-          </Box>
+              </Box>
+            </Box>
+          </Grid2>
 
           {/* Right side - Action buttons */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button
-              size="small"
-              startIcon={<ViewInAr sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-              onClick={handleShowDigitalTwin}
-              sx={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: '#fff',
-                textTransform: 'none',
-                fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                px: { xs: 1.5, sm: 2 },
-                py: { xs: 0.75, sm: 1 },
-                fontWeight: 600,
-                borderRadius: '8px',
-                '&:hover': { 
-                  background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
-                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
-                },
-                display: { xs: 'none', sm: 'inline-flex' }
-              }}
-            >
-              Show Digital Twin
-            </Button>
-            <Button
-              size="small"
-              startIcon={<Description sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-              disabled
-              sx={{
-                color: 'rgba(255, 255, 255, 0.3)',
-                textTransform: 'none',
-                fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                px: { xs: 1.5, sm: 2 },
-                py: { xs: 0.75, sm: 1 },
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                '&.Mui-disabled': {
+          <Grid2 xs={12} md={4}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+              <Button
+                size="small"
+                startIcon={<ViewInAr sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                onClick={handleShowDigitalTwin}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: '#fff',
+                  textTransform: 'none',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.75, sm: 1 },
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  '&:hover': { 
+                    background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  },
+                  display: 'inline-flex'
+                }}
+              >
+                Show Digital Twin
+              </Button>
+              <Button
+                size="small"
+                startIcon={<Description sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                disabled
+                sx={{
                   color: 'rgba(255, 255, 255, 0.3)',
-                  borderColor: 'rgba(255, 255, 255, 0.1)'
-                },
-                display: { xs: 'none', md: 'inline-flex' }
-              }}
-            >
-              Data Contract Info
-            </Button>
-            <Button
-              size="small"
-              startIcon={<ContentCopy sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-              onClick={() => handleCopy(passportId, 'Passport ID')}
-              sx={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                textTransform: 'none',
-                fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                px: { xs: 1, sm: 1.5 },
-                py: { xs: 0.5, sm: 0.75 },
-                minWidth: 'auto',
-                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.05)' },
-                display: { xs: 'none', sm: 'inline-flex' }
-              }}
-            >
-              Copy ID
-            </Button>
-            <Button
-              size="small"
-              startIcon={<Download sx={{ fontSize: { xs: 16, sm: 18 } }} />}
-              onClick={handleDownload}
-              sx={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                textTransform: 'none',
-                fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                px: { xs: 1, sm: 1.5 },
-                py: { xs: 0.5, sm: 0.75 },
-                minWidth: 'auto',
-                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.05)' }
-              }}
-            >
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                Download
-              </Box>
-            </Button>
-          </Box>
-        </Box>
+                  textTransform: 'none',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.75, sm: 1 },
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  '&.Mui-disabled': {
+                    color: 'rgba(255, 255, 255, 0.3)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                  },
+                  display: 'inline-flex'
+                }}
+              >
+                Data Contract Info
+              </Button>
+              <Button
+                size="small"
+                startIcon={<Download sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                onClick={handleDownload}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  textTransform: 'none',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                  px: { xs: 1, sm: 1.5 },
+                  py: { xs: 0.5, sm: 0.75 },
+                  minWidth: 'auto',
+                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.05)' }
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Download
+                </Box>
+              </Button>
+            </Box>
+          </Grid2>
+        </Grid2>
         </Paper>
       </Box>
 
@@ -671,22 +549,21 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
           top: 0,
           zIndex: 1000,
           background: '#0d0d0d',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          flexShrink: 0
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
         }}
       >
-        {/* Divider */}
-
         {/* Tabs - Desktop (Hidden on mobile) */}
-        <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, mt: { xs: 1, sm: 1.5 }, pb: { xs: 1, sm: 1.5 }, display: { xs: 'none', md: 'block' } }}>
-          <Tabs
-            value={activeTab}
-            onChange={(_, newValue) => setActiveTab(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              pt: 0,
-              minHeight: 42,
+        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          variant="scrollable"
+          scrollButtons
+          allowScrollButtonsMobile
+          sx={{
+            pt: { xs: 1, sm: 1.5 },
+            pb: { xs: 1, sm: 1.5 },
+            px: { xs: 2, sm: 3, md: 4 },
               '& .MuiTabs-indicator': {
                 backgroundColor: '#667eea',
                 height: 3,
@@ -711,9 +588,13 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                 }
               },
               '& .MuiTabs-scrollButtons': {
-                color: 'rgba(255, 255, 255, 0.5)',
+                color: 'rgba(255, 255, 255, 0.7)',
+                width: 40,
                 '&.Mui-disabled': {
                   opacity: 0.3
+                },
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
                 }
               }
             }}
@@ -730,8 +611,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               );
             })}
           </Tabs>
-        </Box>
-
+          </Box>
         {/* Tab Dropdown - Mobile (Hidden on desktop) */}
         <Box sx={{ px: 2, py: { xs: 1, sm: 1.5 }, display: { xs: 'block', md: 'none' } }}>
           <Button
