@@ -21,11 +21,117 @@
  ********************************************************************************/
 
 import React from 'react';
-import { Card, Box, Typography, Chip, createTheme, ThemeProvider } from '@mui/material';
-import { Info, Factory, Public, CalendarToday, Recycling } from '@mui/icons-material';
+import { Card, Box, Typography, Chip, createTheme, ThemeProvider, Grid2 } from '@mui/material';
+import { Info, Factory, EnergySavingsLeaf, Science, Recycling, Event, Badge, Straighten, AspectRatio, Height as HeightIcon, ViewInAr, Scale, Business, Fingerprint, History, CheckCircle, Update, Today } from '@mui/icons-material';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { QRCodeSVG } from 'qrcode.react';
 import { HeaderCardProps } from '../../../base';
+
+/**
+ * Reusable Info Box Component
+ * Displays a label and value in a compact, centered box
+ */
+interface InfoBoxProps {
+  label: string;
+  value: string | number;
+  color?: string;
+  backgroundColor?: string;
+  borderColor?: string;
+  fontFamily?: string;
+  size?: 'small' | 'medium' | 'large';
+}
+
+const InfoBox: React.FC<InfoBoxProps> = ({
+  label,
+  value,
+  color = '#fff',
+  backgroundColor = 'rgba(255, 255, 255, 0.05)',
+  borderColor = 'rgba(255, 255, 255, 0.1)',
+  fontFamily = 'inherit',
+  size = 'medium'
+}) => {
+  const fontSize = size === 'small' ? '0.85rem' : size === 'large' ? '1.5rem' : '1.1rem';
+  const padding = size === 'small' ? 0.75 : size === 'large' ? 1.5 : 1;
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: padding,
+        borderRadius: '8px',
+        backgroundColor,
+        border: `1px solid ${borderColor}`,
+        minWidth: size === 'small' ? 60 : 70,
+        flex: 1,
+        height: '100%'
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          color: 'rgba(255, 255, 255, 0.6)',
+          fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+          textAlign: 'center',
+          mb: 0.25,
+          textTransform: 'uppercase',
+          letterSpacing: '0.3px'
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography
+        variant="h6"
+        sx={{
+          color,
+          fontWeight: 700,
+          fontSize: { 
+            xs: size === 'small' ? '0.7rem' : size === 'medium' ? '0.8rem' : '1rem',
+            sm: size === 'small' ? '0.75rem' : size === 'medium' ? '0.85rem' : '1.1rem',
+            md: fontSize
+          },
+          fontFamily,
+          textAlign: 'center',
+          lineHeight: 1.2
+        }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  );
+};
+
+/**
+ * Reusable Field Display Component
+ * Displays a label and value in a vertical layout
+ */
+interface FieldDisplayProps {
+  label: string;
+  value: string | number;
+  fontFamily?: string;
+}
+
+const FieldDisplay: React.FC<FieldDisplayProps> = ({ label, value, fontFamily = 'inherit' }) => (
+  <Box>
+    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: { xs: '0.55rem', sm: '0.6rem', md: '0.65rem' } }}>
+      {label}
+    </Typography>
+    <Typography
+      variant="body2"
+      sx={{
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8rem' },
+        fontWeight: 500,
+        fontFamily,
+        wordBreak: 'break-word'
+      }}
+    >
+      {value}
+    </Typography>
+  </Box>
+);
 
 /**
  * General Information Card
@@ -41,7 +147,10 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data, passportId })
   const issuanceDate = metadata?.issueDate || 'N/A';
   const expirationDate = metadata?.expirationDate || 'N/A';
   const version = metadata?.version || '1.0.0';
-  const status = sustainability?.status || 'N/A';
+  const state = sustainability?.status || 'N/A';
+  const passportStatus = metadata?.status || 'N/A';
+  const lastModification = metadata?.lastModification || 'N/A';
+  const predecessor = metadata?.predecessor || 'N/A';
 
   return (
     <Card
@@ -50,9 +159,11 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data, passportId })
         background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
         border: '1px solid rgba(102, 126, 234, 0.2)',
         borderRadius: '12px',
-        p: { xs: 2, sm: 2.5, lg: 3 },
+        p: 2,
         height: '100%',
-        minHeight: { xs: 'auto', lg: '180px' },
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
         transition: 'all 0.2s ease',
         '&:hover': {
           transform: 'translateY(-2px)',
@@ -60,121 +171,125 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data, passportId })
         }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, lg: 2 }, mb: { xs: 2, lg: 2.5 } }}>
-        <Box
-          sx={{
-            p: { xs: 1, lg: 1.25 },
-            borderRadius: '8px',
-            background: 'rgba(102, 126, 234, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Info sx={{ fontSize: { xs: 20, lg: 24 }, color: '#667eea' }} />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.7rem', lg: '0.75rem' }, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            NAME
-          </Typography>
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem', lg: '1.1rem' }, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {productName}
-          </Typography>
-        </Box>
-        <Box
-          sx={{
-            p: 1,
-            borderRadius: '8px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '2px solid rgba(102, 126, 234, 0.3)'
-          }}
-        >
-          <QRCodeSVG 
-            value={passportId} 
-            size={80}
-            level="M"
-            includeMargin={false}
+      <Grid2 container spacing={{ xs: 1, sm: 1.25, md: 1.5 }} sx={{ flex: 1 }}>
+        {/* Left column: Title and Product Name */}
+        <Grid2 size={{ xs: 8 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {/* Header with Icon and Section Title */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: '8px',
+                  background: 'rgba(102, 126, 234, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Info sx={{ fontSize: { xs: 16, sm: 18, md: 20 }, color: '#667eea' }} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.55rem', sm: '0.6rem', md: '0.65rem' }, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                  Passport Information
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Product Name with icon */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Info sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#667eea' }} />
+              <FieldDisplay label="Product Name" value={productName} />
+            </Box>
+          </Box>
+        </Grid2>
+
+        {/* Right column: QR Code */}
+        <Grid2 size={{ xs: 4 }} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+          <Box
+            sx={{
+              p: 0.75,
+              borderRadius: '8px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid rgba(102, 126, 234, 0.3)',
+            }}
+          >
+            <QRCodeSVG 
+              value={passportId} 
+              size={window.innerWidth < 600 ? 50 : window.innerWidth < 900 ? 55 : 65}
+              level="M"
+              includeMargin={false}
+            />
+          </Box>
+        </Grid2>
+
+        {/* Passport Identifier - Full width */}
+        <Grid2 size={12}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Fingerprint sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#667eea' }} />
+            <FieldDisplay label="Passport Identifier" value={passportIdentifier} fontFamily="monospace" />
+          </Box>
+        </Grid2>
+
+        {/* Dates - 4/4/4 split */}
+        <Grid2 size={4}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Event sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#667eea' }} />
+            <FieldDisplay label="Issuance Date" value={issuanceDate} />
+          </Box>
+        </Grid2>
+        <Grid2 size={4}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Today sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#667eea' }} />
+            <FieldDisplay label="Expiration Date" value={expirationDate} />
+          </Box>
+        </Grid2>
+        <Grid2 size={4}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Update sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#667eea' }} />
+            <FieldDisplay label="Last Modification" value={lastModification} />
+          </Box>
+        </Grid2>
+
+        {/* Version and State - 6/6 split */}
+        <Grid2 size={6}>
+          <InfoBox
+            label="Version"
+            value={version}
+            color="#667eea"
+            backgroundColor="rgba(102, 126, 234, 0.15)"
+            borderColor="rgba(102, 126, 234, 0.3)"
+            fontFamily="monospace"
+            size="medium"
           />
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-            Passport Identifier
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'monospace' }}>
-            {passportIdentifier}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: 1, minWidth: 100 }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-              Issuance Date
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-              {issuanceDate}
-            </Typography>
-          </Box>
-          <Box sx={{ flex: 1, minWidth: 100 }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-              Expiration Date
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-              {expirationDate}
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(102, 126, 234, 0.15)',
-            border: '1px solid rgba(102, 126, 234, 0.3)',
-            minWidth: 70,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Version
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#667eea',
-              fontWeight: 700,
-              fontSize: '1.25rem',
-              fontFamily: 'monospace'
-            }}>
-              {version}
-            </Typography>
-          </Box>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(102, 126, 234, 0.15)',
-            border: '1px solid rgba(102, 126, 234, 0.3)',
-            minWidth: 70,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Status
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#667eea',
-              fontWeight: 700,
-              fontSize: '1.25rem'
-            }}>
-              {status}
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
+        </Grid2>
+        <Grid2 size={6}>
+          <InfoBox
+            label="State"
+            value={state}
+            color="#667eea"
+            backgroundColor="rgba(102, 126, 234, 0.15)"
+            borderColor="rgba(102, 126, 234, 0.3)"
+            size="medium"
+          />
+        </Grid2>
+
+        {/* Passport Status - Full width */}
+        <Grid2 size={12}>
+          <InfoBox
+            label="Passport Status"
+            value={passportStatus}
+            color="#667eea"
+            backgroundColor="rgba(102, 126, 234, 0.15)"
+            borderColor="rgba(102, 126, 234, 0.3)"
+            size="medium"
+          />
+        </Grid2>
+      </Grid2>
     </Card>
   );
 };
@@ -187,11 +302,12 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
   const operation = data.operation as Record<string, any> | undefined;
   const identification = data.identification as Record<string, any> | undefined;
   const characteristics = data.characteristics as Record<string, any> | undefined;
+  const metadata = data.metadata as Record<string, any> | undefined;
   
   const manufacturerId = operation?.manufacturer?.manufacturer || 'N/A';
   const manufacturingDate = operation?.manufacturer?.manufacturingDate || 'N/A';
   const manufacturerPartId = identification?.type?.manufacturerPartId || 'N/A';
-  const nameAtManufacturer = identification?.type?.nameAtManufacturer || 'N/A';
+  const economicOperatorId = metadata?.economicOperatorId || 'N/A';
 
   // Physical dimensions
   const physicalDimension = characteristics?.physicalDimension || {};
@@ -200,6 +316,7 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
   const height = physicalDimension.height ? `${physicalDimension.height.value} ${physicalDimension.height.unit?.replace('unit:', '') || 'mm'}` : 'N/A';
   const volume = physicalDimension.volume ? `${physicalDimension.volume.value} ${physicalDimension.volume.unit?.replace('unit:', '') || 'm³'}` : 'N/A';
   const diameter = physicalDimension.diameter ? `${physicalDimension.diameter.value} ${physicalDimension.diameter.unit?.replace('unit:', '') || 'mm'}` : 'N/A';
+  const weight = physicalDimension.weight ? `${physicalDimension.weight.value} ${physicalDimension.weight.unit?.replace('unit:', '') || 'kg'}` : 'N/A';
 
   return (
     <Card
@@ -208,9 +325,10 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
         background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
         border: '1px solid rgba(245, 158, 11, 0.2)',
         borderRadius: '12px',
-        p: { xs: 2, sm: 2.5, lg: 3 },
+        p: 2,
         height: '100%',
-        minHeight: { xs: 'auto', lg: '180px' },
+        display: 'flex',
+        flexDirection: 'column',
         transition: 'all 0.2s ease',
         '&:hover': {
           transform: 'translateY(-2px)',
@@ -218,173 +336,115 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
         }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, lg: 2 }, mb: { xs: 2, lg: 2.5 } }}>
-        <Box
-          sx={{
-            p: { xs: 1, lg: 1.25 },
-            borderRadius: '8px',
-            background: 'rgba(245, 158, 11, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Factory sx={{ fontSize: { xs: 20, lg: 24 }, color: '#f59e0b' }} />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.7rem', lg: '0.75rem' }, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Manufacturer ID
-          </Typography>
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem', lg: '1.1rem' }, lineHeight: 1.3, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {manufacturerId}
-          </Typography>
-        </Box>
-      </Box>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Box sx={{ flex: 1, minWidth: '45%' }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-              Date of Manufacturing
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-              {manufacturingDate}
-            </Typography>
+      <Grid2 container spacing={{ xs: 1, sm: 1.25, md: 1.5 }} sx={{ flex: 1 }}>
+        {/* Manufacturing Date and Part ID - 6/6 split */}
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Event sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#f59e0b' }} />
+            <FieldDisplay label="Manufacturing Date" value={manufacturingDate} />
           </Box>
-          <Box sx={{ flex: 1, minWidth: '45%' }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-              Manufacturer Part ID
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'monospace' }}>
-              {manufacturerPartId}
-            </Typography>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Badge sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#f59e0b' }} />
+            <FieldDisplay label="Manufacturer Part ID" value={manufacturerPartId} fontFamily="monospace" />
           </Box>
-        </Box>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-            Name at Manufacturer
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-            {nameAtManufacturer}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1, justifyContent: 'center' }}>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            minWidth: 80,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Width
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#f59e0b',
-              fontWeight: 700,
-              fontSize: '1rem',
-              textAlign: 'center'
-            }}>
-              {width}
-            </Typography>
+        </Grid2>
+
+        {/* Manufacturer ID and Product Name - 6/6 split */}
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Factory sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#f59e0b' }} />
+            <FieldDisplay label="Manufacturer ID" value={manufacturerId} fontFamily="monospace" />
           </Box>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            minWidth: 80,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Length
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#f59e0b',
-              fontWeight: 700,
-              fontSize: '1rem',
-              textAlign: 'center'
-            }}>
-              {length}
-            </Typography>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Business sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#f59e0b' }} />
+            <FieldDisplay label="Economic Operator ID" value={economicOperatorId} fontFamily="monospace" />
           </Box>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            minWidth: 80,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Height
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#f59e0b',
-              fontWeight: 700,
-              fontSize: '1rem',
-              textAlign: 'center'
-            }}>
-              {height}
-            </Typography>
+        </Grid2>
+
+        {/* Physical Dimensions - 6/6 grid layout */}
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Straighten sx={{ fontSize: { xs: 12, sm: 13, md: 14 }, color: '#f59e0b' }} />
+            <InfoBox
+              label="Width"
+              value={width}
+              color="#f59e0b"
+              backgroundColor="rgba(245, 158, 11, 0.15)"
+              borderColor="rgba(245, 158, 11, 0.3)"
+              size="small"
+            />
           </Box>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            minWidth: 80,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Volume
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#f59e0b',
-              fontWeight: 700,
-              fontSize: '1rem',
-              textAlign: 'center'
-            }}>
-              {volume}
-            </Typography>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Straighten sx={{ fontSize: { xs: 12, sm: 13, md: 14 }, color: '#f59e0b', transform: 'rotate(90deg)' }} />
+            <InfoBox
+              label="Length"
+              value={length}
+              color="#f59e0b"
+              backgroundColor="rgba(245, 158, 11, 0.15)"
+              borderColor="rgba(245, 158, 11, 0.3)"
+              size="small"
+            />
           </Box>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(245, 158, 11, 0.15)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            minWidth: 80,
-            flex: 1
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
-              Diameter
-            </Typography>
-            <Typography variant="h6" sx={{
-              color: '#f59e0b',
-              fontWeight: 700,
-              fontSize: '1rem',
-              textAlign: 'center'
-            }}>
-              {diameter}
-            </Typography>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <HeightIcon sx={{ fontSize: { xs: 12, sm: 13, md: 14 }, color: '#f59e0b' }} />
+            <InfoBox
+              label="Height"
+              value={height}
+              color="#f59e0b"
+              backgroundColor="rgba(245, 158, 11, 0.15)"
+              borderColor="rgba(245, 158, 11, 0.3)"
+              size="small"
+            />
           </Box>
-        </Box>
-      </Box>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <ViewInAr sx={{ fontSize: { xs: 12, sm: 13, md: 14 }, color: '#f59e0b' }} />
+            <InfoBox
+              label="Volume"
+              value={volume}
+              color="#f59e0b"
+              backgroundColor="rgba(245, 158, 11, 0.15)"
+              borderColor="rgba(245, 158, 11, 0.3)"
+              size="small"
+            />
+          </Box>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <AspectRatio sx={{ fontSize: { xs: 12, sm: 13, md: 14 }, color: '#f59e0b' }} />
+            <InfoBox
+              label="Diameter"
+              value={diameter}
+              color="#f59e0b"
+              backgroundColor="rgba(245, 158, 11, 0.15)"
+              borderColor="rgba(245, 158, 11, 0.3)"
+              size="small"
+            />
+          </Box>
+        </Grid2>
+        <Grid2 size={6}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Scale sx={{ fontSize: { xs: 12, sm: 13, md: 14 }, color: '#f59e0b' }} />
+            <InfoBox
+              label="Weight"
+              value={weight}
+              color="#f59e0b"
+              backgroundColor="rgba(245, 158, 11, 0.15)"
+              borderColor="rgba(245, 158, 11, 0.3)"
+              size="small"
+            />
+          </Box>
+        </Grid2>
+      </Grid2>
     </Card>
   );
 };
@@ -449,8 +509,11 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
         background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%)',
         border: '1px solid rgba(34, 197, 94, 0.2)',
         borderRadius: '12px',
-        p: { xs: 2, sm: 2.5 },
+        p: 2,
         height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
         transition: 'all 0.2s ease',
         '&:hover': {
           transform: 'translateY(-2px)',
@@ -458,170 +521,195 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
         }
       }}
     >
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-        <Box
-          sx={{
-            p: 1,
-            borderRadius: '8px',
-            background: 'rgba(34, 197, 94, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Public sx={{ fontSize: 20, color: '#22c55e' }} />
-        </Box>
-        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          SUSTAINABILITY
-        </Typography>
-      </Box>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* Header */}
+        <Grid2 container spacing={{ xs: 1, sm: 1.25, md: 1.5 }} sx={{ mb: 2 }}>
+          <Grid2 size={{ xs: 12 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: '8px',
+                  background: 'rgba(34, 197, 94, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <EnergySavingsLeaf sx={{ fontSize: { xs: 16, sm: 18, md: 20 }, color: '#22c55e' }} />
+              </Box>
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.55rem', sm: '0.6rem', md: '0.65rem' }, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Sustainability
+              </Typography>
+            </Box>
+          </Grid2>
+        </Grid2>
 
-      {/* Footprint Values - Top Row */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
-        {carbonFootprint && (
-          <Box sx={{
-            flex: 1,
-            minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(34, 197, 94, 0.15)',
-            border: '1px solid rgba(34, 197, 94, 0.3)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 0.5, textAlign: 'center' }}>
-              Carbon
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', textAlign: 'center' }}>
-              {carbonFootprint.value} {carbonFootprint.unit}
-            </Typography>
-          </Box>
-        )}
-        {environmentalFootprint && (
-          <Box sx={{
-            flex: 1,
-            minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(34, 197, 94, 0.15)',
-            border: '1px solid rgba(34, 197, 94, 0.3)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 0.5, textAlign: 'center' }}>
-              Environmental
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', textAlign: 'center' }}>
-              {environmentalFootprint.value} {environmentalFootprint.unit}
-            </Typography>
-          </Box>
-        )}
-        {materialFootprint && (
-          <Box sx={{
-            flex: 1,
-            minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
-            p: 1.5,
-            borderRadius: '8px',
-            backgroundColor: 'rgba(34, 197, 94, 0.15)',
-            border: '1px solid rgba(34, 197, 94, 0.3)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 0.5, textAlign: 'center' }}>
-              Material
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', textAlign: 'center' }}>
-              {materialFootprint.value} {materialFootprint.unit}
-            </Typography>
-          </Box>
-        )}
-        {!carbonFootprint && !environmentalFootprint && !materialFootprint && (
-          <Box sx={{ width: '100%', textAlign: 'center', py: 2 }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.85rem' }}>
-              No footprint data available
-            </Typography>
-          </Box>
-        )}
-      </Box>
+        {/* Content Grid - 2 rows of equal height */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          {/* Scores - Top Row */}
+          <Grid2 container spacing={0.75} sx={{ flex: 1 }}>
+            <Grid2 size={{ xs: 4 }} sx={{ display: 'flex' }}>
+              <Box sx={{ width: '100%' }}>
+                <InfoBox
+                  label="Durability"
+                  value={durabilityScore}
+                  color="#22c55e"
+                  backgroundColor="rgba(34, 197, 94, 0.15)"
+                  borderColor="rgba(34, 197, 94, 0.3)"
+                  size="large"
+                />
+              </Box>
+            </Grid2>
+            <Grid2 size={{ xs: 4 }} sx={{ display: 'flex' }}>
+              <Box sx={{ width: '100%' }}>
+                <InfoBox
+                  label="Reparability"
+                  value={sustainability?.reparabilityScore || 'N/A'}
+                  color="#22c55e"
+                  backgroundColor="rgba(34, 197, 94, 0.15)"
+                  borderColor="rgba(34, 197, 94, 0.3)"
+                  size="large"
+                />
+              </Box>
+            </Grid2>
+            <Grid2 size={{ xs: 4 }} sx={{ display: 'flex' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 1.5,
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  width: '100%',
+                  height: '100%'
+                }}
+              >
+                <Recycling sx={{ fontSize: { xs: 14, sm: 15, md: 16 }, color: '#22c55e', mb: 0.25 }} />
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.6rem', textAlign: 'center', mb: 0.25 }}>
+                  Recyclable
+                </Typography>
+                <Typography variant="h6" sx={{
+                  color: '#22c55e',
+                  fontWeight: 700,
+                  fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
+                  lineHeight: 1
+                }}>
+                  {recyclablePercentage.toFixed(1)}%
+                </Typography>
+              </Box>
+            </Grid2>
+          </Grid2>
 
-      {/* Scores - Bottom Row */}
-      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-        <Box sx={{ 
-          flex: 1,
-          minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
-          p: 2,
-          borderRadius: '8px',
-          backgroundColor: 'rgba(34, 197, 94, 0.15)',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 1, textAlign: 'center' }}>
-            Durability Score
-          </Typography>
-          <Typography variant="h4" sx={{
-            color: '#22c55e',
-            fontWeight: 700,
-            fontSize: { xs: '1.5rem', sm: '1.75rem' }
-          }}>
-            {durabilityScore}
-          </Typography>
-        </Box>
-        <Box sx={{ 
-          flex: 1,
-          minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
-          p: 2,
-          borderRadius: '8px',
-          backgroundColor: 'rgba(34, 197, 94, 0.15)',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', mb: 1, textAlign: 'center' }}>
-            Reparability Score
-          </Typography>
-          <Typography variant="h4" sx={{
-            color: '#22c55e',
-            fontWeight: 700,
-            fontSize: { xs: '1.5rem', sm: '1.75rem' }
-          }}>
-            {sustainability?.reparabilityScore || 'N/A'}
-          </Typography>
-        </Box>
-        <Box sx={{ 
-          flex: 1,
-          minWidth: { xs: 'calc(50% - 6px)', sm: 'calc(33.333% - 8px)' },
-          p: 2,
-          borderRadius: '8px',
-          backgroundColor: 'rgba(34, 197, 94, 0.15)',
-          border: '1px solid rgba(34, 197, 94, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Recycling sx={{ fontSize: 18, color: '#22c55e', mb: 0.5 }} />
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.6rem', textAlign: 'center', mb: 0.5 }}>
-            Recyclable
-          </Typography>
-          <Typography variant="h4" sx={{
-            color: '#22c55e',
-            fontWeight: 700,
-            fontSize: { xs: '1.5rem', sm: '1.75rem' }
-          }}>
-            {recyclablePercentage.toFixed(1)}%
-          </Typography>
+          {/* Footprint Values - Bottom Row */}
+          {(() => {
+            const footprintCount = [carbonFootprint, environmentalFootprint, materialFootprint].filter(Boolean).length;
+            const getGridSize = () => {
+              if (footprintCount === 1) return 12;
+              if (footprintCount === 2) return 6;
+              return 4;
+            };
+            const gridSize = getGridSize();
+
+            return (carbonFootprint || environmentalFootprint || materialFootprint) ? (
+              <Grid2 container spacing={0.75} sx={{ flex: 1 }}>
+              {carbonFootprint && (
+                <Grid2 size={{ xs: gridSize }} sx={{ display: 'flex' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      p: 1.5,
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      width: '100%',
+                      height: '100%'
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.6rem', textAlign: 'center', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      Total Carbon Footprint
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#22c55e', fontWeight: 700, fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' }, textAlign: 'center', lineHeight: 1.2 }}>
+                      {carbonFootprint.value}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.55rem', textAlign: 'center', mt: 0.25 }}>
+                      {carbonFootprint.unit}
+                    </Typography>
+                  </Box>
+                </Grid2>
+              )}
+              {environmentalFootprint && (
+                <Grid2 size={{ xs: gridSize }} sx={{ display: 'flex' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      p: 1.5,
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      width: '100%',
+                      height: '100%'
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.6rem', textAlign: 'center', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      Total Environmental Footprint
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#22c55e', fontWeight: 700, fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' }, textAlign: 'center', lineHeight: 1.2 }}>
+                      {environmentalFootprint.value}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.55rem', textAlign: 'center', mt: 0.25 }}>
+                      {environmentalFootprint.unit}
+                    </Typography>
+                  </Box>
+                </Grid2>
+              )}
+              {materialFootprint && (
+                <Grid2 size={{ xs: gridSize }} sx={{ display: 'flex' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      p: 1.5,
+                      borderRadius: '8px',
+                      backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      width: '100%',
+                      height: '100%'
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.6rem', textAlign: 'center', mb: 0.25, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      Total Material Footprint
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: '#22c55e', fontWeight: 700, fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' }, textAlign: 'center', lineHeight: 1.2 }}>
+                      {materialFootprint.value}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.55rem', textAlign: 'center', mt: 0.25 }}>
+                      {materialFootprint.unit}
+                    </Typography>
+                  </Box>
+                </Grid2>
+              )}
+              </Grid2>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 1, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem' }}>
+                  No footprint data available
+                </Typography>
+              </Box>
+            );
+          })()}
         </Box>
       </Box>
     </Card>
@@ -699,8 +787,10 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
         background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)',
         border: '1px solid rgba(139, 92, 246, 0.2)',
         borderRadius: '12px',
-        p: { xs: 2, sm: 2.5 },
+        p: 2,
         height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         transition: 'all 0.2s ease',
         '&:hover': {
           transform: 'translateY(-2px)',
@@ -708,7 +798,8 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
         }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 2 }}>
+      {/* Title - Always at top */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
         <Box
           sx={{
             p: 1,
@@ -716,23 +807,35 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
             background: 'rgba(139, 92, 246, 0.2)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
           }}
         >
-          <CalendarToday sx={{ fontSize: 20, color: '#8b5cf6' }} />
+          <Science sx={{ fontSize: { xs: 16, sm: 18, md: 20 }, color: '#8b5cf6' }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Materials
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.55rem', sm: '0.6rem', md: '0.65rem' }, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+            Material Composition
           </Typography>
         </Box>
       </Box>
       
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Chart Container - Centered and filling remaining space */}
+      <Box sx={{ 
+        flex: 1,
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        minHeight: 0
+      }}>
         {/* Material Composition */}
         {hasCompositionData ? (
           <ThemeProvider theme={chartTheme}>
             <Box sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
               '& svg text': {
                 fill: 'white !important',
               },
@@ -752,28 +855,40 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
                   highlightScope: { faded: 'global', highlighted: 'item' },
                 }
               ]}
-              width={300}
-              height={200}
+              width={240}
+              height={140}
               colors={compositionColors}
               slotProps={{
                 legend: {
                   direction: 'column',
                   position: { vertical: 'bottom', horizontal: 'middle' },
                   padding: 0,
-                  itemMarkWidth: 12,
-                  itemMarkHeight: 12,
-                  markGap: 8,
-                  itemGap: 8,
+                  itemMarkWidth: 5,
+                  itemMarkHeight: 5,
+                  markGap: 3,
+                  itemGap: 2,
                   labelStyle: {
-                    fontSize: '11px',
+                    fontSize: 10,
                     fill: 'white',
+                    fontWeight: 400,
                   },
                 },
               }}
               sx={{
                 '& .MuiChartsLegend-series text': {
                   fill: 'white !important',
-                  fontSize: '11px !important',
+                  fontSize: '10px !important',
+                  fontWeight: '400 !important',
+                },
+                '& .MuiChartsLegend-label': {
+                  fontSize: '10px !important',
+                },
+                '& .MuiChartsLegend-mark': {
+                  width: '5px !important',
+                  height: '5px !important',
+                },
+                '& text': {
+                  fontSize: '10px !important',
                 },
                 '& .MuiPieArc-root': {
                   stroke: 'rgba(255, 255, 255, 0.1)',
@@ -786,10 +901,10 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
                   variant="caption" 
                   sx={{ 
                     color: 'rgba(255, 255, 255, 0.6)', 
-                    fontSize: '0.7rem', 
+                    fontSize: '0.65rem', 
                     textAlign: 'center',
                     display: 'block',
-                    mt: -1
+                    mt: -0.5
                   }}
                 >
                   {selectedUnit}
@@ -798,7 +913,7 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
             </Box>
           </ThemeProvider>
         ) : (
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 1 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 2 }}>
             No data
           </Typography>
         )}

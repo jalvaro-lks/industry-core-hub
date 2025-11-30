@@ -42,9 +42,10 @@ import {
   DialogContent,
   ThemeProvider,
   createTheme,
-  GlobalStyles
+  GlobalStyles,
+  Collapse
 } from '@mui/material';
-import { ArrowBack, Download, ContentCopy, KeyboardArrowDown, Description, Close as CloseIcon, ViewInAr } from '@mui/icons-material';
+import { ArrowBack, Download, ContentCopy, KeyboardArrowDown, Description, Close as CloseIcon, ViewInAr, ExpandLess, ExpandMore } from '@mui/icons-material';
 import { PassportVisualizationProps } from '../types';
 import { SchemaParser } from '../../utils/schemaParser';
 import { DynamicRenderer } from '../../components/DynamicRenderer';
@@ -101,6 +102,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [tabMenuAnchor, setTabMenuAnchor] = useState<null | HTMLElement>(null);
   const [digitalTwinModalOpen, setDigitalTwinModalOpen] = useState(false);
+  const [headerCardsVisible, setHeaderCardsVisible] = useState(true);
   
   // Parse schema and data
   const parser = useMemo(() => new SchemaParser(schema), [schema]);
@@ -229,15 +231,14 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
   return (
     <Box 
       sx={{ 
-        minHeight: '100vh',
-        height: '100vh',
+        height: '100%',
         width: '100%',
         maxWidth: '100%',
         display: 'flex', 
         flexDirection: 'column', 
         background: '#0d0d0d',
-        overflow: 'auto',
-        position: 'relative'
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
       {/* Header - Sticky Container */}
@@ -245,9 +246,10 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
         sx={{
           position: 'sticky',
           top: 0,
-          zIndex: 100,
+          zIndex: 1100,
           background: '#1a1a1a',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          flexShrink: 0
         }}
       >
         {/* Header */}
@@ -269,7 +271,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               variant="outlined"
               sx={{
                 borderColor: 'rgba(255, 255, 255, 0.2)',
-                color: 'rgba(255, 255, 255, 0.8) !important',
+                color: 'rgba(255, 255, 255, 0.8)',
                 minWidth: { xs: 'auto', sm: 'auto' },
                 px: { xs: 1.5, sm: 2 },
                 py: { xs: 0.75, sm: 1 },
@@ -279,8 +281,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                 borderRadius: '8px',
                 '&:hover': {
                   borderColor: 'rgba(255, 255, 255, 0.4)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  color: 'rgba(255, 255, 255, 0.8) !important'
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
                 },
                 '& .MuiButton-startIcon': {
                   marginRight: { xs: 0, sm: 1 }
@@ -605,14 +606,61 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
 
       {/* Header Cards - Custom components per passport type */}
       {config.headerCards && config.headerCards.length > 0 && (
-        <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 } }}>
-          <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 2.5, lg: 3 }}>
-            {config.headerCards.map((HeaderCard, index) => (
-              <Grid2 key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
-                <HeaderCard data={data} passportId={passportId} />
+        <Box sx={{ flexShrink: 0 }}>
+          {/* Collapsible Header Cards with Animation */}
+          <Collapse in={headerCardsVisible} timeout={400}>
+            <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, pt: { xs: 2, sm: 3 }, pb: { xs: 1.5, sm: 2 } }}>
+              <Grid2 container spacing={{ xs: 1.5, sm: 2, md: 2.5, lg: 3 }}>
+                {config.headerCards.map((HeaderCard, index) => (
+                  <Grid2 key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
+                    <HeaderCard data={data} passportId={passportId} />
+                  </Grid2>
+                ))}
               </Grid2>
-            ))}
-          </Grid2>
+            </Box>
+          </Collapse>
+          
+          {/* Toggle Button - Below Cards, Centered */}
+          <Box 
+            sx={{ 
+              px: { xs: 2, sm: 3, md: 4 }, 
+              pt: { xs: 1, sm: 1.5 },
+              pb: { xs: 1.5, sm: 2 },
+              display: 'flex',
+              justifyContent: 'center'
+            }}
+          >
+            <Button
+              size="small"
+              onClick={() => setHeaderCardsVisible(!headerCardsVisible)}
+              startIcon={headerCardsVisible ? <ExpandLess /> : <ExpandMore />}
+              sx={{
+                color: 'rgba(255, 255, 255, 0.8)',
+                textTransform: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                px: 2,
+                py: 0.75,
+                borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                transition: 'all 0.2s ease',
+                '&:hover': { 
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderColor: 'rgba(255, 255, 255, 0.25)',
+                  color: '#fff',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                },
+                '& .MuiButton-startIcon': {
+                  marginRight: 0.5
+                }
+              }}
+            >
+              {headerCardsVisible ? 'Hide' : 'Show'} Header Cards
+            </Button>
+          </Box>
         </Box>
       )}
 
@@ -621,19 +669,13 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
         sx={{
           position: 'sticky',
           top: 0,
-          zIndex: 90,
+          zIndex: 1000,
           background: '#0d0d0d',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          flexShrink: 0
         }}
       >
         {/* Divider */}
-        <Box 
-          sx={{ 
-            height: '1px', 
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)',
-            mx: { xs: 2, sm: 3, md: 4 }
-          }} 
-        />
 
         {/* Tabs - Desktop (Hidden on mobile) */}
         <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, mt: { xs: 1, sm: 1.5 }, pb: { xs: 1, sm: 1.5 }, display: { xs: 'none', md: 'block' } }}>
@@ -643,6 +685,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
             variant="scrollable"
             scrollButtons="auto"
             sx={{
+              pt: 0,
               minHeight: 42,
               '& .MuiTabs-indicator': {
                 backgroundColor: '#667eea',
@@ -786,13 +829,28 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
         </Box>
       </Box>
 
-      {/* Tab Content */}
+      {/* Tab Content - Scrollable */}
       <Box 
         sx={{ 
           flex: 1,
           px: { xs: 2, sm: 3, md: 4 },
           py: { xs: 2, sm: 3 },
-          overflow: 'visible'
+          overflow: 'auto',
+          minHeight: 0,
+          '&::-webkit-scrollbar': {
+            width: '8px'
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: '4px'
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '4px',
+            '&:hover': {
+              background: 'rgba(255, 255, 255, 0.3)'
+            }
+          }
         }}
       >
         {tabs[activeTab] && (() => {

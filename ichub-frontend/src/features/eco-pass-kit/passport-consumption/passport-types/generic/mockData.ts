@@ -56,7 +56,12 @@ export const mockGenericPassport = {
         value: 36,
         unit: 'unit:day',
         key: 'guaranteed lifetime'
-      }
+      },
+      {
+        value: 3,
+        unit: 'unit:year',
+        key: 'technical lifetime'
+      },
     ]
   },
   commercial: {
@@ -515,6 +520,16 @@ export const mockGenericPassport = {
           manufacturingPlant: [ { facility: 'BPNA1234567890AA' } ],
           type: 'Climate Change Total',
           value: 12.678,
+          declaration: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ]
+        },
+        {
+          lifecycle: 'energy use',
+          rulebook: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ],
+          unit: 'kg CO2 / kWh',
+          performanceClass: 'A',
+          manufacturingPlant: [ { facility: 'BPNA1234567890AA' } ],
+          type: 'Climate Change Total',
+          value: 46.56,
           declaration: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ]
         }
       ],
