@@ -20,6 +20,8 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
+import { data } from "react-router-dom";
+
 /**
  * Mock data for generic digital product passport
  */
@@ -165,9 +167,174 @@ export const mockGenericPassport = {
     {
       description: 'Description of an attribute',
       label: 'Maximum permitted battery power',
-      type: { typeUnit: 'unit:volume', dataType: 'array' },
-      data: '23',
-      children: []
+      type: { dataType: 'object' },
+      children: [{
+        description: 'Description of an attribute',
+        label: 'Maximum permitted battery power',
+        type: { typeUnit: 'unit:percentage', dataType: 'array' },
+        data: ["20", "21", "22", "23"],
+        }]
+    },
+    {
+      description: 'Description of an attribute',
+      label: 'Maximum permitted battery power',
+      type: { dataType: 'object' },
+      children: [{
+        description: 'Description of an attribute',
+        label: 'Maximum permitted battery power',
+        type: { dataType: 'object' },
+        children:[{
+            description: 'Description of an attribute',
+            label: 'Maximum permitted battery power',
+            type: { dataType: 'string' },
+            data: "THIS IS A STRING"
+        },
+        {
+            description: 'Description of an attribute',
+            label: 'Maximum permitted battery power',
+            type: { dataType: 'string' },
+            data: "THIS IS A STRING"
+        }
+        ]
+    }]
+    },
+    {
+      description: 'Energy storage breakdown with nested components',
+      label: 'Energy Modules',
+      type: { dataType: 'array' },
+      children: [
+        {
+          description: 'Module level information',
+          label: 'Module A',
+          type: { dataType: 'object' },
+          children: [
+            {
+              description: 'Cells inside the module',
+              label: 'Cells',
+              type: { dataType: 'array' },
+              children: [
+                {
+                  description: 'Single cell data',
+                  label: 'Cell 1',
+                  type: { dataType: 'object' },
+                  children: [
+                    {
+                      description: 'Nominal capacity',
+                      label: 'Capacity',
+                      type: { dataType: 'string', typeUnit: 'unit:ampereHour' },
+                      data: '3.4'
+                    },
+                    {
+                      description: 'Cell state',
+                      label: 'Health',
+                      type: { dataType: 'string' },
+                      data: 'GOOD'
+                    }
+                  ]
+                },
+                {
+                  description: 'Single cell data',
+                  label: 'Cell 2',
+                  type: { dataType: 'object' },
+                  children: [
+                    {
+                      description: 'Nominal capacity',
+                      label: 'Capacity',
+                      type: { dataType: 'string', typeUnit: 'unit:ampereHour' },
+                      data: '3.3'
+                    },
+                    {
+                      description: 'Cell state',
+                      label: 'Health',
+                      type: { dataType: 'string' },
+                      data: 'GOOD'
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              description: 'Module metadata',
+              label: 'Configuration',
+              type: { dataType: 'object' },
+              children: [
+                {
+                  description: 'Firmware associated to module',
+                  label: 'Firmware',
+                  type: { dataType: 'string' },
+                  data: 'v1.2.3'
+                },
+                {
+                  description: 'Module serial number',
+                  label: 'Serial',
+                  type: { dataType: 'string' },
+                  data: 'MOD-A-12345'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      description: 'Traceability with multiple nested levels',
+      label: 'Supply Chain',
+      type: { dataType: 'object' },
+      children: [
+        {
+          description: 'Suppliers involved in the product',
+          label: 'Suppliers',
+          type: { dataType: 'array' },
+          children: [
+            {
+              description: 'First tier supplier',
+              label: 'Supplier Tier 1',
+              type: { dataType: 'object' },
+              children: [
+                {
+                  description: 'Location details',
+                  label: 'Sites',
+                  type: { dataType: 'array' },
+                  children: [
+                    {
+                      description: 'Main site',
+                      label: 'Plant One',
+                      type: { dataType: 'object' },
+                      children: [
+                        {
+                          description: 'Country code',
+                          label: 'Country',
+                          type: { dataType: 'string' },
+                          data: 'DE'
+                        },
+                        {
+                          description: 'City name',
+                          label: 'City',
+                          type: { dataType: 'string' },
+                          data: 'Munich'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          description: 'Audit references',
+          label: 'Audit Trail',
+          type: { dataType: 'array' },
+          children: [
+            {
+              description: 'Quality audit identifiers',
+              label: 'Audit IDs',
+              type: { dataType: 'array' },
+              data: ['QMS-2023-001', 'QMS-2024-002']
+            }
+          ]
+        }
+      ]
     }
   ],
   operation: {

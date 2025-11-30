@@ -22,5 +22,5 @@
 
 export { PassportVisualization } from './PassportVisualization';
 export { DynamicRenderer } from './DynamicRenderer';
-export { CompositionChart } from './CompositionChart';
+export { CompositionChart } from '../passport-types/generic/components/v6.1.0/CompositionChart';
 export { MetricProgress } from './MetricProgress';

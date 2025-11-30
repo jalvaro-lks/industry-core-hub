@@ -36,13 +36,20 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
-  Chip
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  ThemeProvider,
+  createTheme,
+  GlobalStyles
 } from '@mui/material';
-import { ArrowBack, Download, ContentCopy, KeyboardArrowDown, Visibility, Description, Info } from '@mui/icons-material';
+import { ArrowBack, Download, ContentCopy, KeyboardArrowDown, Description, Close as CloseIcon, ViewInAr } from '@mui/icons-material';
 import { PassportVisualizationProps } from '../types';
 import { SchemaParser } from '../../utils/schemaParser';
 import { DynamicRenderer } from '../../components/DynamicRenderer';
 import { getCategoryIcon } from '../../utils/iconMapper';
+import { SingleTwinResult } from '../../../../industry-core-kit/part-discovery/components/single-twin/SingleTwinResult';
 
 /**
  * Props for custom header card components
@@ -85,12 +92,15 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
   onBack,
   config = {},
   passportName = 'Digital Product Passport',
-  passportVersion
+  passportVersion,
+  digitalTwinData,
+  counterPartyId
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [tabMenuAnchor, setTabMenuAnchor] = useState<null | HTMLElement>(null);
+  const [digitalTwinModalOpen, setDigitalTwinModalOpen] = useState(false);
   
   // Parse schema and data
   const parser = useMemo(() => new SchemaParser(schema), [schema]);
@@ -126,6 +136,95 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  // Handle show digital twin
+  const handleShowDigitalTwin = () => {
+    if (digitalTwinData) {
+      setDigitalTwinModalOpen(true);
+    } else {
+      setSnackbarMessage('No digital twin data available');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // Create dark theme for the digital twin modal
+  const darkTheme = createTheme({
+    palette: {
+      mode: 'dark',
+      primary: {
+        main: '#667eea',
+        light: '#8b9aef',
+        dark: '#4a5fc7'
+      },
+      secondary: {
+        main: '#764ba2',
+        light: '#9b6ec7',
+        dark: '#5a3880'
+      },
+      success: {
+        main: '#4caf50',
+        light: '#81c784',
+        dark: '#388e3c'
+      },
+      warning: {
+        main: '#ff9800',
+        light: '#ffb74d',
+        dark: '#f57c00'
+      },
+      background: {
+        default: '#0d0d0d',
+        paper: '#1a1a1a'
+      },
+      text: {
+        primary: '#ffffff',
+        secondary: 'rgba(255, 255, 255, 0.7)'
+      }
+    },
+    components: {
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            background: '#0d0d0d',
+            backgroundImage: 'none'
+          }
+        }
+      },
+      MuiDialogTitle: {
+        styleOverrides: {
+          root: {
+            background: '#1a1a1a',
+            color: '#667eea',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+          }
+        }
+      },
+      MuiDialogContent: {
+        styleOverrides: {
+          root: {
+            background: '#0d0d0d'
+          }
+        }
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundColor: '#1a1a1a',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            '&:hover': {
+              boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)'
+            }
+          }
+        }
+      },
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            color: '#667eea'
+          }
+        }
+      }
+    }
+  });
 
   return (
     <Box 
@@ -241,7 +340,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                    Global:
+                    Global Asset ID:
                   </Typography>
                   <Typography 
                     variant="caption" 
@@ -284,7 +383,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                    AAS:
+                    AAS ID:
                   </Typography>
                   <Typography 
                     variant="caption" 
@@ -328,7 +427,7 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                    Semantic:
+                    Semantic ID:
                   </Typography>
                   <Typography 
                     variant="caption" 
@@ -374,7 +473,8 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Button
               size="small"
-              startIcon={<Visibility sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+              startIcon={<ViewInAr sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+              onClick={handleShowDigitalTwin}
               sx={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: '#fff',
@@ -640,15 +740,32 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
           overflow: 'visible'
         }}
       >
-        {tabs[activeTab] && (
-          <Box>
-            <DynamicRenderer 
-              properties={tabs[activeTab].properties} 
-              rawData={data}
-              customRenderers={config.customRenderers}
-            />
-          </Box>
-        )}
+        {tabs[activeTab] && (() => {
+          // Check if there's a custom renderer for this entire tab/category
+          const tabKey = tabs[activeTab].category || tabs[activeTab].id;
+          const customRenderer = config.customRenderers?.[tabKey] || config.customRenderers?.[tabKey.toLowerCase()];
+          
+          if (customRenderer) {
+            const CustomRenderer = customRenderer;
+            return (
+              <CustomRenderer 
+                data={tabs[activeTab]} 
+                rawData={data}
+              />
+            );
+          }
+          
+          // Default rendering with DynamicRenderer
+          return (
+            <Box>
+              <DynamicRenderer 
+                properties={tabs[activeTab].properties} 
+                rawData={data}
+                customRenderers={config.customRenderers}
+              />
+            </Box>
+          );
+        })()}
       </Box>
 
       {/* Snackbar for notifications */}
@@ -667,6 +784,101 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* Digital Twin Modal */}
+      <ThemeProvider theme={darkTheme}>
+        <GlobalStyles styles={{
+          '.MuiDialog-root .MuiCard-root': {
+            backgroundColor: '#1a1a1a !important',
+            border: '1px solid rgba(255, 255, 255, 0.08) !important',
+            backgroundImage: 'none !important',
+          },
+          '.MuiDialog-root .MuiCard-root:hover': {
+            boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3) !important'
+          },
+          '.MuiDialog-root .MuiButton-root': {
+            color: '#ffffff !important'
+          },
+          '.MuiDialog-root .MuiChip-root .MuiChip-icon': {
+            color: '#ffffff !important'
+          },
+          '.MuiDialog-root .MuiChip-root .MuiChip-icon svg': {
+            color: '#ffffff !important'
+          }
+        }} />
+        <Dialog
+          open={digitalTwinModalOpen}
+          onClose={() => setDigitalTwinModalOpen(false)}
+          maxWidth={false}
+          fullScreen
+          PaperProps={{
+            sx: {
+              background: '#0d0d0d'
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            fontWeight: '600', 
+            color: '#667eea',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            pb: 2,
+            px: 3,
+            pt: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: '#1a1a1a'
+          }}>
+            <Typography variant="h5" sx={{ fontWeight: '600', color: '#667eea' }}>
+              Digital Twin Details
+            </Typography>
+            <IconButton
+              onClick={() => setDigitalTwinModalOpen(false)}
+              sx={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)'
+                }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ 
+            p: 3,
+            height: '100%', 
+            overflow: 'auto', 
+            background: '#0d0d0d',
+            '& .MuiChip-icon': {
+              color: '#ffffff !important'
+            },
+            '& .MuiSvgIcon-root': {
+              color: 'rgba(255, 255, 255, 0.7)'
+            },
+            '& .MuiSvgIcon-colorSuccess': {
+              color: '#4caf50 !important'
+            },
+            // Force dark mode for all nested cards
+            '& .MuiCard-root': {
+              backgroundColor: '#1a1a1a !important',
+              border: '1px solid rgba(255, 255, 255, 0.08) !important',
+              backgroundImage: 'none !important',
+              '&:hover': {
+                boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3) !important'
+              }
+            }
+          }}>
+            {digitalTwinData && counterPartyId && (
+              <div style={{ paddingTop: "40px" }}>
+              <SingleTwinResult
+                counterPartyId={counterPartyId}
+                singleTwinResult={digitalTwinData}
+              />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </ThemeProvider>
     </Box>
   );
 };

@@ -25,15 +25,35 @@ import { PassportVisualizationProps } from '../types';
 import { BasePassportVisualization } from '../base';
 import { GeneralInfoCard, ManufacturingCard, SustainabilityCard, MaterialsCard } from './components/v6.1.0/HeaderCards';
 import { MaterialCompositionRenderer } from './components/v6.1.0/MaterialCompositionRenderer';
+import { AdditionalDataRenderer } from './components/v6.1.0/AdditionalDataRenderer';
+import { SourcesRenderer } from './components/v6.1.0/SourcesRenderer';
+import { MaterialsRenderer } from './components/v6.1.0/MaterialsRenderer';
+import { parseSemanticId } from '@/utils/semantics';
 
 /**
  * Generic passport visualization component
  * Uses the base skeleton with custom header cards and renderers for generic digital product passports
  */
 export const GenericPassportVisualization: React.FC<PassportVisualizationProps> = (props) => {
+  // Extract version from digital twin's DPP submodel semantic ID if available
+  let versionFromTwin = props.passportVersion;
+  
+  if (props.digitalTwinData?.shell_descriptor?.submodelDescriptors) {
+    const dppSubmodel = props.digitalTwinData.shell_descriptor.submodelDescriptors.find(
+      sm => sm.idShort === 'digitalProductPassport'
+    );
+    
+    if (dppSubmodel?.semanticId?.keys?.[0]?.value) {
+      const semanticId = dppSubmodel.semanticId.keys[0].value;
+      const parsed = parseSemanticId(semanticId);
+      versionFromTwin = parsed.version;
+    }
+  }
+  
   return (
     <BasePassportVisualization 
       {...props}
+      passportVersion={versionFromTwin}
       config={{
         headerCards: [
           GeneralInfoCard,
@@ -43,7 +63,11 @@ export const GenericPassportVisualization: React.FC<PassportVisualizationProps> 
         ],
         customRenderers: {
           'materialComposition': MaterialCompositionRenderer,
-          'materials.materialComposition': MaterialCompositionRenderer
+          'materials.materialComposition': MaterialCompositionRenderer,
+          'additionalData': AdditionalDataRenderer,
+          'additionaldata': AdditionalDataRenderer,
+          'sources': SourcesRenderer,
+          'materials': MaterialsRenderer
         }
       }}
     />

@@ -72,6 +72,56 @@ export interface PassportVisualizationProps {
   onBack: () => void;
   passportName?: string;
   passportVersion?: string;
+  digitalTwinData?: {
+    shell_descriptor: {
+      id: string;
+      idShort?: string;
+      globalAssetId: string;
+      assetKind: string;
+      assetType: string;
+      description?: Array<{ language: string; text: string }>;
+      displayName?: Array<{ language: string; text: string }>;
+      submodelDescriptors: Array<{
+        endpoints: Array<{
+          interface: string;
+          protocolInformation: {
+            href: string;
+            endpointProtocol: string;
+            endpointProtocolVersion: string[];
+            subprotocol: string;
+            subprotocolBody: string;
+            subprotocolBodyEncoding: string;
+            securityAttributes: Array<{
+              type: string;
+              key: string;
+              value: string;
+            }>;
+          };
+        }>;
+        idShort: string;
+        id: string;
+        semanticId: {
+          type: string;
+          keys: Array<{
+            type: string;
+            value: string;
+          }>;
+        };
+        supplementalSemanticId: unknown[];
+        description: unknown[];
+        displayName: unknown[];
+      }>;
+      specificAssetIds: Array<{
+        name: string;
+        value: string;
+      }>;
+    };
+    dtr?: {
+      connectorUrl: string;
+      assetId: string;
+    };
+  };
+  counterPartyId?: string;
 }
 
 /**

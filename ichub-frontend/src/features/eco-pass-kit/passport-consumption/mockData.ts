@@ -113,6 +113,11 @@ export const mockProvidedPassport = {
         classificationID: '1004712',
         classificationDescription:
           'Generic standard for classification of parts in the automotive industry.'
+      },
+      {
+        classificationStandard: 'ECLASS 12.0',
+        classificationID: '21-11-01-02',
+        classificationDescription: 'Exterior mirror for motor vehicles.'
       }
     ],
     serial: [
@@ -150,7 +155,39 @@ export const mockProvidedPassport = {
           concentration: 5.3,
           exemption: 'shall not apply to product x containing not more than 1,5 ml of liquid',
           id: [ { type: 'CAS', name: 'phenolphthalein', id: '201-004-7' } ]
-        }
+        },
+        {
+          unit: 'unit:partPerMillion',
+          hazardClassification: {
+            category: 'category 2',
+            statement: 'May cause respiratory irritation.',
+            class: 'Specific target organ toxicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Example Material A Doc', content: 'https://dummy.link/materialA' }
+          ],
+          concentrationRange: [ { max: 1.5, min: 0.5 } ],
+          location: 'Frame',
+          concentration: 1.1,
+          exemption: 'not applicable',
+          id: [ { type: 'CAS', name: 'Material A', id: '100-000-0' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          hazardClassification: {
+            category: 'category 3',
+            statement: 'Harmful if swallowed.',
+            class: 'Acute toxicity'
+          },
+          documentation: [
+            { contentType: 'URL', header: 'Example Material B Doc', content: 'https://dummy.link/materialB' }
+          ],
+          concentrationRange: [ { max: 3.0, min: 2.0 } ],
+          location: 'Coating',
+          concentration: 2.4,
+          exemption: 'allowed under threshold limits',
+          id: [ { type: 'CAS', name: 'Material B', id: '200-111-3' } ]
+        },
       ]
     },
     materialComposition: {
@@ -158,12 +195,69 @@ export const mockProvidedPassport = {
       content: [
         {
           unit: 'unit:partPerMillion',
-          recycled: 12.5,
+          recycled: 30.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Mirror glass datasheet', content: 'https://dummy.link/mirror-glass' }
+          ],
+          concentration: 320000,
+          id: [ { type: 'CAS', name: 'Soda-lime glass (mirror glass)', id: '65997-17-3' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 20.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'ABS housing material', content: 'https://dummy.link/abs-housing' }
+          ],
+          concentration: 280000,
+          id: [ { type: 'CAS', name: 'ABS (mirror housing)', id: '9003-56-9' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 40.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Aluminium bracket alloy', content: 'https://dummy.link/aluminium-bracket' }
+          ],
+          concentration: 180000,
+          id: [ { type: 'CAS', name: 'Aluminium alloy (mounting bracket)', id: '7429-90-5' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 35.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Steel fasteners & mechanism', content: 'https://dummy.link/steel-mechanism' }
+          ],
+          concentration: 120000,
+          id: [ { type: 'CAS', name: 'Steel (fasteners, adjustment mechanism)', id: '7439-89-6' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 15.0,
           critical: true,
-          renewable: 23.5,
-          documentation: [ { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' } ],
-          concentration: 5.3,
-          id: [ { type: 'CAS', name: 'phenolphthalein', id: '201-004-7' } ]
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Copper wiring & motor', content: 'https://dummy.link/copper-wiring' }
+          ],
+          concentration: 60000,
+          id: [ { type: 'CAS', name: 'Copper (wiring, motor windings)', id: '7440-50-8' } ]
+        },
+        {
+          unit: 'unit:partPerMillion',
+          recycled: 0.0,
+          critical: false,
+          renewable: 0.0,
+          documentation: [
+            { contentType: 'URL', header: 'Polyurethane backing foam', content: 'https://dummy.link/pu-foam' }
+          ],
+          concentration: 40000,
+          id: [ { type: 'CAS', name: 'Polyurethane foam (backing, vibration damping)', id: '9009-54-5' } ]
         }
       ]
     }
@@ -177,17 +271,173 @@ export const mockProvidedPassport = {
   },
   additionalData: [
     {
-      description: 'Description of an attribute',
-      label: 'Maximum permitted battery power',
-      type: { typeUnit: 'unit:volume', dataType: 'array' },
-      data: '23',
+      description: 'Mirror adjustment specifications with nested configuration',
+      label: 'Mirror Adjustment System',
+      type: { dataType: 'object' },
+      children: [{
+        description: 'Adjustment range in degrees',
+        label: 'Adjustment Range',
+        type: { typeUnit: 'unit:degree', dataType: 'array' },
+        data: ['45', '60', '75', '90'],
+      }]
+    },
+    {
+      description: 'Heating element technical specifications',
+      label: 'Mirror Heating System',
+      type: { dataType: 'object' },
+      children: [{
+        description: 'Heating performance data',
+        label: 'Heating Performance',
+        type: { dataType: 'object' },
+        children: [{
+          description: 'Operating voltage',
+          label: 'Voltage',
+          type: { dataType: 'string', typeUnit: 'unit:volt' },
+          data: '12'
+        },
+        {
+          description: 'Power consumption',
+          label: 'Power',
+          type: { dataType: 'string', typeUnit: 'unit:watt' },
+          data: '45'
+        }]
+      }]
+    },
+    {
+      description: 'Mirror coating layers with detailed composition',
+      label: 'Coating Layers',
+      type: { dataType: 'array' },
       children: [
         {
-          description: 'Description of an attribute',
-          label: 'Maximum permitted battery power',
-          type: { typeUnit: 'unit:volume', dataType: 'array' },
-          data: '23',
-          children: []
+          description: 'Layer stack information',
+          label: 'Layer 1 - Reflective',
+          type: { dataType: 'object' },
+          children: [
+            {
+              description: 'Material properties',
+              label: 'Properties',
+              type: { dataType: 'array' },
+              children: [
+                {
+                  description: 'Individual property data',
+                  label: 'Property 1',
+                  type: { dataType: 'object' },
+                  children: [
+                    {
+                      description: 'Reflectivity percentage',
+                      label: 'Reflectivity',
+                      type: { dataType: 'string', typeUnit: 'unit:percent' },
+                      data: '95'
+                    },
+                    {
+                      description: 'Material durability rating',
+                      label: 'Durability',
+                      type: { dataType: 'string' },
+                      data: 'HIGH'
+                    }
+                  ]
+                },
+                {
+                  description: 'Individual property data',
+                  label: 'Property 2',
+                  type: { dataType: 'object' },
+                  children: [
+                    {
+                      description: 'Layer thickness',
+                      label: 'Thickness',
+                      type: { dataType: 'string', typeUnit: 'unit:micrometre' },
+                      data: '2.5'
+                    },
+                    {
+                      description: 'Application method',
+                      label: 'Method',
+                      type: { dataType: 'string' },
+                      data: 'SPUTTERING'
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              description: 'Manufacturing metadata',
+              label: 'Manufacturing Info',
+              type: { dataType: 'object' },
+              children: [
+                {
+                  description: 'Production line identifier',
+                  label: 'Line ID',
+                  type: { dataType: 'string' },
+                  data: 'COAT-LINE-03'
+                },
+                {
+                  description: 'Quality control batch',
+                  label: 'QC Batch',
+                  type: { dataType: 'string' },
+                  data: 'QC-2024-11-001'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      description: 'Supply chain traceability for mirror components',
+      label: 'Component Traceability',
+      type: { dataType: 'object' },
+      children: [
+        {
+          description: 'Glass supplier information',
+          label: 'Glass Suppliers',
+          type: { dataType: 'array' },
+          children: [
+            {
+              description: 'Primary glass supplier',
+              label: 'Supplier - Glass Corp',
+              type: { dataType: 'object' },
+              children: [
+                {
+                  description: 'Manufacturing facilities',
+                  label: 'Production Sites',
+                  type: { dataType: 'array' },
+                  children: [
+                    {
+                      description: 'Main production facility',
+                      label: 'Plant Munich',
+                      type: { dataType: 'object' },
+                      children: [
+                        {
+                          description: 'ISO country code',
+                          label: 'Country',
+                          type: { dataType: 'string' },
+                          data: 'DE'
+                        },
+                        {
+                          description: 'City location',
+                          label: 'City',
+                          type: { dataType: 'string' },
+                          data: 'Munich'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          description: 'Quality certifications',
+          label: 'Certifications',
+          type: { dataType: 'array' },
+          children: [
+            {
+              description: 'Certification identifiers',
+              label: 'Cert IDs',
+              type: { dataType: 'array' },
+              data: ['ISO-9001-2024', 'IATF-16949-2024']
+            }
+          ]
         }
       ]
     }

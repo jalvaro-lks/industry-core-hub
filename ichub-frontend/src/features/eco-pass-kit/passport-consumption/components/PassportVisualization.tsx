@@ -41,7 +41,7 @@ import { ArrowBack, Info, Download, ContentCopy } from '@mui/icons-material';
 import { JsonSchema } from '../types';
 import { SchemaParser } from '../utils/schemaParser';
 import { DynamicRenderer } from './DynamicRenderer';
-import { CompositionChart } from './CompositionChart';
+import { CompositionChart } from '../passport-types/generic/components/v6.1.0/CompositionChart';
 import { getCategoryIcon } from '../utils/iconMapper';
 
 interface PassportVisualizationProps {

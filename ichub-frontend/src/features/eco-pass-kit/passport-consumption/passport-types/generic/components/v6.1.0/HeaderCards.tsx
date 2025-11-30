@@ -27,15 +27,19 @@ import { HeaderCardProps } from '../../../base';
 
 /**
  * General Information Card
- * Displays product name, type, and current version
+ * Displays product name, passport identifier, issuance/expiration dates, version, and status
  */
 export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
   const identification = data.identification as Record<string, any> | undefined;
   const metadata = data.metadata as Record<string, any> | undefined;
+  const sustainability = data.sustainability as Record<string, any> | undefined;
   
   const productName = identification?.type?.nameAtManufacturer || 'Unknown Product';
-  const productType = identification?.type?.manufacturerPartId || 'N/A';
+  const passportIdentifier = metadata?.passportIdentifier || 'N/A';
+  const issuanceDate = metadata?.issueDate || 'N/A';
+  const expirationDate = metadata?.expirationDate || 'N/A';
   const version = metadata?.version || '1.0.0';
+  const status = sustainability?.status || 'N/A';
 
   return (
     <Card
@@ -69,7 +73,7 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.7rem', lg: '0.75rem' }, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            General
+            NAME
           </Typography>
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem', lg: '1.1rem' }, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {productName}
@@ -79,28 +83,76 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box>
           <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-            Product Type
+            Passport Identifier
           </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-            {productType}
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'monospace' }}>
+            {passportIdentifier}
           </Typography>
         </Box>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-            Current Version
-          </Typography>
-          <Chip
-            label={version}
-            size="small"
-            sx={{
-              backgroundColor: 'rgba(102, 126, 234, 0.2)',
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ flex: 1, minWidth: 100 }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+              Issuance Date
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
+              {issuanceDate}
+            </Typography>
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 100 }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+              Expiration Date
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
+              {expirationDate}
+            </Typography>
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(102, 126, 234, 0.15)',
+            border: '1px solid rgba(102, 126, 234, 0.3)',
+            minWidth: 70,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Version
+            </Typography>
+            <Typography variant="h6" sx={{
               color: '#667eea',
-              fontSize: '0.7rem',
-              height: 22,
-              fontWeight: 600,
+              fontWeight: 700,
+              fontSize: '1.25rem',
               fontFamily: 'monospace'
-            }}
-          />
+            }}>
+              {version}
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '8px',
+            backgroundColor: 'rgba(102, 126, 234, 0.15)',
+            border: '1px solid rgba(102, 126, 234, 0.3)',
+            minWidth: 70,
+            flex: 1
+          }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.65rem', textAlign: 'center', mb: 0.5 }}>
+              Status
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: '#667eea',
+              fontWeight: 700,
+              fontSize: '1.25rem'
+            }}>
+              {status}
+            </Typography>
+          </Box>
         </Box>
       </Box>
     </Card>
@@ -109,13 +161,16 @@ export const GeneralInfoCard: React.FC<HeaderCardProps> = ({ data }) => {
 
 /**
  * Manufacturing Information Card
- * Displays manufacturer ID and manufacturing date
+ * Displays manufacturer ID, manufacturing date, part ID, and product name
  */
 export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
   const operation = data.operation as Record<string, any> | undefined;
+  const identification = data.identification as Record<string, any> | undefined;
   
   const manufacturerId = operation?.manufacturer?.manufacturer || 'N/A';
   const manufacturingDate = operation?.manufacturer?.manufacturingDate || 'N/A';
+  const manufacturerPartId = identification?.type?.manufacturerPartId || 'N/A';
+  const nameAtManufacturer = identification?.type?.nameAtManufacturer || 'N/A';
 
   return (
     <Card
@@ -149,20 +204,38 @@ export const ManufacturingCard: React.FC<HeaderCardProps> = ({ data }) => {
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: { xs: '0.7rem', lg: '0.75rem' }, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Manufacturing
+            Manufacturer ID
           </Typography>
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem', lg: '1.1rem' }, lineHeight: 1.3, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {manufacturerId}
           </Typography>
         </Box>
       </Box>
-      <Box>
-        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
-          Date of Manufacturing
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
-          {manufacturingDate}
-        </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+            Date of Manufacturing
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
+            {manufacturingDate}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+            Manufacturer Part ID
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'monospace' }}>
+            {manufacturerPartId}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+            Name at Manufacturer
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.875rem', fontWeight: 500 }}>
+            {nameAtManufacturer}
+          </Typography>
+        </Box>
       </Box>
     </Card>
   );
@@ -211,7 +284,7 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Sustainability
+            CARBON FOOTPRINT
           </Typography>
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem' }, lineHeight: 1.3 }}>
             {co2Footprint}
@@ -219,41 +292,49 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
         </Box>
       </Box>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          p: 2,
+          borderRadius: '8px',
+          backgroundColor: 'rgba(34, 197, 94, 0.15)',
+          border: '1px solid rgba(34, 197, 94, 0.3)',
+          minWidth: { xs: 80, sm: 90 },
+          flex: 1
+        }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textAlign: 'center', mb: 1 }}>
             Durability Score
           </Typography>
-          <Chip
-            label={durabilityScore}
-            size="small"
-            sx={{
-              backgroundColor: 'rgba(34, 197, 94, 0.2)',
-              color: '#22c55e',
-              fontSize: '0.85rem',
-              height: 26,
-              fontWeight: 700,
-              minWidth: 40,
-              mt: 0.5
-            }}
-          />
+          <Typography variant="h4" sx={{
+            color: '#22c55e',
+            fontWeight: 700,
+            fontSize: { xs: '1.75rem', sm: '2rem' }
+          }}>
+            {durabilityScore}
+          </Typography>
         </Box>
-        <Box>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          p: 2,
+          borderRadius: '8px',
+          backgroundColor: 'rgba(34, 197, 94, 0.15)',
+          border: '1px solid rgba(34, 197, 94, 0.3)',
+          minWidth: { xs: 80, sm: 90 },
+          flex: 1
+        }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', textAlign: 'center', mb: 1 }}>
             Reparability Score
           </Typography>
-          <Chip
-            label={sustainability?.reparabilityScore || 'N/A'}
-            size="small"
-            sx={{
-              backgroundColor: 'rgba(34, 197, 94, 0.2)',
-              color: '#22c55e',
-              fontSize: '0.85rem',
-              height: 26,
-              fontWeight: 700,
-              minWidth: 40,
-              mt: 0.5
-            }}
-          />
+          <Typography variant="h4" sx={{
+            color: '#22c55e',
+            fontWeight: 700,
+            fontSize: { xs: '1.75rem', sm: '2rem' }
+          }}>
+            {sustainability?.reparabilityScore || 'N/A'}
+          </Typography>
         </Box>
       </Box>
     </Card>
@@ -262,19 +343,62 @@ export const SustainabilityCard: React.FC<HeaderCardProps> = ({ data }) => {
 
 /**
  * Materials Card
- * Displays material composition pie chart
+ * Displays material composition and substances of concern pie charts
  */
 export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
   const materials = data.materials as Record<string, any> | undefined;
-  const materialComp = materials?.materialComposition?.content?.[0];
   
-  const renewable = materialComp?.renewable || 0;
-  const recycled = materialComp?.recycled || 0;
-  const concentration = materialComp?.concentration || 0;
+  // Material Composition data
+  const materialComposition = materials?.materialComposition?.content || [];
+  
+  // Substances of Concern data
+  const substancesOfConcern = materials?.substancesOfConcern?.content || [];
+  
+  // Calculate totals for material composition - using concentration values
+  const compositionData = materialComposition.map((item: any) => ({
+    name: item.id?.[0]?.name || 'Unknown',
+    value: item.concentration ? (item.concentration / 10000) : 0 // Convert PPM to percentage
+  })).filter((item: any) => item.value > 0);
+  
+  // Calculate totals for substances of concern - using concentration values
+  const concernData = substancesOfConcern.map((item: any) => ({
+    name: item.id?.[0]?.name || 'Unknown',
+    value: item.concentration || 0
+  })).filter((item: any) => item.value > 0);
 
-  // Simple pie chart data
-  const total = renewable + recycled + concentration;
-  const hasData = total > 0;
+  const hasCompositionData = compositionData.length > 0;
+  const hasConcernData = concernData.length > 0;
+
+  const renderPieChart = (data: any[], colors: string[]) => {
+    const total = data.reduce((sum: number, item: any) => sum + item.value, 0);
+    if (total === 0) return null;
+
+    let currentAngle = -90;
+    return data.map((item, index) => {
+      const percentage = (item.value / total) * 100;
+      const angle = (percentage / 100) * 360;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + angle;
+      currentAngle = endAngle;
+
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+      const x1 = 50 + 40 * Math.cos(startRad);
+      const y1 = 50 + 40 * Math.sin(startRad);
+      const x2 = 50 + 40 * Math.cos(endRad);
+      const y2 = 50 + 40 * Math.sin(endRad);
+      const largeArc = angle > 180 ? 1 : 0;
+
+      return (
+        <path
+          key={index}
+          d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
+          fill={colors[index % colors.length]}
+          opacity="0.9"
+        />
+      );
+    });
+  };
 
   return (
     <Card
@@ -292,7 +416,7 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
         }
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 2 }}>
         <Box
           sx={{
             p: 1,
@@ -312,78 +436,67 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
         </Box>
       </Box>
       
-      {hasData ? (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Mini Pie Chart */}
-          <Box sx={{ position: 'relative', width: 70, height: 70 }}>
-            <svg width="70" height="70" viewBox="0 0 100 100">
-              {(() => {
-                let currentAngle = -90;
-                const colors = ['#8b5cf6', '#6366f1', '#a78bfa'];
-                const values = [renewable, recycled, concentration];
-                
-                return values.map((value, index) => {
-                  if (value === 0) return null;
-                  const percentage = (value / total) * 100;
-                  const angle = (percentage / 100) * 360;
-                  const startAngle = currentAngle;
-                  const endAngle = currentAngle + angle;
-                  currentAngle = endAngle;
-
-                  const startRad = (startAngle * Math.PI) / 180;
-                  const endRad = (endAngle * Math.PI) / 180;
-                  const x1 = 50 + 40 * Math.cos(startRad);
-                  const y1 = 50 + 40 * Math.sin(startRad);
-                  const x2 = 50 + 40 * Math.cos(endRad);
-                  const y2 = 50 + 40 * Math.sin(endRad);
-                  const largeArc = angle > 180 ? 1 : 0;
-
-                  return (
-                    <path
-                      key={index}
-                      d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                      fill={colors[index]}
-                      opacity="0.9"
-                    />
-                  );
-                });
-              })()}
-            </svg>
-          </Box>
-          
-          {/* Legend */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {renewable > 0 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#8b5cf6' }} />
-                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
-                  Renewable {renewable.toFixed(1)}%
-                </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Material Composition */}
+        <Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', mb: 1, display: 'block', textAlign: 'center' }}>
+            Material Composition
+          </Typography>
+          {hasCompositionData ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+              <Box sx={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
+                <svg width="70" height="70" viewBox="0 0 100 100">
+                  {renderPieChart(compositionData, ['#8b5cf6', '#6366f1', '#a78bfa', '#c4b5fd', '#ddd6fe'])}
+                </svg>
               </Box>
-            )}
-            {recycled > 0 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#6366f1' }} />
-                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
-                  Recycled {recycled.toFixed(1)}%
-                </Typography>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {compositionData.slice(0, 3).map((item: any, index: number) => (
+                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ['#8b5cf6', '#6366f1', '#a78bfa'][index], flexShrink: 0 }} />
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
+                      {item.name} {item.value.toFixed(1)}%
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
-            )}
-            {concentration > 0 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#a78bfa' }} />
-                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
-                  Concentration {concentration.toFixed(1)}%
-                </Typography>
-              </Box>
-            )}
-          </Box>
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 1 }}>
+              No data
+            </Typography>
+          )}
         </Box>
-      ) : (
-        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.8rem', textAlign: 'center', py: 2 }}>
-          No material data available
-        </Typography>
-      )}
+
+        {/* Substances of Concern */}
+        <Box>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', mb: 1, display: 'block', textAlign: 'center' }}>
+            Substances of Concern
+          </Typography>
+          {hasConcernData ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+              <Box sx={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
+                <svg width="70" height="70" viewBox="0 0 100 100">
+                  {renderPieChart(concernData, ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#fbbf24'])}
+                </svg>
+              </Box>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {concernData.slice(0, 3).map((item: any, index: number) => (
+                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ['#ef4444', '#f97316', '#f59e0b'][index], flexShrink: 0 }} />
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.7rem' }}>
+                      {item.name} {item.value.toFixed(1)}%
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.75rem', textAlign: 'center', py: 1 }}>
+              No data
+            </Typography>
+          )}
+        </Box>
+      </Box>
     </Card>
   );
 };

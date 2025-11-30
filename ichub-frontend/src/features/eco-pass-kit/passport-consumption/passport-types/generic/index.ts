@@ -22,7 +22,6 @@
 
 import { PassportTypeRegistry } from '../types';
 import { GenericPassportVisualization } from './GenericPassportVisualization';
-import { mockGenericPassport } from './mockData';
 import schema from '../../../../../schemas/DigitalProductPassport-schema.json';
 
 // Register generic passport type
@@ -32,6 +31,5 @@ PassportTypeRegistry.register({
   version: '6.1.0',
   specUrn: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
   schema: schema as any,
-  VisualizationComponent: GenericPassportVisualization,
-  mockData: mockGenericPassport
+  VisualizationComponent: GenericPassportVisualization
 });

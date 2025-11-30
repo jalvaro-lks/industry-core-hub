@@ -205,6 +205,11 @@ export class SchemaParser {
           // Parse each array item's properties
           const isSingleItem = value.length === 1;
           
+          // Check if items have a recursive "children" property
+          const hasRecursiveChildren = value.some((item: any) => 
+            item && typeof item === 'object' && 'children' in item && Array.isArray(item.children)
+          );
+          
           // Create child properties for each item in the array
           parsed.children = value.map((item, index) => {
             // Create a property for this array item with its properties as children
@@ -215,19 +220,38 @@ export class SchemaParser {
               ''
             );
             
-            // For single items, show properties directly (no wrapper)
+            // For recursive structures (like AdditionalDataEntity), extract the 'children' property
+            // and use it as the actual children array, removing it from the properties list
+            const childrenProp = itemProperties.find(p => p.key === 'children');
+            const nonChildrenProps = itemProperties.filter(p => p.key !== 'children');
+            
+            // For single items WITHOUT recursive children, show properties directly (no wrapper)
             // This way the array property key (e.g., "producer") becomes the label
-            if (isSingleItem) {
+            // But if there's recursive structure (like additionalData with children arrays), keep the wrapper
+            if (isSingleItem && !hasRecursiveChildren) {
               return itemProperties;
             }
             
-            // For multiple items, wrap each in a numbered container
+            // For multiple items or items with recursive children, wrap each in a numbered container
+            // Use the item's 'label' field if available, otherwise default to 'Item N'
+            const itemData = item as Record<string, unknown>;
+            const itemLabel = itemData.label ? String(itemData.label) : `Item ${index + 1}`;
+            
+            // Merge children from the recursive property with the other properties
+            // This ensures both the 'data' field AND the nested 'children' are displayed
+            const allChildren = [...nonChildrenProps];
+            if (childrenProp && childrenProp.children && childrenProp.children.length > 0) {
+              // Add the children array as nested items
+              allChildren.push(...childrenProp.children);
+            }
+            
             return {
               key: `item-${index}`,
-              label: `Item ${index + 1}`,
+              label: itemLabel,
+              description: itemData.description ? String(itemData.description) : undefined,
               type: 'object',
               value: item,
-              children: itemProperties,
+              children: allChildren,
               isRequired: false
             } as ParsedProperty;
           }).flat();

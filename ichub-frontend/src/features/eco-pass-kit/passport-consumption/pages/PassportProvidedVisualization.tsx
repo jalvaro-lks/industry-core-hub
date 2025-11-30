@@ -24,6 +24,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PassportTypeRegistry } from '../passport-types';
 import { mockProvidedPassport } from '../mockData';
+import { mockDigitalTwinData, mockCounterPartyId } from '../mockDigitalTwinData';
 
 /**
  * Demo page to visualize the user-provided passport data model
@@ -60,6 +61,8 @@ const PassportProvidedVisualization: React.FC = () => {
       onBack={handleBack}
       passportName={passportConfig.name}
       passportVersion={passportConfig.version}
+      digitalTwinData={mockDigitalTwinData}
+      counterPartyId={mockCounterPartyId}
     />
   );
 };
