@@ -21,7 +21,9 @@
  ********************************************************************************/
 
 import React from 'react';
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Paper, Chip } from '@mui/material';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { CheckCircle, Cancel } from '@mui/icons-material';
 
 interface CompositionItem {
   name: string;
@@ -30,10 +32,31 @@ interface CompositionItem {
   color?: string;
 }
 
+interface CriticalMaterial {
+  name: string;
+  percentage: number;
+  origin?: string;
+  certified?: boolean;
+}
+
+interface HazardousMaterial {
+  name: string;
+  casNumber?: string;
+  concentration: number;
+}
+
 interface CompositionChartProps {
   title: string;
   items: CompositionItem[];
   compact?: boolean;
+  additionalInfo?: {
+    unit?: string;
+    critical?: boolean;
+    id?: Array<{ type: string; name: string; id: string }>;
+    documentation?: Array<{ contentType: string; header: string; content: string }>;
+  };
+  criticalMaterials?: CriticalMaterial[];
+  hazardousMaterials?: HazardousMaterial[];
 }
 
 const CHART_COLORS = [
@@ -47,7 +70,7 @@ const CHART_COLORS = [
   '#30cfd0'
 ];
 
-export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items, compact = false }) => {
+export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items, compact = false, additionalInfo, criticalMaterials, hazardousMaterials }) => {
   // Calculate total
   const total = items.reduce((sum, item) => sum + item.value, 0);
 
@@ -241,6 +264,335 @@ export const CompositionChart: React.FC<CompositionChartProps> = ({ title, items
           ))}
         </Box>
       </Box>
+      
+      {/* Additional Information - Only shown in full (non-compact) mode */}
+      {additionalInfo && Object.keys(additionalInfo).length > 0 && (
+        <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600, mb: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            Additional Information
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {additionalInfo.id && Array.isArray(additionalInfo.id) && additionalInfo.id.length > 0 && (
+              <Box sx={{ 
+                p: 1.5, 
+                background: 'rgba(255, 255, 255, 0.03)', 
+                borderRadius: 1.5,
+                border: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                  Material ID
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#fff', fontSize: '0.875rem' }}>
+                  {additionalInfo.id[0].name}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.7rem', display: 'block', mt: 0.5 }}>
+                  {additionalInfo.id[0].type}: {additionalInfo.id[0].id}
+                </Typography>
+              </Box>
+            )}
+            {additionalInfo.unit && (
+              <Box sx={{ 
+                p: 1.5, 
+                background: 'rgba(255, 255, 255, 0.03)', 
+                borderRadius: 1.5,
+                border: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                  Unit
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#fff', fontSize: '0.875rem' }}>
+                  {additionalInfo.unit}
+                </Typography>
+              </Box>
+            )}
+            {additionalInfo.critical !== undefined && (
+              <Box sx={{ 
+                p: 1.5, 
+                background: additionalInfo.critical ? 'rgba(250, 112, 154, 0.1)' : 'rgba(255, 255, 255, 0.03)', 
+                borderRadius: 1.5,
+                border: `1px solid ${additionalInfo.critical ? 'rgba(250, 112, 154, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`
+              }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                  Critical Material
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: additionalInfo.critical ? '#fa709a' : '#fff', 
+                  fontSize: '0.875rem',
+                  fontWeight: additionalInfo.critical ? 600 : 400 
+                }}>
+                  {additionalInfo.critical ? 'Yes' : 'No'}
+                </Typography>
+              </Box>
+            )}
+            {additionalInfo.documentation && Array.isArray(additionalInfo.documentation) && additionalInfo.documentation.length > 0 && (
+              <Box sx={{ 
+                p: 1.5, 
+                background: 'rgba(255, 255, 255, 0.03)', 
+                borderRadius: 1.5,
+                border: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.7rem', display: 'block', mb: 0.5 }}>
+                  Documentation
+                </Typography>
+                {additionalInfo.documentation.map((doc: any, idx: number) => (
+                  <Box key={idx} sx={{ mt: idx > 0 ? 1 : 0 }}>
+                    <Typography variant="body2" sx={{ color: '#fff', fontSize: '0.875rem', mb: 0.25 }}>
+                      {doc.header}
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      component="a"
+                      href={doc.content}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ 
+                        color: '#4a90e2',
+                        fontSize: '0.7rem',
+                        textDecoration: 'none',
+                        '&:hover': {
+                          textDecoration: 'underline'
+                        }
+                      }}
+                    >
+                      {doc.content}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </Box>
+      )}
+
+      {/* Critical Raw Materials Section - Only shown in full (non-compact) mode */}
+      {!compact && criticalMaterials && Array.isArray(criticalMaterials) && criticalMaterials.length > 0 && (
+        <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600, mb: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            Critical Raw Materials
+          </Typography>
+          
+          {/* Mini Pie Chart for Critical Materials */}
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+            <svg width="200" height="200" viewBox="0 0 200 200">
+              {(() => {
+                const total = criticalMaterials.reduce((sum, m) => sum + m.percentage, 0);
+                let currentAngle = -90;
+                return criticalMaterials.map((material, index) => {
+                  const percentage = (material.percentage / total) * 100;
+                  const angle = (percentage / 100) * 360;
+                  const startAngle = currentAngle;
+                  const endAngle = currentAngle + angle;
+                  currentAngle = endAngle;
+
+                  const startRad = (startAngle * Math.PI) / 180;
+                  const endRad = (endAngle * Math.PI) / 180;
+                  const x1 = 100 + 80 * Math.cos(startRad);
+                  const y1 = 100 + 80 * Math.sin(startRad);
+                  const x2 = 100 + 80 * Math.cos(endRad);
+                  const y2 = 100 + 80 * Math.sin(endRad);
+                  const largeArc = angle > 180 ? 1 : 0;
+
+                  return (
+                    <path
+                      key={index}
+                      d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      opacity="0.9"
+                    />
+                  );
+                });
+              })()}
+            </svg>
+          </Box>
+
+          {/* DataGrid for Critical Materials */}
+          <Box sx={{ height: 300, width: '100%' }}>
+            <DataGrid
+              rows={criticalMaterials.map((material, index) => ({ id: index, ...material }))}
+              columns={[
+                { 
+                  field: 'name', 
+                  headerName: 'Material', 
+                  flex: 1,
+                  renderCell: (params) => (
+                    <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
+                      {params.value}
+                    </Typography>
+                  )
+                },
+                { 
+                  field: 'percentage', 
+                  headerName: 'Percentage', 
+                  width: 150,
+                  renderCell: (params) => (
+                    <Chip
+                      label={`${params.value.toFixed(1)}%`}
+                      size="small"
+                      sx={{
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        color: '#667eea',
+                        fontWeight: 600
+                      }}
+                    />
+                  )
+                },
+                { 
+                  field: 'origin', 
+                  headerName: 'Origin', 
+                  flex: 1,
+                  renderCell: (params) => (
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                      {params.value || 'N/A'}
+                    </Typography>
+                  )
+                },
+                { 
+                  field: 'certified', 
+                  headerName: 'Certified', 
+                  width: 120,
+                  align: 'center',
+                  headerAlign: 'center',
+                  renderCell: (params) => params.value ? (
+                    <CheckCircle sx={{ color: '#43e97b', fontSize: 20 }} />
+                  ) : (
+                    <Cancel sx={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: 20 }} />
+                  )
+                }
+              ] as GridColDef[]}
+              disableRowSelectionOnClick
+              hideFooter
+              sx={{
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 2,
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600
+                },
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  color: '#fff'
+                },
+                '& .MuiDataGrid-row:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                }
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Substances of Concern Section - Only shown in full (non-compact) mode */}
+      {!compact && hazardousMaterials && Array.isArray(hazardousMaterials) && hazardousMaterials.length > 0 && (
+        <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600, mb: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            Substances of Concern
+          </Typography>
+          
+          {/* Mini Pie Chart for Hazardous Materials */}
+          <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+            <svg width="200" height="200" viewBox="0 0 200 200">
+              {(() => {
+                const total = hazardousMaterials.reduce((sum, m) => sum + m.concentration, 0);
+                let currentAngle = -90;
+                return hazardousMaterials.map((material, index) => {
+                  const percentage = (material.concentration / total) * 100;
+                  const angle = (percentage / 100) * 360;
+                  const startAngle = currentAngle;
+                  const endAngle = currentAngle + angle;
+                  currentAngle = endAngle;
+
+                  const startRad = (startAngle * Math.PI) / 180;
+                  const endRad = (endAngle * Math.PI) / 180;
+                  const x1 = 100 + 80 * Math.cos(startRad);
+                  const y1 = 100 + 80 * Math.sin(startRad);
+                  const x2 = 100 + 80 * Math.cos(endRad);
+                  const y2 = 100 + 80 * Math.sin(endRad);
+                  const largeArc = angle > 180 ? 1 : 0;
+
+                  return (
+                    <path
+                      key={index}
+                      d={`M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                      opacity="0.9"
+                    />
+                  );
+                });
+              })()}
+            </svg>
+          </Box>
+
+          {/* DataGrid for Hazardous Materials */}
+          <Box sx={{ height: 200, width: '100%' }}>
+            <DataGrid
+              rows={hazardousMaterials.map((material, index) => ({ id: index, ...material }))}
+              columns={[
+                { 
+                  field: 'name', 
+                  headerName: 'Substance Name', 
+                  flex: 1,
+                  renderCell: (params) => (
+                    <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
+                      {params.value}
+                    </Typography>
+                  )
+                },
+                { 
+                  field: 'casNumber', 
+                  headerName: 'CAS Number', 
+                  width: 150,
+                  renderCell: (params) => (
+                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontFamily: 'monospace' }}>
+                      {params.value || 'N/A'}
+                    </Typography>
+                  )
+                },
+                { 
+                  field: 'concentration', 
+                  headerName: 'Concentration (%)', 
+                  width: 180,
+                  renderCell: (params) => (
+                    <Chip
+                      label={`${params.value.toFixed(2)}%`}
+                      size="small"
+                      sx={{
+                        backgroundColor: 'rgba(250, 112, 154, 0.2)',
+                        color: '#fa709a',
+                        fontWeight: 600
+                      }}
+                    />
+                  )
+                }
+              ] as GridColDef[]}
+              disableRowSelectionOnClick
+              hideFooter
+              sx={{
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 2,
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600
+                },
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  color: '#fff'
+                },
+                '& .MuiDataGrid-row:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                }
+              }}
+            />
+          </Box>
+        </Box>
+      )}
     </Paper>
   );
 };

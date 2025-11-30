@@ -66,6 +66,6 @@ export interface MetricCard {
 export interface TabDefinition {
   id: string;
   label: string;
-  icon: React.ElementType;
+  category?: string;
   properties: ParsedProperty[];
 }

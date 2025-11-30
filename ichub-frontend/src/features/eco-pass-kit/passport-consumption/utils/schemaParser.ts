@@ -317,7 +317,6 @@ export class SchemaParser {
 
     return Object.entries(this.schema.properties).map(([key, property]) => {
       const label = this.generateLabel(key, property);
-      const icon = getIconForProperty(key);
       const value = data[key];
 
       // Parse nested properties using schema when possible
@@ -356,7 +355,7 @@ export class SchemaParser {
       return {
         id: key,
         label,
-        icon,
+        category: key,
         properties
       };
     }).filter(tab => tab.properties && tab.properties.length > 0);

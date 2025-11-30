@@ -469,7 +469,7 @@ interface AddSerializedPartDialogProps {
                                         startIcon={<PersonAddIcon />}
                                         onClick={() => {
                                             onClose();
-                                            navigate('/partners');
+                                            navigate('/partners#new');
                                         }}
                                         sx={{
                                             textTransform: 'none',

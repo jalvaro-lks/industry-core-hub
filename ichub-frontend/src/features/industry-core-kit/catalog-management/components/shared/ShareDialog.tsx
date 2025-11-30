@@ -149,7 +149,7 @@ const ShareDialog = ({ open, onClose, partData }: ProductDetailDialogProps) => {
 
   const handleGoToPartners = () => {
     onClose(); // Close the dialog first
-    navigate('/partners'); // Navigate to partners page
+    navigate('/partners#new'); // Navigate to partners page
   };
 
   return (

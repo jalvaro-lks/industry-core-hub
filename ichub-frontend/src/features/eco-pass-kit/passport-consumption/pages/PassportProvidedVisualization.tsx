@@ -22,13 +22,12 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PassportVisualization } from '../components/PassportVisualization';
-import { JsonSchema } from '../types';
+import { PassportTypeRegistry } from '../passport-types';
 import { mockProvidedPassport } from '../mockData';
-import schema from '../../../../schemas/DigitalProductPassport-schema.json';
 
 /**
  * Demo page to visualize the user-provided passport data model
+ * Now uses the new modular passport visualization architecture
  */
 const PassportProvidedVisualization: React.FC = () => {
   const navigate = useNavigate();
@@ -37,12 +36,30 @@ const PassportProvidedVisualization: React.FC = () => {
     navigate('/passport');
   };
 
+  // Detect passport type from the data
+  const passportConfig = PassportTypeRegistry.detectType(mockProvidedPassport);
+  
+  if (!passportConfig) {
+    return (
+      <div style={{ padding: '2rem', color: '#fff', textAlign: 'center' }}>
+        <h2>Error: Unable to determine passport type</h2>
+        <button onClick={handleBack} style={{ marginTop: '1rem' }}>
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
+  const VisualizationComponent = passportConfig.VisualizationComponent;
+
   return (
-    <PassportVisualization
-      schema={schema as JsonSchema}
+    <VisualizationComponent
+      schema={passportConfig.schema}
       data={mockProvidedPassport}
       passportId="demo-provided"
       onBack={handleBack}
+      passportName={passportConfig.name}
+      passportVersion={passportConfig.version}
     />
   );
 };

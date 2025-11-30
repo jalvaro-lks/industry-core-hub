@@ -26,32 +26,14 @@ import { ExpandMore, ExpandLess, InfoOutlined } from '@mui/icons-material';
 import { ParsedProperty } from '../types';
 import { getIconForProperty } from '../utils/iconMapper';
 import { formatValue } from '../utils/dataFormatter';
-import { CompositionChart } from './CompositionChart';
 import { MetricProgress } from './MetricProgress';
 
 interface DynamicRendererProps {
   properties: ParsedProperty[];
   level?: number;
+  rawData?: Record<string, unknown>;
+  customRenderers?: Record<string, React.ComponentType<{ data: any; rawData: Record<string, unknown> }>>;
 }
-
-// Helper to detect if property represents composition data
-const isCompositionData = (property: ParsedProperty): boolean => {
-  if (!property.children || property.children.length === 0) return false;
-  
-  const keywords = ['composition', 'components', 'materials', 'ingredients', 'breakdown'];
-  const hasKeyword = keywords.some(keyword => 
-    property.key.toLowerCase().includes(keyword) || 
-    property.label.toLowerCase().includes(keyword)
-  );
-  
-  // Check if children have numeric values (percentages or amounts)
-  const hasNumericValues = property.children.some(child => 
-    typeof child.value === 'number' || 
-    (typeof child.value === 'string' && /\d+/.test(child.value))
-  );
-  
-  return hasKeyword && hasNumericValues;
-};
 
 // Helper to detect if property represents a metric with progress
 const isMetricProgress = (property: ParsedProperty): boolean => {
@@ -65,7 +47,12 @@ const isMetricProgress = (property: ParsedProperty): boolean => {
 };
 
 // Component for rendering expandable arrays/complex objects
-const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> = ({ property, level }) => {
+const ExpandableProperty: React.FC<{ 
+  property: ParsedProperty; 
+  level: number; 
+  rawData?: Record<string, unknown>;
+  customRenderers?: Record<string, React.ComponentType<{ data: any; rawData: Record<string, unknown> }>>;
+}> = ({ property, level, rawData, customRenderers }) => {
   const [expanded, setExpanded] = useState(level === 0);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const Icon = getIconForProperty(property.key);
@@ -252,11 +239,35 @@ const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> 
               <Grid2 container spacing={{ xs: 1.5, sm: 2 }} sx={{ mt: 0.5 }}>
                 {property.children.map((child, idx) => {
                   const ChildIcon = getIconForProperty(child.key);
-                  const [tooltipOpen, setTooltipOpen] = useState(false);
                   
                   return (
-                    <Grid2 key={`${child.key}-${idx}`} size={{ xs: 12, sm: 6, md: 4 }}>
-                      <Paper
+                    <ChildPropertyItem
+                      key={`${child.key}-${idx}`}
+                      child={child}
+                      ChildIcon={ChildIcon}
+                    />
+                  );
+                })}
+              </Grid2>
+            ) : (
+              <Box sx={{ mt: 1 }}>
+                <DynamicRenderer properties={property.children} level={level + 1} rawData={rawData} customRenderers={customRenderers} />
+              </Box>
+            )}
+          </Box>
+        </Collapse>
+      </Paper>
+    </Grid2>
+  );
+};
+
+// Separate component for child properties to avoid hooks in loops
+const ChildPropertyItem: React.FC<{ child: ParsedProperty; ChildIcon: React.ElementType }> = ({ child, ChildIcon }) => {
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  
+  return (
+    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+      <Paper
                         elevation={0}
                         sx={{
                           p: { xs: 1.5, sm: 2 },
@@ -381,39 +392,21 @@ const ExpandableProperty: React.FC<{ property: ParsedProperty; level: number }> 
                         )}
                       </Paper>
                     </Grid2>
-                  );
-                })}
-              </Grid2>
-            ) : (
-              <Box sx={{ mt: 1 }}>
-                <DynamicRenderer properties={property.children} level={level + 1} />
-              </Box>
-            )}
-          </Box>
-        </Collapse>
-      </Paper>
-    </Grid2>
   );
 };
 
-export const DynamicRenderer: React.FC<DynamicRendererProps> = ({ properties, level = 0 }) => {
+export const DynamicRenderer: React.FC<DynamicRendererProps> = ({ properties, level = 0, rawData, customRenderers }) => {
   const renderProperty = (property: ParsedProperty) => {
     const Icon = getIconForProperty(property.key);
     
-    // Render composition data as pie chart
-    if (isCompositionData(property) && property.children) {
-      const items = property.children
-        .filter(child => typeof child.value === 'number' || !isNaN(parseFloat(String(child.value))))
-        .map(child => ({
-          name: child.label,
-          value: typeof child.value === 'number' ? child.value : parseFloat(String(child.value)),
-          unit: child.key.includes('percentage') || child.label.includes('%') ? '%' : 'kg'
-        }));
-      
-      if (items.length > 0) {
+    // Check for custom renderer first
+    if (customRenderers && rawData) {
+      const renderer = customRenderers[property.key] || customRenderers[property.key.toLowerCase()];
+      if (renderer) {
+        const CustomRenderer = renderer;
         return (
           <Grid2 key={property.key} size={{ xs: 12 }}>
-            <CompositionChart title={property.label} items={items} />
+            <CustomRenderer data={property} rawData={rawData} />
           </Grid2>
         );
       }
@@ -444,15 +437,27 @@ export const DynamicRenderer: React.FC<DynamicRendererProps> = ({ properties, le
     
     // Render nested objects/arrays with expandable component
     if (property.children && property.children.length > 0) {
-      return <ExpandableProperty key={property.key} property={property} level={level} />;
+      return <ExpandableProperty key={property.key} property={property} level={level} rawData={rawData} customRenderers={customRenderers} />;
     }
 
     // Render simple property
-    const [simpleTooltipOpen, setSimpleTooltipOpen] = useState(false);
-    
-    return (
-      <Grid2 key={property.key} size={{ xs: 12, sm: 6, md: 4 }}>
-        <Paper
+    return <SimpleProperty key={property.key} property={property} Icon={Icon} />;
+  };
+
+  return (
+    <Grid2 container spacing={{ xs: 1.5, sm: 2 }} sx={{ background: 'transparent' }}>
+      {properties.map(renderProperty)}
+    </Grid2>
+  );
+};
+
+// Separate component for simple properties to avoid hooks in loops
+const SimpleProperty: React.FC<{ property: ParsedProperty; Icon: React.ElementType }> = ({ property, Icon }) => {
+  const [simpleTooltipOpen, setSimpleTooltipOpen] = useState(false);
+  
+  return (
+    <Grid2 size={{ xs: 12, sm: 6, md: 4 }}>
+      <Paper
           elevation={0}
           sx={{
             p: { xs: 1.5, sm: 2 },
@@ -590,12 +595,5 @@ export const DynamicRenderer: React.FC<DynamicRendererProps> = ({ properties, le
           </Box>
         </Paper>
       </Grid2>
-    );
-  };
-
-  return (
-    <Grid2 container spacing={{ xs: 1.5, sm: 2 }} sx={{ background: 'transparent' }}>
-      {properties.map(renderProperty)}
-    </Grid2>
   );
 };

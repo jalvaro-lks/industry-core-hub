@@ -30,7 +30,7 @@ import Badge from '@mui/material/Badge';
 import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import MailIcon from '@mui/icons-material/Mail';
+import Policy from '@mui/icons-material/Policy';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MoreIcon from '@mui/icons-material/MoreVert';
 import { Divider, ListItemIcon, Typography, Tooltip } from '@mui/material';
@@ -294,14 +294,6 @@ export default function PrimarySearchAppBar() {
       onClose={handleMobileMenuClose}
     >
       <MenuItem>
-        <IconButton size="large" aria-label="show 4 new mails">
-          <Badge badgeContent={4} color="error">
-            <MailIcon />
-          </Badge>
-        </IconButton>
-        <p>Messages</p>
-      </MenuItem>
-      <MenuItem>
         <IconButton
           size="large"
           aria-label="show 17 new notifications"
@@ -311,6 +303,15 @@ export default function PrimarySearchAppBar() {
           </Badge>
         </IconButton>
         <p>Notifications</p>
+      </MenuItem>
+      <MenuItem>
+        <IconButton
+          size="large"
+          aria-label="configure policies"
+        >
+          <Policy />
+        </IconButton>
+        <p>Policy Config</p>
       </MenuItem>
       <MenuItem onClick={handleProfileMenuOpen}>
         <IconButton
@@ -363,40 +364,42 @@ export default function PrimarySearchAppBar() {
             </Typography>
           </Box>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
-            <IconButton 
-              size="large" 
-              aria-label="show 4 new mails"
-              sx={{
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.2)',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-                },
-                transition: 'all 0.2s ease-in-out'
-              }}
-            >
-              <Badge badgeContent={4} color="error">
-                <MailIcon />
-              </Badge>
-            </IconButton>
-            <IconButton
-              size="large"
-              aria-label="show 17 new notifications"
-              sx={{
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.2)',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-                },
-                transition: 'all 0.2s ease-in-out'
-              }}
-            >
-              <Badge badgeContent={17} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
+            <Tooltip title="Notifications are coming soon" arrow>
+              <IconButton
+                size="large"
+                aria-label="show 17 new notifications"
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.2)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
+                  },
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                <Badge badgeContent={17} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Policy/Governance Configuration is coming soon" arrow>
+              <IconButton 
+                size="large" 
+                aria-label="configure policies"
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.2)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
+                  },
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                <Policy/>
+              </IconButton>
+            </Tooltip>
             <IconButton
               size="large"
               edge="end"

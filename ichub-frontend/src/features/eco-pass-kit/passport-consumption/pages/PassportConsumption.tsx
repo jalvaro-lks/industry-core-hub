@@ -49,11 +49,7 @@ import {
   Storage
 } from '@mui/icons-material';
 import { Html5Qrcode } from 'html5-qrcode';
-import { PassportVisualization } from '../components/PassportVisualization';
-import { JsonSchema } from '../types';
-import { mockBatteryPassport } from '../mockData';
-// Import the schema
-import schema from '../../../../schemas/DigitalProductPassport-schema.json';
+import { PassportTypeRegistry } from '../passport-types';
 
 interface LoadingStep {
   id: string;
@@ -146,12 +142,17 @@ const PassportConsumption: React.FC = () => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Return comprehensive mock battery passport data
+    // Get generic passport mock data
+    const genericConfig = PassportTypeRegistry.get('generic');
+    if (!genericConfig || !genericConfig.mockData) {
+      throw new Error('No mock data available');
+    }
+    
     return {
-      ...mockBatteryPassport,
-      identification: {
-        ...mockBatteryPassport.identification,
-        batteryId: id // Use the scanned/searched ID
+      ...genericConfig.mockData,
+      metadata: {
+        ...genericConfig.mockData.metadata,
+        passportIdentifier: id // Use the scanned/searched ID
       }
     };
   };
@@ -276,9 +277,27 @@ const PassportConsumption: React.FC = () => {
 
   // Show visualization if data is loaded
   if (showVisualization && passportData) {
+    // Detect passport type from data
+    const passportConfig = PassportTypeRegistry.detectType(passportData);
+    
+    if (!passportConfig) {
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography color="error">
+            Unable to determine passport type. Please check the data format.
+          </Typography>
+          <Button onClick={handleBack} sx={{ mt: 2 }}>
+            Go Back
+          </Button>
+        </Box>
+      );
+    }
+    
+    const VisualizationComponent = passportConfig.VisualizationComponent;
+    
     return (
-      <PassportVisualization
-        schema={schema as JsonSchema}
+      <VisualizationComponent
+        schema={passportConfig.schema}
         data={passportData}
         passportId={passportId}
         onBack={handleBack}

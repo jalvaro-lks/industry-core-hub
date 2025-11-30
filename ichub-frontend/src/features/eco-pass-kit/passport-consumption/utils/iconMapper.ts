@@ -117,13 +117,44 @@ export const getIconForProperty = (key: string): React.ElementType => {
 /**
  * Get category-specific icons for metric cards
  */
-export const getCategoryIcon = (category: string): React.ElementType => {
+export const getCategoryIcon = (category?: string): React.ElementType => {
+  if (!category) return Info;
+  
   const lower = category.toLowerCase();
   
-  if (lower.includes('general')) return Info;
+  // Metadata & Information
+  if (lower.includes('metadata') || lower.includes('general')) return Info;
+  
+  // Identification & Classification
+  if (lower.includes('identification') || lower.includes('classification')) return Assignment;
+  
+  // Operation & Manufacturing
+  if (lower.includes('operation') || lower.includes('manufactur')) return Factory;
+  
+  // Handling & Logistics
+  if (lower.includes('handling') || lower.includes('spare')) return FolderSpecial;
+  
+  // Characteristics & Properties
+  if (lower.includes('characteristic') || lower.includes('physical')) return Category;
+  
+  // Commercial & Business
+  if (lower.includes('commercial') || lower.includes('purchase')) return LocalShipping;
+  
+  // Materials & Composition
+  if (lower.includes('material') || lower.includes('substance') || lower.includes('composition')) return Science;
+  
+  // Sustainability & Environment
+  if (lower.includes('sustainab') || lower.includes('footprint') || lower.includes('carbon')) return EnergySavingsLeaf;
+  
+  // Sources & Documentation
+  if (lower.includes('source') || lower.includes('document')) return Description;
+  
+  // Additional Data
+  if (lower.includes('additional') || lower.includes('data')) return SwapHoriz;
+  
+  // Performance & Metrics
   if (lower.includes('performance')) return Speed;
   if (lower.includes('health')) return Favorite;
-  if (lower.includes('sustainab')) return EnergySavingsLeaf;
   
   return Info;
 };

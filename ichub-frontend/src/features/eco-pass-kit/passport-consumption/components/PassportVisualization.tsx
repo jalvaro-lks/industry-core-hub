@@ -66,16 +66,58 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
   const tabs = useMemo(() => parser.generateTabs(data), [parser, data]);
   const metrics = useMemo(() => parser.extractMetrics(data), [parser, data]);
   
-  // Extract composition data for visualization
+  // Extract composition data for visualization - use materialComposition from Materials tab
   const compositionData = useMemo(() => {
     const items: Array<{ name: string; value: number; unit: string }> = [];
+    let additionalInfo: any = null;
     
-    // Try to extract from materials - prioritize criticalRawMaterials
+    // Try to extract from materials.materialComposition first (matches the Materials tab)
     if (data.materials && typeof data.materials === 'object') {
       const materials = data.materials as Record<string, unknown>;
       
-      // Check for criticalRawMaterials first
-      if (materials.criticalRawMaterials && Array.isArray(materials.criticalRawMaterials)) {
+      // Check for materialComposition with renewable, recycled, concentration
+      if (materials.materialComposition && typeof materials.materialComposition === 'object') {
+        const matComp = materials.materialComposition as Record<string, unknown>;
+        if (matComp.content && Array.isArray(matComp.content)) {
+          matComp.content.forEach((item: any) => {
+            // Store additional info for display
+            if (!additionalInfo) {
+              additionalInfo = {
+                unit: item.unit,
+                critical: item.critical,
+                id: item.id,
+                documentation: item.documentation
+              };
+            }
+            
+            // Extract renewable, recycled, and concentration values
+            if (item.renewable !== undefined && item.renewable > 0) {
+              items.push({
+                name: 'Renewable',
+                value: Number(item.renewable),
+                unit: '%'
+              });
+            }
+            if (item.recycled !== undefined && item.recycled > 0) {
+              items.push({
+                name: 'Recycled',
+                value: Number(item.recycled),
+                unit: '%'
+              });
+            }
+            if (item.concentration !== undefined && item.concentration > 0) {
+              items.push({
+                name: 'Concentration',
+                value: Number(item.concentration),
+                unit: '%'
+              });
+            }
+          });
+        }
+      }
+      
+      // Fallback to criticalRawMaterials if materialComposition not available
+      if (items.length === 0 && materials.criticalRawMaterials && Array.isArray(materials.criticalRawMaterials)) {
         materials.criticalRawMaterials.forEach((item: any) => {
           if (item.name && item.percentage) {
             items.push({
@@ -86,54 +128,9 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
           }
         });
       }
-      
-      // Fallback to primaryMaterials if available
-      if (items.length === 0 && materials.primaryMaterials && Array.isArray(materials.primaryMaterials)) {
-        materials.primaryMaterials.forEach((item: any) => {
-          if (item.name && item.percentage) {
-            items.push({
-              name: String(item.name),
-              value: Number(item.percentage),
-              unit: '%'
-            });
-          }
-        });
-      }
-      
-      // Generic composition fallback
-      if (items.length === 0 && materials.composition && Array.isArray(materials.composition)) {
-        materials.composition.forEach((item: any) => {
-          if (item.material && (item.percentage || item.weight)) {
-            items.push({
-              name: String(item.material),
-              value: Number(item.percentage || item.weight || 0),
-              unit: item.percentage ? '%' : 'kg'
-            });
-          }
-        });
-      }
     }
     
-    // Final fallback: extract from sustainability data
-    if (items.length === 0 && data.sustainability && typeof data.sustainability === 'object') {
-      const sustain = data.sustainability as Record<string, unknown>;
-      if (sustain.productFootprint && typeof sustain.productFootprint === 'object') {
-        const footprint = sustain.productFootprint as Record<string, unknown>;
-        if (footprint.carbon && Array.isArray(footprint.carbon)) {
-          footprint.carbon.forEach((item: any, idx: number) => {
-            if (item.value) {
-              items.push({
-                name: item.lifecycle || `Lifecycle ${idx + 1}`,
-                value: Number(item.value),
-                unit: String(item.unit || 'kg')
-              });
-            }
-          });
-        }
-      }
-    }
-    
-    return items;
+    return { items, additionalInfo };
   }, [data]);
 
   // Handle copy to clipboard
@@ -384,7 +381,7 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
           })}
           
           {/* Composition Visualization */}
-          {compositionData.length > 0 && (
+          {compositionData.items.length > 0 && (
             <Grid2 size={{ xs: 12, sm: 6, md: 6, lg: 3 }}>
               <Card
                 sx={{
@@ -399,7 +396,7 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
               >
                 <CompositionChart 
                   title="Materials" 
-                  items={compositionData}
+                  items={compositionData.items}
                   compact
                 />
               </Card>
@@ -599,7 +596,7 @@ export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
           }}
         >
           {tabs[activeTab] && tabs[activeTab].properties.length > 0 ? (
-            <DynamicRenderer key={tabs[activeTab].id} properties={tabs[activeTab].properties} />
+            <DynamicRenderer key={tabs[activeTab].id} properties={tabs[activeTab].properties} rawData={data} />
           ) : (
           <Paper
             sx={{

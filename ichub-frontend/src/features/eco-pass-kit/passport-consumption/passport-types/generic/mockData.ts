@@ -21,31 +21,9 @@
  ********************************************************************************/
 
 /**
- * Mock data has been moved to passport-type-specific directories
- * @see passport-types/generic/mockData.ts for generic passport mock data
- * @see passport-types/battery/mockData.ts for battery passport mock data (when implemented)
- * 
- * This file is kept for backward compatibility and re-exports from the registry
+ * Mock data for generic digital product passport
  */
-
-import { PassportTypeRegistry } from './passport-types';
-
-/**
- * Get mock data for a specific passport type
- */
-export const getMockPassportData = (passportTypeId: string = 'generic'): Record<string, unknown> => {
-  const config = PassportTypeRegistry.get(passportTypeId);
-  if (!config || !config.mockData) {
-    throw new Error(`No mock data available for passport type: ${passportTypeId}`);
-  }
-  return config.mockData;
-};
-
-/**
- * Legacy export for backward compatibility
- * @deprecated Use getMockPassportData('generic') instead
- */
-export const mockProvidedPassport = {
+export const mockGenericPassport = {
   metadata: {
     backupReference: 'https://dummy.link',
     specVersion: 'urn:io.catenax.generic.digital_product_passport:6.1.0',
@@ -83,40 +61,37 @@ export const mockProvidedPassport = {
   },
   commercial: {
     placedOnMarket: '2000-01-01',
-    purchaseOrder: 'eOMtThyhVNLWUZNRcBaQKxI',
-    purpose: ['automotive'],
-    recallInformation: {
-      recallInformationDocumentation: [
-        {
-          contentType: 'URL',
-          header: 'Example Document XYZ',
-          content: 'https://dummy.link'
-        }
-      ],
-      applicable: true
-    }
+    purpose: ['automotive']
   },
   identification: {
     batch: [
-      { value: 'BID12345678', key: 'batchId' }
+      {
+        value: 'BID12345678',
+        key: 'batchId'
+      }
     ],
     codes: [
-      { value: '8703 24 10 00', key: 'TARIC' }
+      {
+        value: '8703 24 10 00',
+        key: 'TARIC'
+      }
     ],
     type: {
-      manufacturerPartId: '123-0.740-3434-A',
-      nameAtManufacturer: 'Mirror left'
+      manufacturerPartId: 'Batt-Part-1234',
+      nameAtManufacturer: 'Sample Battery Passport'
     },
     classification: [
       {
-        classificationStandard: 'GIN 20510-21513',
-        classificationID: '1004712',
-        classificationDescription:
-          'Generic standard for classification of parts in the automotive industry.'
+        classificationStandard: 'IEC',
+        classificationID: 'IEC 61234',
+        classificationDescription: 'Rechargeable lithium-ion battery'
       }
     ],
     serial: [
-      { value: 'SN12345678', key: 'partInstanceId' }
+      {
+        value: 'BAT123456789',
+        key: 'partInstanceId'
+      }
     ],
     dataCarrier: {
       carrierType: 'QR',
@@ -132,27 +107,6 @@ export const mockProvidedPassport = {
     }
   ],
   materials: {
-    substancesOfConcern: {
-      applicable: true,
-      content: [
-        {
-          unit: 'unit:partPerMillion',
-          hazardClassification: {
-            category: 'category 1A',
-            statement: 'Causes severe skin burns and eye damage.',
-            class: 'Skin corrosion'
-          },
-          documentation: [
-            { contentType: 'URL', header: 'Example Document XYZ', content: 'https://dummy.link' }
-          ],
-          concentrationRange: [ { max: 2.6, min: 2.1 } ],
-          location: 'Housing',
-          concentration: 5.3,
-          exemption: 'shall not apply to product x containing not more than 1,5 ml of liquid',
-          id: [ { type: 'CAS', name: 'phenolphthalein', id: '201-004-7' } ]
-        }
-      ]
-    },
     materialComposition: {
       applicable: true,
       content: [
@@ -166,13 +120,45 @@ export const mockProvidedPassport = {
           id: [ { type: 'CAS', name: 'phenolphthalein', id: '201-004-7' } ]
         }
       ]
-    }
+    },
+    criticalRawMaterials: [
+      {
+        name: 'Cobalt',
+        percentage: 8.5,
+        origin: 'Democratic Republic of Congo',
+        certified: true
+      },
+      {
+        name: 'Lithium',
+        percentage: 4.2,
+        origin: 'Australia',
+        certified: true
+      },
+      {
+        name: 'Nickel',
+        percentage: 25.5,
+        origin: 'Indonesia',
+        certified: true
+      }
+    ],
+    hazardousMaterials: [
+      {
+        name: 'Lithium Hexafluorophosphate',
+        casNumber: '21324-40-3',
+        concentration: 1.2
+      }
+    ]
   },
   handling: {
     applicable: true,
     content: {
       producer: [ { id: 'BPNL0123456789ZZ' } ],
-      sparePart: [ { manufacturerPartId: '123-0.740-3434-A', nameAtManufacturer: 'Mirror left' } ]
+      sparePart: [
+        {
+          manufacturerPartId: 'Batt-Part-1234',
+          nameAtManufacturer: 'Lithium Battery Pack'
+        }
+      ]
     }
   },
   additionalData: [
@@ -181,15 +167,7 @@ export const mockProvidedPassport = {
       label: 'Maximum permitted battery power',
       type: { typeUnit: 'unit:volume', dataType: 'array' },
       data: '23',
-      children: [
-        {
-          description: 'Description of an attribute',
-          label: 'Maximum permitted battery power',
-          type: { typeUnit: 'unit:volume', dataType: 'array' },
-          data: '23',
-          children: []
-        }
-      ]
+      children: []
     }
   ],
   operation: {

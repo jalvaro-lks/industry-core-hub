@@ -21,7 +21,7 @@
  ********************************************************************************/
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-//import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { PartnerInstance } from "@/features/business-partner-kit/partner-management/types/types";
 import TablePagination from '@mui/material/TablePagination';
 import { Typography, Grid2, Button, Alert } from '@mui/material';
@@ -43,7 +43,8 @@ const PartnersList = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
-  //const navigate = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const handleOpenCreatePartnerDialog = () => {
     setCreatePartnerDialogOpen(true);
@@ -123,6 +124,24 @@ const PartnersList = () => {
   useEffect(() => {
     loadPartners();
   }, [loadPartners]);
+
+  // Auto-open create dialog if query param or hash is present
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const hasNewParam = searchParams.has('new');
+    const hasNewHash = location.hash === '#new';
+    
+    if (hasNewParam || hasNewHash) {
+      setCreatePartnerDialogOpen(true);
+      // Clean up URL after opening dialog
+      if (hasNewParam) {
+        searchParams.delete('new');
+        navigate(`${location.pathname}${searchParams.toString() ? '?' + searchParams.toString() : ''}${location.hash}`, { replace: true });
+      } else if (hasNewHash) {
+        navigate(`${location.pathname}${location.search}`, { replace: true });
+      }
+    }
+  }, [location, navigate]);
 
   const handleButtonClick = (partnerBPNL: string) => {
     
