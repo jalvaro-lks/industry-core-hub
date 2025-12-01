@@ -45,12 +45,14 @@ import {
   GlobalStyles,
   Collapse
 } from '@mui/material';
-import { ArrowBack, Download, ContentCopy, KeyboardArrowDown, Description, Close as CloseIcon, ViewInAr, ExpandLess, ExpandMore } from '@mui/icons-material';
+import { ArrowBack, Download, ContentCopy, KeyboardArrowDown, Description, Close as CloseIcon, ViewInAr, ExpandLess, ExpandMore, PictureAsPdf } from '@mui/icons-material';
 import { PassportVisualizationProps } from '../types';
 import { SchemaParser } from '../../utils/schemaParser';
 import { DynamicRenderer } from '../../components/DynamicRenderer';
 import { getCategoryIcon } from '../../utils/iconMapper';
 import { SingleTwinResult } from '../../../../industry-core-kit/part-discovery/components/single-twin/SingleTwinResult';
+import { getParticipantId } from '@/services/EnvironmentService';
+import { exportPassportToPDF } from '../../../utils/pdfExport';
 
 /**
  * Props for custom header card components
@@ -135,6 +137,91 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  // Handle export to PDF
+  const handleExportPDF = async () => {
+    try {
+      // Try to extract from digital twin first
+      let manufacturerPartId = '';
+      let serialNumber = '';
+      let twinId = '';
+      let bpn = counterPartyId || getParticipantId();
+      let extractedPassportId = passportId;
+      
+      if (digitalTwinData?.shell_descriptor) {
+        const specificAssetIds = digitalTwinData.shell_descriptor.specificAssetIds || [];
+        
+        // Extract manufacturerPartId
+        const partIdAsset = specificAssetIds.find(asset => 
+          asset.name === 'manufacturerPartId' || asset.name === 'partTypeId'
+        );
+        if (partIdAsset) {
+          manufacturerPartId = partIdAsset.value;
+        }
+        
+        // Extract serialNumber (partInstanceId)
+        const serialAsset = specificAssetIds.find(asset => 
+          asset.name === 'partInstanceId' || asset.name === 'serialNumber'
+        );
+        if (serialAsset) {
+          serialNumber = serialAsset.value;
+        }
+        
+        // Extract manufacturerId (BPN)
+        const manufacturerIdAsset = specificAssetIds.find(asset => 
+          asset.name === 'manufacturerId'
+        );
+        if (manufacturerIdAsset && !counterPartyId) {
+          bpn = manufacturerIdAsset.value;
+        }
+        
+        // Extract twin ID
+        twinId = digitalTwinData.shell_descriptor.id || '';
+        
+        // Try to extract passport ID from globalAssetId
+        const globalAssetId = digitalTwinData.shell_descriptor.globalAssetId;
+        if (globalAssetId) {
+          extractedPassportId = globalAssetId;
+        }
+      }
+      
+      // Fallback to data fields if not found in twin
+      if (!manufacturerPartId) {
+        manufacturerPartId = (data as any)?.typology?.manufacturerPartId 
+          || (data as any)?.identification?.manufacturerPartId
+          || (data as any)?.manufacturerPartId
+          || '';
+      }
+      
+      if (!serialNumber) {
+        serialNumber = (data as any)?.serialization?.manufacturerSerialNumber 
+          || (data as any)?.serialization?.serialNumber
+          || (data as any)?.identification?.serialNumber
+          || (data as any)?.serialNumber
+          || '';
+      }
+      
+      const productName = (data as any)?.identification?.productName || passportName;
+      
+      await exportPassportToPDF({
+        name: productName,
+        version: passportVersion,
+        manufacturerPartId,
+        serialNumber,
+        passportIdentifier: extractedPassportId,
+        twinId: twinId || undefined,
+        semanticId: semanticId !== 'N/A' ? semanticId : undefined,
+        manufacturerBPN: bpn,
+        discoveryId: passportId // Use passportId as discovery ID for QR code generation
+      });
+      
+      setSnackbarMessage('PDF exported successfully');
+      setSnackbarOpen(true);
+    } catch (error) {
+      setSnackbarMessage('Failed to export PDF');
+      setSnackbarOpen(true);
+    }
   };
 
   // Handle show digital twin
@@ -285,7 +372,8 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                   borderRadius: '8px',
                   '&:hover': {
                     borderColor: 'rgba(255, 255, 255, 0.4)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    color: '#fff'
                   },
                   '& .MuiButton-startIcon': {
                     marginRight: { xs: 0, sm: 1 }
@@ -457,6 +545,33 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                 }}
               >
                 Data Contract Info
+              </Button>
+              <Button
+                size="small"
+                startIcon={<PictureAsPdf sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+                onClick={handleExportPDF}
+                sx={{
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: '#fff',
+                  textTransform: 'none',
+                  fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                  px: { xs: 1.5, sm: 2 },
+                  py: { xs: 0.75, sm: 1 },
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': { 
+                    background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                    transform: 'translateY(-1px)'
+                  },
+                  display: 'inline-flex'
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Export PDF
+                </Box>
               </Button>
               <Button
                 size="small"

@@ -67,15 +67,32 @@ const PassportConsumption: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const params = useParams();
   const navigate = useNavigate();
 
+  // Validate Discovery ID format: CX:<manufacturerPartId>:<partInstanceId>
+  const isValidDiscoveryId = (id: string): boolean => {
+    const pattern = /^CX:[^:]+:[^:]+$/;
+    return pattern.test(id.trim());
+  };
+
   const handleSearch = async () => {
-    if (passportId.trim()) {
-      // Navigate immediately to passport route, loading will happen there
-      navigate(`/passport/${encodeURIComponent(passportId)}`);
+    const trimmedId = passportId.trim();
+    if (!trimmedId) {
+      setValidationError('Please enter a Discovery ID');
+      return;
     }
+    
+    if (!isValidDiscoveryId(trimmedId)) {
+      setValidationError('Invalid format. Expected: CX:<manufacturerPartId>:<partInstanceId>');
+      return;
+    }
+    
+    setValidationError(null);
+    // Navigate immediately to passport route, loading will happen there
+    navigate(`/passport/${encodeURIComponent(trimmedId)}`);
   };
 
   const handleBack = () => {
@@ -474,8 +491,13 @@ const PassportConsumption: React.FC = () => {
                 fullWidth
                 placeholder="CX:XYZ78901:BAT-XYZ789"
                 value={passportId}
-                onChange={(e) => setPassportId(e.target.value)}
+                onChange={(e) => {
+                  setPassportId(e.target.value);
+                  if (validationError) setValidationError(null);
+                }}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                error={!!validationError}
+                helperText={validationError}
                 InputProps={{
                   startAdornment: (
                     <Search sx={{ 
@@ -487,7 +509,10 @@ const PassportConsumption: React.FC = () => {
                   endAdornment: passportId && (
                     <IconButton
                       size="small"
-                      onClick={() => setPassportId('')}
+                      onClick={() => {
+                        setPassportId('');
+                        setValidationError(null);
+                      }}
                       sx={{ color: 'rgba(255, 255, 255, 0.4)' }}
                     >
                       <CloseIcon fontSize="small" />
@@ -503,16 +528,16 @@ const PassportConsumption: React.FC = () => {
                     borderRadius: { xs: '10px', md: '12px' },
                     transition: 'all 0.2s ease',
                     '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderColor: validationError ? 'rgba(244, 67, 54, 0.5)' : 'rgba(255, 255, 255, 0.1)',
                       borderWidth: '2px'
                     },
                     '&:hover fieldset': {
-                      borderColor: 'rgba(102, 126, 234, 0.5)'
+                      borderColor: validationError ? 'rgba(244, 67, 54, 0.7)' : 'rgba(102, 126, 234, 0.5)'
                     },
                     '&.Mui-focused': {
                       backgroundColor: 'rgba(255, 255, 255, 0.08)',
                       '& fieldset': {
-                        borderColor: '#667eea',
+                        borderColor: validationError ? '#f44336' : '#667eea',
                         borderWidth: '2px'
                       }
                     }
@@ -523,6 +548,12 @@ const PassportConsumption: React.FC = () => {
                       color: 'rgba(255, 255, 255, 0.4)',
                       opacity: 1
                     }
+                  },
+                  '& .MuiFormHelperText-root': {
+                    color: '#f44336',
+                    marginLeft: 0,
+                    marginTop: '8px',
+                    fontSize: '0.75rem'
                   }
                 }}
               />

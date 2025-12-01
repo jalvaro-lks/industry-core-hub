@@ -22,8 +22,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import jsPDF from 'jspdf';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   Box,
   Typography,
@@ -70,6 +68,7 @@ import { darkCardStyles } from '../styles/cardStyles';
 import { formatShortDate, generateCXId } from '../utils/formatters';
 import { CardChip } from '../components/CardChip';
 import { getParticipantId } from '@/services/EnvironmentService';
+import { exportPassportToPDF } from '../../utils/pdfExport';
 
 const getStatusLabel = (status: string): string => {
   const statusMap: Record<string, string> = {
@@ -162,273 +161,17 @@ const PassportProvisionList: React.FC = () => {
   };
 
   const handleExportPDF = async (dpp: DPPListItem) => {
-    const doc = new jsPDF();
-    
-    // Generate QR Code if discovery ID is available
-    let qrCodeDataUrl = '';
-    if (dpp.manufacturerPartId && dpp.serialNumber) {
-      const discoveryId = `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`;
-      
-      // Create a temporary canvas to render the QR code SVG
-      const canvas = document.createElement('canvas');
-      const qrSize = 200;
-      canvas.width = qrSize;
-      canvas.height = qrSize;
-      const ctx = canvas.getContext('2d');
-      
-      if (ctx) {
-        // Create SVG element
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', qrSize.toString());
-        svg.setAttribute('height', qrSize.toString());
-        svg.setAttribute('viewBox', `0 0 ${qrSize} ${qrSize}`);
-        
-        // Generate QR code using qrcode.react logic
-        const QRCodeLib = await import('qrcode.react');
-        const tempDiv = document.createElement('div');
-        const root = await import('react-dom/client').then(m => m.createRoot(tempDiv));
-        
-        await new Promise<void>((resolve) => {
-          root.render(
-            React.createElement(QRCodeLib.QRCodeSVG, {
-              value: discoveryId,
-              size: qrSize,
-              level: 'M',
-              includeMargin: true
-            })
-          );
-          setTimeout(() => {
-            const svgElement = tempDiv.querySelector('svg');
-            if (svgElement) {
-              const svgData = new XMLSerializer().serializeToString(svgElement);
-              const img = new Image();
-              img.onload = () => {
-                ctx.drawImage(img, 0, 0);
-                qrCodeDataUrl = canvas.toDataURL('image/png');
-                root.unmount();
-                resolve();
-              };
-              img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-            } else {
-              resolve();
-            }
-          }, 100);
-        });
-      }
-    }
-    
-    // Title (left side)
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Digital Product Passport', 20, 20);
-    
-    // Product Name (left side)
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'normal');
-    doc.text(dpp.name, 20, 32);
-    
-    // Add QR Code box in top right if available
-    let separatorEndX = 190;
-    if (qrCodeDataUrl) {
-      const discoveryId = `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`;
-      const qrCodeSize = 60;
-      const boxPadding = 7;
-      const boxX = 128;
-      const boxY = 8;
-      const boxSize = qrCodeSize + (boxPadding * 2);
-      
-      // Draw outer border box (dashed line for cutting guide)
-      doc.setLineWidth(0.3);
-      doc.setLineDash([2, 2]);
-      doc.setDrawColor(150, 150, 150);
-      doc.rect(boxX - 2, boxY - 2, boxSize + 4, boxSize + 4);
-      
-      // Draw inner solid border box
-      doc.setLineDash([]);
-      doc.setLineWidth(0.5);
-      doc.setDrawColor(0, 0, 0);
-      doc.rect(boxX, boxY, boxSize, boxSize);
-      
-      // Add QR code centered in the box
-      doc.addImage(qrCodeDataUrl, 'PNG', boxX + boxPadding, boxY + boxPadding, qrCodeSize, qrCodeSize);
-      
-      // Display actual Discovery ID below the box
-      doc.setFontSize(6);
-      doc.setFont('courier', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text(discoveryId, boxX + (boxSize / 2), boxY + boxSize + 4, { align: 'center' });
-      
-      // Add scissors icon symbol (✂)
-      doc.setFontSize(8);
-      doc.text('✂', boxX - 5, boxY + 5);
-      
-      // Reset text color
-      doc.setTextColor(0, 0, 0);
-      
-      // Adjust separator line to not cross QR code box
-      separatorEndX = boxX - 5;
-    }
-    
-    // Separator line (stops before QR code)
-    doc.setLineWidth(0.5);
-    doc.line(20, 42, separatorEndX, 42);
-    
-    // Information sections
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    
-    let yPos = 55;
-    const lineHeight = 8;
-    
-    // Status
-    doc.setFont('helvetica', 'bold');
-    doc.text('Status:', 20, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(dpp.status.toUpperCase(), 60, yPos);
-    yPos += lineHeight;
-    
-    // BPN (Business Partner Number)
-    const bpn = getParticipantId();
-    if (bpn) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Manufacturer ID:', 20, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.text(bpn, 60, yPos);
-      yPos += lineHeight;
-    }
-    
-    // Version
-    doc.setFont('helvetica', 'bold');
-    doc.text('Version:', 20, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(dpp.version, 60, yPos);
-    yPos += lineHeight;
-    
-    // Manufacturer Part ID
-    if (dpp.manufacturerPartId) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Manufacturer Part ID:', 20, yPos);
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(10);
-      doc.text(dpp.manufacturerPartId, 20, yPos + 5);
-      doc.setFontSize(12);
-      yPos += lineHeight + 5;
-    }
-    
-    // Part Instance ID (Serial Number)
-    if (dpp.serialNumber) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Part Instance ID:', 20, yPos);
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(10);
-      doc.text(dpp.serialNumber, 20, yPos + 5);
-      doc.setFontSize(12);
-      yPos += lineHeight + 5;
-    }
-    
-    // Discovery ID
-    if (dpp.manufacturerPartId && dpp.serialNumber) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Passport Discovery ID:', 20, yPos);
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(10);
-      doc.text(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`, 20, yPos + 5);
-      doc.setFontSize(12);
-      yPos += lineHeight + 5;
-    }
-    
-    // Passport ID
-    if (dpp.passportIdentifier) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Passport ID:', 20, yPos);
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(10);
-      doc.text(dpp.passportIdentifier, 20, yPos + 5);
-      doc.setFontSize(12);
-      yPos += lineHeight + 5;
-    }
-    
-    // AAS ID (Twin ID)
-    if (dpp.twinId) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('AAS ID:', 20, yPos);
-      doc.setFont('courier', 'normal');
-      doc.setFontSize(10);
-      doc.text(dpp.twinId, 20, yPos + 5);
-      doc.setFontSize(12);
-      yPos += lineHeight + 5;
-    }
-    
-    // Created Date
-    doc.setFont('helvetica', 'bold');
-    doc.text('Created:', 20, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(formatShortDate(dpp.createdAt), 60, yPos);
-    yPos += lineHeight + 2;
-    
-    // Semantic ID (last item)
-    doc.setFont('helvetica', 'bold');
-    doc.text('Semantic ID:', 20, yPos);
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(8);
-    const semanticIdLines = doc.splitTextToSize(dpp.semanticId, 170);
-    doc.text(semanticIdLines, 20, yPos + 5);
-    doc.setFontSize(12);
-    yPos += lineHeight + (semanticIdLines.length * 3) + 8;
-    
-    // Dataspace sharing notice - styled as alert box
-    const boxHeight = 28;
-    
-    // Border (outer box for alert look)
-    doc.setDrawColor(33, 150, 243); // Blue border
-    doc.setLineWidth(1);
-    doc.roundedRect(15, yPos - 3, 180, boxHeight, 2, 2, 'S');
-    
-    // Light blue background
-    doc.setFillColor(227, 242, 253); // Very light blue
-    doc.roundedRect(15.5, yPos - 2.5, 179, boxHeight - 1, 2, 2, 'F');
-    
-    // Icon area (darker blue stripe on left)
-    doc.setFillColor(33, 150, 243);
-    doc.rect(16, yPos - 2, 8, boxHeight - 2, 'F');
-    
-    // Info icon (white)
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    doc.text('i', 19.5, yPos + 4);
-    
-    // Title
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(21, 101, 192); // Darker blue for text
-    doc.text('Shared & Accessible via Dataspace', 28, yPos + 3);
-    
-    // Notice text
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(60, 60, 60); // Dark gray
-    const noticeText = 'A Eclipse Tractus-X dataspace membership and DSP agreement to the license of usage (negotiated via an EDC Connector, or similar), may be required to get authorization for this data.';
-    const noticeLines = doc.splitTextToSize(noticeText, 160);
-    doc.text(noticeLines, 28, yPos + 9);
-    
-    yPos += boxHeight + 5;
-    
-    // Reset
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.1);
-    doc.setTextColor(0, 0, 0);
-    
-    // Footer
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(128, 128, 128);
-    doc.text('Generated by Industry Core Hub', 105, 280, { align: 'center' });
-    doc.text(new Date().toLocaleString(), 105, 285, { align: 'center' });
-    
-    // Save the PDF
-    const fileName = `DPP_${dpp.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.pdf`;
-    doc.save(fileName);
+    await exportPassportToPDF({
+      name: dpp.name,
+      status: dpp.status,
+      version: dpp.version,
+      manufacturerPartId: dpp.manufacturerPartId,
+      serialNumber: dpp.serialNumber,
+      passportIdentifier: dpp.passportIdentifier,
+      twinId: dpp.twinId,
+      semanticId: dpp.semanticId,
+      manufacturerBPN: getParticipantId()
+    });
   };
 
   const handleDeleteClick = (dpp: DPPListItem) => {
@@ -614,7 +357,7 @@ const PassportProvisionList: React.FC = () => {
               <Box
                 className="custom-card"
                 sx={{ height: "240px" }}
-                onClick={() => handleView(dpp.id)}
+                onClick={() => handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`)}
               >
                 <Box className="custom-card-header" sx={{ alignItems: 'center', display: 'flex', gap: 1 }}>
                   <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />

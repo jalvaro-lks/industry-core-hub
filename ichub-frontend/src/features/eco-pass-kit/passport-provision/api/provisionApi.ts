@@ -35,7 +35,7 @@ import {
  */
 const mockDPPs: DigitalProductPassport[] = [
   {
-    id: 'dpp-001',
+    id: 'CX:BAT-001:BAT-001-SN-12345',
     name: 'Battery Pack 12V Standard',
     version: '6.1.0',
     semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
@@ -231,7 +231,7 @@ const mockDPPs: DigitalProductPassport[] = [
     createdBy: 'user@company.com'
   },
   {
-    id: 'dpp-002',
+    id: 'CX:MOT-A320:MOT-A320-SN-98765',
     name: 'Electric Motor A320',
     version: '6.1.0',
     semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
