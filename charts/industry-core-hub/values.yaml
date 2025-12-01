@@ -776,6 +776,9 @@ keycloak:
     existingSecret: ""
   # -- Run Keycloak in production mode. TLS configuration is required except when using proxy=edge.
   production: false
+  # -- Proxy mode for Keycloak when running behind a reverse proxy (edge, reencrypt, passthrough, or none)
+  # Use 'edge' when running behind a reverse proxy that terminates SSL/TLS
+  proxy: edge
   # -- Setting the path relative to '/' for serving resources:
   # as we're migrating from 16.1.1 version which was using the trailing 'auth', we're setting it to '/auth/'.
   # ref: https://www.keycloak.org/migration/migrating-to-quarkus#_default_context_path_changed
@@ -802,6 +805,16 @@ keycloak:
     enabled: true
     # -- Method: "startup" for --import-realm flag or "job" for post-install job
     method: "job"
+    # -- Resource limits for the realm import job
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+        ephemeral-storage: "64Mi"
+      limits:
+        cpu: 500m
+        memory: 256Mi
+        ephemeral-storage: "128Mi"
   # -- Realm user configuration (passwords will be hashed at deployment time)
   realm:
     name: "ICHub"

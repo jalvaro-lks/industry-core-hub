@@ -20,6 +20,28 @@
 * SPDX-License-Identifier: Apache-2.0
 */}}
 {{- if and .Values.keycloak.enabled .Values.keycloak.realmImport.enabled }}
+{{- $realmData := .Files.Get "files/realm-export.json" | fromJson }}
+{{- $_ := set $realmData "users" list }}
+{{- range $user := .Values.keycloak.realm.users }}
+{{- $newUser := dict 
+  "username" $user.username
+  "enabled" (default true $user.enabled)
+  "totp" false
+  "emailVerified" (default true $user.emailVerified)
+  "firstName" (default "" $user.firstName)
+  "lastName" (default "" $user.lastName)
+  "email" $user.email
+  "attributes" (default dict $user.attributes)
+  "credentials" list
+  "disableableCredentialTypes" list
+  "requiredActions" list
+  "realmRoles" (default (list "default-roles-ichub") $user.realmRoles)
+  "clientRoles" (default dict $user.clientRoles)
+  "notBefore" 0
+  "groups" (default list $user.groups)
+}}
+{{- $_ := set $realmData "users" (append $realmData.users $newUser) }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -30,5 +52,5 @@ metadata:
     app.kubernetes.io/component: keycloak
 data:
   realm-export.json: |
-{{ (.Files.Get "files/realm-export.json") | indent 4 }}
+{{ $realmData | toPrettyJson | indent 4 }}
 {{- end }}
