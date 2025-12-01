@@ -69,17 +69,7 @@ frontend:
     
     # Keycloak configuration (disabled for integration)
     keycloak:
-      url: ""
-      realm: ""
-      clientId: ""
-      onLoad: "check-sso"
-      checkLoginIframe: true
-      silentCheckSsoRedirectUri: ""
-      pkceMethod: "S256"
-      enableLogging: false
-      minValidity: 30
-      checkLoginIframeInterval: 5
-      flow: "standard"
+      url: "https://ichub-iam-manufacturer.int.catena-x.net/auth"
     
     # Feature flags for integration environment
     enableAdvancedLogging: true
@@ -385,6 +375,12 @@ backend:
       apiKey:
         key: "X-Api-Key"
         value: <path:industry-core-hub/data/backend#apiKey>
+      keycloak:
+        enabled: true
+        authUrl: "https://ichub-iam-manufacturer.int.catena-x.net/auth/"
+        realm: "ICHub"
+        clientId: "industry-core-hub-api"
+        clientSecret: "ichub-client-secret-2024"
     # -- Consumer configuration
     consumer:
       discovery:
@@ -493,3 +489,14 @@ backend:
             backend:
               service: "backend-manufacturer"
               port: 8000
+
+keycloak:
+  ingress:
+    # -- Enable ingress record generation
+    enabled: true
+    # -- Provide default path for the ingress record.
+    hostname: "ichub-iam-manufacturer.int.catena-x.net"
+    tls:
+       - secretName: "ichub-iam-manufacturer.int.catena-x.net-tls"
+         hosts:
+           - "ichub-iam.int.catena-x.net" 
