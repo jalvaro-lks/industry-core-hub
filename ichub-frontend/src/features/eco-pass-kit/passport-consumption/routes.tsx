@@ -24,6 +24,7 @@ import { Badge } from '@mui/icons-material';
 import { FeatureConfig } from '@/types/routing';
 import PassportConsumption from './pages/PassportConsumption';
 import PassportProvidedVisualization from './pages/PassportProvidedVisualization';
+import PassportQRScanner from './pages/PassportQRScanner';
 
 export const passportConsumptionFeature: FeatureConfig = {
   name: 'Passport Consumption & Visualization',
@@ -34,6 +35,10 @@ export const passportConsumptionFeature: FeatureConfig = {
     {
       path: '/passport',
       element: <PassportConsumption />
+    },
+    {
+      path: '/passport/scan',
+      element: <PassportQRScanner />
     },
     {
       path: '/passport/:id',
