@@ -210,38 +210,7 @@
     }
   ],
   "clientScopes": [],
-  "users": [
-    {
-      "username": "ichub-admin",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": true,
-      "firstName": "Industry",
-      "lastName": "Admin",
-      "email": "ichub-admin@example.com",
-      "attributes": {
-        "BPN": ["BPNL000000000000"]
-      },
-      "credentials": [
-        {
-          "type": "password",
-          "userLabel": "Initial password",
-          "secretData": "{{ADMIN_PASSWORD_HASH}}",
-          "credentialData": "{\"hashIterations\":210000,\"algorithm\":\"pbkdf2-sha512\",\"additionalParameters\":{}}"
-        }
-      ],
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "default-roles-ichub",
-        "offline_access",
-        "uma_authorization"
-      ],
-      "clientRoles": {},
-      "notBefore": 0,
-      "groups": []
-    }
-  ],
+  "users": [],
   "browserSecurityHeaders": {
     "contentSecurityPolicyReportOnly": "",
     "xContentTypeOptions": "nosniff",

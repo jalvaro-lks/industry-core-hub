@@ -21,7 +21,7 @@ pypi/pypi/-/email_validator/2.2.0, Unlicense, approved, #19387
 pypi/pypi/-/exceptiongroup/1.2.2, MIT AND PSF-2.0, approved, #12076
 pypi/pypi/-/fastapi-cli/0.0.7, MIT, approved, clearlydefined
 pypi/pypi/-/fastapi-keycloak-middleware/1.2.0, MIT, approved, clearlydefined
-pypi/pypi/-/fastapi/0.116.1, MIT AND Apache-2.0, approved, #22844
+pypi/pypi/-/fastapi/0.120.3, MIT AND Apache-2.0, approved, #24551
 pypi/pypi/-/filelock/3.19.1, Unlicense, approved, clearlydefined
 pypi/pypi/-/greenlet/3.1.1, MIT AND PSF-2.0, approved, #19389
 pypi/pypi/-/h11/0.16.0, MIT AND BSD-3-Clause, approved, #20895
@@ -63,9 +63,9 @@ pypi/pypi/-/shellingham/1.5.4, ISC AND BSD-3-Clause, approved, #19381
 pypi/pypi/-/six/1.17.0, MIT, approved, #19893
 pypi/pypi/-/sniffio/1.3.1, Apache-2.0 OR (Apache-2.0 AND MIT), approved, clearlydefined
 pypi/pypi/-/sqlmodel/0.0.22, MIT, approved, clearlydefined
-pypi/pypi/-/starlette/0.47.2, BSD-3-Clause, approved, #22614
+pypi/pypi/-/starlette/0.49.1, BSD-3-Clause, approved, #24550
 pypi/pypi/-/tomli/2.0.1, MIT, approved, #7824
-pypi/pypi/-/tractusx_sdk/0.5.0, Apache-2.0 AND CC-BY-4.0, approved, #23712
+pypi/pypi/-/tractusx_sdk/0.6.0rc1, Apache-2.0 AND CC-BY-4.0, approved, #25112
 pypi/pypi/-/typer/0.15.2, MIT, approved, #21293
 pypi/pypi/-/typing-inspection/0.4.1, MIT, approved, clearlydefined
 pypi/pypi/-/typing_extensions/4.13.1, PSF-2.0 AND (PSF-2.0 OR 0BSD), approved, #20549
