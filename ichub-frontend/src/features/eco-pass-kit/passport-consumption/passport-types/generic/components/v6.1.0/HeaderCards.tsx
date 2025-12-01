@@ -830,7 +830,7 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
         minHeight: 0
       }}>
         {/* Material Composition */}
-        {hasCompositionData ? (
+        {hasCompositionData && compositionData.length > 0 ? (
           <ThemeProvider theme={chartTheme}>
             <Box sx={{
               display: 'flex',
@@ -860,8 +860,8 @@ export const MaterialsCard: React.FC<HeaderCardProps> = ({ data }) => {
               colors={compositionColors}
               slotProps={{
                 legend: {
-                  direction: 'column',
-                  position: { vertical: 'bottom', horizontal: 'middle' },
+                  direction: 'column' as const,
+                  position: { vertical: 'bottom' as const, horizontal: 'middle' as const },
                   padding: 0,
                   itemMarkWidth: 5,
                   itemMarkHeight: 5,

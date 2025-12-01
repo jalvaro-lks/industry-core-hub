@@ -34,7 +34,8 @@ import {
   FindInPage,
   GroupAdd,
   Badge,
-  Policy
+  Policy,
+  PostAdd
 } from '@mui/icons-material';
 import { kitFeaturesFeature } from './kit-features/routes';
 import { FeatureConfig, NavigationItem } from '@/types/routing';
@@ -56,6 +57,7 @@ import { partDiscoveryFeature } from './industry-core-kit/part-discovery/routes'
 import { partnerManagementFeature } from './business-partner-kit/partner-management/routes';
 import { serializedPartsFeature } from './industry-core-kit/serialized-parts/routes';
 import { passportConsumptionFeature } from './eco-pass-kit/passport-consumption/routes';
+import { passportProvisionFeature } from './eco-pass-kit/passport-provision/routes';
 
 // KIT configurations with feature toggles
 export const kits: KitFeature[] = [
@@ -139,6 +141,15 @@ export const kits: KitFeature[] = [
         name: 'Passport Consumption & Visualization',
         description: 'Retrieve passport from a dataspace participant via QR code or ID and display it.',
         icon: <Badge />,
+        enabled: false,
+        default: false
+      },
+      {
+        module: passportProvisionFeature,
+        id: 'pass-provision',
+        name: 'Passport Provision & Management',
+        description: 'Create, manage, and share digital product passports with dataspace partners.',
+        icon: <PostAdd />,
         enabled: false,
         default: false
       },

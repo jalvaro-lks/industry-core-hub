@@ -240,7 +240,7 @@ export const MaterialsRenderer: React.FC<MaterialsRendererProps> = ({ rawData })
                           };
                         });
                         
-                        return (
+                        return unitChartData.length > 0 && (
                           <Box key={unit} sx={{ mb: 2 }}>
                             <Typography variant="body2" sx={{ color: '#667eea', fontWeight: 600, mb: 2 }}>
                               {unit}
@@ -260,8 +260,8 @@ export const MaterialsRenderer: React.FC<MaterialsRendererProps> = ({ rawData })
                                 height={250}
                                 slotProps={{
                                   legend: {
-                                    direction: 'column',
-                                    position: { vertical: 'middle', horizontal: 'right' },
+                                    direction: 'column' as const,
+                                    position: { vertical: 'middle' as const, horizontal: 'right' as const },
                                     padding: 0,
                                     itemMarkWidth: 12,
                                     itemMarkHeight: 12,
@@ -302,7 +302,8 @@ export const MaterialsRenderer: React.FC<MaterialsRendererProps> = ({ rawData })
                         );
                       })}
                     </Box>
-                  ) : (
+                  ) : null}
+                  {!hasMultipleUnits && compositionChartData && compositionChartData.length > 0 && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
                       <PieChart
                         series={[
@@ -318,8 +319,8 @@ export const MaterialsRenderer: React.FC<MaterialsRendererProps> = ({ rawData })
                         height={300}
                         slotProps={{
                           legend: {
-                            direction: 'column',
-                            position: { vertical: 'middle', horizontal: 'right' },
+                            direction: 'column' as const,
+                            position: { vertical: 'middle' as const, horizontal: 'right' as const },
                             padding: 0,
                             itemMarkWidth: 14,
                             itemMarkHeight: 14,
