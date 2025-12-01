@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -38,14 +38,12 @@ import {
   Close as CloseIcon,
   Videocam as VideocamIcon
 } from '@mui/icons-material';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Scanner } from '@yudiel/react-qr-scanner';
 
 const PassportQRScanner: React.FC = () => {
   const [scannerError, setScannerError] = useState<string | null>(null);
-  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string>('');
   const navigate = useNavigate();
 
   // Validate CX format: CX:<placeholder>:<placeholder>
@@ -60,142 +58,49 @@ const PassportQRScanner: React.FC = () => {
     return cxPattern.test(text);
   };
 
-  const handleCloseScanner = async () => {
-    if (scannerRef.current && isScanning) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-        scannerRef.current = null;
-      } catch {
-        // Ignore errors
-      }
-    }
+  const handleCloseScanner = () => {
     navigate('/passport');
   };
 
-  const startScanning = async (cameraId: string) => {
-    if (!cameraId) {
-      return;
-    }
-
-    // Wait for the DOM element to be available
-    const qrReaderElement = document.getElementById('qr-reader');
-    if (!qrReaderElement) {
-      // Retry after a short delay
-      setTimeout(() => startScanning(cameraId), 100);
-      return;
-    }
-
-    try {
-      const html5QrCode = new Html5Qrcode('qr-reader');
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        cameraId,
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        },
-        async (decodedText) => {
-          // Validate format
-          if (!isValidCXFormat(decodedText)) {
-            setScannerError('Invalid format. Only CX:<manufacturerPartId>:<partInstanceId> format is allowed, not URLs.');
-            return;
-          }
-          
-          // Navigate to passport route with encoded ID
-          const encodedId = encodeURIComponent(decodedText);
-          
-          // Stop scanner before navigating
-          if (scannerRef.current) {
-            try {
-              await scannerRef.current.stop();
-              scannerRef.current.clear();
-              scannerRef.current = null;
-            } catch {
-              // Ignore errors
-            }
-          }
-          
-          navigate(`/passport/${encodedId}`);
-        },
-        () => {
-          // Ignore scan errors (happens when no QR code in view)
-        }
-      );
-      setIsScanning(true);
-      setScannerError(null);
-    } catch (err) {
-      setScannerError(`Failed to start scanner: ${err}`);
+  const handleScan = (result: any) => {
+    if (result && result[0]?.rawValue) {
+      const decodedText = result[0].rawValue;
+      
+      // Validate format
+      if (!isValidCXFormat(decodedText)) {
+        setScannerError('Invalid format. Only CX:<manufacturerPartId>:<partInstanceId> format is allowed, not URLs.');
+        return;
+      }
+      
+      // Navigate to passport route with encoded ID
+      const encodedId = encodeURIComponent(decodedText);
+      navigate(`/passport/${encodedId}`);
     }
   };
 
-  const handleCameraChange = async (cameraId: string) => {
-    setSelectedCameraId(cameraId);
-    
-    // Stop current scanner first
-    if (scannerRef.current && isScanning) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-        scannerRef.current = null;
-      } catch {
-        // Ignore stop errors
-      }
-      setIsScanning(false);
+  const handleError = (error: any) => {
+    console.error('QR Scanner Error:', error);
+    if (error?.message && !error.message.includes('No QR code found')) {
+      setScannerError('Failed to access camera. Please grant camera permissions.');
     }
-
-    // Small delay before starting with new camera
-    setTimeout(() => {
-      startScanning(cameraId);
-    }, 300);
   };
 
-  // Initialize cameras when component mounts
+  // Get available cameras
   useEffect(() => {
-    const initializeCameras = async () => {
+    const getCameras = async () => {
       try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          const mappedCameras = devices.map(d => ({ id: d.id, label: d.label }));
-          setCameras(mappedCameras);
-          setSelectedCameraId(mappedCameras[0].id); // Default to first camera
-        } else {
-          setScannerError('No cameras found on this device.');
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        setCameras(videoDevices);
+        if (videoDevices.length > 0 && !selectedCamera) {
+          setSelectedCamera(videoDevices[0].deviceId);
         }
-      } catch {
-        setScannerError('Failed to access camera. Please grant camera permissions.');
+      } catch (error) {
+        console.error('Failed to enumerate devices:', error);
       }
     };
-
-    initializeCameras();
-  }, []);
-
-  // Start scanning when cameras are loaded
-  useEffect(() => {
-    if (!isScanning && selectedCameraId) {
-      const timer = setTimeout(() => {
-        startScanning(selectedCameraId);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCameraId]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (scannerRef.current) {
-        try {
-          scannerRef.current.stop();
-          scannerRef.current.clear();
-        } catch {
-          // Ignore errors
-        }
-      }
-    };
-  }, []);
+    getCameras();
+  }, [selectedCamera]);
 
   return (
     <Box 
@@ -285,11 +190,13 @@ const PassportQRScanner: React.FC = () => {
 
             {/* Camera Selector - Show when multiple cameras available */}
             {cameras.length > 1 && (
-              <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+              <Box sx={{ mb: { xs: 2, sm: 3 }, position: 'relative', zIndex: 10 }}>
                 <FormControl 
                   fullWidth
                   size="small"
                   sx={{ 
+                    position: 'relative',
+                    zIndex: 10,
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: 'rgba(255, 255, 255, 0.05)',
                       color: '#fff',
@@ -324,8 +231,8 @@ const PassportQRScanner: React.FC = () => {
                     </Box>
                   </InputLabel>
                   <Select
-                    value={selectedCameraId}
-                    onChange={(e) => handleCameraChange(e.target.value)}
+                    value={selectedCamera}
+                    onChange={(e) => setSelectedCamera(e.target.value)}
                     label="Camera"
                     MenuProps={{
                       PaperProps: {
@@ -335,6 +242,7 @@ const PassportQRScanner: React.FC = () => {
                           border: '1px solid rgba(255, 255, 255, 0.1)',
                           borderRadius: { xs: '10px', sm: '12px' },
                           mt: 1,
+                          zIndex: 9999,
                           '& .MuiMenuItem-root': {
                             color: '#fff',
                             fontSize: { xs: '13px', sm: '14px' },
@@ -349,11 +257,12 @@ const PassportQRScanner: React.FC = () => {
                             }
                           }
                         }
-                      }
+                      },
+                      style: { zIndex: 9999 }
                     }}
                   >
                     {cameras.map((camera, index) => (
-                      <MenuItem key={camera.id} value={camera.id}>
+                      <MenuItem key={camera.deviceId} value={camera.deviceId}>
                         {camera.label || `Camera ${index + 1}`}
                       </MenuItem>
                     ))}
@@ -370,11 +279,39 @@ const PassportQRScanner: React.FC = () => {
                 borderRadius: { xs: '12px', sm: '14px', md: '16px' },
                 overflow: 'hidden',
                 border: '2px solid rgba(102, 126, 234, 0.3)',
-                minHeight: { xs: '280px', sm: '350px', md: '400px' },
-                aspectRatio: { xs: '1', sm: 'auto' }
+                height: { xs: '280px', sm: '350px', md: '400px' },
+                '& video': {
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }
               }}
             >
-              <div id="qr-reader" style={{ width: '100%' }} />
+              <Scanner
+                key={selectedCamera}
+                onScan={handleScan}
+                onError={handleError}
+                constraints={{
+                  deviceId: selectedCamera || undefined
+                }}
+                components={{
+                  audio: false,
+                  finder: true
+                }}
+                styles={{
+                  container: {
+                    width: '100%',
+                    height: '100%'
+                  },
+                  video: {
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }
+                }}
+                allowMultiple={false}
+                scanDelay={500}
+              />
             </Box>
 
             {scannerError && (

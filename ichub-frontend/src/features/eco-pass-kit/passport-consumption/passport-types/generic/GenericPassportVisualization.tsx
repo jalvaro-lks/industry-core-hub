@@ -65,7 +65,6 @@ export const GenericPassportVisualization: React.FC<PassportVisualizationProps> 
           'materialComposition': MaterialCompositionRenderer,
           'materials.materialComposition': MaterialCompositionRenderer,
           'additionalData': AdditionalDataRenderer,
-          'additionaldata': AdditionalDataRenderer,
           'sources': SourcesRenderer,
           'materials': MaterialsRenderer
         }

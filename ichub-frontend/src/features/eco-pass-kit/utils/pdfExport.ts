@@ -77,8 +77,10 @@ async function generateQRCode(discoveryId: string): Promise<string> {
           root.unmount();
           resolve('');
         };
-        img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+        // Use charset=utf-8 and encodeURIComponent for proper SVG encoding
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
       } else {
+        root.unmount();
         resolve('');
       }
     }, 100);
