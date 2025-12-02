@@ -71,9 +71,9 @@ frontend:
     
     # Authentication configuration
     authEnabled: true
-    authProvider: "keycloak"
-    authSessionTimeout: 3600
-    authRenewTokenMinValidity: 60
+    authProvider: keycloak
+    authSessionTimeout: 3600000  # 1 hour in milliseconds
+    authRenewTokenMinValidity: 300
     authLogoutRedirectUri: "https://frontend-ichub.int.catena-x.net"
     
     # Keycloak configuration
@@ -83,10 +83,10 @@ frontend:
       clientId: "industry-core-hub-frontend"
       realmImport:
         enabled: true
-        # -- Method: "startup" for --import-realm flag or "job" for post-install job
-        # -- "startup": Automatic import on Keycloak container startup (simpler, more reliable for ArgoCD)
-        # -- "job": Post-install Kubernetes job (allows dynamic password setting)
         method: "startup"
+        availabilityCheck:
+          timeout: "120s"
+          delay: "5s"
     
   
   env:

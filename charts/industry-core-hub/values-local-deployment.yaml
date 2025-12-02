@@ -21,6 +21,7 @@
 ###############################################################
 
 participantId: ""
+deploymentMode: "helm"
 
 backend:
   enabled: true
