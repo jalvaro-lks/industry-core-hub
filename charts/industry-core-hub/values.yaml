@@ -639,6 +639,12 @@ frontend:
             - action: odrl:use
               LogicalConstraint: odrl:and
               constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
                 - leftOperand: cx-policy:UsagePurpose
                   operator: odrl:eq
                   rightOperand: cx.core.industrycore:1
@@ -699,11 +705,17 @@ frontend:
             obligation: []
       - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
         policies:
-          # -- Enable here the permutations of constraints (order not matters)
           - strict: false
             permission:
             - action: odrl:use
+              LogicalConstraint: odrl:and
               constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
                 - leftOperand: cx-policy:UsagePurpose
                   operator: odrl:eq
                   rightOperand: cx.core.industrycore:1
@@ -721,6 +733,15 @@ frontend:
                 - leftOperand: cx-policy:Membership
                   operator: odrl:eq
                   rightOperand: active
+            prohibition: []
+            obligation: []
+          - strict: false
+            permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
             prohibition: []
             obligation: []
 
