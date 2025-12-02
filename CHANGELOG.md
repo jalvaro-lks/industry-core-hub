@@ -5,6 +5,76 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.0] - 2025-12-02
+
+* feat: nav bar tooltips implementation by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/373
+* Feature/dpp feature first implementation by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/388
+* fix: allows manufacturer part id with space by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/393
+* fix: serialized parts form bug & registrer twin bug by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/394
+* fix: correct chart template errors + seeding job + retry connection in backend by @matbmoser and @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/395
+
+### Added
+
+- Implemented navigation bar tooltips for improved user experience.
+- Added Digital Product Passport (DPP) feature with initial implementation.
+
+### Fixed
+
+- Corrected chart template errors, seeding job, and retry connection logic in backend.
+- Fixed serialized parts form bug and register twin bug.
+- Resolved issue allowing manufacturer part IDs with spaces.
+
+## [0.3.0] - 2025-11-18 - not release, included in 0.4.0
+
+* fix: update ichubBackendUrl to include API version in frontend configuration by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/342
+* feat: include workflows to test deployment on the last three kubernetes versions by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/348
+* feat: add keycloak instance to helm chart by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/324
+* feat: Add backend api collection by @mgarciaLKS in https://github.com/eclipse-tractusx/industry-core-hub/pull/195
+* feat: add oauth2 authentication to apis using keycloak api key by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/326
+* Feature/first frontend implementations PR  by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/351
+* chore: Trivy scan fails to complete successfully  by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/354
+* chore(deps-dev): bump vite from 6.3.6 to 6.4.1 in /ichub-frontend by @dependabot[bot] in https://github.com/eclipse-tractusx/industry-core-hub/pull/349
+* fix: tests fail when running pytest by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/375
+* feat: add GitHub Actions workflow for unit testing and coverage reporting by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/377
+* refactor: Simplify test execution and error handling in CI workflow by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/380
+* feat: kit features implementations by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/363
+* fix: correct API key assignment in provider connector headers by @swleeSTrain in https://github.com/eclipse-tractusx/industry-core-hub/pull/366
+* feat: support multiple submodels and from the same type in the twin aspect api by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/372
+* feat: Retry PostgreSQL connection until the db is up by @borjakhet in https://github.com/eclipse-tractusx/industry-core-hub/pull/379
+* feat: keycloak frontend basic implementation by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/368
+* feat: add authentication dependency to connection, discovery, part, partner, sharing, submodel, and twin management routers by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/382
+* fix: Prevent thread blocking by releasing locks during network and DB I/O by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/353
+* feat: when the edc connector restarts the edc assets are not recreated for the already available twins by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/383
+* fix: resolve CodeQL-reported typos following configuration fix by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/384
+
+### Added
+
+- Integrated Keycloak instance into Helm chart for authentication and authorization management.
+- Implemented OAuth2 authentication for backend APIs using Keycloak.
+- Added Keycloak frontend basic implementation for user authentication flows.
+- Introduced backend API collection for comprehensive API documentation.
+- Added GitHub Actions workflows for unit testing and coverage reporting.
+- Implemented workflows to test deployment on the last three Kubernetes versions.
+- Added authentication dependency to connection, discovery, part, partner, sharing, submodel, and twin management routers.
+- Implemented retry mechanism for PostgreSQL connection until database is ready.
+- Added support for multiple submodels of the same type in the twin aspect API.
+- Implemented Kit features for enhanced functionality.
+- Added functionality to prevent EDC asset recreation when connector restarts.
+
+### Changed
+
+- Updated ichubBackendUrl to include API version in frontend configuration.
+- Simplified test execution and error handling in CI workflow.
+- Improved Trivy security scan to complete successfully.
+- Updated dependency: bumped vite from 6.3.6 to 6.4.1 in frontend.
+
+### Fixed
+
+- Fixed pytest execution failures.
+- Corrected API key assignment in provider connector headers.
+- Prevented thread blocking by releasing locks during network and database I/O operations.
+- Resolved CodeQL-reported typos following configuration fix.
+
 ## [0.2.0] - 2025-09-30
 
 * feat: Improve the error and exception handling in the ichub by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/263

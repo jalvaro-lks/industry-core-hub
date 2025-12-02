@@ -221,6 +221,7 @@ helm install industry-core-hub tractusx/industry-core-hub
 | keycloak.postgresql.enabled | bool | `false` | PostgreSQL chart configuration (recommended for demonstration purposes only); default configurations: host: "centralidp-postgresql", port: 5432; Switch to enable or disable the PostgreSQL helm chart. |
 | keycloak.postgresql.image | object | `{"registry":"docker.io","repository":"bitnamilegacy/postgresql","tag":"15-debian-11"}` | Setting to Postgres version 15 as that is the aligned version, https://eclipse-tractusx.github.io/docs/release/trg-5/trg-5-07/#aligning-dependency-versions). Keycloak helm-chart from Bitnami has moved on to version 16. |
 | keycloak.production | bool | `false` | Run Keycloak in production mode. TLS configuration is required except when using proxy=edge. |
+| keycloak.proxy | string | `"edge"` | Proxy mode for Keycloak when running behind a reverse proxy (edge, reencrypt, passthrough, or none). Use 'edge' when running behind a reverse proxy that terminates SSL/TLS |
 | keycloak.rbac.create | bool | `true` |  |
 | keycloak.rbac.rules[0].apiGroups[0] | string | `""` |  |
 | keycloak.rbac.rules[0].resources[0] | string | `"pods"` |  |
