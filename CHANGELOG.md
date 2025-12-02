@@ -5,13 +5,16 @@ Further information can be found on the [README.md](README.md) file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.4.0] - 2025-12-02
+## [0.4.0] - 2025-12-02 - R25.12
 
 * feat: nav bar tooltips implementation by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/373
 * Feature/dpp feature first implementation by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/388
-* fix: allows manufacturer part id with space by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/393
+* fix: correct appVersion casing in Chart.yaml and chart template errors by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/390
 * fix: serialized parts form bug & registrer twin bug by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/394
-* fix: correct chart template errors + seeding job + retry connection in backend by @matbmoser and @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/395
+* fix: allows manufacturer part id with space by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/393
+* Bug: dpp bug fixing navigation marks in atributes and Schema Cards style by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/392
+* docs: add Submodel Creator user guide with screenshots by @jalvaro-lks in https://github.com/eclipse-tractusx/industry-core-hub/pull/396
+* fix: correct chart template errors + seeding job + retry connection in backend. by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/395
 
 ### Added
 
@@ -75,7 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Prevented thread blocking by releasing locks during network and database I/O operations.
 - Resolved CodeQL-reported typos following configuration fix.
 
-## [0.2.0] - 2025-09-30
+## [0.2.0] - 2025-09-30 - R25.09
 
 * feat: Improve the error and exception handling in the ichub by @CDiezRodriguez in https://github.com/eclipse-tractusx/industry-core-hub/pull/263
 * fix: responsiveness fixes for new components in product detail page by @pjuaristi-ikerlan in https://github.com/eclipse-tractusx/industry-core-hub/pull/270
@@ -151,7 +154,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Updated the PostgreSQL dependency to a more recent version.
 - Addressed and resolved multiple SonarQube issues.
 
-## [0.1.0] - 2025-05-26
+## [0.1.0] - 2025-05-26 - R25.06
 
 ### Added
 
