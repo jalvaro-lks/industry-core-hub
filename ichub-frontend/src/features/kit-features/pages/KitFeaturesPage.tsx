@@ -52,13 +52,13 @@ import {
 } from '@mui/icons-material';
 import KitCard from '../components/KitCard';
 import { KitFeature } from '../types';
-import IndustryCoreKitImage from '../../../assets/kit-images/industry-core-kit.svg?react';
-import PcfKitImage from '../../../assets/kit-images/pcf-kit.svg?react';
-import DataChainKitImage from '../../../assets/kit-images/data-chain-kit.svg?react';
-import BusinessPartnerKitImage from '../../../assets/kit-images/business-partner-kit.svg?react';
-import DcmKitImage from '../../../assets/kit-images/dcm-kit.svg?react';
-import EcoPassKitImage from '../../../assets/kit-images/eco-pass-kit.svg?react';
-import TraceabilityKitImage from '../../../assets/kit-images/traceability-kit.svg?react';
+import IndustryCoreKitImage from '../../../assets/kit-images/industry-core-kit.svg';
+import PcfKitImage from '../../../assets/kit-images/pcf-kit.svg';
+import DataChainKitImage from '../../../assets/kit-images/data-chain-kit.svg';
+import BusinessPartnerKitImage from '../../../assets/kit-images/business-partner-kit.svg';
+import DcmKitImage from '../../../assets/kit-images/dcm-kit.svg';
+import EcoPassKitImage from '../../../assets/kit-images/eco-pass-kit.svg';
+import TraceabilityKitImage from '../../../assets/kit-images/traceability-kit.svg';
 
 const KitFeaturesPage: React.FC = () => {
   const [kits, setKits] = useState<KitFeature[]>([]);
