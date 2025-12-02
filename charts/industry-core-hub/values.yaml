@@ -970,7 +970,7 @@ keycloak:
     # -- keycloak-config-cli image configuration
     image:
       repository: "adorsys/keycloak-config-cli"
-      tag: "latest-25.0.2"
+      tag: "6.1.5-25.0.2"
       pullPolicy: "IfNotPresent"
     # -- Resource limits for the realm import job
     resources:
