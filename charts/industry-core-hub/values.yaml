@@ -963,6 +963,11 @@ keycloak:
     # -- "startup": Automatic import on Keycloak container startup (simpler, more reliable for ArgoCD)
     # -- "job": Post-install Kubernetes job (allows dynamic password setting)
     method: "job"
+    # -- keycloak-config-cli image configuration
+    image:
+      repository: "adorsys/keycloak-config-cli"
+      tag: "latest-25.0.2"
+      pullPolicy: "IfNotPresent"
     # -- Resource limits for the realm import job
     resources:
       requests:
@@ -1002,18 +1007,10 @@ keycloak:
   extraVolumes:
     - name: themes
       emptyDir: {}
-    # -- Volume for realm import (only mounted when onStartup is true)
-    - name: realm-data
-      configMap:
-        name: "{{ .Release.Name }}-realm-data"
-        optional: true
 
   extraVolumeMounts:
     - name: themes
       mountPath: /opt/bitnami/keycloak/themes/catenax-central
-    # -- Mount realm import file (only when onStartup is true)
-    - name: realm-data
-      mountPath: /opt/bitnami/keycloak/data/import
 
   initContainers:
     - name: import
