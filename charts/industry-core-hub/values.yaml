@@ -65,6 +65,31 @@ backend:
   # -- Backend configuration, changes to these values will be reflected in the configuration.yml file.
   configuration:
     agreements:
+      - semanticid: urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
+        usage:
+          context:
+            odrl: http://www.w3.org/ns/odrl/2/
+            cx-policy: https://w3id.org/catenax/policy/
+          permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.circular.dpp:1
+          prohibition: []
+          obligation: []
+        access:
+          context:
+            odrl: http://www.w3.org/ns/odrl/2/
+            cx-policy: https://w3id.org/catenax/policy/
+          permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+          prohibition: []
+          obligation: []
       - semanticid: urn:samm:io.catenax.serial_part:3.0.0#SerialPart
         usage:
           context:
@@ -129,6 +154,31 @@ backend:
                   rightOperand: active
           prohibition: []
           obligation: []
+      - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
+        usage:
+          context:
+            odrl: http://www.w3.org/ns/odrl/2/
+            cx-policy: https://w3id.org/catenax/policy/
+          permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+          prohibition: []
+          obligation: []
+        access:
+          context:
+            odrl: http://www.w3.org/ns/odrl/2/
+            cx-policy: https://w3id.org/catenax/policy/
+          permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+          prohibition: []
+          obligation: []
     authorization:
       enabled: true
       apiKey:
@@ -140,6 +190,7 @@ backend:
         realm: "<realm>"
         clientId: "<client-id>"
         clientSecret: "<client-secret>"
+        # -- Retry configuration for Keycloak connection
         retry:
           maxRetries: 5
           retryDelay: 10
@@ -522,10 +573,18 @@ frontend:
           prohibition: []
           obligation: []
           strict: false
+        - permission:
+          - action: odrl:use
+            constraints:
+              - leftOperand: cx-policy:UsagePurpose
+                operator: odrl:eq
+                rightOperand: cx.core.digitalTwinRegistry:1
+          prohibition: []
+          obligation: []
     governance:
       - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
-        policies:
-          - strict: false  # -- Enable here the permutations of constraints (order not matters)
+        policies: 
+          - strict: false #-- Enable here the permutations of constraints (order not matters)
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -541,7 +600,7 @@ frontend:
                   rightOperand: cx.core.industrycore:1
             prohibition: []
             obligation: []
-          - strict: true  # -- Disable here the permutations of constraints (order matters)
+          - strict: true #-- Disable here the permutations of constraints (order matters)
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -554,7 +613,101 @@ frontend:
                   rightOperand: active
             prohibition: []
             obligation: []
-
+          - strict: false #-- Enable here the permutations of constraints (order not matters)
+            permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+      - semanticid: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
+        policies: 
+          - strict: false #-- Enable here the permutations of constraints (order not matters)
+            permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+          - strict: true #-- Disable here the permutations of constraints (order matters)
+            permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+            prohibition: []
+            obligation: []
+          - strict: false #-- Enable here the permutations of constraints (order not matters)
+            permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+      - semanticid: "urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport"
+        policies: 
+          - strict: false #-- Enable here the permutations of constraints (order not matters)
+            permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.circular.dpp:1
+            prohibition: []
+            obligation: []
+          - strict: false #-- Disable here the permutations of constraints (order matters)
+            permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.circular.dpp:1
+            prohibition: []
+            obligation: []
+      - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
+        policies: 
+          - strict: false #-- Enable here the permutations of constraints (order not matters)
+            permission:
+            - action: odrl:use
+              constraints:
+                - leftOperand: cx-policy:UsagePurpose
+                  operator: odrl:eq
+                  rightOperand: cx.core.industrycore:1
+            prohibition: []
+            obligation: []
+          - strict: true #-- Disable here the permutations of constraints (order matters)
+            permission:
+            - action: odrl:use
+              LogicalConstraint: odrl:and
+              constraints:
+                - leftOperand: cx-policy:FrameworkAgreement
+                  operator: odrl:eq
+                  rightOperand: DataExchangeGovernance:1.0
+                - leftOperand: cx-policy:Membership
+                  operator: odrl:eq
+                  rightOperand: active
+            prohibition: []
+            obligation: []
+      
   healthChecks:
     startup:
       enabled: true
@@ -807,7 +960,13 @@ keycloak:
   realmImport:
     enabled: true
     # -- Method: "startup" for --import-realm flag or "job" for post-install job
-    method: "job"
+    # -- "startup": Automatic import on Keycloak container startup (simpler, more reliable for ArgoCD)
+    # -- "job": Post-install Kubernetes job (allows dynamic password setting)
+    method: "startup"
+    # -- Realm JSON for ArgoCD deployments (optional). Only needed when files/realm-export.json is not available.
+    # -- Leave as null for local Helm deployments or when files/ directory is committed to Git.
+    # -- For ArgoCD without files/ in Git: Copy entire content of files/realm-export.json as JSON string.
+    realmJson: null
     # -- Resource limits for the realm import job
     resources:
       requests:
@@ -835,22 +994,28 @@ keycloak:
           - "default-roles-ichub"
           - "offline_access"
           - "uma_authorization"
-  # -- Environment variables for startup import (only if method is "startup")
+  # -- Environment variables and command configuration
+  # -- Will be set automatically based on realmImport.method
   extraEnvVars: []
+  
+  # -- Command override for Keycloak container
+  # -- Will be set automatically when realmImport.method is "startup"
+  command: []
+  args: []
 
   extraVolumes:
     - name: themes
       emptyDir: {}
-    # -- Volume for realm import (only mounted when onStartup is true)
+    # -- Volume for realm import data (automatic import on startup)
     - name: realm-data
       configMap:
-        name: "{{ .Release.Name }}-realm-data"
-        optional: true
+        name: "{{ .Release.Name }}-keycloak-realm-data"
+        optional: false
 
   extraVolumeMounts:
     - name: themes
       mountPath: /opt/bitnami/keycloak/themes/catenax-central
-    # -- Mount realm import file (only when onStartup is true)
+    # -- Mount realm import file for automatic import on startup
     - name: realm-data
       mountPath: /opt/bitnami/keycloak/data/import
 
