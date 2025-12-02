@@ -5,9 +5,9 @@
   "defaultSignatureAlgorithm": "RS256",
   "revokeRefreshToken": false,
   "refreshTokenMaxReuse": 0,
-  "accessTokenLifespan": 300,
-  "accessTokenLifespanForImplicitFlow": 900,
-  "ssoSessionIdleTimeout": 1800,
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 3600,
+  "ssoSessionIdleTimeout": 3600,
   "ssoSessionMaxLifespan": 36000,
   "offlineSessionIdleTimeout": 2592000,
   "offlineSessionMaxLifespanEnabled": false,
@@ -111,12 +111,16 @@
         "http://localhost:8000/*",
         "http://localhost:9000/*",
         "http://ichub-backend.tx.test/*",
+        "https://backend-ichub.int.catena-x.net/*",
+        "https://backend-ichub-manufacturer.int.catena-x.net/*",
         "*"
       ],
       "webOrigins": [
         "http://localhost:8000",
         "http://localhost:9000",
         "http://ichub-backend.tx.test",
+        "https://backend-ichub.int.catena-x.net",
+        "https://backend-ichub-manufacturer.int.catena-x.net",
         "*"
       ],
       "notBefore": 0,
@@ -167,6 +171,8 @@
         "http://localhost:5173/*",
         "http://ichub-frontend.tx.test/*",
         "http://industry-core-hub-frontend.tx.test/*",
+        "https://frontend-ichub.int.catena-x.net/*",
+        "https://frontend-ichub-manufacturer.int.catena-x.net/*",
         "*"
       ],
       "webOrigins": [
@@ -174,6 +180,8 @@
         "http://localhost:5173",
         "http://ichub-frontend.tx.test",
         "http://industry-core-hub-frontend.tx.test",
+        "https://frontend-ichub.int.catena-x.net",
+        "https://frontend-ichub-manufacturer.int.catena-x.net",
         "*"
       ],
       "notBefore": 0,
@@ -188,7 +196,7 @@
       "protocol": "openid-connect",
       "attributes": {
         "access.token.lifespan": "1800",
-        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*##http://ichub-frontend.tx.test/*##http://industry-core-hub-frontend.tx.test/*",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*##http://ichub-frontend.tx.test/*##http://industry-core-hub-frontend.tx.test/*##https://frontend-ichub.int.catena-x.net/*##https://frontend-ichub-manufacturer.int.catena-x.net/*",
         "pkce.code.challenge.method": "S256"
       },
       "authenticationFlowBindingOverrides": {},

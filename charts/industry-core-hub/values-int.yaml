@@ -73,7 +73,7 @@ frontend:
     authEnabled: true
     authProvider: keycloak
     authSessionTimeout: 3600000  # 1 hour in milliseconds
-    authRenewTokenMinValidity: 300
+    authRenewTokenMinValidity: 70  # Renew token when 70 seconds validity remains
     authLogoutRedirectUri: "https://frontend-ichub.int.catena-x.net"
     
     # Keycloak configuration
@@ -275,6 +275,25 @@ keycloak:
           - "default-roles-ichub"
           - "offline_access"
           - "uma_authorization"
+    clients:
+      frontend:
+        redirectUris:
+          - "http://localhost:3000/*"
+          - "http://localhost:5173/*"
+          - "https://frontend-ichub.int.catena-x.net/*"
+        webOrigins:
+          - "http://localhost:3000"
+          - "http://localhost:5173"
+          - "https://frontend-ichub.int.catena-x.net"
+      backend:
+        redirectUris:
+          - "http://localhost:8000/*"
+          - "http://localhost:9000/*"
+          - "https://backend-ichub.int.catena-x.net/*"
+        webOrigins:
+          - "http://localhost:8000"
+          - "http://localhost:9000"
+          - "https://backend-ichub.int.catena-x.net"
   
   ingress:
     # -- Enable ingress record generation
