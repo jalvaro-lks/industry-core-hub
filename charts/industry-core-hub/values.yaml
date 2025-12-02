@@ -198,6 +198,8 @@ backend:
         retry:
           maxRetries: 5
           retryDelay: 10
+          # -- Background retry interval (in seconds) for continuous reconnection attempts after initial failure
+          backgroundRetryInterval: 60
     # -- Database connection config; database connection settings are inferred from postgresql or externalDatabase sections.
     database:
       echo: false

@@ -36,6 +36,8 @@ authorization:
     retry:
       max_retries: 5
       retry_delay: 10
+      # -- Background retry interval (in seconds) for continuous reconnection attempts after initial failure
+      background_retry_interval: 60
 agreements:
   - semanticid: urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
     usage:

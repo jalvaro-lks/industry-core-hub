@@ -193,6 +193,7 @@ backend:
         retry:
           maxRetries: 10
           retryDelay: 15
+          backgroundRetryInterval: 60
     # -- Consumer configuration
     consumer:
       discovery:

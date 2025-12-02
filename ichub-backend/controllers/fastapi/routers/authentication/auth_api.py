@@ -27,9 +27,12 @@ from managers.config.log_manager import LoggingManager
 from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import HTTPException, Request, status, Depends
 import time
+import threading
 
 logger = LoggingManager.get_logger('staging')
 auth_manager: AuthManager | OAuth2Manager = None
+_keycloak_retry_thread = None
+_keycloak_connected = False
 
 if ConfigManager.get_config("authorization.enabled"):
     if not ConfigManager.get_config("authorization.keycloak.enabled"):
@@ -50,7 +53,7 @@ if ConfigManager.get_config("authorization.enabled"):
         max_retries = ConfigManager.get_config("authorization.keycloak.retry.max_retries")
         retry_delay = ConfigManager.get_config("authorization.keycloak.retry.retry_delay")
 
-        keycloak_connected = False
+        _keycloak_connected = False
         logger.info(f"[OAuth2 Manager] Retry configuration: max_retries={max_retries}, retry_delay={retry_delay}s")
         
         for attempt in range(1, max_retries + 1):
@@ -62,7 +65,7 @@ if ConfigManager.get_config("authorization.enabled"):
                     clientid=keycloak_client_id,
                     clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
                 )
-                keycloak_connected = True
+                _keycloak_connected = True
                 logger.info(f"[OAuth2 Manager] Successfully connected to Keycloak")
                 break
             except Exception as e:
@@ -74,9 +77,10 @@ if ConfigManager.get_config("authorization.enabled"):
                     logger.error(f"[OAuth2 Manager] Failed to connect to Keycloak after {max_retries} attempts")
         
         # Fallback to API Key authentication if Keycloak connection fails
-        if not keycloak_connected:
+        if not _keycloak_connected:
             logger.warning("=" * 80)
             logger.warning("[AUTH] Keycloak connection failed - Falling back to API Key authentication")
+            logger.warning("[AUTH] Background retry task will continue attempting to connect to Keycloak")
             logger.warning("=" * 80)
             auth_manager = AuthManager(
                 api_key_header=ConfigManager.get_config("authorization.api_key.key"),
@@ -84,6 +88,35 @@ if ConfigManager.get_config("authorization.enabled"):
                 auth_enabled=ConfigManager.get_config("authorization.enabled")
             )
             logger.info(f"[API Key Manager] Fallback authentication initialized with header: {ConfigManager.get_config('authorization.api_key.key')}")
+            
+            # Start background retry thread
+            def retry_keycloak_connection():
+                global auth_manager, _keycloak_connected
+                retry_interval = ConfigManager.get_config("authorization.keycloak.retry.background_retry_interval", retry_delay)
+                
+                while not _keycloak_connected:
+                    time.sleep(retry_interval)
+                    try:
+                        logger.info("[OAuth2 Manager] Background retry: Attempting to reconnect to Keycloak...")
+                        temp_manager = OAuth2Manager(
+                            auth_url=keycloak_url,
+                            realm=keycloak_realm,
+                            clientid=keycloak_client_id,
+                            clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
+                        )
+                        # Success - switch to OAuth2
+                        auth_manager = temp_manager
+                        _keycloak_connected = True
+                        logger.info("=" * 80)
+                        logger.info("[AUTH] Successfully reconnected to Keycloak - Switched from API Key to OAuth2")
+                        logger.info("=" * 80)
+                    except Exception as e:
+                        logger.debug(f"[OAuth2 Manager] Background retry failed: {e}")
+            
+            _keycloak_retry_thread = threading.Thread(target=retry_keycloak_connection, daemon=True)
+            _keycloak_retry_thread.start()
+            background_interval = ConfigManager.get_config("authorization.keycloak.retry.background_retry_interval", retry_delay)
+            logger.info(f"[OAuth2 Manager] Background retry thread started (interval: {background_interval}s)")
 else:
     logger.warning("=" * 80)
     logger.warning("[AUTH] Authorization is DISABLED - API endpoints are publicly accessible")

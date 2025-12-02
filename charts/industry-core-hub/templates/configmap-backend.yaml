@@ -44,6 +44,7 @@ data:
         retry:
           max_retries: {{ .Values.backend.configuration.authorization.keycloak.retry.maxRetries }}
           retry_delay: {{ .Values.backend.configuration.authorization.keycloak.retry.retryDelay }}
+          background_retry_interval: {{ .Values.backend.configuration.authorization.keycloak.retry.backgroundRetryInterval }}
     agreements: {{ .Values.backend.configuration.agreements | toYaml | nindent 6 }}
     database:
       connectionString: {{ include "industry-core-hub.postgresql.dsn" . | quote }}
