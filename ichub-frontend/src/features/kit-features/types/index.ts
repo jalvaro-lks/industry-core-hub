@@ -34,7 +34,7 @@ export interface KitFeature {
   description: string;
   status: 'available' | 'coming-soon' | 'beta';
   icon: React.ReactElement;
-  image?: React.ReactElement;
+  image?: string;
   features: KitFeatureItem[];
   category: 'core' | 'sustainability' | 'quality' | 'traceability' | 'collaboration';
   version?: string;
