@@ -260,6 +260,22 @@ backend:
               port: 8000
 
 keycloak:
+  realm:
+    users:
+      - username: "ichub-admin"
+        password: "changeme"
+        email: "ichub-admin@example.com"
+        firstName: "Industry"
+        lastName: "Admin"
+        emailVerified: true
+        enabled: true
+        attributes:
+          BPN: ["BPNL000000000000"]
+        realmRoles:
+          - "default-roles-ichub"
+          - "offline_access"
+          - "uma_authorization"
+  
   ingress:
     # -- Enable ingress record generation
     enabled: true
