@@ -79,6 +79,12 @@ frontend:
       url: "https://ichub-iam.int.catena-x.net/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
+      realmImport:
+        enabled: true
+        # -- Method: "startup" for --import-realm flag or "job" for post-install job
+        # -- "startup": Automatic import on Keycloak container startup (simpler, more reliable for ArgoCD)
+        # -- "job": Post-install Kubernetes job (allows dynamic password setting)
+        method: "startup"
     
   
   env:
