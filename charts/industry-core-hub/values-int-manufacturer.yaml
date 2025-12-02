@@ -21,6 +21,8 @@
 ---
 ## For being used in the Integration ArgoCD test environment from the Catena-X Association
 
+deploymentMode: "argocd"
+
 nameOverride: "manufacturer-ichub"
 fullnameOverride: "manufacturer-ichub"
 

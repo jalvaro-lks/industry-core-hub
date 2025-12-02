@@ -28,6 +28,10 @@ nameOverride: ""
 fullnameOverride: ""
 replicaCount: 1
 
+# -- Deployment mode: "helm" for standard Helm deployments, "argocd" for ArgoCD deployments
+# This controls which annotations are used for the realm import job
+deploymentMode: "helm"
+
 participantId: ""
 
 # -- Backend configuration
