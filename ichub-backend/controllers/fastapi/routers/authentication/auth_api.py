@@ -30,20 +30,23 @@ import time
 import threading
 
 logger = LoggingManager.get_logger('staging')
-auth_manager: AuthManager | OAuth2Manager = None
+api_key_manager: AuthManager = None
+oauth2_manager: OAuth2Manager = None
 _keycloak_retry_thread = None
 _keycloak_connected = False
 
 if ConfigManager.get_config("authorization.enabled"):
-    if not ConfigManager.get_config("authorization.keycloak.enabled"):
-        logger.info("[API Key Manager] Authorization enabled with API Key authentication")
-        logger.info(f"[API Key Manager] API Key header: {ConfigManager.get_config('authorization.api_key.key')}")
-        auth_manager = AuthManager(
-            api_key_header=ConfigManager.get_config("authorization.api_key.key"),
-            configured_api_key=ConfigManager.get_config("authorization.api_key.value"),
-            auth_enabled=ConfigManager.get_config("authorization.enabled")
-        )
-    else:
+    # Always initialize API Key authentication
+    logger.info("[API Key Manager] Initializing API Key authentication")
+    logger.info(f"[API Key Manager] API Key header: {ConfigManager.get_config('authorization.api_key.key')}")
+    api_key_manager = AuthManager(
+        api_key_header=ConfigManager.get_config("authorization.api_key.key"),
+        configured_api_key=ConfigManager.get_config("authorization.api_key.value"),
+        auth_enabled=ConfigManager.get_config("authorization.enabled")
+    )
+    
+    # Additionally initialize Keycloak if enabled
+    if ConfigManager.get_config("authorization.keycloak.enabled"):
         keycloak_url = ConfigManager.get_config("authorization.keycloak.auth_url")
         keycloak_realm = ConfigManager.get_config("authorization.keycloak.realm")
         keycloak_client_id = ConfigManager.get_config("authorization.keycloak.client_id")
@@ -59,7 +62,7 @@ if ConfigManager.get_config("authorization.enabled"):
         for attempt in range(1, max_retries + 1):
             try:
                 logger.info(f"[OAuth2 Manager] Connection attempt {attempt}/{max_retries}...")
-                auth_manager = OAuth2Manager(
+                oauth2_manager = OAuth2Manager(
                     auth_url=keycloak_url,
                     realm=keycloak_realm,
                     clientid=keycloak_client_id,
@@ -67,6 +70,9 @@ if ConfigManager.get_config("authorization.enabled"):
                 )
                 _keycloak_connected = True
                 logger.info(f"[OAuth2 Manager] Successfully connected to Keycloak")
+                logger.info("=" * 80)
+                logger.info("[AUTH] Dual authentication active: API Key + OAuth2 (Keycloak)")
+                logger.info("=" * 80)
                 break
             except Exception as e:
                 logger.warning(f"[OAuth2 Manager] Connection attempt {attempt}/{max_retries} failed: {e}")
@@ -76,22 +82,16 @@ if ConfigManager.get_config("authorization.enabled"):
                 else:
                     logger.error(f"[OAuth2 Manager] Failed to connect to Keycloak after {max_retries} attempts")
         
-        # Fallback to API Key authentication if Keycloak connection fails
+        # Start background retry if Keycloak connection failed
         if not _keycloak_connected:
             logger.warning("=" * 80)
-            logger.warning("[AUTH] Keycloak connection failed - Falling back to API Key authentication")
+            logger.warning("[AUTH] Keycloak connection failed - API Key authentication active")
             logger.warning("[AUTH] Background retry task will continue attempting to connect to Keycloak")
             logger.warning("=" * 80)
-            auth_manager = AuthManager(
-                api_key_header=ConfigManager.get_config("authorization.api_key.key"),
-                configured_api_key=ConfigManager.get_config("authorization.api_key.value"),
-                auth_enabled=ConfigManager.get_config("authorization.enabled")
-            )
-            logger.info(f"[API Key Manager] Fallback authentication initialized with header: {ConfigManager.get_config('authorization.api_key.key')}")
             
             # Start background retry thread
             def retry_keycloak_connection():
-                global auth_manager, _keycloak_connected
+                global oauth2_manager, _keycloak_connected
                 retry_interval = ConfigManager.get_config("authorization.keycloak.retry.background_retry_interval", retry_delay)
                 
                 while not _keycloak_connected:
@@ -104,11 +104,11 @@ if ConfigManager.get_config("authorization.enabled"):
                             clientid=keycloak_client_id,
                             clientsecret=ConfigManager.get_config("authorization.keycloak.client_secret"),
                         )
-                        # Success - switch to OAuth2
-                        auth_manager = temp_manager
+                        # Success - enable OAuth2 alongside API Key
+                        oauth2_manager = temp_manager
                         _keycloak_connected = True
                         logger.info("=" * 80)
-                        logger.info("[AUTH] Successfully reconnected to Keycloak - Switched from API Key to OAuth2")
+                        logger.info("[AUTH] Successfully reconnected to Keycloak - Dual authentication now active: API Key + OAuth2")
                         logger.info("=" * 80)
                     except Exception as e:
                         logger.debug(f"[OAuth2 Manager] Background retry failed: {e}")
@@ -117,6 +117,10 @@ if ConfigManager.get_config("authorization.enabled"):
             _keycloak_retry_thread.start()
             background_interval = ConfigManager.get_config("authorization.keycloak.retry.background_retry_interval", retry_delay)
             logger.info(f"[OAuth2 Manager] Background retry thread started (interval: {background_interval}s)")
+    else:
+        logger.info("=" * 80)
+        logger.info("[AUTH] API Key authentication active (Keycloak disabled)")
+        logger.info("=" * 80)
 else:
     logger.warning("=" * 80)
     logger.warning("[AUTH] Authorization is DISABLED - API endpoints are publicly accessible")
@@ -126,7 +130,7 @@ api_key_header = APIKeyHeader(name=ConfigManager.get_config("authorization.api_k
 bearer_security = HTTPBearer(auto_error=False)
 
 def get_authentication_dependency():
-    """Dynamic authentication dependency based on configuration"""
+    """Dynamic authentication dependency supporting both API Key and OAuth2 (Keycloak)"""
     def authenticate(
         request: Request,
         api_key: str = Depends(api_key_header),
@@ -136,16 +140,40 @@ def get_authentication_dependency():
         if request.method == "OPTIONS":
             return True
 
-        if auth_manager is None:
+        # If authorization is disabled, allow all requests
+        if api_key_manager is None and oauth2_manager is None:
             return True
 
         try:
-            if api_key or bearer_token:
-                return auth_manager.is_authenticated(request=request)
+            # Try API Key authentication first (always available when auth is enabled)
+            if api_key and api_key_manager:
+                try:
+                    if api_key_manager.is_authenticated(request=request):
+                        logger.debug("[AUTH] Request authenticated via API Key")
+                        return True
+                except Exception as e:
+                    logger.debug(f"[AUTH] API Key authentication failed: {e}")
             
+            # Try OAuth2 (Keycloak) authentication if available
+            if bearer_token and oauth2_manager:
+                try:
+                    if oauth2_manager.is_authenticated(request=request):
+                        logger.debug("[AUTH] Request authenticated via OAuth2 (Keycloak)")
+                        return True
+                except Exception as e:
+                    logger.debug(f"[AUTH] OAuth2 authentication failed: {e}")
+            
+            # No valid authentication provided or both methods failed
+            available_methods = []
+            if api_key_manager:
+                available_methods.append("X-Api-Key header")
+            if oauth2_manager:
+                available_methods.append("Bearer token")
+            
+            methods_str = " or ".join(available_methods) if available_methods else "valid credentials"
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required: provide either X-Api-Key header or Bearer token"
+                detail=f"Authentication required: provide {methods_str}"
             )
         except HTTPException:
             # Re-raise HTTP exceptions as-is
