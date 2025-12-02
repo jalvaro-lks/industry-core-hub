@@ -279,6 +279,10 @@ backend:
               port: 8000
 
 keycloak:
+  externalDatabase:
+    # Override the default host to use the correct PostgreSQL service name
+    host: "ichub-manufacturer-db"
+    existingSecret: "ichub-manufacturer-db-secret"
   ingress:
     # -- Enable ingress record generation
     enabled: true
