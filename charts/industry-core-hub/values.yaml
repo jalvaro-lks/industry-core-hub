@@ -589,8 +589,9 @@ frontend:
           obligation: []
     governance:
       - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
-        policies: 
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
+        policies:
+          # -- Enable here the permutations of constraints (order not matters)
+          - strict: false
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -606,7 +607,8 @@ frontend:
                   rightOperand: cx.core.industrycore:1
             prohibition: []
             obligation: []
-          - strict: true #-- Disable here the permutations of constraints (order matters)
+          # -- Disable here the permutations of constraints (order matters)
+          - strict: true
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -619,7 +621,8 @@ frontend:
                   rightOperand: active
             prohibition: []
             obligation: []
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
+          # -- Enable here the permutations of constraints (order not matters)
+          - strict: false
             permission:
             - action: odrl:use
               constraints:
@@ -629,8 +632,9 @@ frontend:
             prohibition: []
             obligation: []
       - semanticid: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
-        policies: 
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
+        policies:
+          # -- Enable here the permutations of constraints (order not matters)
+          - strict: false
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -640,7 +644,8 @@ frontend:
                   rightOperand: cx.core.industrycore:1
             prohibition: []
             obligation: []
-          - strict: true #-- Disable here the permutations of constraints (order matters)
+          # -- Disable here the permutations of constraints (order matters)
+          - strict: true
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -653,7 +658,8 @@ frontend:
                   rightOperand: active
             prohibition: []
             obligation: []
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
+          # -- Enable here the permutations of constraints (order not matters)
+          - strict: false
             permission:
             - action: odrl:use
               constraints:
@@ -663,8 +669,9 @@ frontend:
             prohibition: []
             obligation: []
       - semanticid: "urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport"
-        policies: 
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
+        policies:
+          # -- Enable here the permutations of constraints (order not matters)
+          - strict: false
             permission:
             - action: odrl:use
               constraints:
@@ -673,7 +680,8 @@ frontend:
                   rightOperand: cx.circular.dpp:1
             prohibition: []
             obligation: []
-          - strict: false #-- Disable here the permutations of constraints (order matters)
+          # -- Disable here the permutations of constraints (order matters)
+          - strict: false
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -690,8 +698,9 @@ frontend:
             prohibition: []
             obligation: []
       - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
-        policies: 
-          - strict: false #-- Enable here the permutations of constraints (order not matters)
+        policies:
+          # -- Enable here the permutations of constraints (order not matters)
+          - strict: false
             permission:
             - action: odrl:use
               constraints:
@@ -700,7 +709,8 @@ frontend:
                   rightOperand: cx.core.industrycore:1
             prohibition: []
             obligation: []
-          - strict: true #-- Disable here the permutations of constraints (order matters)
+          # -- Disable here the permutations of constraints (order matters)
+          - strict: true
             permission:
             - action: odrl:use
               LogicalConstraint: odrl:and
@@ -713,7 +723,7 @@ frontend:
                   rightOperand: active
             prohibition: []
             obligation: []
-      
+
   healthChecks:
     startup:
       enabled: true
@@ -1004,7 +1014,7 @@ keycloak:
   # -- Environment variables and command configuration
   # -- Will be set automatically based on realmImport.method
   extraEnvVars: []
-  
+
   # -- Command override for Keycloak container
   # -- Will be set automatically when realmImport.method is "startup"
   command: []
