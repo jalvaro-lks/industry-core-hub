@@ -52,6 +52,8 @@ metadata:
   labels:
     {{- include "industry-core-hub.labels" . | nindent 4 }}
     app.kubernetes.io/component: keycloak
+  annotations:
+    "argocd.argoproj.io/sync-wave": "1"
 data:
   realm-export.json: |
 {{ $realmData | toPrettyJson | indent 4 }}
