@@ -282,7 +282,12 @@ keycloak:
   externalDatabase:
     # Override the default host to use the correct PostgreSQL service name
     host: "ichub-manufacturer-db"
-    existingSecret: "ichub-manufacturer-db-secret"
+    port: 5432
+    user: "ichub_keycloak"
+    database: "ichub-postgres"
+    password: <path:industry-core-hub/data/db#ichubPass>
+    existingSecret: ""
+    existingSecretPasswordKey: ""
   ingress:
     # -- Enable ingress record generation
     enabled: true
