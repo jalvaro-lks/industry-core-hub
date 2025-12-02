@@ -510,7 +510,7 @@ frontend:
       url: "https://<keycloak-hostname>/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
-      onLoad: "login-required"  # check-sso, login-required
+      onLoad: "check-sso"  # check-sso, login-required
       checkLoginIframe: false
       silentCheckSsoRedirectUri: ""
       pkceMethod: "S256"
