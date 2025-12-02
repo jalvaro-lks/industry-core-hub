@@ -52,6 +52,15 @@ spec:
         - name: wait-for-keycloak
           image: curlimages/curl:8.5.0
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
           command:
             - /bin/sh
             - -c
