@@ -34,7 +34,7 @@ import MailIcon from '@mui/icons-material/Mail';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MoreIcon from '@mui/icons-material/MoreVert';
 import { Divider, ListItemIcon, Typography, Tooltip } from '@mui/material';
-import { Logout, Settings } from '@mui/icons-material';
+import { Logout, Settings, ContentCopy } from '@mui/icons-material';
 import { getParticipantId } from '../../services/EnvironmentService';
 import useAuth from '../../hooks/useAuth';
 
@@ -43,6 +43,7 @@ export default function PrimarySearchAppBar() {
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = useState<null | HTMLElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [participantId, setParticipantId] = useState<string>('CX-Operator');
+  const [copied, setCopied] = useState(false);
   
   // Auth hook
   const { isAuthenticated, user, logout } = useAuth();
@@ -74,6 +75,12 @@ export default function PrimarySearchAppBar() {
 
   const handleMobileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setMobileMoreAnchorEl(event.currentTarget);
+  };
+
+  const handleCopyParticipantId = () => {
+    navigator.clipboard.writeText(participantId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => {
