@@ -425,6 +425,258 @@ const mockDPPs: DigitalProductPassport[] = [
     createdAt: '2025-11-10T08:15:00Z',
     updatedAt: '2025-11-18T16:45:00Z',
     createdBy: 'user@company.com',
+  },
+  {
+    id: 'CX:CTRL-X500:CTRL-X500-SN-54321',
+    name: 'ECU Control Unit X500',
+    version: '6.1.0',
+    semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
+    status: 'active',
+    twinAssociation: {
+      twinId: 'twin-003',
+      aasId: 'aas-003',
+      manufacturerPartId: 'CTRL-X500',
+      serialNumber: 'CTRL-X500-SN-54321',
+      twinName: 'ECU Control Unit X500'
+    },
+    data: {
+      "metadata": {
+        "version": "6.1.0",
+        "specVersion": "6.1.0",
+        "status": "approved",
+        "expirationDate": "2026-01-15",
+        "issueDate": "2025-11-12",
+        "passportIdentifier": "e3c4d5f6-7g8h-9i0j-1k2l-3m4n5o6p7q8r",
+        "predecessor": "f4d5e6g7-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+        "backupReference": "backup-ref-003",
+        "registrationIdentifier": "reg-003",
+        "lastModification": "2025-11-20",
+        "language": "en",
+        "economicOperatorId": "BPNL000000000000"
+      },
+      "identification": {
+        "type": {
+          "manufacturerPartId": "CTRL-X500",
+          "nameAtManufacturer": "ECU Control Unit X500"
+        },
+        "codes": [{ "key": "EAN", "value": "5432167890123" }],
+        "dataCarrier": { "carrierType": "QR", "carrierLayout": "upper-right" },
+        "classification": [{ "classificationStandard": "ECLASS", "classificationID": "27-24-10-05" }]
+      },
+      "operation": {
+        "manufacturer": {
+          "facility": [{ "facility": "BPNS000000000002" }],
+          "manufacturer": "BPNL000000000000"
+        },
+        "import": { "content": { "eori": "TT000ECU2F", "id": "BPNL000000000004" }, "applicable": true },
+        "other": { "role": "integrator", "id": "BPNL000000000005" }
+      },
+      "characteristics": {
+        "physicalDimension": {
+          "width": { "value": "15", "unit": "unit:centimetre" },
+          "length": { "value": "20", "unit": "unit:centimetre" },
+          "height": { "value": "8", "unit": "unit:centimetre" },
+          "weight": { "value": "850", "unit": "unit:gram" }
+        }
+      },
+      "commercial": { "purpose": ["Electronic control unit for vehicle systems"] }
+    },
+    createdAt: '2025-11-12T09:30:00Z',
+    updatedAt: '2025-11-20T11:15:00Z',
+    createdBy: 'user@company.com'
+  },
+  {
+    id: 'CX:SENS-T200:SENS-T200-SN-11223',
+    name: 'Temperature Sensor T200',
+    version: '6.1.0',
+    semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
+    status: 'draft',
+    twinAssociation: {
+      twinId: 'twin-004',
+      aasId: 'aas-004',
+      manufacturerPartId: 'SENS-T200',
+      serialNumber: 'SENS-T200-SN-11223',
+      twinName: 'Temperature Sensor T200'
+    },
+    data: {
+      "metadata": {
+        "version": "6.1.0",
+        "specVersion": "6.1.0",
+        "status": "draft",
+        "issueDate": "2025-11-22",
+        "passportIdentifier": "g5h6i7j8-9k0l-1m2n-3o4p-5q6r7s8t9u0v",
+        "language": "en",
+        "economicOperatorId": "BPNL000000000000"
+      },
+      "identification": {
+        "type": {
+          "manufacturerPartId": "SENS-T200",
+          "nameAtManufacturer": "Temperature Sensor T200"
+        },
+        "codes": [{ "key": "EAN", "value": "1122334455667" }]
+      },
+      "characteristics": {
+        "physicalDimension": {
+          "width": { "value": "3", "unit": "unit:centimetre" },
+          "length": { "value": "8", "unit": "unit:centimetre" },
+          "height": { "value": "2", "unit": "unit:centimetre" },
+          "weight": { "value": "45", "unit": "unit:gram" }
+        }
+      }
+    },
+    createdAt: '2025-11-22T14:20:00Z',
+    updatedAt: '2025-11-22T14:20:00Z',
+    createdBy: 'user@company.com'
+  },
+  {
+    id: 'CX:WHEEL-W17:WHEEL-W17-SN-99887',
+    name: 'Alloy Wheel 17 inch Sport',
+    version: '6.1.0',
+    semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
+    status: 'active',
+    twinAssociation: {
+      twinId: 'twin-005',
+      aasId: 'aas-005',
+      manufacturerPartId: 'WHEEL-W17',
+      serialNumber: 'WHEEL-W17-SN-99887',
+      twinName: 'Alloy Wheel 17 inch Sport'
+    },
+    data: {
+      "metadata": {
+        "version": "6.1.0",
+        "specVersion": "6.1.0",
+        "status": "approved",
+        "expirationDate": "2026-02-28",
+        "issueDate": "2025-11-05",
+        "passportIdentifier": "h6i7j8k9-0l1m-2n3o-4p5q-6r7s8t9u0v1w",
+        "language": "en",
+        "economicOperatorId": "BPNL000000000000"
+      },
+      "identification": {
+        "type": {
+          "manufacturerPartId": "WHEEL-W17",
+          "nameAtManufacturer": "Alloy Wheel 17 inch Sport"
+        }
+      },
+      "characteristics": {
+        "physicalDimension": {
+          "diameter": { "value": "43", "unit": "unit:centimetre" },
+          "weight": { "value": "8500", "unit": "unit:gram" }
+        }
+      }
+    },
+    createdAt: '2025-11-05T10:00:00Z',
+    updatedAt: '2025-11-18T13:30:00Z',
+    createdBy: 'user@company.com'
+  },
+  {
+    id: 'CX:BRAKE-B450:BRAKE-B450-SN-77665',
+    name: 'Ceramic Brake Disc B450',
+    version: '6.1.0',
+    semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
+    status: 'shared',
+    twinAssociation: {
+      twinId: 'twin-006',
+      aasId: 'aas-006',
+      manufacturerPartId: 'BRAKE-B450',
+      serialNumber: 'BRAKE-B450-SN-77665',
+      twinName: 'Ceramic Brake Disc B450'
+    },
+    data: {
+      "metadata": {
+        "version": "6.1.0",
+        "specVersion": "6.1.0",
+        "status": "approved",
+        "expirationDate": "2026-03-20",
+        "issueDate": "2025-11-08",
+        "passportIdentifier": "i7j8k9l0-1m2n-3o4p-5q6r-7s8t9u0v1w2x",
+        "language": "en",
+        "economicOperatorId": "BPNL000000000000"
+      },
+      "identification": {
+        "type": {
+          "manufacturerPartId": "BRAKE-B450",
+          "nameAtManufacturer": "Ceramic Brake Disc B450"
+        }
+      }
+    },
+    createdAt: '2025-11-08T11:45:00Z',
+    updatedAt: '2025-11-19T15:20:00Z',
+    createdBy: 'user@company.com'
+  },
+  {
+    id: 'CX:TRANS-TX9:TRANS-TX9-SN-44332',
+    name: 'Automatic Transmission TX9',
+    version: '6.1.0',
+    semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
+    status: 'active',
+    twinAssociation: {
+      twinId: 'twin-007',
+      aasId: 'aas-007',
+      manufacturerPartId: 'TRANS-TX9',
+      serialNumber: 'TRANS-TX9-SN-44332',
+      twinName: 'Automatic Transmission TX9'
+    },
+    data: {
+      "metadata": {
+        "version": "6.1.0",
+        "specVersion": "6.1.0",
+        "status": "approved",
+        "expirationDate": "2026-04-15",
+        "issueDate": "2025-11-14",
+        "passportIdentifier": "j8k9l0m1-2n3o-4p5q-6r7s-8t9u0v1w2x3y",
+        "language": "en",
+        "economicOperatorId": "BPNL000000000000"
+      },
+      "identification": {
+        "type": {
+          "manufacturerPartId": "TRANS-TX9",
+          "nameAtManufacturer": "Automatic Transmission TX9"
+        }
+      },
+      "characteristics": {
+        "physicalDimension": {
+          "weight": { "value": "85000", "unit": "unit:gram" }
+        }
+      }
+    },
+    createdAt: '2025-11-14T08:00:00Z',
+    updatedAt: '2025-11-21T10:30:00Z',
+    createdBy: 'user@company.com'
+  },
+  {
+    id: 'CX:SEAT-S300:SEAT-S300-SN-22110',
+    name: 'Comfort Seat S300 Leather',
+    version: '6.1.0',
+    semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
+    status: 'pending',
+    twinAssociation: {
+      twinId: 'twin-008',
+      aasId: 'aas-008',
+      manufacturerPartId: 'SEAT-S300',
+      serialNumber: 'SEAT-S300-SN-22110',
+      twinName: 'Comfort Seat S300 Leather'
+    },
+    data: {
+      "metadata": {
+        "version": "6.1.0",
+        "specVersion": "6.1.0",
+        "status": "pending",
+        "issueDate": "2025-11-23",
+        "passportIdentifier": "k9l0m1n2-3o4p-5q6r-7s8t-9u0v1w2x3y4z",
+        "language": "en",
+        "economicOperatorId": "BPNL000000000000"
+      },
+      "identification": {
+        "type": {
+          "manufacturerPartId": "SEAT-S300",
+          "nameAtManufacturer": "Comfort Seat S300 Leather"
+        }
+      }
+    },
+    createdAt: '2025-11-23T09:15:00Z',
+    updatedAt: '2025-11-23T09:15:00Z',
+    createdBy: 'user@company.com'
   }
 ];
 
