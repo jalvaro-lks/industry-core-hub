@@ -127,7 +127,7 @@ const KitCard: React.FC<KitCardProps> = ({ kit, isCenter = false }) => {
             />
           </Box>
 
-          {/* Kit Image/Icon centered */}
+                   {/* Kit Image/Icon centered */}
           <Box display="flex" justifyContent="center" mb={1.5}>
             {kit.image ? (
               <Box

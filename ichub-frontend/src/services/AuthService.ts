@@ -85,7 +85,6 @@ class AuthService {
   private async initializeKeycloak(): Promise<void> {
     const keycloakConfig = environmentService.getKeycloakConfig();
     const initOptions = environmentService.getKeycloakInitOptions();
-
     this.keycloak = new Keycloak({
       url: keycloakConfig.url,
       realm: keycloakConfig.realm,

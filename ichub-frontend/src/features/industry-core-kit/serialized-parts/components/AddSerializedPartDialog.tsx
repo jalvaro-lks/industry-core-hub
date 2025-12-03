@@ -200,6 +200,11 @@ interface AddSerializedPartDialogProps {
             return;
         }
         
+        // Check if catalog part exists for this manufacturer (strict check)
+        const existsCatalogPair = catalogParts.some(
+            (p) => p.manufacturerPartId === formData.manufacturerPartId && p.manufacturerId === formData.manufacturerId
+        );
+        
         try {
             const response = await addSerializedPart(formData, false); // First try without auto-generation
             setNotification({
@@ -233,6 +238,20 @@ interface AddSerializedPartDialogProps {
                 });
             } else {
                 // Other errors
+                setNotification({
+                    open: true,
+                    severity: 'error',
+                    title: `Failed to create serialized part: ${errorMessage}`,
+                });
+            }
+            // If backend says not found but we had a matching pair locally, treat as error, not creation flow
+            if (errorMessage.includes('Catalog part') && errorMessage.includes('not found') && existsCatalogPair) {
+                setNotification({
+                    open: true,
+                    severity: 'error',
+                    title: 'Selected catalog part could not be found on server. Please refresh catalog or try again.',
+                });
+            } else {
                 setNotification({
                     open: true,
                     severity: 'error',
@@ -398,16 +417,12 @@ interface AddSerializedPartDialogProps {
                                 />
                             </Box>
                         </Grid>
-                        
                         <Grid item xs={12}>
                             <Autocomplete
                                 options={manufacturerPartIdOptions}
                                 value={formData.manufacturerPartId}
                                 onChange={(_, newValue) => setFormData({ ...formData, manufacturerPartId: newValue || '' })}
-                                onInputChange={(_, newInputValue) => {
-                                    // Update formData when user types directly in the field
-                                    setFormData({ ...formData, manufacturerPartId: newInputValue });
-                                }}
+                                onInputChange={(_, newInputValue) => setFormData({ ...formData, manufacturerPartId: newInputValue || '' })}
                                 freeSolo
                                 fullWidth
                                 renderInput={(params) => (
@@ -518,7 +533,6 @@ interface AddSerializedPartDialogProps {
                                 }}>
                                     Optional Fields
                                 </Typography>
-                                
                                 <FormControlLabel
                                     control={
                                         <Checkbox
