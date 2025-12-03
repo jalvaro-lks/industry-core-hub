@@ -43,6 +43,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
 } from '@mui/material';
 import {
@@ -103,6 +104,8 @@ const PassportProvisionWizard: React.FC = () => {
   // Step 4: Review
   const [status] = useState<'draft' | 'active'>('draft');
   const [showPreview, setShowPreview] = useState(false);
+  const [publishingDialog, setPublishingDialog] = useState(false);
+  const [publishingResult, setPublishingResult] = useState<{ success: boolean; submodelId?: string; error?: string } | null>(null);
 
   const handleNext = async () => {
     setError(null);
@@ -250,7 +253,8 @@ const PassportProvisionWizard: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    setLoading(true);
+    setPublishingDialog(true);
+    setPublishingResult(null);
     setError(null);
 
     try {
@@ -272,20 +276,33 @@ const PassportProvisionWizard: React.FC = () => {
       );
 
       if (!result.success) {
-        throw new Error(result.message || 'Failed to create Digital Product Passport');
+        setPublishingResult({
+          success: false,
+          error: result.message || 'Failed to create Digital Product Passport'
+        });
+        return;
       }
 
-      // Show success message
-      setSuccessMessage('Digital Product Passport created successfully');
-      
-      // Navigate back to the list after a short delay
+      // Show success with submodel ID
+      setPublishingResult({
+        success: true,
+        submodelId: result.submodelId
+      });
+    } catch (err) {
+      setPublishingResult({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to create Digital Product Passport'
+      });
+    }
+  };
+
+  const handleClosePublishingDialog = () => {
+    setPublishingDialog(false);
+    if (publishingResult?.success) {
+      // Navigate back to the list after successful creation
       setTimeout(() => {
         navigate('/passport/provision');
-      }, 1500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create Digital Product Passport');
-    } finally {
-      setLoading(false);
+      }, 500);
     }
   };
 
@@ -1379,6 +1396,175 @@ const PassportProvisionWizard: React.FC = () => {
             </Box>
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Publishing Dialog */}
+      <Dialog
+        open={publishingDialog}
+        onClose={publishingResult ? handleClosePublishingDialog : undefined}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'rgba(10, 10, 15, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(139, 92, 246, 0.2)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          color: '#fff',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          pb: 2,
+          textAlign: 'center'
+        }}>
+          {!publishingResult ? 'Publishing DPP...' : publishingResult.success ? 'DPP Published Successfully' : 'Publishing Failed'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          {!publishingResult ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+              <CircularProgress size={60} sx={{ color: '#8b5cf6', mb: 2 }} />
+              <Typography sx={{ color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>
+                Creating Digital Product Passport...
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', mt: 1, fontSize: '0.875rem' }}>
+                Please wait while we register your DPP
+              </Typography>
+            </Box>
+          ) : publishingResult.success ? (
+            <Box sx={{ py: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, justifyContent: 'center' }}>
+                <CheckCircle sx={{ fontSize: 60, color: '#10b981' }} />
+              </Box>
+              <Alert 
+                severity="success" 
+                sx={{ 
+                  mb: 2,
+                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                  color: '#10b981',
+                }}
+              >
+                Your Digital Product Passport has been successfully published!
+              </Alert>
+              {publishingResult.submodelId && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.6)', mb: 1, fontSize: '0.875rem' }}>
+                    Submodel ID:
+                  </Typography>
+                  <Box sx={{ 
+                    bgcolor: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: 1,
+                    p: 1.5,
+                    fontFamily: 'monospace',
+                    fontSize: '0.875rem',
+                    color: '#a78bfa',
+                    wordBreak: 'break-all'
+                  }}>
+                    {publishingResult.submodelId}
+                  </Box>
+                </Box>
+              )}
+              
+              {/* Status and Share Option */}
+              <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.875rem' }}>
+                    Current Status:
+                  </Typography>
+                  <Chip
+                    label="Registered"
+                    size="small"
+                    sx={{
+                      bgcolor: 'rgba(16, 185, 129, 0.1)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#10b981',
+                      fontWeight: 600
+                    }}
+                  />
+                </Box>
+                <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                <Typography sx={{ color: 'rgba(255,255,255,0.7)', mb: 2, fontSize: '0.9rem' }}>
+                  Now you can share it with your partner!
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<LinkIcon />}
+                  sx={{
+                    borderColor: 'rgba(139, 92, 246, 0.5)',
+                    color: '#a78bfa',
+                    textTransform: 'none',
+                    py: 1.2,
+                    '&:hover': {
+                      borderColor: '#8b5cf6',
+                      bgcolor: 'rgba(139, 92, 246, 0.1)',
+                      color: '#a78bfa',
+                    }
+                  }}
+                >
+                  Share DPP
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ py: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, justifyContent: 'center' }}>
+                <Warning sx={{ fontSize: 60, color: '#ef4444' }} />
+              </Box>
+              <Alert 
+                severity="error"
+                sx={{ 
+                  bgcolor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  color: '#ef4444',
+                }}
+              >
+                {publishingResult.error || 'An error occurred while publishing the DPP'}
+              </Alert>
+            </Box>
+          )}
+        </DialogContent>
+        {publishingResult && !publishingResult.success && (
+          <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.12)', p: 2 }}>
+            <Button
+              onClick={handleClosePublishingDialog}
+              variant="contained"
+              sx={{
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                color: '#fff',
+                textTransform: 'none',
+                px: 3,
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                }
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        )}
+        {publishingResult && publishingResult.success && (
+          <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.12)', p: 2, gap: 1 }}>
+            <Button
+              onClick={handleClosePublishingDialog}
+              variant="outlined"
+              sx={{
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'rgba(255, 255, 255, 0.7)',
+                textTransform: 'none',
+                px: 3,
+                '&:hover': {
+                  borderColor: 'rgba(255, 255, 255, 0.4)',
+                  bgcolor: 'rgba(255, 255, 255, 0.05)',
+                }
+              }}
+            >
+              Back to List
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
     </Box>
   );
