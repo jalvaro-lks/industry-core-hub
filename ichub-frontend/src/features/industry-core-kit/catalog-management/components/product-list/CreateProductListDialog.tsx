@@ -23,7 +23,7 @@
 /** Created using an LLM (Github Copilot) review by a human committer */
 
 import { useState, useEffect, useRef } from "react";
-import { scrollToElement } from '../../../../utils/fieldNavigation';
+import { scrollToElement } from '@/utils/fieldNavigation';
 import {
   Box,
   TextField,
