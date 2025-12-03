@@ -64,7 +64,9 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   GridView as GridViewIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  ViewModule as ViewModuleIcon,
+  TableRows as TableRowsIcon
 } from '@mui/icons-material';
 import { DPPListItem } from '../types';
 import { fetchUserDPPs, deleteDPP, getDPPById } from '../api/provisionApi';
@@ -74,6 +76,22 @@ import { CardChip } from '../components/CardChip';
 import { getParticipantId } from '@/services/EnvironmentService';
 import { exportPassportToPDF } from '../../utils/pdfExport';
 import { QRCodeSVG } from 'qrcode.react';
+
+const getPassportType = (semanticId: string): string => {
+  if (!semanticId) return 'Unknown';
+  
+  // Extract the last part after the last # or /
+  const parts = semanticId.split(/[#\/]/);
+  const lastPart = parts[parts.length - 1];
+  
+  // Convert from camelCase or PascalCase to readable format
+  const readable = lastPart
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+  
+  return readable || 'Digital Product Passport';
+};
 
 const getStatusLabel = (status: string): string => {
   const statusMap: Record<string, string> = {
@@ -100,17 +118,48 @@ const PassportProvisionList: React.FC = () => {
   const openMenu = Boolean(anchorEl);
   const [copySuccess, setCopySuccess] = useState<{ [key: string]: boolean }>({});
   const [seeAllDialogOpen, setSeeAllDialogOpen] = useState(false);
+  const [dialogViewMode, setDialogViewMode] = useState<'cards' | 'grid'>('cards');
   const carouselRef = useRef<HTMLDivElement>(null);
   const [showCarouselControls, setShowCarouselControls] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  
   const checkCarouselOverflow = () => {
     if (carouselRef.current) {
       const { scrollWidth, clientWidth, scrollLeft } = carouselRef.current;
       const hasOverflow = scrollWidth > clientWidth;
       setShowCarouselControls(hasOverflow);
       setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+      
+      // Calculate active card index based on scroll position
+      const cardWidth = 352; // 320px card + 32px gap
+      const currentIndex = Math.round(scrollLeft / cardWidth);
+      setActiveCardIndex(currentIndex);
+      
+      // Calculate total pages based on how many cards fit in viewport
+      const cardsPerPage = Math.floor(clientWidth / cardWidth);
+      const pages = Math.ceil(filteredDpps.length / cardsPerPage);
+      setTotalPages(pages);
+      setCurrentPage(Math.floor(currentIndex / cardsPerPage));
+      
+      // Calculate smooth scroll progress based on card positions
+      // Progress should reach 100% when the last card is visible
+      const totalCards = filteredDpps.length;
+      const visibleCards = Math.floor(clientWidth / cardWidth);
+      const scrollableCards = Math.max(0, totalCards - visibleCards);
+      
+      if (scrollableCards > 0) {
+        const currentCardPosition = scrollLeft / cardWidth;
+        const progress = Math.min(1, currentCardPosition / scrollableCards);
+        setScrollProgress(progress);
+      } else {
+        setScrollProgress(0);
+      }
     }
   };
 
@@ -325,8 +374,23 @@ const PassportProvisionList: React.FC = () => {
         >
           Create Passport
         </Button>
+      </Box>
 
-        {/* Search Bar */}
+      {/* Sticky Search Bar */}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backgroundColor: 'rgba(10, 10, 15, 0.95)',
+          backdropFilter: 'blur(10px)',
+          py: 2,
+          mb: 2,
+          mx: -2,
+          px: 2,
+          borderBottom: '1px solid rgba(102, 126, 234, 0.1)',
+        }}
+      >
         <TextField
           fullWidth
           placeholder="Search by name, manufacturer part ID, or instance ID..."
@@ -369,6 +433,38 @@ const PassportProvisionList: React.FC = () => {
           mb: 2,
         }}
       >
+        {/* Left blur gradient */}
+        {showCarouselControls && canScrollLeft && (
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: '120px',
+              background: 'linear-gradient(to right, rgba(10, 10, 15, 0.95) 0%, rgba(10, 10, 15, 0.7) 40%, transparent 100%)',
+              zIndex: 5,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
+        {/* Right blur gradient */}
+        {showCarouselControls && canScrollRight && (
+          <Box
+            sx={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: '120px',
+              background: 'linear-gradient(to left, rgba(10, 10, 15, 0.95) 0%, rgba(10, 10, 15, 0.7) 40%, transparent 100%)',
+              zIndex: 5,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
         {showCarouselControls && canScrollLeft && (
           <IconButton
             onClick={() => scrollCarousel('left')}
@@ -443,31 +539,15 @@ const PassportProvisionList: React.FC = () => {
             overflowY: 'visible',
             scrollSnapType: 'x mandatory',
             scrollBehavior: 'smooth',
-            pb: 3,
+            pb: 2,
             pt: 1,
             WebkitOverflowScrolling: 'touch',
             flexWrap: 'nowrap !important',
             '&::-webkit-scrollbar': {
-              height: '12px',
+              display: 'none',
             },
-            '&::-webkit-scrollbar-track': {
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '10px',
-              margin: '0 20px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'linear-gradient(90deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%)',
-              borderRadius: '10px',
-              border: '2px solid rgba(255, 255, 255, 0.1)',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                background: 'linear-gradient(90deg, rgba(102, 126, 234, 1) 0%, rgba(118, 75, 162, 1) 100%)',
-                transform: 'scaleY(1.2)',
-              },
-              '&:active': {
-                background: 'rgba(102, 126, 234, 1)',
-              },
-            },
+            msOverflowStyle: 'none',
+            scrollbarWidth: 'none',
           }}
         >
           {filteredDpps.length === 0 ? (
@@ -505,15 +585,14 @@ const PassportProvisionList: React.FC = () => {
               <Box
                 className="custom-card"
                 sx={{ 
-                  height: 320,
-                  cursor: 'pointer',
+                  height: 400,
+                  cursor: 'default',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: '0 12px 32px rgba(102, 126, 234, 0.3)',
                   }
                 }}
-                onClick={() => handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`)}
               >
                 <Box className="custom-card-header" sx={{ alignItems: 'center', display: 'flex', gap: 1 }}>
                   <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
@@ -679,6 +758,56 @@ const PassportProvisionList: React.FC = () => {
                       </Tooltip>
                     </Box>
                   )}
+                  <Box sx={{ mt: 1.5, display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          color: 'rgba(255,255,255,0.45)', 
+                          fontWeight: 500, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.8px', 
+                          mb: '2px'
+                        }}
+                      >
+                        Passport Type
+                      </Typography>
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.76rem',
+                          color: 'rgba(255,255,255,0.87)',
+                          fontWeight: 500,
+                          letterSpacing: '0.1px'
+                        }}
+                      >
+                        {getPassportType(dpp.semanticId)}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          color: 'rgba(255,255,255,0.45)', 
+                          fontWeight: 500, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.8px', 
+                          mb: '2px'
+                        }}
+                      >
+                        Expiration
+                      </Typography>
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.76rem',
+                          color: 'rgba(255,255,255,0.87)',
+                          fontWeight: 500,
+                          letterSpacing: '0.1px'
+                        }}
+                      >
+                        No Expiration
+                      </Typography>
+                    </Box>
+                  </Box>
                   </Box>
                 </Box>
                 <Box className="custom-card-button-box" sx={{ pb: "0!important" }}>
@@ -717,7 +846,12 @@ const PassportProvisionList: React.FC = () => {
                       {formatShortDate(dpp.createdAt)}
                     </Typography>
                   </Box>
-                  <Button variant="contained" size="small" endIcon={<LaunchIcon />}>
+                  <Button 
+                    variant="contained" 
+                    size="small" 
+                    endIcon={<LaunchIcon />}
+                    onClick={() => handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`)}
+                  >
                     View
                   </Button>
                 </Box>
@@ -728,9 +862,39 @@ const PassportProvisionList: React.FC = () => {
         </Box>
       </Box>
 
-      {/* See All Button */}
+      {/* Carousel Indicators & See All Button */}
       {filteredDpps.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 2 }}>
+          {/* Progress Bar */}
+          {showCarouselControls && (
+            <Box 
+              sx={{ 
+                width: '200px',
+                height: '6px',
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderRadius: '3px',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  height: '100%',
+                  width: '40px',
+                  backgroundColor: 'rgba(102, 126, 234, 1)',
+                  borderRadius: '3px',
+                  transform: `translateX(${scrollProgress * (200 - 40)}px)`,
+                  transition: 'transform 0.1s ease-out',
+                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.5)',
+                }}
+              />
+            </Box>
+          )}
+          
+          {/* See All Button */}
           <Button
             variant="outlined"
             startIcon={<GridViewIcon />}
@@ -739,6 +903,11 @@ const PassportProvisionList: React.FC = () => {
               ...darkCardStyles.button.outlined,
               px: 4,
               py: 1.5,
+              color: '#fff',
+              '&:hover': {
+                color: '#fff',
+                borderColor: 'rgba(102, 126, 234, 0.8)',
+              }
             }}
           >
             See All ({filteredDpps.length})
@@ -750,14 +919,11 @@ const PassportProvisionList: React.FC = () => {
       <Dialog
         open={seeAllDialogOpen}
         onClose={() => setSeeAllDialogOpen(false)}
-        maxWidth={false}
+        fullScreen
         PaperProps={{
           sx: {
             ...darkCardStyles.card,
-            width: '90vw',
-            maxWidth: '1400px',
-            height: '85vh',
-            maxHeight: '900px',
+            m: 0,
           }
         }}
       >
@@ -769,260 +935,725 @@ const PassportProvisionList: React.FC = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            pb: 2
+            pb: 2,
+            pt: 3,
+            px: 4,
+            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%)',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <GridViewIcon />
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              All Digital Product Passports ({filteredDpps.length})
-            </Typography>
+            <GridViewIcon sx={{ fontSize: 32, color: '#fff' }} />
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5, color: '#fff' }}>
+                All Digital Product Passports
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                {filteredDpps.length} passport{filteredDpps.length !== 1 ? 's' : ''} available
+              </Typography>
+            </Box>
           </Box>
-          <IconButton
-            onClick={() => setSeeAllDialogOpen(false)}
-            sx={{ color: 'rgba(255, 255, 255, 0.7)', '&:hover': { color: '#fff' } }}
-          >
-            <CloseIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {/* View Mode Toggle */}
+            <Box 
+              sx={{ 
+                display: 'flex',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '12px',
+                padding: '4px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              <Tooltip title="Card View" arrow>
+                <IconButton
+                  onClick={() => setDialogViewMode('cards')}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '8px',
+                    color: dialogViewMode === 'cards' ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                    backgroundColor: dialogViewMode === 'cards' ? 'rgba(102, 126, 234, 1)' : 'transparent',
+                    transition: 'all 0.3s ease',
+                    opacity: dialogViewMode === 'cards' ? 1 : 0.7,
+                    '&:hover': {
+                      backgroundColor: dialogViewMode === 'cards' 
+                        ? 'rgba(102, 126, 234, 1)' 
+                        : 'rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      opacity: 1,
+                    }
+                  }}
+                >
+                  <ViewModuleIcon sx={{ fontSize: 20, color: 'white' }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Table View" arrow>
+                <IconButton
+                  onClick={() => setDialogViewMode('grid')}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '8px',
+                    color: dialogViewMode === 'grid' ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                    backgroundColor: dialogViewMode === 'grid' ? 'rgba(102, 126, 234, 1)' : 'transparent',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: dialogViewMode === 'grid' 
+                        ? 'rgba(102, 126, 234, 1)' 
+                        : 'rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      opacity: 1,
+                    }
+                  }}
+                >
+                  <TableRowsIcon sx={{ fontSize: 20, color: 'white' }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <IconButton
+              onClick={() => setSeeAllDialogOpen(false)}
+              sx={{ 
+                color: 'rgba(255, 255, 255, 0.7)', 
+                width: 48,
+                height: 48,
+                '&:hover': { 
+                  color: '#fff',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                } 
+              }}
+            >
+              <CloseIcon sx={{ fontSize: 28 }} />
+            </IconButton>
+          </Box>
         </DialogTitle>
-        <DialogContent sx={{ p: 3, overflow: 'auto' }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 2,
-              justifyContent: 'center',
+        <DialogContent sx={{ p: 0, overflow: 'auto', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+          {/* Sticky Search Filter */}
+          <Box 
+            sx={{ 
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              backgroundColor: 'rgba(10, 10, 20, 0.95)',
+              backdropFilter: 'blur(12px)',
+              borderBottom: '1px solid rgba(102, 126, 234, 0.2)',
+              py: 3,
+              px: 4,
             }}
           >
+            <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+              <TextField
+                fullWidth
+                placeholder="Search by name, ID, or discovery ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  ...darkCardStyles.input,
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '12px',
+                    '& fieldset': {
+                      borderColor: 'rgba(102, 126, 234, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(102, 126, 234, 0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'rgba(102, 126, 234, 0.8)',
+                    },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: '#fff',
+                    fontSize: '0.95rem',
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ p: 4 }}>
+          {dialogViewMode === 'cards' ? (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: 3,
+                maxWidth: '1600px',
+                mx: 'auto',
+              }}
+            >
             {filteredDpps.map((dpp) => (
               <Box 
                 key={dpp.id}
-                className="custom-card-box"
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(102, 126, 234, 0.2)',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&:hover': {
+                    transform: 'translateY(-8px) scale(1.02)',
+                    boxShadow: '0 20px 40px rgba(102, 126, 234, 0.3)',
+                    borderColor: 'rgba(102, 126, 234, 0.5)',
+                  }
+                }}
+                onClick={() => {
+                  setSeeAllDialogOpen(false);
+                  handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`);
+                }}
               >
-                <Box
-                  className="custom-card"
+                {/* Compact Header */}
+                <Box sx={{ 
+                  p: 2, 
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'linear-gradient(90deg, rgba(102, 126, 234, 0.08) 0%, transparent 100%)',
+                }}>
+                  <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
+                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    {(dpp.status === 'draft' || dpp.status === 'pending') && (
+                      <Tooltip title="Register" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('Register DPP:', dpp.id);
+                          }}
+                          sx={{ width: 32, height: 32 }}
+                        >
+                          {dpp.status === 'draft' ? (
+                            <CloudUploadIcon sx={{ fontSize: 18, color: 'rgba(79, 172, 254, 0.9)' }} />
+                          ) : (
+                            <CloudQueueIcon sx={{ fontSize: 18, color: 'rgba(255, 255, 255, 0.5)' }} />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {dpp.status !== 'draft' && dpp.status !== 'pending' && (
+                      <Tooltip title="Share" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShare(dpp.id);
+                          }}
+                          sx={{ width: 32, height: 32 }}
+                        >
+                          <IosShareIcon sx={{ fontSize: 18, color: 'white' }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="More options" arrow>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAnchorEl(e.currentTarget);
+                          setSelectedDppForMenu(dpp);
+                        }}
+                        sx={{ width: 32, height: 32 }}
+                      >
+                        <MoreVertIcon sx={{ fontSize: 18, color: 'rgba(255, 255, 255, 0.68)' }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+
+                {/* QR Code & Name Section */}
+                <Box sx={{ p: 2.5, textAlign: 'center' }}>
+                  {dpp.manufacturerPartId && dpp.serialNumber && (
+                    <Box 
+                      sx={{ 
+                        display: 'inline-flex',
+                        backgroundColor: '#fff',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        mb: 2,
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                      }}
+                    >
+                      <QRCodeSVG 
+                        value={`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`}
+                        size={120}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </Box>
+                  )}
+                  
+                  <Tooltip title={dpp.name} arrow placement="top">
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        fontWeight: 600,
+                        color: '#fff',
+                        mb: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        cursor: 'help'
+                      }}
+                    >
+                      {dpp.name}
+                    </Typography>
+                  </Tooltip>
+
+                  <Box sx={{ 
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderRadius: '8px',
+                    p: 1.5,
+                    mb: 1.5,
+                  }}>
+                    <Typography 
+                      sx={{ 
+                        fontSize: '0.65rem', 
+                        color: 'rgba(255,255,255,0.5)', 
+                        fontWeight: 600, 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '1px', 
+                        mb: 0.5,
+                      }}
+                    >
+                      Discovery ID
+                    </Typography>
+                    <Tooltip title={dpp.manufacturerPartId && dpp.serialNumber ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}` : 'N/A'} arrow>
+                      <Typography 
+                        sx={{ 
+                          fontFamily: 'Monaco, "Lucida Console", monospace',
+                          fontSize: '0.7rem',
+                          color: 'rgba(102, 126, 234, 1)',
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          cursor: 'help'
+                        }}
+                      >
+                        {dpp.manufacturerPartId && dpp.serialNumber 
+                          ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`
+                          : 'N/A'
+                        }
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+
+                  {dpp.passportIdentifier && (
+                    <Box 
+                      sx={{ 
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        p: 1.5,
+                        mb: 1.5,
+                      }}
+                    >
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          color: 'rgba(255,255,255,0.5)', 
+                          fontWeight: 600, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '1px', 
+                          mb: 0.5,
+                        }}
+                      >
+                        Passport ID
+                      </Typography>
+                      <Tooltip title={dpp.passportIdentifier} arrow>
+                        <Typography 
+                          sx={{ 
+                            fontFamily: 'Monaco, "Lucida Console", monospace',
+                            fontSize: '0.7rem',
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            cursor: 'help'
+                          }}
+                        >
+                          {dpp.passportIdentifier}
+                        </Typography>
+                      </Tooltip>
+                    </Box>
+                  )}
+
+                  {/* Passport Type and Expiration */}
+                  <Box sx={{ display: 'flex', gap: 1.5 }}>
+                    <Box 
+                      sx={{ 
+                        flex: 1,
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        p: 1.5,
+                      }}
+                    >
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          color: 'rgba(255,255,255,0.5)', 
+                          fontWeight: 600, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '1px', 
+                          mb: 0.5,
+                        }}
+                      >
+                        Type
+                      </Typography>
+                      <Tooltip title={getPassportType(dpp.semanticId)} arrow>
+                        <Typography 
+                          sx={{ 
+                            fontSize: '0.7rem',
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            cursor: 'help'
+                          }}
+                        >
+                          {getPassportType(dpp.semanticId)}
+                        </Typography>
+                      </Tooltip>
+                    </Box>
+                    <Box 
+                      sx={{ 
+                        flex: 1,
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '8px',
+                        p: 1.5,
+                      }}
+                    >
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.65rem', 
+                          color: 'rgba(255,255,255,0.5)', 
+                          fontWeight: 600, 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '1px', 
+                          mb: 0.5,
+                        }}
+                      >
+                        Expires
+                      </Typography>
+                      <Typography 
+                        sx={{ 
+                          fontSize: '0.7rem',
+                          color: 'rgba(255, 255, 255, 0.8)',
+                          fontWeight: 500,
+                        }}
+                      >
+                        No Expiration
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Compact Footer */}
+                <Box 
                   sx={{ 
-                    height: 320,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 12px 32px rgba(102, 126, 234, 0.3)',
-                    }
-                  }}
-                  onClick={() => {
-                    setSeeAllDialogOpen(false);
-                    handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`);
+                    px: 2.5,
+                    py: 1.5,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: 'rgba(0, 0, 0, 0.2)',
                   }}
                 >
-                  <Box className="custom-card-header" sx={{ alignItems: 'center', display: 'flex', gap: 1 }}>
-                    <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
-                    <Box className="custom-card-header-buttons">
-                      {(dpp.status === 'draft' || dpp.status === 'pending') && (
-                        <Tooltip title="Register passport" arrow>
-                          <span>
-                            <IconButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('Register DPP:', dpp.id);
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontSize: '0.7rem',
+                        color: 'rgba(79, 172, 254, 0.9)',
+                        fontWeight: 600,
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      v{dpp.version}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: '0.65rem',
+                        color: 'rgba(255, 255, 255, 0.4)'
+                      }}
+                    >
+                      {formatShortDate(dpp.createdAt)}
+                    </Typography>
+                  </Box>
+                  <Button 
+                    variant="contained" 
+                    size="small" 
+                    endIcon={<LaunchIcon sx={{ fontSize: 14 }} />}
+                    sx={{
+                      fontSize: '0.75rem',
+                      py: 0.5,
+                      px: 2,
+                      background: 'linear-gradient(135deg, rgba(102, 126, 234, 1) 0%, rgba(118, 75, 162, 0.9) 100%)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 1) 100%)',
+                      }
+                    }}
+                  >
+                    Open
+                  </Button>
+                </Box>
+              </Box>
+            ))}
+            </Box>
+          ) : (
+            /* Table View */
+            <Box sx={{ maxWidth: '1600px', mx: 'auto' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 2,
+                }}
+              >
+                {filteredDpps.map((dpp) => (
+                  <Box
+                    key={dpp.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      p: 2.5,
+                      background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.95) 0%, rgba(20, 20, 30, 0.98) 100%)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(102, 126, 234, 0.2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+                        borderColor: 'rgba(102, 126, 234, 0.5)',
+                      }
+                    }}
+                    onClick={() => {
+                      setSeeAllDialogOpen(false);
+                      handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`);
+                    }}
+                  >
+                    {/* QR Code */}
+                    {dpp.manufacturerPartId && dpp.serialNumber && (
+                      <Box 
+                        sx={{ 
+                          flexShrink: 0,
+                          backgroundColor: '#fff',
+                          padding: '8px',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                        }}
+                      >
+                        <QRCodeSVG 
+                          value={`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`}
+                          size={60}
+                          level="M"
+                          includeMargin={false}
+                        />
+                      </Box>
+                    )}
+
+                    {/* Main Info */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                        <Typography 
+                          variant="h6" 
+                          sx={{ 
+                            fontWeight: 600,
+                            color: '#fff',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {dpp.name}
+                        </Typography>
+                        <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                        <Box>
+                          <Typography 
+                            sx={{ 
+                              fontSize: '0.65rem', 
+                              color: 'rgba(255,255,255,0.5)', 
+                              fontWeight: 600, 
+                              textTransform: 'uppercase', 
+                              letterSpacing: '1px', 
+                              mb: 0.3,
+                            }}
+                          >
+                            Discovery ID
+                          </Typography>
+                          <Typography 
+                            sx={{ 
+                              fontFamily: 'Monaco, "Lucida Console", monospace',
+                              fontSize: '0.75rem',
+                              color: 'rgba(102, 126, 234, 1)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {dpp.manufacturerPartId && dpp.serialNumber 
+                              ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`
+                              : 'N/A'
+                            }
+                          </Typography>
+                        </Box>
+                        {dpp.passportIdentifier && (
+                          <Box>
+                            <Typography 
+                              sx={{ 
+                                fontSize: '0.65rem', 
+                                color: 'rgba(255,255,255,0.5)', 
+                                fontWeight: 600, 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '1px', 
+                                mb: 0.3,
                               }}
                             >
-                              {dpp.status === 'draft' ? (
-                                <CloudUploadIcon className="register-btn" />
-                              ) : (
-                                <CloudQueueIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
-                              )}
-                            </IconButton>
-                          </span>
+                              Passport ID
+                            </Typography>
+                            <Typography 
+                              sx={{ 
+                                fontFamily: 'Monaco, "Lucida Console", monospace',
+                                fontSize: '0.75rem',
+                                color: 'rgba(255, 255, 255, 0.8)',
+                                fontWeight: 500,
+                              }}
+                            >
+                              {dpp.passportIdentifier}
+                            </Typography>
+                          </Box>
+                        )}
+                        <Box>
+                          <Typography 
+                            sx={{ 
+                              fontSize: '0.65rem', 
+                              color: 'rgba(255,255,255,0.5)', 
+                              fontWeight: 600, 
+                              textTransform: 'uppercase', 
+                              letterSpacing: '1px', 
+                              mb: 0.3,
+                            }}
+                          >
+                            Version
+                          </Typography>
+                          <Typography 
+                            sx={{ 
+                              fontSize: '0.75rem',
+                              color: 'rgba(79, 172, 254, 0.9)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            v{dpp.version}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography 
+                            sx={{ 
+                              fontSize: '0.65rem', 
+                              color: 'rgba(255,255,255,0.5)', 
+                              fontWeight: 600, 
+                              textTransform: 'uppercase', 
+                              letterSpacing: '1px', 
+                              mb: 0.3,
+                            }}
+                          >
+                            Created
+                          </Typography>
+                          <Typography 
+                            sx={{ 
+                              fontSize: '0.75rem',
+                              color: 'rgba(255, 255, 255, 0.7)',
+                            }}
+                          >
+                            {formatShortDate(dpp.createdAt)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {/* Actions */}
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexShrink: 0 }}>
+                      {(dpp.status === 'draft' || dpp.status === 'pending') && (
+                        <Tooltip title="Register" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('Register DPP:', dpp.id);
+                            }}
+                            sx={{ width: 36, height: 36 }}
+                          >
+                            {dpp.status === 'draft' ? (
+                              <CloudUploadIcon sx={{ fontSize: 20, color: 'rgba(79, 172, 254, 0.9)' }} />
+                            ) : (
+                              <CloudQueueIcon sx={{ fontSize: 20, color: 'rgba(255, 255, 255, 0.5)' }} />
+                            )}
+                          </IconButton>
                         </Tooltip>
                       )}
                       {dpp.status !== 'draft' && dpp.status !== 'pending' && (
-                        <Tooltip title="Share passport" arrow>
+                        <Tooltip title="Share" arrow>
                           <IconButton
+                            size="small"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleShare(dpp.id);
                             }}
+                            sx={{ width: 36, height: 36 }}
                           >
-                            <IosShareIcon sx={{ color: 'white' }} />
+                            <IosShareIcon sx={{ fontSize: 20, color: 'white' }} />
                           </IconButton>
                         </Tooltip>
                       )}
                       <Tooltip title="More options" arrow>
                         <IconButton
+                          size="small"
                           onClick={(e) => {
                             e.stopPropagation();
                             setAnchorEl(e.currentTarget);
                             setSelectedDppForMenu(dpp);
                           }}
+                          sx={{ width: 36, height: 36 }}
                         >
-                          <MoreVertIcon sx={{ color: 'rgba(255, 255, 255, 0.68)' }} />
+                          <MoreVertIcon sx={{ fontSize: 20, color: 'rgba(255, 255, 255, 0.68)' }} />
                         </IconButton>
                       </Tooltip>
-                    </Box>
-                  </Box>
-                  <Box className="custom-card-content" sx={{ overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 1 }}>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Tooltip title={dpp.name} arrow placement="top">
-                          <Typography variant="h5" sx={{ mb: 0.5, wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto', cursor: 'help' }}>
-                            {(() => {
-                              const passportName = dpp.name;
-                              if (passportName.length <= 55) return passportName;
-                              const startLength = 15;
-                              const endLength = 15;
-                              return `${passportName.substring(0, startLength)}...${passportName.substring(passportName.length - endLength)}`;
-                            })()}
-                          </Typography>
-                        </Tooltip>
-                      </Box>
-                      {dpp.manufacturerPartId && dpp.serialNumber && (
-                        <Box 
-                          sx={{ 
-                            flexShrink: 0,
-                            backgroundColor: '#fff',
-                            padding: '6px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
-                          }}
-                        >
-                          <QRCodeSVG 
-                            value={`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`}
-                            size={70}
-                            level="M"
-                            includeMargin={false}
-                          />
-                        </Box>
-                      )}
-                    </Box>
-                    <Box sx={{ mt: 0.5, flex: 1, minHeight: 0 }}>
-                      <Typography 
-                        sx={{ 
-                          fontSize: '0.65rem', 
-                          color: 'rgba(255,255,255,0.45)', 
-                          fontWeight: 500, 
-                          textTransform: 'uppercase', 
-                          letterSpacing: '0.8px', 
-                          mb: '0px',
-                          display: 'block'
-                        }}
-                      >
-                        Passport Discovery ID
-                      </Typography>
-                      <Tooltip title={dpp.manufacturerPartId && dpp.serialNumber ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}` : 'N/A'} arrow placement="top">
-                        <Typography 
-                          sx={{ 
-                            fontFamily: 'Monaco, "Lucida Console", monospace',
-                            fontSize: '0.76rem',
-                            color: 'rgba(255,255,255,0.87)',
-                            lineHeight: 1.1,
-                            fontWeight: 500,
-                            letterSpacing: '0.1px',
-                            display: 'block',
-                            mb: '0px',
-                            maxWidth: '100%',
-                            cursor: 'help'
-                          }}
-                        >
-                          {(() => {
-                            if (!dpp.manufacturerPartId || !dpp.serialNumber) return 'N/A';
-                            const passportId = `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`;
-                            if (passportId.length <= 30) return passportId;
-                            const startLength = 15;
-                            const endLength = 12;
-                            return `${passportId.substring(0, startLength)}...${passportId.substring(passportId.length - endLength)}`;
-                        })()}
-                      </Typography>
-                    </Tooltip>
-                    {dpp.passportIdentifier && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography 
-                          sx={{ 
-                            fontSize: '0.65rem', 
-                            color: 'rgba(255,255,255,0.45)', 
-                            fontWeight: 500, 
-                            textTransform: 'uppercase', 
-                            letterSpacing: '0.8px', 
-                            mb: '0px',
-                            display: 'block'
-                          }}
-                        >
-                          Passport ID
-                        </Typography>
-                        <Tooltip title={dpp.passportIdentifier} arrow placement="top">
-                          <Typography 
-                            sx={{ 
-                              fontFamily: 'Monaco, "Lucida Console", monospace',
-                              fontSize: '0.76rem',
-                              color: 'rgba(255,255,255,0.87)',
-                              lineHeight: 1.1,
-                              fontWeight: 500,
-                              letterSpacing: '0.1px',
-                              display: 'block',
-                              mb: '0px',
-                              maxWidth: '100%',
-                              cursor: 'help'
-                            }}
-                          >
-                            {(() => {
-                              const passportId = dpp.passportIdentifier;
-                              if (passportId.length <= 30) return passportId;
-                              const startLength = 15;
-                              const endLength = 12;
-                              return `${passportId.substring(0, startLength)}...${passportId.substring(passportId.length - endLength)}`;
-                            })()}
-                          </Typography>
-                        </Tooltip>
-                      </Box>
-                    )}
-                    </Box>
-                  </Box>
-                  <Box className="custom-card-button-box" sx={{ pb: "0!important" }}>
-                    <Box 
-                      sx={{ 
-                        mb: 0,
-                        mx: 0,
-                        display: 'flex', 
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: 'linear-gradient(90deg, rgba(79, 172, 254, 0.15) 0%, rgba(79, 172, 254, 0.08) 100%)',
-                        borderTop: '1px solid rgba(79, 172, 254, 0.2)',
-                        borderBottom: '1px solid rgba(79, 172, 254, 0.2)',
-                        py: 0.8,
-                        px: 2,
-                        position: 'relative'
-                      }}
-                    >
-                      <Typography
+                      <Button 
+                        variant="contained" 
+                        size="small" 
+                        endIcon={<LaunchIcon sx={{ fontSize: 14 }} />}
                         sx={{
-                          fontSize: '0.65rem',
-                          color: 'rgba(79, 172, 254, 0.9)',
-                          fontWeight: 600,
-                          letterSpacing: '0.4px',
-                          textTransform: 'uppercase'
+                          fontSize: '0.75rem',
+                          py: 0.75,
+                          px: 2.5,
+                          ml: 1,
+                          background: 'linear-gradient(135deg, rgba(102, 126, 234, 1) 0%, rgba(118, 75, 162, 0.9) 100%)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 1) 100%)',
+                          }
                         }}
                       >
-                        Version {dpp.version}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: '0.65rem',
-                          color: 'rgba(255, 255, 255, 0.5)'
-                        }}
-                      >
-                        {formatShortDate(dpp.createdAt)}
-                      </Typography>
+                        Open
+                      </Button>
                     </Box>
-                    <Button variant="contained" size="small" endIcon={<LaunchIcon />}>
-                      View
-                    </Button>
                   </Box>
-                </Box>
+                ))}
               </Box>
-            ))}
+            </Box>
+          )}
           </Box>
         </DialogContent>
       </Dialog>
