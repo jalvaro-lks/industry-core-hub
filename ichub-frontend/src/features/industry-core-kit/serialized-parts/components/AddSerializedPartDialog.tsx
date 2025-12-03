@@ -62,7 +62,7 @@ import { ApiPartData } from '@/features/industry-core-kit/catalog-management/typ
 interface AddSerializedPartDialogProps {
     open: boolean;
     onClose: () => void;
-    onSuccess?: () => void;
+    onSuccess?: (createdPart?: SerializedPart) => void;
 }const AddSerializedPartDialog = ({ open, onClose, onSuccess }: AddSerializedPartDialogProps) => {
     const manufacturerId = getParticipantId();
     const navigate = useNavigate();
@@ -201,7 +201,7 @@ interface AddSerializedPartDialogProps {
         }
         
         try {
-            await addSerializedPart(formData, false); // First try without auto-generation
+            const response = await addSerializedPart(formData, false); // First try without auto-generation
             setNotification({
                 open: true,
                 severity: 'success',
@@ -210,7 +210,7 @@ interface AddSerializedPartDialogProps {
             
             // Call onSuccess callback to refresh the table
             if (onSuccess) {
-                onSuccess();
+                onSuccess(response.data);
             }
             
             // Close dialog after short delay
@@ -256,7 +256,7 @@ interface AddSerializedPartDialogProps {
             };
             
             // Now try with auto-generation enabled
-            await addSerializedPart(completeFormData, true);
+            const response = await addSerializedPart(completeFormData, true);
             setNotification({
                 open: true,
                 severity: 'success',
@@ -265,7 +265,7 @@ interface AddSerializedPartDialogProps {
             
             // Call onSuccess callback to refresh the table
             if (onSuccess) {
-                onSuccess();
+                onSuccess(response.data);
             }
             
             // Close dialog after short delay

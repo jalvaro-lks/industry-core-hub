@@ -49,14 +49,17 @@ import {
   Save,
   Link as LinkIcon,
   Add,
+  CloudUpload,
 } from '@mui/icons-material';
 import { DPP_VERSION_REGISTRY } from '../config/dppVersionRegistry';
 import { createDPP } from '../api/provisionApi';
 import { TwinAssociation } from '../types';
 import SubmodelCreator from '@/components/submodel-creation/SubmodelCreator';
 import { darkCardStyles } from '../styles/cardStyles';
-import { fetchAllSerializedParts } from '@/features/industry-core-kit/serialized-parts/api';
+import { fetchAllSerializedParts, fetchAllSerializedPartTwins, createSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
 import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
+import { SerializedPartTwinRead } from '@/features/industry-core-kit/serialized-parts/types/twin-types';
+import { StatusVariants } from '@/features/industry-core-kit/catalog-management/types/types';
 import AddSerializedPartDialog from '@/features/industry-core-kit/serialized-parts/components/AddSerializedPartDialog';
 
 const steps = ['Select Version', 'Twin Association', 'DPP Data', 'Review & Create'];
@@ -66,6 +69,7 @@ const PassportProvisionWizard: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Step 1: Version Selection
   const [selectedVersion, setSelectedVersion] = useState(DPP_VERSION_REGISTRY[0]);
@@ -75,6 +79,9 @@ const PassportProvisionWizard: React.FC = () => {
   const [selectedPart, setSelectedPart] = useState<SerializedPart | null>(null);
   const [partsLoading, setPartsLoading] = useState(false);
   const [showAddPartDialog, setShowAddPartDialog] = useState(false);
+  const [partRegistrationStatus, setPartRegistrationStatus] = useState<StatusVariants | null>(null);
+  const [checkingRegistration, setCheckingRegistration] = useState(false);
+  const [registering, setRegistering] = useState(false);
 
   // Step 3: DPP Data (via SubmodelCreator)
   const [showSubmodelCreator, setShowSubmodelCreator] = useState(false);
@@ -94,6 +101,11 @@ const PassportProvisionWizard: React.FC = () => {
       // Twin association step
       if (!selectedPart) {
         setError('Please select a serialized part to associate with this DPP');
+        return;
+      }
+      // Check if part is registered
+      if (partRegistrationStatus !== StatusVariants.registered && partRegistrationStatus !== StatusVariants.shared) {
+        setError('The selected serialized part must be registered before creating a DPP. Please register it first.');
         return;
       }
       setActiveStep(2);
@@ -131,12 +143,78 @@ const PassportProvisionWizard: React.FC = () => {
     }
   };
 
-  const handlePartCreated = async () => {
-    setShowAddPartDialog(false);
-    await loadSerializedParts();
+  const checkPartRegistrationStatus = async (part: SerializedPart) => {
+    setCheckingRegistration(true);
+    setPartRegistrationStatus(null);
+    try {
+      const twins = await fetchAllSerializedPartTwins();
+      const twin = twins.find(
+        (t: SerializedPartTwinRead) =>
+          t.manufacturerPartId === part.manufacturerPartId &&
+          t.partInstanceId === part.partInstanceId
+      );
+
+      if (!twin) {
+        setPartRegistrationStatus(StatusVariants.draft);
+      } else if (twin.dtrAasId && twin.globalId) {
+        setPartRegistrationStatus(StatusVariants.shared);
+      } else {
+        setPartRegistrationStatus(StatusVariants.registered);
+      }
+    } catch (err) {
+      console.error('Failed to check registration status:', err);
+      setPartRegistrationStatus(StatusVariants.draft);
+    } finally {
+      setCheckingRegistration(false);
+    }
   };
 
-  const handleSubmodelCreated = async (submodelData: any) => {
+  const handleRegisterPart = async () => {
+    if (!selectedPart) return;
+
+    setRegistering(true);
+    setError(null);
+
+    try {
+      await createSerializedPartTwin({
+        manufacturerId: selectedPart.manufacturerId,
+        manufacturerPartId: selectedPart.manufacturerPartId,
+        partInstanceId: selectedPart.partInstanceId,
+      });
+
+      // Re-check registration status after successful registration
+      await checkPartRegistrationStatus(selectedPart);
+      
+      // Show success message
+      setSuccessMessage('Twin registered successfully!');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Failed to register serialized part:', err);
+      setError('Failed to register serialized part. Please try again.');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const handlePartCreated = async (createdPart?: SerializedPart) => {
+    setShowAddPartDialog(false);
+    await loadSerializedParts();
+    
+    if (createdPart) {
+      // Select the newly created part
+      setSelectedPart(createdPart);
+      setError(null);
+      
+      // Check registration status of the new part
+      await checkPartRegistrationStatus(createdPart);
+      
+      // Show success message
+      setSuccessMessage('Serialized part created successfully');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    }
+  };
+
+  const handleSubmodelCreated = (submodelData: any) => {
     setDppData(submodelData);
     setShowSubmodelCreator(false);
     setActiveStep(3);
@@ -277,7 +355,7 @@ const PassportProvisionWizard: React.FC = () => {
                   color: '#60a5fa',
                 }}
               >
-                Select an existing serialized part to link with this Digital Product Passport
+                Select an existing serialized part, or create a new one to link with this Digital Product Passport
               </Alert>
             </Box>
 
@@ -317,6 +395,12 @@ const PassportProvisionWizard: React.FC = () => {
                     value={selectedPart}
                     onChange={(_, value) => {
                       setSelectedPart(value);
+                      setError(null);
+                      if (value) {
+                        checkPartRegistrationStatus(value);
+                      } else {
+                        setPartRegistrationStatus(null);
+                      }
                     }}
                     slotProps={{
                       paper: {
@@ -380,38 +464,116 @@ const PassportProvisionWizard: React.FC = () => {
                       <Typography variant="body2" sx={{ color: '#fff', mb: 1 }}>
                         Selected Part:
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
                         <Chip
                           icon={<LinkIcon />}
-                          label={`${selectedPart.name}`}
+                          label={`Name: ${selectedPart.name}`}
                           size="small"
                           sx={darkCardStyles.chip.active}
                         />
                         <Chip
-                          label={`Part ID: ${selectedPart.manufacturerPartId}`}
+                          label={`Manufacturer Part ID: ${selectedPart.manufacturerPartId}`}
                           size="small"
                           sx={darkCardStyles.chip.default}
                         />
                         <Chip
-                          label={`Serial: ${selectedPart.partInstanceId}`}
+                          label={`Part Instance ID: ${selectedPart.partInstanceId}`}
                           size="small"
                           sx={darkCardStyles.chip.default}
                         />
+                        {selectedPart.van && (
+                          <Chip
+                            label={`VAN: ${selectedPart.van}`}
+                            size="small"
+                            sx={darkCardStyles.chip.default}
+                          />
+                        )}
                       </Box>
+                      
+                      {checkingRegistration ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CircularProgress size={16} />
+                          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                            Checking registration status...
+                          </Typography>
+                        </Box>
+                      ) : partRegistrationStatus ? (
+                        <Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                              Registration Status:
+                            </Typography>
+                            <Chip
+                              label={partRegistrationStatus}
+                              size="small"
+                              sx={{
+                                ...(
+                                  partRegistrationStatus === StatusVariants.registered || partRegistrationStatus === StatusVariants.shared
+                                    ? darkCardStyles.chip.active
+                                    : partRegistrationStatus === StatusVariants.draft
+                                    ? darkCardStyles.chip.draft
+                                    : darkCardStyles.chip.default
+                                )
+                              }}
+                            />
+                          </Box>
+                          {(partRegistrationStatus === StatusVariants.draft || partRegistrationStatus === StatusVariants.pending) && (
+                            <Alert
+                              severity="warning"
+                              sx={{
+                                bgcolor: 'rgba(245, 158, 11, 0.1)',
+                                border: '1px solid rgba(245, 158, 11, 0.3)',
+                                color: '#fbbf24',
+                                mb: 2
+                              }}
+                            >
+                              This serialized part must be registered as a digital twin before you can provision a DPP.
+                            </Alert>
+                          )}
+                          {(partRegistrationStatus === StatusVariants.draft || partRegistrationStatus === StatusVariants.pending) && (
+                            <Button
+                              fullWidth
+                              variant="contained"
+                              startIcon={registering ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+                              onClick={handleRegisterPart}
+                              disabled={registering}
+                              sx={{
+                                ...darkCardStyles.button.primary,
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)'
+                                }
+                              }}
+                            >
+                              {registering ? 'Registering...' : 'Register Serialized Part'}
+                            </Button>
+                          )}
+                        </Box>
+                      ) : null}
                     </Box>
                   )}
 
-                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
+                  {!selectedPart && (
+                    <>
+                      <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
 
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Add />}
-                    onClick={() => setShowAddPartDialog(true)}
-                    sx={darkCardStyles.button.outlined}
-                  >
-                    Create New Serialized Part
-                  </Button>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        startIcon={<Add />}
+                        onClick={() => setShowAddPartDialog(true)}
+                        sx={{
+                          ...darkCardStyles.button.outlined,
+                          '&:hover': {
+                            ...darkCardStyles.button.outlined['&:hover'],
+                            color: '#fff',
+                          }
+                        }}
+                      >
+                        Create New Serialized Part
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -602,6 +764,9 @@ const PassportProvisionWizard: React.FC = () => {
         {/* Stepper */}
         <Paper
           sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 90,
             background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(139, 92, 246, 0.2)',
@@ -609,6 +774,7 @@ const PassportProvisionWizard: React.FC = () => {
             p: 2.5,
             mb: 2.5,
             boxShadow: '0 8px 32px rgba(139, 92, 246, 0.15)',
+            bgcolor: 'rgba(10, 10, 15, 0.95)',
           }}
         >
           <Stepper activeStep={activeStep} alternativeLabel>
@@ -677,6 +843,20 @@ const PassportProvisionWizard: React.FC = () => {
             </Alert>
           )}
 
+          {successMessage && (
+            <Alert 
+              severity="success" 
+              sx={{ 
+                mb: 3,
+                bgcolor: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                color: '#10b981',
+              }}
+            >
+              {successMessage}
+            </Alert>
+          )}
+
           {renderStepContent()}
         </Paper>
 
@@ -693,7 +873,13 @@ const PassportProvisionWizard: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleNext}
-            disabled={loading}
+            disabled={
+              loading ||
+              (activeStep === 1 && 
+                (!selectedPart || 
+                  (partRegistrationStatus !== StatusVariants.registered && 
+                   partRegistrationStatus !== StatusVariants.shared)))
+            }
             endIcon={activeStep === 3 ? <Save /> : <ArrowForward />}
             sx={darkCardStyles.button.primary}
           >
