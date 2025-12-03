@@ -33,6 +33,9 @@ authorization:
     realm: "ICHub"
     client_id: "industry-core-hub-api"
     client_secret: "ichub-client-secret-2024"
+    retry:
+      max_retries: 3
+      retry_delay: 2
   configuration:
     agreements:
       - semanticid: urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
