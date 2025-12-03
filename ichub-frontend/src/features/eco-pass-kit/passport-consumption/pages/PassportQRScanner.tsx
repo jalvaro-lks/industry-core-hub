@@ -188,15 +188,15 @@ const PassportQRScanner: React.FC = () => {
               </Button>
             </Box>
 
-            {/* Camera Selector - Show when multiple cameras available */}
-            {cameras.length > 1 && (
-              <Box sx={{ mb: { xs: 2, sm: 3 }, position: 'relative', zIndex: 10 }}>
+            {/* Camera Selector - Show when cameras available */}
+            {cameras.length > 0 && (
+              <Box sx={{ mb: { xs: 2, sm: 3 }, position: 'relative', zIndex: 100 }}>
                 <FormControl 
                   fullWidth
                   size="small"
                   sx={{ 
                     position: 'relative',
-                    zIndex: 10,
+                    zIndex: 100,
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: 'rgba(255, 255, 255, 0.05)',
                       color: '#fff',
@@ -242,7 +242,7 @@ const PassportQRScanner: React.FC = () => {
                           border: '1px solid rgba(255, 255, 255, 0.1)',
                           borderRadius: { xs: '10px', sm: '12px' },
                           mt: 1,
-                          zIndex: 9999,
+                          zIndex: 99999,
                           '& .MuiMenuItem-root': {
                             color: '#fff',
                             fontSize: { xs: '13px', sm: '14px' },
@@ -255,10 +255,10 @@ const PassportQRScanner: React.FC = () => {
                                 backgroundColor: 'rgba(102, 126, 234, 0.4)'
                               }
                             }
-                          }
                         }
-                      },
-                      style: { zIndex: 9999 }
+                      }
+                    },
+                      style: { zIndex: 99999 }
                     }}
                   >
                     {cameras.map((camera, index) => (
