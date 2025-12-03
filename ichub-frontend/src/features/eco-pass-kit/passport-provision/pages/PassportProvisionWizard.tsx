@@ -1558,6 +1558,7 @@ const PassportProvisionWizard: React.FC = () => {
                 '&:hover': {
                   borderColor: 'rgba(255, 255, 255, 0.4)',
                   bgcolor: 'rgba(255, 255, 255, 0.05)',
+                  color: 'rgba(255, 255, 255, 0.7)',
                 }
               }}
             >
