@@ -126,7 +126,6 @@ const PassportProvisionList: React.FC = () => {
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
   
   const checkCarouselOverflow = () => {
     if (carouselRef.current) {
@@ -134,7 +133,7 @@ const PassportProvisionList: React.FC = () => {
       const hasOverflow = scrollWidth > clientWidth;
       setShowCarouselControls(hasOverflow);
       setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
       
       // Calculate active card index based on scroll position
       const cardWidth = 352; // 320px card + 32px gap
@@ -146,20 +145,6 @@ const PassportProvisionList: React.FC = () => {
       const pages = Math.ceil(filteredDpps.length / cardsPerPage);
       setTotalPages(pages);
       setCurrentPage(Math.floor(currentIndex / cardsPerPage));
-      
-      // Calculate smooth scroll progress based on card positions
-      // Progress should reach 100% when the last card is visible
-      const totalCards = filteredDpps.length;
-      const visibleCards = Math.floor(clientWidth / cardWidth);
-      const scrollableCards = Math.max(0, totalCards - visibleCards);
-      
-      if (scrollableCards > 0) {
-        const currentCardPosition = scrollLeft / cardWidth;
-        const progress = Math.min(1, currentCardPosition / scrollableCards);
-        setScrollProgress(progress);
-      } else {
-        setScrollProgress(0);
-      }
     }
   };
 
@@ -865,32 +850,40 @@ const PassportProvisionList: React.FC = () => {
       {/* Carousel Indicators & See All Button */}
       {filteredDpps.length > 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 2 }}>
-          {/* Progress Bar */}
-          {showCarouselControls && (
-            <Box 
-              sx={{ 
-                width: '200px',
-                height: '6px',
-                backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                borderRadius: '3px',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  height: '100%',
-                  width: '40px',
-                  backgroundColor: 'rgba(102, 126, 234, 1)',
-                  borderRadius: '3px',
-                  transform: `translateX(${scrollProgress * (200 - 40)}px)`,
-                  transition: 'transform 0.1s ease-out',
-                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.5)',
-                }}
-              />
+          {/* Dot Indicators */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {Array.from({ length: totalPages }).map((_, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    width: index === currentPage ? 24 : 8,
+                    height: 8,
+                    borderRadius: index === currentPage ? '4px' : '50%',
+                    backgroundColor: index === currentPage 
+                      ? 'rgba(102, 126, 234, 1)' 
+                      : 'rgba(102, 126, 234, 0.3)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: index === currentPage 
+                        ? 'rgba(102, 126, 234, 1)' 
+                        : 'rgba(102, 126, 234, 0.6)',
+                      transform: index === currentPage ? 'scale(1.1)' : 'scale(1.2)',
+                    }
+                  }}
+                  onClick={() => {
+                    const clientWidth = carouselRef.current?.clientWidth || 0;
+                    const cardWidth = 352;
+                    const cardsPerPage = Math.floor(clientWidth / cardWidth);
+                    const scrollPosition = index * cardsPerPage * cardWidth;
+                    carouselRef.current?.scrollTo({
+                      left: scrollPosition,
+                      behavior: 'smooth'
+                    });
+                  }}
+                />
+              ))}
             </Box>
           )}
           
