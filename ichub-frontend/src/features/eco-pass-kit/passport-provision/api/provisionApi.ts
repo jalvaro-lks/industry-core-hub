@@ -943,3 +943,37 @@ export const revokeSharingAccess = async (shareId: string): Promise<void> => {
     }
   }
 };
+
+/**
+ * Create twin aspect (submodel) for a digital twin
+ */
+export const createTwinAspect = async (
+  globalAssetId: string,
+  semanticId: string,
+  payload: Record<string, unknown>
+): Promise<{ success: boolean; message: string }> => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Call the /twin-aspect API
+  try {
+    // In a real implementation, this would be:
+    // const response = await apiClient.post('/twin-aspect', {
+    //   globalAssetId,
+    //   semanticId,
+    //   payload
+    // });
+    
+    console.log('Creating twin aspect:', {
+      globalAssetId,
+      semanticId,
+      payload
+    });
+    
+    return {
+      success: true,
+      message: 'Digital Product Passport created successfully'
+    };
+  } catch (error) {
+    throw new Error('Failed to create twin aspect');
+  }
+};

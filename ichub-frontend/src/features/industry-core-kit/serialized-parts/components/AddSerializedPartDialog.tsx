@@ -822,7 +822,7 @@ interface AddSerializedPartDialogProps {
                         variant="contained"
                         color="primary"
                         size="large"
-                        disabled={partners.length === 0}
+                        disabled={partners.length === 0 || !formData.partInstanceId.trim() || !formData.manufacturerPartId.trim() || !formData.businessPartnerNumber.trim()}
                         sx={{
                             minWidth: '100px',
                             textTransform: 'none',
@@ -870,6 +870,7 @@ interface AddSerializedPartDialogProps {
                             variant="contained"
                             color="primary"
                             size="large"
+                            disabled={!formData.partInstanceId.trim() || !formData.manufacturerPartId.trim() || !formData.businessPartnerNumber.trim()}
                             sx={{
                                 minWidth: '140px',
                                 textTransform: 'none',

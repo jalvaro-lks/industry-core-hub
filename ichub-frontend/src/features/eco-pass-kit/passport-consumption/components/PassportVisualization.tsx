@@ -49,13 +49,15 @@ interface PassportVisualizationProps {
   data: Record<string, unknown>;
   passportId: string;
   onBack: () => void;
+  digitalTwinData?: any;
 }
 
 export const PassportVisualization: React.FC<PassportVisualizationProps> = ({
   schema,
   data,
   passportId,
-  onBack
+  onBack,
+  digitalTwinData
 }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [snackbarOpen, setSnackbarOpen] = useState(false);

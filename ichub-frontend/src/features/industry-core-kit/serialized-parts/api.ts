@@ -95,7 +95,7 @@ export const createSerializedPartTwin = async (
       throw new Error('Backend URL not configured');
     }
     const response = await httpClient.post<TwinReadType>(
-      `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}`,
+      `${backendUrl}${SERIALIZED_PART_TWIN_BASE_PATH}?include_data_exchange_agreements=true`,
       twinData
     );
     return response.data;

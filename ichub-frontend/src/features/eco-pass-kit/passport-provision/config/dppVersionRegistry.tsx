@@ -23,6 +23,8 @@
 import React from 'react';
 import { SchemaDefinition, getSchemaBySemanticId } from '@/schemas';
 import { EnergySavingsLeaf } from '@mui/icons-material';
+import digitalProductPassportSchema from '@/schemas/DigitalProductPassport-schema.json';
+import { JsonSchema } from '@/features/eco-pass-kit/passport-consumption/types';
 
 /**
  * Configuration for a DPP version
@@ -32,6 +34,7 @@ export interface DPPVersionConfig {
   version: string;
   semanticId: string;
   schema: SchemaDefinition | undefined;
+  rawSchema: JsonSchema; // Raw JSON schema for PassportVisualization
   icon: React.ReactElement;
   color: string;
   features: string[];
@@ -49,6 +52,7 @@ export const DPP_VERSION_REGISTRY: DPPVersionConfig[] = [
     version: '6.1.0',
     semanticId: 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport',
     schema: getSchemaBySemanticId('urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport'),
+    rawSchema: digitalProductPassportSchema as JsonSchema,
     icon: <EnergySavingsLeaf />,
     color: '#667eea',
     features: [

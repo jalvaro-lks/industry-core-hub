@@ -110,9 +110,10 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
   const parser = useMemo(() => new SchemaParser(schema), [schema]);
   const tabs = useMemo(() => parser.generateTabs(data), [parser, data]);
   
-  // Extract metadata
+  // Extract semanticId from schema first, then fallback to metadata
+  const schemaSemanticId = (schema as any)['x-samm-aspect-model-urn'];
   const metadata = data.metadata as Record<string, any> | undefined;
-  const semanticId = metadata?.['x-samm-aspect-model-urn'] || metadata?.specVersion || 'N/A';
+  const semanticId = schemaSemanticId || metadata?.['x-samm-aspect-model-urn'] || metadata?.specVersion || 'N/A';
 
   // Handle copy to clipboard
   const handleCopy = (text: string, label: string) => {
@@ -507,18 +508,23 @@ export const BasePassportVisualization: React.FC<PassportVisualizationProps & {
                 size="small"
                 startIcon={<ViewInAr sx={{ fontSize: { xs: 16, sm: 18 } }} />}
                 onClick={handleShowDigitalTwin}
+                disabled={!digitalTwinData}
                 sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: '#fff',
+                  background: digitalTwinData ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'rgba(255, 255, 255, 0.05)',
+                  color: digitalTwinData ? '#fff' : 'rgba(255, 255, 255, 0.3)',
                   textTransform: 'none',
                   fontSize: { xs: '0.75rem', sm: '0.8rem' },
                   px: { xs: 1.5, sm: 2 },
                   py: { xs: 0.75, sm: 1 },
                   fontWeight: 600,
                   borderRadius: '8px',
-                  '&:hover': { 
+                  '&:hover': digitalTwinData ? { 
                     background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
                     boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  } : {},
+                  '&.Mui-disabled': {
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'rgba(255, 255, 255, 0.3)'
                   },
                   display: 'inline-flex'
                 }}

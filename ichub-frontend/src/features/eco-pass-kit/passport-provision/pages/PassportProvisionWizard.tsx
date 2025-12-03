@@ -40,6 +40,10 @@ import {
   Paper,
   Divider,
   Grid2,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -50,13 +54,16 @@ import {
   Link as LinkIcon,
   Add,
   CloudUpload,
+  Edit,
+  Close,
+  Visibility,
 } from '@mui/icons-material';
 import { DPP_VERSION_REGISTRY } from '../config/dppVersionRegistry';
-import { createDPP } from '../api/provisionApi';
-import { TwinAssociation } from '../types';
+import { createTwinAspect } from '@/features/industry-core-kit/catalog-management/api';
 import SubmodelCreator from '@/components/submodel-creation/SubmodelCreator';
 import { darkCardStyles } from '../styles/cardStyles';
-import { fetchAllSerializedParts, fetchAllSerializedPartTwins, createSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
+import { GenericPassportVisualization } from '../../passport-consumption/passport-types/generic/GenericPassportVisualization';
+import { fetchAllSerializedPartTwins, createSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
 import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
 import { SerializedPartTwinRead } from '@/features/industry-core-kit/serialized-parts/types/twin-types';
 import { StatusVariants } from '@/features/industry-core-kit/catalog-management/types/types';
@@ -86,9 +93,16 @@ const PassportProvisionWizard: React.FC = () => {
   // Step 3: DPP Data (via SubmodelCreator)
   const [showSubmodelCreator, setShowSubmodelCreator] = useState(false);
   const [dppData, setDppData] = useState<any>(null);
+  const [dppValidated, setDppValidated] = useState(false);
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Step 4: Review
   const [status] = useState<'draft' | 'active'>('draft');
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleNext = async () => {
     setError(null);
@@ -110,9 +124,13 @@ const PassportProvisionWizard: React.FC = () => {
       }
       setActiveStep(2);
     } else if (activeStep === 2) {
-      // DPP Data step - open SubmodelCreator
+      // DPP Data step - require validated data before advancing
       if (!dppData) {
-        setShowSubmodelCreator(true);
+        setError('Please provide DPP data before proceeding. You can create it using the form or upload a JSON file.');
+        return;
+      }
+      if (!dppValidated) {
+        setError('Please validate the DPP data before proceeding.');
         return;
       }
       setActiveStep(3);
@@ -134,8 +152,9 @@ const PassportProvisionWizard: React.FC = () => {
   const loadSerializedParts = async () => {
     setPartsLoading(true);
     try {
-      const parts = await fetchAllSerializedParts();
-      setSerializedParts(parts);
+      // Fetch serialized part twins to get globalId and dtrAasId
+      const twins = await fetchAllSerializedPartTwins();
+      setSerializedParts(twins);
     } catch (err) {
       setError('Failed to load serialized parts');
     } finally {
@@ -182,15 +201,22 @@ const PassportProvisionWizard: React.FC = () => {
         partInstanceId: selectedPart.partInstanceId,
       });
 
-      // Re-check registration status after successful registration
-      await checkPartRegistrationStatus(selectedPart);
-      
-      // Show success message
+      // Show success message immediately after registration
       setSuccessMessage('Twin registered successfully!');
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
+
+      // Re-check registration status after successful registration (don't fail if this errors)
+      try {
+        await checkPartRegistrationStatus(selectedPart);
+      } catch (statusErr) {
+        console.warn('Failed to check registration status after registration:', statusErr);
+        // Set status to registered manually since we know the registration succeeded
+        setPartRegistrationStatus(StatusVariants.registered);
+      }
+    } catch (err: any) {
       console.error('Failed to register serialized part:', err);
-      setError('Failed to register serialized part. Please try again.');
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to register serialized part. Please try again.';
+      setError(errorMessage);
     } finally {
       setRegistering(false);
     }
@@ -214,10 +240,13 @@ const PassportProvisionWizard: React.FC = () => {
     }
   };
 
-  const handleSubmodelCreated = (submodelData: any) => {
+  const handleSubmodelCreated = async (submodelData: any) => {
     setDppData(submodelData);
+    setDppValidated(true); // Form-created/saved data is already validated
+    setValidationStatus('success'); // Mark as successfully validated
+    setUploadError(null); // Clear any previous errors
     setShowSubmodelCreator(false);
-    setActiveStep(3);
+    // Stay on step 2 to allow further edits
   };
 
   const handleCreate = async () => {
@@ -225,30 +254,157 @@ const PassportProvisionWizard: React.FC = () => {
     setError(null);
 
     try {
-      let twinAssociation: TwinAssociation | undefined;
-
-      if (selectedPart) {
-        twinAssociation = {
-          twinId: `twin-${selectedPart.id}`,
-          manufacturerPartId: selectedPart.manufacturerPartId,
-          serialNumber: selectedPart.partInstanceId,
-          twinName: selectedPart.name,
-        };
+      // Get the global asset ID from the selected part
+      const globalAssetId = (selectedPart as any)?.globalId;
+      
+      if (!globalAssetId) {
+        throw new Error('Global Asset ID not available for the selected part');
       }
 
-      await createDPP(
-        selectedVersion.version,
-        selectedVersion.semanticId,
-        dppData,
-        status,
-        twinAssociation
+      // Extract semantic ID from raw schema
+      const semanticId = (selectedVersion.rawSchema as any)['x-samm-aspect-model-urn'] || selectedVersion.semanticId;
+
+      // Call the twin-aspect API with the required parameters
+      const result = await createTwinAspect(
+        globalAssetId,
+        semanticId,
+        dppData
       );
 
-      navigate('/passport/provision');
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to create Digital Product Passport');
+      }
+
+      // Show success message
+      setSuccessMessage('Digital Product Passport created successfully');
+      
+      // Navigate back to the list after a short delay
+      setTimeout(() => {
+        navigate('/passport/provision');
+      }, 1500);
     } catch (err) {
-      setError('Failed to create Digital Product Passport');
+      setError(err instanceof Error ? err.message : 'Failed to create Digital Product Passport');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processFile(files[0]);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      processFile(files[0]);
+    }
+  };
+
+  const processFile = (file: File) => {
+    setUploadError(null);
+
+    // Check file type
+    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+      setUploadError('Invalid file type. Please upload a JSON file.');
+      return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('File is too large. Maximum size is 10MB.');
+      return;
+    }
+
+    // Read file content
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const jsonData = JSON.parse(content);
+
+        // Basic validation - check if it's an object
+        if (typeof jsonData !== 'object' || jsonData === null) {
+          setUploadError('Invalid DPP format. Expected a JSON object.');
+          return;
+        }
+
+        // Set the DPP data without validating
+        setDppData(jsonData);
+        setDppValidated(false);
+        setValidationStatus('idle');
+        setUploadError(null);
+        setSuccessMessage('DPP file loaded successfully! Click "Validate" to verify against schema.');
+        
+        // Clear success message after 4 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 4000);
+      } catch (err) {
+        setUploadError('Failed to parse JSON file. Please check the file format.');
+      }
+    };
+
+    reader.onerror = () => {
+      setUploadError('Failed to read file. Please try again.');
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleValidateDpp = () => {
+    if (!dppData) return;
+    
+    setValidating(true);
+    setUploadError(null);
+    
+    try {
+      if (selectedVersion.schema) {
+        const validation = selectedVersion.schema.validate(dppData);
+        if (!validation.isValid) {
+          const errorMessages = validation.errors.join('; ');
+          const errorCount = validation.errors.length;
+          setUploadError(`Validation failed with ${errorCount} error${errorCount > 1 ? 's' : ''}: ${errorMessages}`);
+          setDppValidated(false);
+          setValidationStatus('error');
+        } else {
+          setDppValidated(true);
+          setValidationStatus('success');
+          setUploadError(null);
+          setSuccessMessage('DPP validated successfully!');
+          setTimeout(() => {
+            setSuccessMessage(null);
+          }, 4000);
+        }
+      } else {
+        setDppValidated(true);
+        setValidationStatus('success');
+        setSuccessMessage('No schema available. DPP accepted.');
+      }
+    } catch (err: any) {
+      setUploadError(`Validation error: ${err?.message || 'Unknown error occurred'}`);
+      setDppValidated(false);
+      setValidationStatus('error');
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -437,26 +593,23 @@ const PassportProvisionWizard: React.FC = () => {
                         }}
                       />
                     )}
-                    renderOption={(props, option) => {
-                      const { key, ...otherProps } = props as any;
-                      return (
-                        <Box component="li" {...otherProps} key={option.id}>
-                          <Box sx={{ width: '100%' }}>
-                            <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>
-                              {option.name}
+                    renderOption={(props, option) => (
+                      <Box component="li" {...props} key={`twin-${option.id}`}>
+                        <Box sx={{ width: '100%' }}>
+                          <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>
+                            {option.name}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                            Manufacturer Part ID: {option.manufacturerPartId} • Part Instance ID: {option.partInstanceId}
+                          </Typography>
+                          {option.van && (
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
+                              VAN: {option.van}
                             </Typography>
-                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                              Manufacturer Part ID: {option.manufacturerPartId} • Part Instance ID: {option.partInstanceId}
-                            </Typography>
-                            {option.van && (
-                              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>
-                                VAN: {option.van}
-                              </Typography>
-                            )}
-                          </Box>
+                          )}
                         </Box>
-                      );
-                    }}
+                      </Box>
+                    )}
                   />
 
                   {selectedPart && (
@@ -486,6 +639,20 @@ const PassportProvisionWizard: React.FC = () => {
                             label={`VAN: ${selectedPart.van}`}
                             size="small"
                             sx={darkCardStyles.chip.default}
+                          />
+                        )}
+                        {(selectedPart as any)?.globalId && (
+                          <Chip
+                            label={`Global Asset ID: ${(selectedPart as any).globalId}`}
+                            size="small"
+                            sx={darkCardStyles.chip.active}
+                          />
+                        )}
+                        {(selectedPart as any)?.dtrAasId && (
+                          <Chip
+                            label={`AAS ID: ${(selectedPart as any).dtrAasId}`}
+                            size="small"
+                            sx={darkCardStyles.chip.active}
                           />
                         )}
                       </Box>
@@ -588,36 +755,199 @@ const PassportProvisionWizard: React.FC = () => {
             </Typography>
 
             {!dppData ? (
-              <Card sx={darkCardStyles.card}>
-                <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                  <Warning sx={{ fontSize: 64, color: '#f59e0b', mb: 2 }} />
-                  <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>
-                    DPP Data Required
-                  </Typography>
-                  <Typography sx={{ color: 'rgba(255,255,255,0.6)', mb: 3 }}>
-                    Click "Next" to open the form builder and enter DPP data
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Drag & Drop Zone */}
+                <Card
+                  sx={{
+                    ...darkCardStyles.card,
+                    border: isDragging ? '2px dashed #3b82f6' : '2px dashed rgba(255,255,255,0.2)',
+                    background: isDragging 
+                      ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)'
+                      : darkCardStyles.card.background,
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                  }}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                    <CloudUpload sx={{ fontSize: 64, color: isDragging ? '#3b82f6' : 'rgba(255,255,255,0.5)', mb: 2 }} />
+                    <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>
+                      {isDragging ? 'Drop DPP file here' : 'Drag & Drop DPP File'}
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.6)', mb: 2 }}>
+                      or click to browse for a JSON file
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', mb: 1 }}>
+                      Supported format: JSON
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                      Semantic ID: {selectedVersion.semanticId}
+                    </Typography>
+                  </CardContent>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    style={{ display: 'none' }}
+                    onChange={handleFileSelect}
+                  />
+                </Card>
+
+                {uploadError && (
+                  <Alert severity="error" sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                    {uploadError}
+                  </Alert>
+                )}
+
+                {/* Divider with OR */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Divider sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>OR</Typography>
+                  <Divider sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                </Box>
+
+                {/* Create DPP Button */}
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Add />}
+                  onClick={() => setShowSubmodelCreator(true)}
+                  sx={{
+                    ...darkCardStyles.button.primary,
+                    py: 2,
+                    fontSize: '1rem',
+                  }}
+                >
+                  Create DPP from Form
+                </Button>
+              </Box>
             ) : (
-              <Card sx={darkCardStyles.card}>
+              <Card sx={{
+                ...darkCardStyles.card,
+                borderWidth: 2,
+                borderStyle: 'solid',
+                borderColor: validationStatus === 'success'
+                  ? '#22c55e'
+                  : validationStatus === 'error'
+                  ? '#ef4444'
+                  : 'rgba(255,255,255,0.1)',
+                transition: 'border-color 0.3s ease',
+              }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <CheckCircle sx={{ color: '#10b981' }} />
+                    <CheckCircle sx={{ 
+                      color: validationStatus === 'success' ? '#22c55e' 
+                        : validationStatus === 'error' ? '#ef4444' 
+                        : '#f59e0b',
+                      fontSize: '2rem'
+                    }} />
                     <Typography variant="h6" sx={{ color: '#fff' }}>
-                      DPP Data Collected
+                      {validationStatus === 'success' ? 'DPP Data Validated' 
+                        : validationStatus === 'error' ? 'Validation Failed' 
+                        : 'DPP Data Loaded'}
                     </Typography>
                   </Box>
                   <Typography sx={{ color: 'rgba(255,255,255,0.6)', mb: 2 }}>
-                    All required data has been entered. Review in the next step.
+                    {validationStatus === 'success'
+                      ? 'All required data has been validated. Review in the next step.'
+                      : validationStatus === 'error'
+                      ? `Validation Failed. Your DPP JSON file semantic is not matching all the mandatory fields from the "${selectedVersion.semanticId}" semantic model. Please edit the DPP data to fix validation errors.`
+                      : 'Data uploaded successfully. Please validate before proceeding.'}
                   </Typography>
-                  <Button
-                    variant="outlined"
-                    onClick={() => setShowSubmodelCreator(true)}
-                    sx={darkCardStyles.button.outlined}
-                  >
-                    Edit DPP Data
-                  </Button>
+                  {uploadError && validationStatus === 'error' && (
+                    <Alert severity="error" sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', mb: 2 }}>
+                      {uploadError}
+                    </Alert>
+                  )}
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      onClick={handleValidateDpp}
+                      disabled={validating}
+                      sx={{
+                        flex: 1,
+                        background: validationStatus === 'success' 
+                          ? 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)'
+                          : validationStatus === 'error'
+                          ? 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'
+                          : darkCardStyles.button.primary.background,
+                        color: '#fff',
+                        borderRadius: darkCardStyles.button.primary.borderRadius,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        boxShadow: validationStatus === 'success'
+                          ? '0 4px 16px rgba(34, 197, 94, 0.3)'
+                          : validationStatus === 'error'
+                          ? '0 4px 16px rgba(239, 68, 68, 0.3)'
+                          : darkCardStyles.button.primary.boxShadow,
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          background: validationStatus === 'success'
+                            ? 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)'
+                            : validationStatus === 'error'
+                            ? 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)'
+                            : darkCardStyles.button.primary['&:hover']?.background,
+                          boxShadow: validationStatus === 'success'
+                            ? '0 6px 24px rgba(34, 197, 94, 0.4)'
+                            : validationStatus === 'error'
+                            ? '0 6px 24px rgba(239, 68, 68, 0.4)'
+                            : darkCardStyles.button.primary['&:hover']?.boxShadow,
+                          transform: 'translateY(-1px)',
+                        },
+                        '&:disabled': darkCardStyles.button.primary['&:disabled'],
+                      }}
+                    >
+                      {validating ? (
+                        <CircularProgress size={24} />
+                      ) : validationStatus === 'success' ? (
+                        'Validated ✓'
+                      ) : validationStatus === 'error' ? (
+                        'Validation Failed ✗'
+                      ) : (
+                        'Validate DPP'
+                      )}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Edit />}
+                      onClick={() => setShowSubmodelCreator(true)}
+                      sx={{
+                        ...darkCardStyles.button.outlined,
+                        flex: 1,
+                        '&:hover': {
+                          ...darkCardStyles.button.outlined['&:hover'],
+                          color: '#fff',
+                        },
+                      }}
+                    >
+                      Edit DPP Data
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Close />}
+                      onClick={() => {
+                        setDppData(null);
+                        setDppValidated(false);
+                        setValidationStatus('idle');
+                        setUploadError(null);
+                      }}
+                      sx={{
+                        ...darkCardStyles.button.outlined,
+                        borderColor: 'rgba(239, 68, 68, 0.3)',
+                        color: '#ef4444',
+                        '&:hover': {
+                          borderColor: '#ef4444',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          color: '#ef4444',
+                        },
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Box>
                 </CardContent>
               </Card>
             )}
@@ -699,6 +1029,56 @@ const PassportProvisionWizard: React.FC = () => {
 
                 <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
 
+                {/* Digital Twin Information */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.6)', mb: 1 }}>
+                    Digital Twin Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {selectedPart && selectedPart.manufacturerPartId && selectedPart.partInstanceId ? (
+                      <Chip
+                        label={`Discovery ID: CX:${selectedPart.manufacturerPartId}:${selectedPart.partInstanceId}`}
+                        size="small"
+                        sx={darkCardStyles.chip.active}
+                      />
+                    ) : (
+                      <Chip
+                        label="Discovery ID: Not available"
+                        size="small"
+                        sx={darkCardStyles.chip.draft}
+                      />
+                    )}
+                    {(selectedPart as any)?.globalId ? (
+                      <Chip
+                        label={`Global Asset ID: ${(selectedPart as any).globalId}`}
+                        size="small"
+                        sx={darkCardStyles.chip.active}
+                      />
+                    ) : (
+                      <Chip
+                        label="Global Asset ID: Not available"
+                        size="small"
+                        sx={darkCardStyles.chip.draft}
+                      />
+                    )}
+                    {(selectedPart as any)?.dtrAasId ? (
+                      <Chip
+                        label={`AAS ID: ${(selectedPart as any).dtrAasId}`}
+                        size="small"
+                        sx={darkCardStyles.chip.active}
+                      />
+                    ) : (
+                      <Chip
+                        label="AAS ID: Not available"
+                        size="small"
+                        sx={darkCardStyles.chip.draft}
+                      />
+                    )}
+                  </Box>
+                </Box>
+
+                <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
+
                 <Box>
                   <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.6)', mb: 1 }}>
                     Status
@@ -709,6 +1089,41 @@ const PassportProvisionWizard: React.FC = () => {
                     sx={status === 'draft' ? darkCardStyles.chip.draft : darkCardStyles.chip.active}
                   />
                 </Box>
+
+                <Divider sx={{ my: 2, borderColor: 'rgba(255,255,255,0.1)' }} />
+
+                {/* Preview Passport Button */}
+                {dppData && (
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      startIcon={<Visibility />}
+                      onClick={() => setShowPreview(true)}
+                      sx={{
+                        py: 2,
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: '#fff',
+                        borderRadius: 2,
+                        boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5568d3 0%, #65408b 100%)',
+                          boxShadow: '0 6px 28px rgba(102, 126, 234, 0.5)',
+                          transform: 'translateY(-2px)',
+                        },
+                        '&:active': {
+                          transform: 'translateY(0px)',
+                        },
+                      }}
+                    >
+                      Preview Passport
+                    </Button>
+                  </Box>
+                )}
               </CardContent>
             </Card>
 
@@ -878,7 +1293,8 @@ const PassportProvisionWizard: React.FC = () => {
               (activeStep === 1 && 
                 (!selectedPart || 
                   (partRegistrationStatus !== StatusVariants.registered && 
-                   partRegistrationStatus !== StatusVariants.shared)))
+                   partRegistrationStatus !== StatusVariants.shared))) ||
+              (activeStep === 2 && (!dppData || !dppValidated))
             }
             endIcon={activeStep === 3 ? <Save /> : <ArrowForward />}
             sx={darkCardStyles.button.primary}
@@ -904,7 +1320,11 @@ const PassportProvisionWizard: React.FC = () => {
           selectedSchema={selectedVersion.schema}
           schemaKey={selectedVersion.semanticId}
           manufacturerPartId={selectedPart?.manufacturerPartId}
-          twinId={selectedPart?.id?.toString()}
+          twinId={(selectedPart as any)?.globalId}
+          dtrAasId={(selectedPart as any)?.dtrAasId}
+          serializedPartTwin={selectedPart}
+          initialData={dppData}
+          saveButtonLabel="Save Submodel"
         />
       )}
 
@@ -914,6 +1334,52 @@ const PassportProvisionWizard: React.FC = () => {
         onClose={() => setShowAddPartDialog(false)}
         onSuccess={handlePartCreated}
       />
+
+      {/* Preview Passport Dialog */}
+      <Dialog
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        fullScreen
+        TransitionProps={{
+          timeout: 0
+        }}
+        PaperProps={{
+          sx: {
+            bgcolor: '#0a0a0f',
+            backdropFilter: 'blur(20px)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          color: '#fff',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          bgcolor: 'rgba(0, 0, 0, 0.4)',
+        }}>
+
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, overflow: 'auto' }}>
+          {dppData && selectedVersion.rawSchema ? (
+            <Box sx={{ height: '100%' }}>
+              <GenericPassportVisualization
+                schema={selectedVersion.rawSchema}
+                data={dppData}
+                passportId={selectedPart && selectedPart.manufacturerPartId && selectedPart.partInstanceId 
+                  ? `CX:${selectedPart.manufacturerPartId}:${selectedPart.partInstanceId}` 
+                  : `preview-${Date.now()}`}
+                passportVersion={selectedVersion.version}
+                onBack={() => setShowPreview(false)}
+              />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', p: 4 }}>
+              <Typography sx={{ color: '#fff' }}>No data available for preview</Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
