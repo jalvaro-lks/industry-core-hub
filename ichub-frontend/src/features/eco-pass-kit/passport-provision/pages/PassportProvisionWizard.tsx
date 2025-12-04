@@ -64,7 +64,7 @@ import { createTwinAspect } from '@/features/industry-core-kit/catalog-managemen
 import SubmodelCreator from '@/components/submodel-creation/SubmodelCreator';
 import { darkCardStyles } from '../styles/cardStyles';
 import { GenericPassportVisualization } from '../../passport-consumption/passport-types/generic/GenericPassportVisualization';
-import { fetchAllSerializedPartTwins, createSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
+import { fetchAllSerializedPartTwins, fetchAllSerializedParts, createSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
 import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
 import { SerializedPartTwinRead } from '@/features/industry-core-kit/serialized-parts/types/twin-types';
 import { StatusVariants } from '@/features/industry-core-kit/catalog-management/types/types';
@@ -155,10 +155,50 @@ const PassportProvisionWizard: React.FC = () => {
   const loadSerializedParts = async () => {
     setPartsLoading(true);
     try {
-      // Fetch serialized part twins to get globalId and dtrAasId
-      const twins = await fetchAllSerializedPartTwins();
-      setSerializedParts(twins);
-      return twins;
+      // Fetch both created parts and registered twins in parallel
+      const [allParts, allTwins] = await Promise.all([
+        fetchAllSerializedParts(),
+        fetchAllSerializedPartTwins()
+      ]);
+
+      // Create a map of twins for quick lookup
+      const twinsMap = new Map(
+        allTwins.map(twin => 
+          [`${twin.manufacturerPartId}-${twin.partInstanceId}`, twin]
+        )
+      );
+
+      // Merge parts with their twin data (if they're registered)
+      const mergedParts = allParts.map(part => {
+        const twin = twinsMap.get(`${part.manufacturerPartId}-${part.partInstanceId}`);
+        // If twin exists, enrich the part with twin data
+        if (twin) {
+          return {
+            ...part,
+            ...twin, // This adds globalId, dtrAasId, etc. if they exist
+            _registrationStatus: twin.dtrAasId && twin.globalId ? 'shared' : 'registered'
+          };
+        }
+        return {
+          ...part,
+          _registrationStatus: 'draft'
+        };
+      });
+
+      // Also include twins that might not be in the parts list
+      const partKeys = new Set(
+        allParts.map(p => `${p.manufacturerPartId}-${p.partInstanceId}`)
+      );
+      
+      const orphanedTwins = allTwins.filter(
+        twin => !partKeys.has(`${twin.manufacturerPartId}-${twin.partInstanceId}`)
+      );
+
+      // Combine both lists
+      const finalParts = [...mergedParts, ...orphanedTwins];
+
+      setSerializedParts(finalParts);
+      return finalParts;
     } catch (err) {
       setError('Failed to load serialized parts');
       return [];
@@ -171,19 +211,30 @@ const PassportProvisionWizard: React.FC = () => {
     setCheckingRegistration(true);
     setPartRegistrationStatus(null);
     try {
-      const twins = await fetchAllSerializedPartTwins();
-      const twin = twins.find(
-        (t: SerializedPartTwinRead) =>
-          t.manufacturerPartId === part.manufacturerPartId &&
-          t.partInstanceId === part.partInstanceId
-      );
-
-      if (!twin) {
-        setPartRegistrationStatus(StatusVariants.draft);
-      } else if (twin.dtrAasId && twin.globalId) {
-        setPartRegistrationStatus(StatusVariants.shared);
+      // Check if the part already has the registration status from loadSerializedParts
+      if ((part as any)._registrationStatus) {
+        const status = (part as any)._registrationStatus;
+        setPartRegistrationStatus(
+          status === 'shared' ? StatusVariants.shared : 
+          status === 'registered' ? StatusVariants.registered : 
+          StatusVariants.draft
+        );
       } else {
-        setPartRegistrationStatus(StatusVariants.registered);
+        // Fallback to checking twins if status not available
+        const twins = await fetchAllSerializedPartTwins();
+        const twin = twins.find(
+          (t: SerializedPartTwinRead) =>
+            t.manufacturerPartId === part.manufacturerPartId &&
+            t.partInstanceId === part.partInstanceId
+        );
+
+        if (!twin) {
+          setPartRegistrationStatus(StatusVariants.draft);
+        } else if (twin.dtrAasId && twin.globalId) {
+          setPartRegistrationStatus(StatusVariants.shared);
+        } else {
+          setPartRegistrationStatus(StatusVariants.registered);
+        }
       }
     } catch (err) {
       console.error('Failed to check registration status:', err);
