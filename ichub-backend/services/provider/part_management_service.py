@@ -102,7 +102,7 @@ class PartManagementService():
             # Prepare the result object
             result = CatalogPartDetailsReadWithStatus(
                 **catalog_part_create.model_dump(by_alias=True),
-                status=0,  # Default status is draft
+                status=2,  # Default status is registered (active)
             )
 
             # Check if we already should create some customer part IDs for the given catalog part

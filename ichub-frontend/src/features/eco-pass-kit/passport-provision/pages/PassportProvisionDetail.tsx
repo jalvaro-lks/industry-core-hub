@@ -36,16 +36,26 @@ const PassportProvisionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const stateData = location.state as { dppData?: any } | null;
+  const stateData = location.state as { 
+    dppData?: any; 
+    submodelContent?: any;
+    semanticId?: string;
+    skipStepper?: boolean;
+    directToVisualizer?: boolean;
+  } | null;
 
-  const [loading, setLoading] = useState(!stateData?.dppData);
+  const [loading, setLoading] = useState(!stateData?.submodelContent && !stateData?.skipStepper && !stateData?.directToVisualizer);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [dppData, setDppData] = useState<any>(stateData?.dppData || null);
+  const [dppData, setDppData] = useState<any>(
+    stateData?.submodelContent 
+      ? { data: stateData.submodelContent, semanticId: stateData.semanticId }
+      : stateData?.dppData || null
+  );
 
   useEffect(() => {
-    // If we already have data from navigation state, skip loading
-    if (stateData?.dppData) {
+    // If we have submodel content from navigation state, skip loading
+    if (stateData?.submodelContent || stateData?.skipStepper || stateData?.directToVisualizer) {
       return;
     }
 
@@ -251,6 +261,7 @@ const PassportProvisionDetail: React.FC = () => {
       onBack={handleBack}
       passportName={passportConfig.name}
       passportVersion={passportConfig.version}
+      skipLoadingAnimation={stateData?.skipStepper || stateData?.directToVisualizer || false}
       digitalTwinData={dppData.twinAssociation ? {
         shell_descriptor: {
           id: dppData.twinAssociation.twinId,

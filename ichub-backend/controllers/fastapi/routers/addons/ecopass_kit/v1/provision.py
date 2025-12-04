@@ -79,11 +79,11 @@ class ShareDppResponse(BaseModel):
 @router.post("/share", response_model=ShareDppResponse, status_code=status.HTTP_200_OK)
 async def share_dpp(request: ShareDppRequest):
     """
-    Share a Digital Product Passport (serialized part twin) with a single business partner.
+    Share a Digital Product Passport (catalog or serialized part twin) with a single business partner.
     
     This endpoint:
-    1. Validates the DPP exists and is associated with a serialized part twin
-    2. Shares the twin using the existing serialized part twin sharing logic
+    1. Validates the DPP exists and is associated with a catalog or serialized part twin
+    2. Shares the twin using the appropriate sharing logic
     3. Registers the manufacturer part ID in BPN Discovery
     
     Args:
@@ -93,23 +93,47 @@ async def share_dpp(request: ShareDppRequest):
         ShareDppResponse with sharing status
         
     Raises:
-        HTTPException: If the DPP is not found, not a serialized part, or sharing fails
+        HTTPException: If the DPP is not found or sharing fails
     """
     try:
         logger.info(f"Initiating DPP sharing for DPP ID: {request.dpp_id} with partner: {request.business_partner_number}")
         
-        # Step 1: Find the serialized part twin with this DPP
-        twin_data = await _get_serialized_part_twin_by_dpp_id(request.dpp_id)
-        
-        # Step 2: Share the twin using existing service
         twin_management_service = TwinManagementService()
-        share_request = SerializedPartTwinShareCreate(
-            manufacturerId=twin_data["manufacturer_id"],
-            manufacturerPartId=twin_data["manufacturer_part_id"],
-            partInstanceId=twin_data["part_instance_id"]
-        )
         
-        success = twin_management_service.create_serialized_part_twin_share(share_request)
+        # Try to find as catalog part first, then as serialized part
+        try:
+            logger.info(f"Attempting to find catalog part twin for DPP ID: {request.dpp_id}")
+            twin_data = await _get_catalog_part_twin_by_dpp_id(request.dpp_id)
+            logger.info(f"Found catalog part twin for DPP {request.dpp_id}: {twin_data}")
+            
+            # Share catalog part twin
+            from models.services.provider.twin_management import CatalogPartTwinShareCreate
+            share_request = CatalogPartTwinShareCreate(
+                manufacturerId=twin_data["manufacturer_id"],
+                manufacturerPartId=twin_data["manufacturer_part_id"],
+                businessPartnerNumber=request.business_partner_number
+            )
+            
+            logger.info(f"Sharing catalog part twin with request: {share_request}")
+            success = twin_management_service.create_catalog_part_twin_share(share_request)
+            logger.info(f"Catalog part share result: {success}")
+            
+        except HTTPException as e:
+            logger.error(f"HTTPException while looking for catalog part: status={e.status_code}, detail={e.detail}")
+            if e.status_code == 404:
+                # Not a catalog part, try serialized part
+                logger.info(f"Not a catalog part, trying serialized part for DPP {request.dpp_id}")
+                twin_data = await _get_serialized_part_twin_by_dpp_id(request.dpp_id)
+                
+                share_request = SerializedPartTwinShareCreate(
+                    manufacturerId=twin_data["manufacturer_id"],
+                    manufacturerPartId=twin_data["manufacturer_part_id"],
+                    partInstanceId=twin_data["part_instance_id"]
+                )
+                
+                success = twin_management_service.create_serialized_part_twin_share(share_request)
+            else:
+                raise
         
         if not success:
             raise HTTPException(
@@ -117,9 +141,9 @@ async def share_dpp(request: ShareDppRequest):
                 detail=f"Failed to share DPP with {request.business_partner_number}"
             )
         
-        logger.info(f"Successfully shared serialized part twin for DPP {request.dpp_id}")
+        logger.info(f"Successfully shared twin for DPP {request.dpp_id}")
         
-        # Step 3: Register in BPN Discovery
+        # Register in BPN Discovery
         bpn_registered = await _register_in_bpn_discovery(twin_data["manufacturer_part_id"])
         
         return ShareDppResponse(
@@ -135,6 +159,97 @@ async def share_dpp(request: ShareDppRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to share DPP: {str(e)}"
+        )
+
+
+async def _get_catalog_part_twin_by_dpp_id(dpp_id: str) -> Dict[str, Any]:
+    """
+    Find a catalog part twin by its DPP ID and extract sharing parameters.
+    
+    Args:
+        dpp_id: The passport ID (format: CX:manufacturerPartId:partInstanceId)
+        
+    Returns:
+        Dict with manufacturer_id and manufacturer_part_id
+        
+    Raises:
+        HTTPException: If DPP is not found or not associated with a catalog part twin
+    """
+    from sqlmodel import select
+    from models.metadata_database.provider.models import TwinAspect, Twin, CatalogPart, LegalEntity
+    from sqlalchemy.orm import selectinload, joinedload
+    
+    with RepositoryManagerFactory.create() as repo:
+        # Query for DPP aspects on catalog part twins only
+        dpp_semantic_pattern = "%digital_product_passport%"
+        stmt = (
+            select(TwinAspect)
+            .join(Twin, TwinAspect.twin_id == Twin.id)
+            .join(CatalogPart, Twin.id == CatalogPart.twin_id)
+            .where(TwinAspect.semantic_id.like(dpp_semantic_pattern))  # type: ignore
+            .options(
+                selectinload(TwinAspect.twin).selectinload(Twin.catalog_part).joinedload(CatalogPart.legal_entity),  # type: ignore
+            )
+        )
+        
+        dpp_aspects = repo.twin_aspect_repository._session.scalars(stmt).all()
+        
+        if not dpp_aspects:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No DPPs found on catalog part twins"
+            )
+        
+        logger.info(f"Searching for catalog part twin with DPP ID: {dpp_id}")
+        submodel_service_manager = SubmodelServiceManager()
+        
+        for dpp_aspect in dpp_aspects:
+            try:
+                if not dpp_aspect.twin or not dpp_aspect.twin.catalog_part:
+                    continue
+                
+                db_catalog_part = dpp_aspect.twin.catalog_part
+                
+                if not db_catalog_part.legal_entity:
+                    continue
+                
+                # Get DPP data
+                aspect_data = submodel_service_manager.get_twin_aspect_document(
+                    submodel_id=dpp_aspect.submodel_id,
+                    semantic_id=dpp_aspect.semantic_id
+                )
+                
+                # Extract passport ID from metadata
+                passport_id = (
+                    aspect_data.get("metadata", {}).get("passportId") or
+                    aspect_data.get("passportId") or
+                    ""
+                )
+                
+                # If no passport ID in metadata, construct from part data
+                if not passport_id:
+                    manufacturer_part_id = db_catalog_part.manufacturer_part_id or ""
+                    # For catalog parts, partInstanceId is from the DPP ID
+                    part_instance_id = dpp_id.split(":")[-1] if ":" in dpp_id else ""
+                    passport_id = f"CX:{manufacturer_part_id}:{part_instance_id}"
+                
+                # Check if this matches the requested DPP ID
+                if passport_id == dpp_id:
+                    # Extract manufacturer_id from legal entity
+                    manufacturer_id = db_catalog_part.legal_entity.bpnl
+                    
+                    return {
+                        "manufacturer_id": manufacturer_id,
+                        "manufacturer_part_id": db_catalog_part.manufacturer_part_id,
+                    }
+                    
+            except Exception as e:
+                logger.warning(f"Error checking DPP aspect {dpp_aspect.submodel_id}: {str(e)}")
+                continue
+        
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"DPP not found on catalog part twin with ID: {dpp_id}"
         )
 
 

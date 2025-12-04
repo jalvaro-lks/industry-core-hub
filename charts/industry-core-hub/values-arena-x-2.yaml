@@ -23,7 +23,7 @@
 
 deploymentMode: "helm"
 
-participantId : BPNLA3600000ICH1
+participantId : BPNLA3600000ICH2
 
 postgresql:
   auth:
@@ -31,36 +31,18 @@ postgresql:
     password: password
     ## Industry Core User Password
     ichubPassword: password
-    existingSecret: "ichub-1-postgres-secret"
+    existingSecret: "ichub-2-postgres-secret"
 # -- pgAdmin4 configuration
-pgadmin4:
-  enabled: true
-  env:
-    email: email@example.com
-    password: password
-  ingress:
-    enabled: true
-    ingressClassName: "webapprouting.kubernetes.azure.com"
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-    hosts:
-      - host: pgadmin-ichub-txcd.arena2036-x.de
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-       - secretName: "pgadmin-ichub-txcd.arena2036-x.de-tls"
-         hosts:
-           - "pgadmin-ichub-txcd.arena2036-x.de" 
+
 frontend:
-  name: "ichub-1-frontend"
+  name: "ichub-2-frontend"
   config:
     # Core application
     environment: "integration"
     version: "1.0.0"
     
     # API configuration
-    ichubBackendUrl: "https://backend-ichub-1-txcd.arena2036-x.de/v1"
+    ichubBackendUrl: "https://backend-ichub-2-txcd.arena2036-x.de/v1"
     apiTimeout: 20000
     apiRetryAttempts: 2
     requireHttpsUrlPattern: true
@@ -76,11 +58,11 @@ frontend:
     authProvider: keycloak
     authSessionTimeout: 3600000  # 1 hour in milliseconds
     authRenewTokenMinValidity: 70  # Renew token when 70 seconds validity remains
-    authLogoutRedirectUri: "https://frontend-ichub-1-txcd.arena2036-x.de"
+    authLogoutRedirectUri: "https://frontend-ichub-2-txcd.arena2036-x.de"
     
     # Keycloak configuration
     keycloak:
-      url: "https://ichub-iam-1-txcd.arena2036-x.de/auth"
+      url: "https://ichub-iam-2-txcd.arena2036-x.de/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
       realmImport:
@@ -93,7 +75,7 @@ frontend:
   
   env:
     # Legacy backend URL (maintained for backward compatibility)
-    backendUrl: "https://backend-ichub-1-txcd.arena2036-x.de/v1"
+    backendUrl: "https://backend-ichub-2-txcd.arena2036-x.de/v1"
   ingress:
       enabled: true
       className: "webapprouting.kubernetes.azure.com"
@@ -106,16 +88,16 @@ frontend:
       #   nginx.ingress.kubernetes.io/cors-allow-origin: "https://*.example.org"
       # -- Ingress TLS configuration
       tls:
-       - secretName: "frontend-ichub-1-txcd.arena2036-x.de-tls"
+       - secretName: "frontend-ichub-2-txcd.arena2036-x.de-tls"
          hosts:
-           - "frontend-ichub-1-txcd.arena2036-x.de" 
+           - "frontend-ichub-2-txcd.arena2036-x.de" 
         # # -- Provide tls secret.
         # - secretName: ""
         #   # -- Provide host for tls secret.
         #   hosts:
         #     - ""
       hosts:
-        - host: "frontend-ichub-1-txcd.arena2036-x.de"
+        - host: "frontend-ichub-2-txcd.arena2036-x.de"
           paths:
             - path: /(.*)
               pathType: ImplementationSpecific
@@ -123,13 +105,13 @@ frontend:
                 service: "frontend"
                 port: 8080
 backend:
-  name: "ichub-1-backend"
+  name: "ichub-2-backend"
   apiVersion: v1
   cors:
     enabled: true
     allow_origins:
-      - "https://frontend-ichub-1-txcd.arena2036-x.de"
-      - "https://backend-ichub-1-txcd.arena2036-x.de"
+      - "https://frontend-ichub-2-txcd.arena2036-x.de"
+      - "https://backend-ichub-2-txcd.arena2036-x.de"
     allow_credentials: true
     allow_methods:
       - "GET"
@@ -169,7 +151,7 @@ backend:
         value: pass1
       keycloak:
         enabled: true
-        authUrl: "https://ichub-iam-1-txcd.arena2036-x.de/auth/"
+        authUrl: "https://ichub-iam-2-txcd.arena2036-x.de/auth/"
         realm: "ICHub"
         clientId: "industry-core-hub-api"
         clientSecret: "ichub-client-secret-2024"
@@ -181,14 +163,14 @@ backend:
     consumer:
       discovery:
         discovery_finder:
-          url: "https://semantics-txcd.arena2036-x.de/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
+          url: "https://semantics.int.catena-x.net/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
         connector_discovery:
           key: "bpn"
         oauth:
           url: "https://centralidp-txcd.arena2036-x.de/auth/"
           realm: "CX-Central"
-          client_id: "sa2"
-          client_secret: W8CQvJbPyiBtmFrsKSel1e2NxGM3ygG8
+          client_id: "sa3"
+          client_secret: wfcpTLlaoFPnmTN78dvgECdD8zihWB7x
         digitalTwinRegistry:
           dct_type_key: "dct:type"
           dct_type_filter:
@@ -199,9 +181,9 @@ backend:
         dataspace:
           version: "jupiter"
         controlplane:
-          hostname: "https://ichub-edc-1-controlplane-txcd.arena2036-x.de"
+          hostname: "https://ichub-edc-2-controlplane-txcd.arena2036-x.de"
           apiKeyHeader: "X-Api-Key"
-          apiKey: BPNLA3600000ICH1
+          apiKey: BPNLA3600000ICH2
           managementPath: "/management"
           protocolPath: "/api/v1/dsp"
           catalogPath: "/catalog"
@@ -211,16 +193,16 @@ backend:
         dataspace:
           version: "jupiter"
         controlplane:
-          hostname: "https://ichub-edc-1-controlplane-txcd.arena2036-x.de"
+          hostname: "https://ichub-edc-2-controlplane-txcd.arena2036-x.de"
           apiKeyHeader: "X-Api-Key"
-          apiKey: BPNLA3600000ICH1
+          apiKey: BPNLA3600000ICH2
           managementPath: "/management"
           protocolPath: "/api/v1/dsp"
         dataplane:
-          hostname: "https://ichub-edc-1-dataplane-txcd.arena2036-x.de"
+          hostname: "https://ichub-edc-2-dataplane-txcd.arena2036-x.de"
           publicPath: "/api/public"
       digitalTwinRegistry:
-        hostname: "https://ichub-dtr-1-txcd.arena2036-x.de"
+        hostname: "https://ichub-dtr-2-txcd.arena2036-x.de"
         apiPath: "/api/v3"
         uri: "/semantics/registry"
         asset_config:
@@ -236,20 +218,20 @@ backend:
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-prod
         nginx.ingress.kubernetes.io/enable-cors: "true"
-        nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend-ichub-1-txcd.arena2036-x.de"
+        nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend-ichub-2-txcd.arena2036-x.de"
         nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
       # -- Ingress TLS configuration
       tls:
-       - secretName: "backend-ichub-1-txcd.arena2036-x.de-tls"
+       - secretName: "backend-ichub-2-txcd.arena2036-x.de-tls"
          hosts:
-           - "backend-ichub-1-txcd.arena2036-x.de" 
+           - "backend-ichub-2-txcd.arena2036-x.de" 
         # # -- Provide tls secret.
         # - secretName: ""
         #   # -- Provide host for tls secret.
         #   hosts:
         #     - ""
       hosts:
-      - host: "backend-ichub-1-txcd.arena2036-x.de"
+      - host: "backend-ichub-2-txcd.arena2036-x.de"
         paths:
           - path: /
             pathType: ImplementationSpecific
@@ -260,9 +242,9 @@ backend:
 keycloak:
   postgresql:
     auth:
-      existingSecret: "ichub-1-postgres-secret"
+      existingSecret: "ichub-2-postgres-secret"
   externalDatabase:
-    existingSecret: "ichub-1-postgres-secret"
+    existingSecret: "ichub-2-postgres-secret"
   realm:
     users:
       - username: "ichub-admin"
@@ -283,28 +265,28 @@ keycloak:
         redirectUris:
           - "http://localhost:3000/*"
           - "http://localhost:5173/*"
-          - "https://frontend-ichub-1-txcd.arena2036-x.de/*"
+          - "https://frontend-ichub-2-txcd.arena2036-x.de/*"
         webOrigins:
           - "http://localhost:3000"
           - "http://localhost:5173"
-          - "https://frontend-ichub-1-txcd.arena2036-x.de"
+          - "https://frontend-ichub-2-txcd.arena2036-x.de"
       backend:
         redirectUris:
           - "http://localhost:8000/*"
           - "http://localhost:9000/*"
-          - "https://backend-ichub-1-txcd.arena2036-x.de/*"
+          - "https://backend-ichub-2-txcd.arena2036-x.de/*"
         webOrigins:
           - "http://localhost:8000"
           - "http://localhost:9000"
-          - "https://backend-ichub-1-txcd.arena2036-x.de"
+          - "https://backend-ichub-2-txcd.arena2036-x.de"
   
   ingress:
     # -- Enable ingress record generation
     enabled: true
     # -- Provide default path for the ingress record.
-    hostname: "ichub-iam-1-txcd.arena2036-x.de"
+    hostname: "ichub-iam-2-txcd.arena2036-x.de"
     # -- Enable TLS/SSL for ingress (boolean)
     tls: true
     ingressClassName: "webapprouting.kubernetes.azure.com"
     annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+      cert-manager.io/cluster-issuer: letsencrypt-prod 

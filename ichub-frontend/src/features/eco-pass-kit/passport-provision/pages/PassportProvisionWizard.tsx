@@ -158,8 +158,10 @@ const PassportProvisionWizard: React.FC = () => {
       // Fetch serialized part twins to get globalId and dtrAasId
       const twins = await fetchAllSerializedPartTwins();
       setSerializedParts(twins);
+      return twins;
     } catch (err) {
       setError('Failed to load serialized parts');
+      return [];
     } finally {
       setPartsLoading(false);
     }
@@ -208,9 +210,24 @@ const PassportProvisionWizard: React.FC = () => {
       setSuccessMessage('Twin registered successfully!');
       setTimeout(() => setSuccessMessage(null), 4000);
 
+      // Reload the serialized parts list to get the updated twin data with globalId and dtrAasId
+      const refreshedParts = await loadSerializedParts();
+      
+      // Find the registered part from the refreshed list to get complete twin data
+      const partWithTwinData = refreshedParts.find(
+        (p: SerializedPart) =>
+          p.manufacturerPartId === selectedPart.manufacturerPartId &&
+          p.partInstanceId === selectedPart.partInstanceId
+      );
+      
+      // Update the selected part with complete twin data
+      if (partWithTwinData) {
+        setSelectedPart(partWithTwinData);
+      }
+
       // Re-check registration status after successful registration (don't fail if this errors)
       try {
-        await checkPartRegistrationStatus(selectedPart);
+        await checkPartRegistrationStatus(partWithTwinData || selectedPart);
       } catch (statusErr) {
         console.warn('Failed to check registration status after registration:', statusErr);
         // Set status to registered manually since we know the registration succeeded
@@ -230,17 +247,17 @@ const PassportProvisionWizard: React.FC = () => {
     
     if (createdPart) {
       // Reload the serialized parts list to get the complete twin data including globalId and dtrAasId
-      await loadSerializedParts();
+      const refreshedParts = await loadSerializedParts();
       
       // Find the newly created part from the refreshed list to get complete twin data
-      const refreshedPart = serializedParts.find(
+      const partWithTwinData = refreshedParts.find(
         (p: SerializedPart) =>
           p.manufacturerPartId === createdPart.manufacturerPartId &&
           p.partInstanceId === createdPart.partInstanceId
       );
       
-      // Select the part with complete data from the list
-      const partToSelect = refreshedPart || createdPart;
+      // Select the part with complete twin data from the list
+      const partToSelect = partWithTwinData || createdPart;
       setSelectedPart(partToSelect);
       setError(null);
       

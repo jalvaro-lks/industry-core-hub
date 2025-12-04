@@ -40,6 +40,8 @@ export const fetchUserDPPs = async (): Promise<DPPListItem[]> => {
       semanticId: string;
       status: string;
       twinId?: string;
+      submodelId?: string;
+      partType?: string;
       manufacturerPartId?: string;
       partInstanceId?: string;
       createdAt: string;
@@ -59,6 +61,8 @@ export const fetchUserDPPs = async (): Promise<DPPListItem[]> => {
       semanticId: string;
       status: string;
       twinId?: string;
+      submodelId?: string;
+      partType?: string;
       manufacturerPartId?: string;
       partInstanceId?: string;
       createdAt: string;
@@ -73,6 +77,8 @@ export const fetchUserDPPs = async (): Promise<DPPListItem[]> => {
       semanticId: dpp.semanticId,
       status: dpp.status.toLowerCase() as DPPListItem['status'],
       twinId: dpp.twinId,
+      submodelId: dpp.submodelId,
+      partType: dpp.partType as DPPListItem['partType'],
       manufacturerPartId: dpp.manufacturerPartId,
       partInstanceId: dpp.partInstanceId,
       createdAt: dpp.createdAt,
@@ -111,6 +117,53 @@ export const deleteDPP = async (id: string): Promise<void> => {
     await httpClient.delete(`${API_BASE_URL}/passports/${id}`);
   } catch (error) {
     console.error('Error deleting DPP:', error);
+    throw error;
+  }
+};
+
+/**
+ * Share a DPP with a partner
+ */
+export const shareDPP = async (
+  dppId: string,
+  partnerBpnl: string,
+  customPartId?: string
+): Promise<void> => {
+  try {
+    const payload = {
+      dppId: dppId,
+      businessPartnerNumber: partnerBpnl,
+      ...(customPartId && { customPartId: customPartId })
+    };
+
+    console.log('Sharing DPP with payload:', JSON.stringify(payload));
+
+    await httpClient.post(`${API_BASE_URL}/provision/share`, payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Error sharing DPP:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch submodel data from submodel-dispatcher
+ */
+export const fetchSubmodelData = async (
+  semanticId: string,
+  submodelId: string
+): Promise<Record<string, unknown>> => {
+  try {
+    const encodedSemanticId = encodeURIComponent(semanticId);
+    const response = await httpClient.get<Record<string, unknown>>(
+      `/submodel-dispatcher/${encodedSemanticId}/${submodelId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching submodel data:', error);
     throw error;
   }
 };

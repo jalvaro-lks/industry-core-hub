@@ -372,11 +372,13 @@ async def _execute_discovery_task(
         
     except Exception as e:
         logger.error(f"[Task {task_id}] Discovery task failed: {str(e)}", exc_info=True)
+        # Keep the current step to show where it failed
+        current_step = _discovery_tasks[task_id].get("step", "error")
         _discovery_tasks[task_id].update({
             "status": "failed",
-            "step": "error",
+            "step": current_step,  # Preserve the step where failure occurred
             "message": f"Discovery failed: {str(e)}",
-            "progress": 0,
+            "progress": _discovery_tasks[task_id].get("progress", 0),  # Keep current progress
             "error": str(e)
         })
 

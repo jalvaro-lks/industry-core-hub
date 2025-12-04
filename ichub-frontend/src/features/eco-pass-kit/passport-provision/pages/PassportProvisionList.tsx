@@ -69,13 +69,14 @@ import {
   TableRows as TableRowsIcon
 } from '@mui/icons-material';
 import { DPPListItem } from '../types';
-import { fetchUserDPPs, deleteDPP, getDPPById } from '../api/provisionApi';
+import { fetchUserDPPs, deleteDPP, getDPPById, fetchSubmodelData } from '../api/provisionApi';
 import { darkCardStyles } from '../styles/cardStyles';
 import { formatShortDate, generateCXId } from '../utils/formatters';
 import { CardChip } from '../components/CardChip';
 import { getParticipantId } from '@/services/EnvironmentService';
 import { exportPassportToPDF } from '../../utils/pdfExport';
 import { QRCodeSVG } from 'qrcode.react';
+import DppShareDialog from '../components/DppShareDialog';
 
 const getPassportType = (semanticId: string): string => {
   if (!semanticId) return 'Unknown';
@@ -108,12 +109,17 @@ const getVersionDisplay = (version: string | undefined): string => {
 
 const getStatusLabel = (status: string): string => {
   const statusMap: Record<string, string> = {
+    'draft': 'Draft',
     'active': 'Registered',
     'shared': 'Shared',
-    'draft': 'Draft',
     'pending': 'Pending'
   };
   return statusMap[status.toLowerCase()] || status;
+};
+
+const getPassportTypeLabel = (dpp: DPPListItem): 'Type' | 'Instance' => {
+  // Catalog parts are "Type" passports, serialized parts are "Instance" passports
+  return dpp.partType === 'serialized' ? 'Instance' : 'Type';
 };
 
 const PassportProvisionList: React.FC = () => {
@@ -139,6 +145,8 @@ const PassportProvisionList: React.FC = () => {
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedDppForShare, setSelectedDppForShare] = useState<{ id: string; name: string } | null>(null);
   
   const checkCarouselOverflow = () => {
     if (carouselRef.current) {
@@ -218,27 +226,75 @@ const PassportProvisionList: React.FC = () => {
     navigate('/passport/provision/create');
   };
 
-  const handleView = async (dppId: string) => {
+  const handleView = async (passportDiscoveryId: string) => {
+    console.log('handleView called with:', passportDiscoveryId);
+    
+    // Find the DPP to get semanticId and submodelId
+    const dpp = dpps.find(d => {
+      const discoveryId = d.manufacturerPartId && d.partInstanceId 
+        ? `CX:${d.manufacturerPartId}:${d.partInstanceId}`
+        : null;
+      return discoveryId === passportDiscoveryId;
+    });
+
+    console.log('Found DPP:', dpp);
+
+    if (!dpp) {
+      console.error('DPP not found for discovery ID:', passportDiscoveryId);
+      return;
+    }
+
+    if (!dpp.semanticId) {
+      console.error('DPP missing semanticId:', dpp);
+      return;
+    }
+
+    // Use submodelId from the backend response
+    const submodelId = dpp.submodelId;
+    if (!submodelId) {
+      console.error('DPP missing submodelId:', dpp);
+      return;
+    }
+
     try {
-      // Fetch full DPP data before navigation
-      const fullDppData = await getDPPById(dppId);
-      if (fullDppData) {
-        // Pass the full DPP data to skip loading animation
-        navigate(`/passport/provision/${dppId}`, { state: { dppData: fullDppData } });
-      } else {
-        // Navigate without data, will load on the detail page
-        navigate(`/passport/provision/${dppId}`);
-      }
+      console.log('Fetching submodel for semanticId:', dpp.semanticId, 'submodelId:', submodelId);
+      
+      // Use the proper API function
+      const submodelData = await fetchSubmodelData(dpp.semanticId, submodelId);
+      
+      console.log('Submodel data received, navigating with preloaded data');
+      
+      // Navigate directly to visualizer with submodel data, bypassing stepper
+      navigate(`/passport/provision/${passportDiscoveryId}`, {
+        state: {
+          submodelContent: submodelData,
+          semanticId: dpp.semanticId,
+          skipStepper: true,
+          directToVisualizer: true
+        }
+      });
     } catch (error) {
-      console.error('Error fetching DPP data:', error);
-      // Navigate anyway, will load on the detail page
-      navigate(`/passport/provision/${dppId}`);
+      console.error('Error fetching submodel data:', error);
+      // Navigate with DPP metadata so the detail page can try to load it
+      navigate(`/passport/provision/${passportDiscoveryId}`, {
+        state: {
+          dppData: dpp
+        }
+      });
     }
   };
 
   const handleShare = (dppId: string) => {
-    // Will be implemented with ShareDialog
-    console.log('Share DPP:', dppId);
+    const dpp = dpps.find(d => d.id === dppId);
+    if (!dpp) return;
+
+    // Use passport discovery ID (CX:manufacturerPartId:partInstanceId) for sharing
+    const passportDiscoveryId = dpp.manufacturerPartId && dpp.partInstanceId 
+      ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`
+      : dpp.id; // Fallback to internal ID if discovery ID not available
+
+    setSelectedDppForShare({ id: passportDiscoveryId, name: dpp.name });
+    setShareDialogOpen(true);
   };
 
   const handleExportPDF = async (dpp: DPPListItem) => {
@@ -247,7 +303,7 @@ const PassportProvisionList: React.FC = () => {
       status: dpp.status,
       version: dpp.version,
       manufacturerPartId: dpp.manufacturerPartId,
-      partInstanceId: dpp.partInstanceId,
+      serialNumber: dpp.partInstanceId,
       passportIdentifier: dpp.passportIdentifier,
       twinId: dpp.twinId,
       semanticId: dpp.semanticId,
@@ -610,8 +666,20 @@ const PassportProvisionList: React.FC = () => {
               >
                 <Box className="custom-card-header" sx={{ alignItems: 'center', display: 'flex', gap: 1 }}>
                   <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
+                  <Chip
+                    label={getPassportTypeLabel(dpp)}
+                    size="small"
+                    sx={{
+                      backgroundColor: getPassportTypeLabel(dpp) === 'Type' ? 'rgba(156, 39, 176, 0.2)' : 'rgba(33, 150, 243, 0.2)',
+                      color: getPassportTypeLabel(dpp) === 'Type' ? '#ce93d8' : '#64b5f6',
+                      border: `1px solid ${getPassportTypeLabel(dpp) === 'Type' ? 'rgba(156, 39, 176, 0.4)' : 'rgba(33, 150, 243, 0.4)'}`,
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      height: '24px'
+                    }}
+                  />
                   <Box className="custom-card-header-buttons">
-                    {(dpp.status === 'draft' || dpp.status === 'pending') && (
+                    {dpp.status === 'pending' && (
                       <Tooltip title="Register passport" arrow>
                         <span>
                           <IconButton
@@ -621,16 +689,12 @@ const PassportProvisionList: React.FC = () => {
                               console.log('Register DPP:', dpp.id);
                             }}
                           >
-                            {dpp.status === 'draft' ? (
-                              <CloudUploadIcon className="register-btn" />
-                            ) : (
-                              <CloudQueueIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
-                            )}
+                            <CloudQueueIcon sx={{ color: 'rgba(255, 255, 255, 0.5)' }} />
                           </IconButton>
                         </span>
                       </Tooltip>
                     )}
-                    {dpp.status !== 'draft' && dpp.status !== 'pending' && (
+                    {(dpp.status === 'active' || dpp.status === 'shared') && (
                       <Tooltip title="Share passport" arrow>
                         <IconButton
                           onClick={(e) => {
@@ -1139,7 +1203,21 @@ const PassportProvisionList: React.FC = () => {
                   alignItems: 'center',
                   background: 'linear-gradient(90deg, rgba(102, 126, 234, 0.08) 0%, transparent 100%)',
                 }}>
-                  <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
+                    <Chip
+                      label={getPassportTypeLabel(dpp)}
+                      size="small"
+                      sx={{
+                        backgroundColor: getPassportTypeLabel(dpp) === 'Type' ? 'rgba(156, 39, 176, 0.2)' : 'rgba(33, 150, 243, 0.2)',
+                        color: getPassportTypeLabel(dpp) === 'Type' ? '#ce93d8' : '#64b5f6',
+                        border: `1px solid ${getPassportTypeLabel(dpp) === 'Type' ? 'rgba(156, 39, 176, 0.4)' : 'rgba(33, 150, 243, 0.4)'}`,
+                        fontWeight: 600,
+                        fontSize: '0.7rem',
+                        height: '24px'
+                      }}
+                    />
+                  </Box>
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                     {(dpp.status === 'draft' || dpp.status === 'pending') && (
                       <Tooltip title="Register" arrow>
@@ -1159,7 +1237,7 @@ const PassportProvisionList: React.FC = () => {
                         </IconButton>
                       </Tooltip>
                     )}
-                    {dpp.status !== 'draft' && dpp.status !== 'pending' && (
+                    {(dpp.status === 'active' || dpp.status === 'shared') && (
                       <Tooltip title="Share" arrow>
                         <IconButton
                           size="small"
@@ -1503,6 +1581,18 @@ const PassportProvisionList: React.FC = () => {
                           {dpp.name}
                         </Typography>
                         <CardChip status={dpp.status} statusText={getStatusLabel(dpp.status)} />
+                        <Chip
+                          label={getPassportTypeLabel(dpp)}
+                          size="small"
+                          sx={{
+                            backgroundColor: getPassportTypeLabel(dpp) === 'Type' ? 'rgba(156, 39, 176, 0.2)' : 'rgba(33, 150, 243, 0.2)',
+                            color: getPassportTypeLabel(dpp) === 'Type' ? '#ce93d8' : '#64b5f6',
+                            border: `1px solid ${getPassportTypeLabel(dpp) === 'Type' ? 'rgba(156, 39, 176, 0.4)' : 'rgba(33, 150, 243, 0.4)'}`,
+                            fontWeight: 600,
+                            fontSize: '0.65rem',
+                            height: '22px'
+                          }}
+                        />
                       </Box>
                       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         <Box>
@@ -1831,6 +1921,19 @@ const PassportProvisionList: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Share Dialog */}
+      {selectedDppForShare && (
+        <DppShareDialog
+          open={shareDialogOpen}
+          onClose={() => {
+            setShareDialogOpen(false);
+            setSelectedDppForShare(null);
+          }}
+          dppId={selectedDppForShare.id}
+          dppName={selectedDppForShare.name}
+        />
+      )}
     </Box>
   );
 };

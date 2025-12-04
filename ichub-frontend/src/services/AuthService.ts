@@ -200,35 +200,46 @@ class AuthService {
         try {
           const refreshed = await this.keycloak.updateToken(minValidity);
           if (refreshed) {
+            console.log('✅ Token refreshed successfully');
             await this.handleAuthenticationSuccess(); // Update tokens in state
           }
         } catch (error) {
-          console.error('Failed to refresh token, reloading page:', error);
-          // Clear stored auth state before reload
-          sessionStorage.removeItem('keycloak_authenticated');
-          // Refresh the page to re-authenticate instead of manual logout
-          window.location.reload();
+          console.error('⚠️ Failed to refresh token:', error);
+          // Only logout if we're sure the session is dead (not just a network issue)
+          if (error instanceof Error && error.message.includes('Failed to refresh token')) {
+            console.log('Session expired, logging out...');
+            await this.logout();
+          }
+          // Don't reload on every refresh failure - could be transient network issue
         }
       }
     }, 60000); // Check every minute
   }  private setupKeycloakEvents(): void {
     if (!this.keycloak) return;
 
-    this.keycloak.onTokenExpired = () => {
-      // Clear stored auth state before reload
-      sessionStorage.removeItem('keycloak_authenticated');
-      // Refresh the page to re-authenticate
-      window.location.reload();
+    this.keycloak.onTokenExpired = async () => {
+      console.log('⏰ Token expired, attempting to refresh...');
+      try {
+        // Try to refresh the token first before logging out
+        const refreshed = await this.keycloak!.updateToken(30);
+        if (refreshed) {
+          console.log('✅ Token refreshed after expiration');
+          await this.handleAuthenticationSuccess();
+        }
+      } catch (error) {
+        console.error('❌ Failed to refresh expired token, logging out:', error);
+        await this.logout();
+      }
     };
 
     this.keycloak.onAuthRefreshError = () => {
-      // Clear stored auth state before reload
-      sessionStorage.removeItem('keycloak_authenticated');
-      // Refresh the page to re-authenticate
-      window.location.reload();
+      console.error('❌ Auth refresh error, logging out');
+      // Only logout, don't reload - let the app handle navigation to login
+      this.logout();
     };
 
     this.keycloak.onAuthError = (error: unknown) => {
+      console.error('❌ Auth error:', error);
       this.setAuthState({
         ...this.authState,
         error: error instanceof Error ? error.message : 'Authentication error occurred',

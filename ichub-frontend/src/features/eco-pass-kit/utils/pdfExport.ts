@@ -59,7 +59,9 @@ async function generateQRCode(discoveryId: string): Promise<string> {
         value: discoveryId,
         size: qrSize,
         level: 'M',
-        includeMargin: true
+        includeMargin: true,
+        fgColor: '#654321', // Brown color for QR code
+        bgColor: '#FFFFFF'  // White background
       })
     );
     setTimeout(() => {
@@ -94,6 +96,9 @@ async function generateQRCode(discoveryId: string): Promise<string> {
 export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   const doc = new jsPDF();
   
+  // Define brown color for all text (RGB: 101, 67, 33 - a nice brown that saves black ink)
+  const brownColor: [number, number, number] = [101, 67, 33];
+  
   // Generate QR code using discoveryId if available, otherwise construct from manufacturerPartId and serialNumber
   let qrCodeDataUrl = '';
   let discoveryId: string | null = null;
@@ -113,11 +118,13 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Title (left side)
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...brownColor);
   doc.text('Digital Product Passport', 20, 20);
   
   // Product Name (left side)
   doc.setFontSize(16);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...brownColor);
   doc.text(data.name, 20, 32);
   
   // Add QR Code box in top right if available
@@ -129,45 +136,45 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
     const boxY = 8;
     const boxSize = qrCodeSize + (boxPadding * 2);
     
-    // Draw outer border box (dashed line for cutting guide)
+    // Draw outer border box (dashed line for cutting guide) - brown
     doc.setLineWidth(0.3);
     doc.setLineDash([2, 2]);
-    doc.setDrawColor(150, 150, 150);
+    doc.setDrawColor(...brownColor);
     doc.rect(boxX - 2, boxY - 2, boxSize + 4, boxSize + 4);
     
-    // Draw inner solid border box
+    // Draw inner solid border box - brown
     doc.setLineDash([]);
     doc.setLineWidth(0.5);
-    doc.setDrawColor(0, 0, 0);
+    doc.setDrawColor(...brownColor);
     doc.rect(boxX, boxY, boxSize, boxSize);
     
     // Add QR code centered in the box
     doc.addImage(qrCodeDataUrl, 'PNG', boxX + boxPadding, boxY + boxPadding, qrCodeSize, qrCodeSize);
     
-    // Display actual Discovery ID below the box
+    // Display actual Discovery ID below the box - brown
     doc.setFontSize(6);
     doc.setFont('courier', 'normal');
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(...brownColor);
     doc.text(discoveryId, boxX + (boxSize / 2), boxY + boxSize + 4, { align: 'center' });
     
-    // Add scissors icon symbol (✂)
+    // Add scissors icon symbol (✂) - brown
     doc.setFontSize(8);
+    doc.setTextColor(...brownColor);
     doc.text('✂', boxX - 5, boxY + 5);
-    
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
     
     // Adjust separator line to not cross QR code box
     separatorEndX = boxX - 5;
   }
   
-  // Separator line (stops before QR code)
+  // Separator line (stops before QR code) - brown
   doc.setLineWidth(0.5);
+  doc.setDrawColor(...brownColor);
   doc.line(20, 42, separatorEndX, 42);
   
   // Information sections
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...brownColor);
   
   let yPos = 55;
   const lineHeight = 8;
@@ -175,8 +182,10 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Status
   if (data.status) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Status:', 20, yPos);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...brownColor);
     doc.text(data.status.toUpperCase(), 60, yPos);
     yPos += lineHeight;
   }
@@ -184,8 +193,10 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // BPN (Business Partner Number)
   if (data.manufacturerBPN) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Manufacturer ID:', 20, yPos);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...brownColor);
     doc.text(data.manufacturerBPN, 60, yPos);
     yPos += lineHeight;
   }
@@ -193,8 +204,10 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Version
   if (data.version) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Version:', 20, yPos);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...brownColor);
     doc.text(data.version, 60, yPos);
     yPos += lineHeight;
   }
@@ -202,9 +215,11 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Manufacturer Part ID
   if (data.manufacturerPartId) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Manufacturer Part ID:', 20, yPos);
     doc.setFont('courier', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(...brownColor);
     doc.text(data.manufacturerPartId, 20, yPos + 5);
     doc.setFontSize(12);
     yPos += lineHeight + 5;
@@ -213,9 +228,11 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Part Instance ID (Serial Number)
   if (data.serialNumber) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Part Instance ID:', 20, yPos);
     doc.setFont('courier', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(...brownColor);
     doc.text(data.serialNumber, 20, yPos + 5);
     doc.setFontSize(12);
     yPos += lineHeight + 5;
@@ -224,9 +241,11 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Discovery ID
   if (data.manufacturerPartId && data.serialNumber) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Passport Discovery ID:', 20, yPos);
     doc.setFont('courier', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(...brownColor);
     doc.text(`CX:${data.manufacturerPartId}:${data.serialNumber}`, 20, yPos + 5);
     doc.setFontSize(12);
     yPos += lineHeight + 5;
@@ -235,9 +254,11 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Passport ID
   if (data.passportIdentifier) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Passport ID:', 20, yPos);
     doc.setFont('courier', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(...brownColor);
     doc.text(data.passportIdentifier, 20, yPos + 5);
     doc.setFontSize(12);
     yPos += lineHeight + 5;
@@ -246,9 +267,11 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // AAS ID (Twin ID)
   if (data.twinId) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('AAS ID:', 20, yPos);
     doc.setFont('courier', 'normal');
     doc.setFontSize(10);
+    doc.setTextColor(...brownColor);
     doc.text(data.twinId, 20, yPos + 5);
     doc.setFontSize(12);
     yPos += lineHeight + 5;
@@ -257,71 +280,64 @@ export async function exportPassportToPDF(data: PDFExportData): Promise<void> {
   // Semantic ID (placed last)
   if (data.semanticId) {
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...brownColor);
     doc.text('Semantic ID:', 20, yPos);
     doc.setFont('courier', 'normal');
     doc.setFontSize(8);
+    doc.setTextColor(...brownColor);
     const semanticIdLines = doc.splitTextToSize(data.semanticId, 170);
     doc.text(semanticIdLines, 20, yPos + 5);
     doc.setFontSize(12);
     yPos += (semanticIdLines.length * 3) + 8;
   }
   
-    // Add margin between semantic ID and alert box
-    yPos += 10;
+  // Add margin between semantic ID and alert box
+  yPos += 10;
   
-    // Dataspace sharing notice - styled as alert box
+    // Dataspace sharing notice - styled as alert box with brown colors
     const boxHeight = 28;
 
-    // Border (outer box for alert look)
-    doc.setDrawColor(33, 150, 243); // Blue border
+    // Border (outer box for alert look) - brown
+    doc.setDrawColor(...brownColor);
     doc.setLineWidth(1);
     doc.roundedRect(15, yPos - 3, 180, boxHeight, 2, 2, 'S');
 
-    // Light blue background
-    doc.setFillColor(227, 242, 253); // Very light blue
+    // Light brown/tan background
+    doc.setFillColor(245, 235, 220); // Light tan
     doc.roundedRect(15.5, yPos - 2.5, 179, boxHeight - 1, 2, 2, 'F');
 
-    // Icon area (darker blue stripe on left)
-    doc.setFillColor(33, 150, 243);
+    // Icon area (darker brown stripe on left)
+    doc.setFillColor(...brownColor);
     doc.rect(16, yPos - 2, 8, boxHeight - 2, 'F');
 
-    // Info icon (white)
+    // Info icon (light tan)
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(245, 235, 220);
     doc.text('i', 19.5, yPos + 4);
 
-    // Title
+    // Title - brown
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(21, 101, 192); // Darker blue for text
+    doc.setTextColor(...brownColor);
     doc.text('Shared & Accessible via Dataspace', 28, yPos + 3);
 
-    // Notice text
+    // Notice text - brown
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(60, 60, 60); // Dark gray
+    doc.setTextColor(...brownColor);
     const noticeText = 'An Eclipse Tractus-X dataspace membership and DSP agreement to the license of usage (negotiated via an EDC Connector, or similar), may be required to get authorization for this data.';
     const noticeLines = doc.splitTextToSize(noticeText, 160);
     doc.text(noticeLines, 28, yPos + 9);
 
     yPos += boxHeight + 5;
 
-    // Reset
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.1);
-    doc.setTextColor(0, 0, 0);
-
-    // Footer
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(128, 128, 128);
-    doc.text('Generated by Industry Core Hub', 105, 280, { align: 'center' });
-    doc.text(new Date().toLocaleString(), 105, 285, { align: 'center' });
-    
-  
-  // Reset text color
-  doc.setTextColor(0, 0, 0);
+  // Footer - brown
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...brownColor);
+  doc.text('Generated by Industry Core Hub', 105, 280, { align: 'center' });
+  doc.text(new Date().toLocaleString(), 105, 285, { align: 'center' });
   
   // Save PDF
   const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');

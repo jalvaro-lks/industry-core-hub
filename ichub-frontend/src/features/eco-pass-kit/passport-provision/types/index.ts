@@ -52,6 +52,8 @@ export interface DPPListItem {
   semanticId: string;
   status: DPPStatus;
   twinId?: string;
+  submodelId?: string;
+  partType?: 'catalog' | 'serialized' | 'batch';
   manufacturerPartId?: string;
   partInstanceId?: string;
   createdAt: string;

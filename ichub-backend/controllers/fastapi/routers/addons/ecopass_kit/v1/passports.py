@@ -54,6 +54,7 @@ class DigitalProductPassport(BaseModel):
     passport_id: str = Field(alias="passportId")  # UUID from metadata.passportId
     manufacturer_part_id: Optional[str] = Field(alias="manufacturerPartId", default=None)  # For BPN Discovery
     part_instance_id: Optional[str] = Field(alias="partInstanceId", default=None)  # Part Instance ID
+    part_type: Optional[str] = Field(alias="partType", default=None)  # "catalog" or "serialized"
     name: str
     version: str
     semantic_id: str = Field(alias="semanticId")
@@ -150,19 +151,23 @@ async def get_all_passports():
                     name = "Digital Product Passport"
                     manufacturer_part_id = ""
                     part_instance_id = ""
+                    part_type = None
                     
                     if db_twin.catalog_part:
                         name = db_twin.catalog_part.name or name
                         manufacturer_part_id = db_twin.catalog_part.manufacturer_part_id
+                        part_type = "catalog"
                     elif db_twin.serialized_part:
                         if db_twin.serialized_part.partner_catalog_part:
                             name = db_twin.serialized_part.partner_catalog_part.catalog_part.name or name
                             manufacturer_part_id = db_twin.serialized_part.partner_catalog_part.catalog_part.manufacturer_part_id
                         part_instance_id = db_twin.serialized_part.part_instance_id
+                        part_type = "serialized"
                     elif db_twin.batch:
                         if db_twin.batch.catalog_part:
                             name = db_twin.batch.catalog_part.name or name
                             manufacturer_part_id = db_twin.batch.catalog_part.manufacturer_part_id
+                        part_type = "batch"
                     
                     # Extract version from semantic ID
                     # Example: urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
@@ -181,7 +186,7 @@ async def get_all_passports():
                     
                     # Determine status based on shares
                     share_count = len(db_twin.twin_exchanges) if db_twin.twin_exchanges else 0
-                    status = "active" if share_count > 0 else "draft"
+                    status = "shared" if share_count > 0 else "active"
                     
                     # Use passport ID from metadata.passportId (UUID) or construct fallback
                     if passport_id:
@@ -207,6 +212,7 @@ async def get_all_passports():
                         passportId=passport_id if passport_id else dpp_id,  # UUID from metadata.passportId
                         manufacturerPartId=manufacturer_part_id,  # For BPN Discovery
                         partInstanceId=part_instance_id,  # Part Instance ID
+                        partType=part_type,  # "catalog", "serialized", or "batch"
                         name=name,
                         version=version,
                         semanticId=dpp_aspect.semantic_id,
