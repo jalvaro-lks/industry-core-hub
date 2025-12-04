@@ -23,7 +23,7 @@
 from fastapi import APIRouter, Depends
 
 from fastapi.responses import Response
-from .v1 import consumption
+from .v1 import discovery, provision, passports
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 
@@ -32,4 +32,6 @@ router = APIRouter(
     tags=["EcoPass KIT Microservices"],
     dependencies=[Depends(get_authentication_dependency())]
 )
-router.include_router(consumption.router)
+router.include_router(passports.router)
+router.include_router(provision.router)
+router.include_router(discovery.router)

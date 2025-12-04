@@ -25,7 +25,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { getDPPById } from '../api/provisionApi';
 import { PassportTypeRegistry } from '../../passport-consumption/passport-types';
-import PassportLoadingSteps, { LOADING_STEPS } from '../../passport-consumption/components/PassportLoadingSteps';
+import PassportLoadingSteps from '../../passport-consumption/components/PassportLoadingSteps';
+import { LOADING_STEPS } from '../../passport-consumption/components/loadingStepsConfig';
 
 /**
  * Component to view/visualize a user's provisioned DPP

@@ -22,35 +22,15 @@
 
 import React from 'react';
 import { Box, Card, CardContent, Typography, Button } from '@mui/material';
-import {
-  CheckCircle,
-  RadioButtonUnchecked,
-  Downloading,
-  Security,
-  VerifiedUser,
-  Storage,
-  Search
-} from '@mui/icons-material';
-
-export interface LoadingStep {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  description: string;
-}
-
-export const LOADING_STEPS: LoadingStep[] = [
-  { id: 'lookup', label: 'Looking up Asset', icon: Search, description: 'Searching in the dataspace registry' },
-  { id: 'retrieve', label: 'Retrieving Data', icon: Downloading, description: 'Fetching passport from provider' },
-  { id: 'verify', label: 'Verifying Data', icon: Security, description: 'Validating digital signatures' },
-  { id: 'parse', label: 'Parsing Content', icon: Storage, description: 'Processing passport structure' },
-  { id: 'complete', label: 'Ready', icon: VerifiedUser, description: 'Passport loaded successfully' }
-];
+import { CheckCircle, RadioButtonUnchecked } from '@mui/icons-material';
+import { LOADING_STEPS } from './loadingStepsConfig';
 
 interface PassportLoadingStepsProps {
   passportId?: string;
   currentStep: number;
   onCancel?: () => void;
+  error?: string | null;
+  errorStep?: number;
 }
 
 /**
@@ -60,8 +40,12 @@ interface PassportLoadingStepsProps {
 const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
   passportId,
   currentStep,
-  onCancel
+  onCancel,
+  error,
+  errorStep
 }) => {
+  const hasError = Boolean(error);
+  const failedStep = errorStep !== undefined ? errorStep : currentStep;
   return (
     <Box 
       sx={{ 
@@ -86,8 +70,8 @@ const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-              Loading Passport
+            <Typography variant="h5" sx={{ color: hasError ? '#f44336' : '#fff', fontWeight: 600, mb: 1 }}>
+              {hasError ? 'Error Loading Passport' : 'Loading Passport'}
             </Typography>
             {passportId && (
               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace' }}>
@@ -102,9 +86,10 @@ const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
               {LOADING_STEPS.map((step, index) => {
                 const Icon = step.icon;
-                const isActive = index === currentStep;
-                const isCompleted = index < currentStep;
-                const isPending = index > currentStep;
+                const isFailed = hasError && index === failedStep;
+                const isActive = !hasError && index === currentStep;
+                const isCompleted = !hasError && index < currentStep;
+                const isPending = !hasError && index > currentStep;
 
                 return (
                   <React.Fragment key={step.id}>
@@ -128,12 +113,14 @@ const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: isCompleted
+                          background: isFailed
+                            ? 'linear-gradient(135deg, #f44336 0%, #d32f2f 100%)'
+                            : isCompleted
                             ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                             : isActive
                             ? 'rgba(102, 126, 234, 0.2)'
                             : 'rgba(255, 255, 255, 0.05)',
-                          border: isActive ? '2px solid #667eea' : 'none',
+                          border: isFailed ? '2px solid #f44336' : isActive ? '2px solid #667eea' : 'none',
                           transition: 'all 0.3s ease',
                           position: 'relative',
                           zIndex: 2,
@@ -146,7 +133,9 @@ const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
                           })
                         }}
                       >
-                        {isCompleted ? (
+                        {isFailed ? (
+                          <Box sx={{ fontSize: { xs: 20, sm: 24 }, color: '#fff', fontWeight: 'bold' }}>✕</Box>
+                        ) : isCompleted ? (
                           <CheckCircle sx={{ fontSize: { xs: 20, sm: 24 }, color: '#fff' }} />
                         ) : isActive ? (
                           <Icon sx={{ fontSize: { xs: 20, sm: 24 }, color: '#667eea' }} />
@@ -193,8 +182,39 @@ const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
               })}
             </Box>
 
-            {/* Active Step Description */}
-            {LOADING_STEPS[currentStep] && (
+            {/* Active Step Description or Error Message */}
+            {hasError && error ? (
+              <Box
+                sx={{
+                  textAlign: 'center',
+                  p: 2,
+                  borderRadius: '10px',
+                  background: 'rgba(244, 67, 54, 0.1)',
+                  border: '1px solid rgba(244, 67, 54, 0.3)'
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: '#f44336',
+                    fontWeight: 600,
+                    mb: 0.5,
+                    fontSize: { xs: '0.85rem', sm: '0.9rem' }
+                  }}
+                >
+                  {LOADING_STEPS[failedStep]?.label || 'Error'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    fontSize: { xs: '0.75rem', sm: '0.8rem' }
+                  }}
+                >
+                  {error}
+                </Typography>
+              </Box>
+            ) : LOADING_STEPS[currentStep] && (
               <Box
                 sx={{
                   textAlign: 'center',
@@ -228,26 +248,34 @@ const PassportLoadingSteps: React.FC<PassportLoadingStepsProps> = ({
             )}
           </Box>
 
-          {/* Cancel Button */}
+          {/* Cancel/Go Back Button */}
           {onCancel && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
               <Button
-                variant="outlined"
+                variant={hasError ? 'contained' : 'outlined'}
                 onClick={onCancel}
                 sx={{
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  color: 'rgba(255, 255, 255, 0.7)',
+                  ...(hasError ? {
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)'
+                    }
+                  } : {
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    '&:hover': {
+                      borderColor: 'rgba(255, 255, 255, 0.4)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                    }
+                  }),
                   textTransform: 'none',
                   px: 3,
                   py: 1,
-                  borderRadius: '10px',
-                  '&:hover': {
-                    borderColor: 'rgba(255, 255, 255, 0.4)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                  }
+                  borderRadius: '10px'
                 }}
               >
-                Cancel
+                {hasError ? 'Go Back' : 'Cancel'}
               </Button>
             </Box>
           )}

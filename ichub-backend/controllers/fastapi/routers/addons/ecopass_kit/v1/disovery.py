@@ -19,17 +19,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
-
-from fastapi import APIRouter, Depends
+ 
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+ 
 from connector import connector_consumer_manager
-
-from fastapi.responses import Response
+ 
+from fastapi.responses import Response, JSONResponse
 from tractusx_sdk.dataspace.tools.http_tools import HttpTools
-
+ 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
-
+from managers.metadata_database.manager import RepositoryManagerFactory
+from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
+from managers.config.config_manager import ConfigManager
+ 
 router = APIRouter(
-    prefix="/consumption",
+    prefix="/discover",
     dependencies=[Depends(get_authentication_dependency())]
 )
-
+ 

@@ -53,10 +53,12 @@ export interface DPPListItem {
   status: DPPStatus;
   twinId?: string;
   manufacturerPartId?: string;
-  serialNumber?: string;
+  partInstanceId?: string;
   createdAt: string;
   shareCount: number;
   passportIdentifier?: string;
+  issueDate?: string;
+  expirationDate?: string;
 }
 
 /**
@@ -66,7 +68,7 @@ export interface TwinAssociation {
   twinId: string;
   aasId?: string;
   manufacturerPartId: string;
-  serialNumber: string;
+  partInstanceId: string;
   twinName?: string;
   assetId?: string;
 }
@@ -79,7 +81,7 @@ export interface SerializedTwinSearchResult {
   twinId: string;
   aasId: string;
   manufacturerPartId: string;
-  serialNumber: string;
+  partInstanceId: string;
   name: string;
   location: string;
   assetId: string;

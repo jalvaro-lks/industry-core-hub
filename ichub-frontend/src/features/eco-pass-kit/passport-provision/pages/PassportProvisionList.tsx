@@ -53,7 +53,7 @@ import {
   PictureAsPdf as PictureAsPdfIcon,
   Delete as DeleteIcon,
   PostAdd as PostAddIcon,
-  Inventory as InventoryIcon,
+  Description as DescriptionIcon,
   CloudUpload as CloudUploadIcon,
   CloudQueue as CloudQueueIcon,
   MoreVert as MoreVertIcon,
@@ -91,6 +91,19 @@ const getPassportType = (semanticId: string): string => {
     .trim();
   
   return readable || 'Digital Product Passport';
+};
+
+const getVersionDisplay = (version: string | undefined): string => {
+  if (!version) return '1.0.0';
+  
+  // If version contains non-numeric/dot characters, try to extract just the version number
+  // e.g., "urn:something:6.1.0#type" -> "6.1.0"
+  const versionMatch = version.match(/(\d+\.\d+\.\d+)/);
+  if (versionMatch) {
+    return versionMatch[1];
+  }
+  
+  return version;
 };
 
 const getStatusLabel = (status: string): string => {
@@ -195,7 +208,7 @@ const PassportProvisionList: React.FC = () => {
     const filtered = dpps.filter(dpp =>
       dpp.name.toLowerCase().includes(query) ||
       (dpp.manufacturerPartId?.toLowerCase() || '').includes(query) ||
-      (dpp.serialNumber?.toLowerCase() || '').includes(query) ||
+      (dpp.partInstanceId?.toLowerCase() || '').includes(query) ||
       dpp.version.includes(query)
     );
     setFilteredDpps(filtered);
@@ -234,7 +247,7 @@ const PassportProvisionList: React.FC = () => {
       status: dpp.status,
       version: dpp.version,
       manufacturerPartId: dpp.manufacturerPartId,
-      serialNumber: dpp.serialNumber,
+      partInstanceId: dpp.partInstanceId,
       passportIdentifier: dpp.passportIdentifier,
       twinId: dpp.twinId,
       semanticId: dpp.semanticId,
@@ -249,9 +262,9 @@ const PassportProvisionList: React.FC = () => {
 
   const handleCopyPassportId = async (dppId: string) => {
     const dpp = dpps.find(d => d.id === dppId);
-    if (!dpp || !dpp.manufacturerPartId || !dpp.serialNumber) return;
+    if (!dpp || !dpp.manufacturerPartId || !dpp.partInstanceId) return;
     
-    const passportId = `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`;
+    const passportId = `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`;
     try {
       await navigator.clipboard.writeText(passportId);
       setCopySuccess({ ...copySuccess, [dppId]: true });
@@ -537,7 +550,7 @@ const PassportProvisionList: React.FC = () => {
         >
           {filteredDpps.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 8, width: '100%' }}>
-              <InventoryIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.3)', mb: 2 }} />
+              <DescriptionIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.3)', mb: 2 }} />
               <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>
                 {searchQuery ? 'No passports found' : 'No passports yet'}
               </Typography>
@@ -549,11 +562,27 @@ const PassportProvisionList: React.FC = () => {
               {!searchQuery && (
                 <Button
                   variant="contained"
-                  startIcon={<AddIcon />}
+                  startIcon={<PostAddIcon />}
                   onClick={handleCreateNew}
-                  sx={darkCardStyles.button.primary}
+                  sx={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#fff',
+                    borderRadius: { xs: '10px', md: '12px' },
+                    fontWeight: 600,
+                    fontSize: { xs: '1rem', md: '1.125rem' },
+                    padding: { xs: '12px 32px', md: '14px 40px' },
+                    minWidth: { xs: '200px', md: '240px' },
+                    textTransform: 'none' as const,
+                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                      boxShadow: '0 12px 32px rgba(16, 185, 129, 0.5)',
+                      transform: 'translateY(-2px) scale(1.02)'
+                    }
+                  }}
                 >
-                  Create Passport
+                  Get Started
                 </Button>
               )}
             </Box>
@@ -641,7 +670,7 @@ const PassportProvisionList: React.FC = () => {
                         </Typography>
                       </Tooltip>
                     </Box>
-                    {dpp.manufacturerPartId && dpp.serialNumber && (
+                    {dpp.manufacturerPartId && dpp.partInstanceId && (
                       <Box 
                         sx={{ 
                           flexShrink: 0,
@@ -655,7 +684,7 @@ const PassportProvisionList: React.FC = () => {
                         }}
                       >
                         <QRCodeSVG 
-                          value={`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`}
+                          value={`CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`}
                           size={70}
                           level="M"
                           includeMargin={false}
@@ -677,7 +706,7 @@ const PassportProvisionList: React.FC = () => {
                     >
                       Passport Discovery ID
                     </Typography>
-                    <Tooltip title={dpp.manufacturerPartId && dpp.serialNumber ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}` : 'N/A'} arrow placement="top">
+                    <Tooltip title={dpp.manufacturerPartId && dpp.partInstanceId ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}` : 'N/A'} arrow placement="top">
                       <Typography 
                         sx={{ 
                           fontFamily: 'Monaco, "Lucida Console", monospace',
@@ -693,8 +722,8 @@ const PassportProvisionList: React.FC = () => {
                         }}
                       >
                         {(() => {
-                          if (!dpp.manufacturerPartId || !dpp.serialNumber) return 'N/A';
-                          const passportId = `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`;
+                          if (!dpp.manufacturerPartId || !dpp.partInstanceId) return 'N/A';
+                          const passportId = `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`;
                           if (passportId.length <= 30) return passportId;
                           const startLength = 15;
                           const endLength = 12;
@@ -784,12 +813,12 @@ const PassportProvisionList: React.FC = () => {
                       <Typography 
                         sx={{ 
                           fontSize: '0.76rem',
-                          color: 'rgba(255,255,255,0.87)',
+                          color: dpp.expirationDate ? 'rgba(255,255,255,0.87)' : 'rgba(255,255,255,0.5)',
                           fontWeight: 500,
                           letterSpacing: '0.1px'
                         }}
                       >
-                        No Expiration
+                        {dpp.expirationDate ? formatShortDate(dpp.expirationDate) : 'No Expiration'}
                       </Typography>
                     </Box>
                   </Box>
@@ -820,7 +849,7 @@ const PassportProvisionList: React.FC = () => {
                         textTransform: 'uppercase'
                       }}
                     >
-                      Version {dpp.version}
+                      Version {getVersionDisplay(dpp.version)}
                     </Typography>
                     <Typography
                       sx={{
@@ -835,7 +864,7 @@ const PassportProvisionList: React.FC = () => {
                     variant="contained" 
                     size="small" 
                     endIcon={<LaunchIcon />}
-                    onClick={() => handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`)}
+                    onClick={() => handleView(`CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`)}
                   >
                     View
                   </Button>
@@ -1098,7 +1127,7 @@ const PassportProvisionList: React.FC = () => {
                 }}
                 onClick={() => {
                   setSeeAllDialogOpen(false);
-                  handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`);
+                  handleView(`CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`);
                 }}
               >
                 {/* Compact Header */}
@@ -1162,7 +1191,7 @@ const PassportProvisionList: React.FC = () => {
 
                 {/* QR Code & Name Section */}
                 <Box sx={{ p: 2.5, textAlign: 'center' }}>
-                  {dpp.manufacturerPartId && dpp.serialNumber && (
+                  {dpp.manufacturerPartId && dpp.partInstanceId && (
                     <Box 
                       sx={{ 
                         display: 'inline-flex',
@@ -1174,7 +1203,7 @@ const PassportProvisionList: React.FC = () => {
                       }}
                     >
                       <QRCodeSVG 
-                        value={`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`}
+                        value={`CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`}
                         size={120}
                         level="M"
                         includeMargin={false}
@@ -1217,7 +1246,7 @@ const PassportProvisionList: React.FC = () => {
                     >
                       Discovery ID
                     </Typography>
-                    <Tooltip title={dpp.manufacturerPartId && dpp.serialNumber ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}` : 'N/A'} arrow>
+                    <Tooltip title={dpp.manufacturerPartId && dpp.partInstanceId ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}` : 'N/A'} arrow>
                       <Typography 
                         sx={{ 
                           fontFamily: 'Monaco, "Lucida Console", monospace',
@@ -1230,8 +1259,8 @@ const PassportProvisionList: React.FC = () => {
                           cursor: 'help'
                         }}
                       >
-                        {dpp.manufacturerPartId && dpp.serialNumber 
-                          ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`
+                        {dpp.manufacturerPartId && dpp.partInstanceId 
+                          ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`
                           : 'N/A'
                         }
                       </Typography>
@@ -1339,11 +1368,11 @@ const PassportProvisionList: React.FC = () => {
                       <Typography 
                         sx={{ 
                           fontSize: '0.7rem',
-                          color: 'rgba(255, 255, 255, 0.8)',
+                          color: dpp.expirationDate ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.5)',
                           fontWeight: 500,
                         }}
                       >
-                        No Expiration
+                        {dpp.expirationDate ? formatShortDate(dpp.expirationDate) : 'No Expiration'}
                       </Typography>
                     </Box>
                   </Box>
@@ -1370,7 +1399,7 @@ const PassportProvisionList: React.FC = () => {
                         letterSpacing: '0.5px',
                       }}
                     >
-                      v{dpp.version}
+                      v{getVersionDisplay(dpp.version)}
                     </Typography>
                     <Typography
                       sx={{
@@ -1432,11 +1461,11 @@ const PassportProvisionList: React.FC = () => {
                     }}
                     onClick={() => {
                       setSeeAllDialogOpen(false);
-                      handleView(`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`);
+                      handleView(`CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`);
                     }}
                   >
                     {/* QR Code */}
-                    {dpp.manufacturerPartId && dpp.serialNumber && (
+                    {dpp.manufacturerPartId && dpp.partInstanceId && (
                       <Box 
                         sx={{ 
                           flexShrink: 0,
@@ -1450,7 +1479,7 @@ const PassportProvisionList: React.FC = () => {
                         }}
                       >
                         <QRCodeSVG 
-                          value={`CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`}
+                          value={`CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`}
                           size={60}
                           level="M"
                           includeMargin={false}
@@ -1497,8 +1526,8 @@ const PassportProvisionList: React.FC = () => {
                               fontWeight: 600,
                             }}
                           >
-                            {dpp.manufacturerPartId && dpp.serialNumber 
-                              ? `CX:${dpp.manufacturerPartId}:${dpp.serialNumber}`
+                            {dpp.manufacturerPartId && dpp.partInstanceId 
+                              ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`
                               : 'N/A'
                             }
                           </Typography>
@@ -1549,7 +1578,7 @@ const PassportProvisionList: React.FC = () => {
                               fontWeight: 600,
                             }}
                           >
-                            v{dpp.version}
+                            v{getVersionDisplay(dpp.version)}
                           </Typography>
                         </Box>
                         <Box>

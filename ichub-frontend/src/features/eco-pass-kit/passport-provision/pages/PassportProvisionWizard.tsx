@@ -227,19 +227,31 @@ const PassportProvisionWizard: React.FC = () => {
 
   const handlePartCreated = async (createdPart?: SerializedPart) => {
     setShowAddPartDialog(false);
-    await loadSerializedParts();
     
     if (createdPart) {
-      // Select the newly created part
-      setSelectedPart(createdPart);
+      // Reload the serialized parts list to get the complete twin data including globalId and dtrAasId
+      await loadSerializedParts();
+      
+      // Find the newly created part from the refreshed list to get complete twin data
+      const refreshedPart = serializedParts.find(
+        (p: SerializedPart) =>
+          p.manufacturerPartId === createdPart.manufacturerPartId &&
+          p.partInstanceId === createdPart.partInstanceId
+      );
+      
+      // Select the part with complete data from the list
+      const partToSelect = refreshedPart || createdPart;
+      setSelectedPart(partToSelect);
       setError(null);
       
       // Check registration status of the new part
-      await checkPartRegistrationStatus(createdPart);
+      await checkPartRegistrationStatus(partToSelect);
       
       // Show success message
       setSuccessMessage('Serialized part created successfully');
       setTimeout(() => setSuccessMessage(null), 4000);
+    } else {
+      await loadSerializedParts();
     }
   };
 

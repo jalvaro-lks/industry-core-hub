@@ -22,10 +22,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { PassportTypeRegistry } from '../passport-types';
-import { fetchPassportWithDigitalTwin, PassportResponse } from '../api/passportApi';
-import PassportLoadingSteps, { LOADING_STEPS } from '../components/PassportLoadingSteps';
+import { discoverPassport, PassportResponse, DiscoveryStatus } from '../api/passportApi';
+import PassportLoadingSteps from '../components/PassportLoadingSteps';
+import { getStepIndexByName } from '../components/loadingStepsConfig';
+import { getDtrPoliciesConfig, getGovernanceConfig } from '@/services/EnvironmentService';
 
 /**
  * Demo page to visualize the user-provided passport data model
@@ -39,6 +41,7 @@ const PassportProvidedVisualization: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [errorStep, setErrorStep] = useState<number | undefined>(undefined);
   const [passportData, setPassportData] = useState<PassportResponse | null>(null);
 
   useEffect(() => {
@@ -54,22 +57,41 @@ const PassportProvidedVisualization: React.FC = () => {
         setError(null);
         setCurrentStep(0);
         
-        // Simulate step-by-step loading
-        for (let step = 0; step < LOADING_STEPS.length - 1; step++) {
-          setCurrentStep(step);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        // Use the discovery API with real backend polling
+        const semanticId = 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport';
         
-        // Fetch passport data from API (currently returns mock data)
-        const response = await fetchPassportWithDigitalTwin(passportId);
+        // Retrieve DTR and governance policies from configuration
+        const dtrPolicies = getDtrPoliciesConfig();
+        const governanceConfigs = getGovernanceConfig();
         
-        // Show final step
-        setCurrentStep(LOADING_STEPS.length - 1);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Find the governance config that matches the semantic ID
+        const matchingGovernance = governanceConfigs.find(gc => gc.semanticid === semanticId);
+        const governancePolicies = matchingGovernance ? { policies: matchingGovernance.policies } : undefined;
+        
+        const response = await discoverPassport(
+          passportId,
+          semanticId,
+          (status: DiscoveryStatus) => {
+            // Update the UI based on backend status
+            const stepIndex = getStepIndexByName(status.step);
+            setCurrentStep(stepIndex);
+            
+            // If status indicates error, capture it
+            if (status.status === 'failed') {
+              setError(status.message || 'Discovery failed');
+              setErrorStep(stepIndex);
+            }
+          },
+          dtrPolicies,
+          governancePolicies
+        );
         
         setPassportData(response);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load passport data');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load passport data';
+        setError(errorMessage);
+        // Capture the current step at the time of error
+        setErrorStep((prevStep) => prevStep !== undefined ? prevStep : currentStep);
       } finally {
         setLoading(false);
       }
@@ -82,19 +104,21 @@ const PassportProvidedVisualization: React.FC = () => {
     navigate('/passport');
   };
 
-  // Loading state with step-by-step progress
-  if (loading) {
+  // Loading state with step-by-step progress (includes error display)
+  if (loading || error) {
     return (
       <PassportLoadingSteps
         passportId={passportId}
         currentStep={currentStep}
+        error={error}
+        errorStep={errorStep}
         onCancel={() => navigate('/passport')}
       />
     );
   }
 
-  // Error state
-  if (error || !passportData) {
+  // Final fallback error (should not reach here normally)
+  if (!passportData) {
     return (
       <Box
         sx={{

@@ -20,15 +20,11 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { mockGenericPassport } from '../passport-types/generic/mockData';
+import httpClient from '@/services/HttpClient';
 
 /**
- * Mock API service for fetching passport data
- * This simulates API calls and returns mock data
- * Later this will be replaced with actual API calls to the backend
+ * API service for fetching passport data and discovery
  */
-
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 export interface PassportResponse {
   data: Record<string, unknown>;
@@ -86,63 +82,116 @@ export interface PassportResponse {
 }
 
 /**
- * Simulates fetching passport data by ID
- * @param _passportId - The passport identifier (currently unused in mock)
- * @returns Promise with passport data
+ * Discovery API types and functions
  */
-export const fetchPassportById = async (_passportId: string): Promise<PassportResponse> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // For now, return mock data regardless of ID
-  // Later, this will make actual API calls
-  return {
-    data: mockGenericPassport,
-    semanticId: "urn:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport",
-    digitalTwin: undefined,
-    counterPartyId: undefined
-  };
+export interface DiscoveryStatus {
+  status: 'in_progress' | 'completed' | 'failed';
+  step: 'parsing' | 'discovering_bpn' | 'retrieving_twin' | 'looking_up_submodel' | 'consuming_data' | 'complete' | 'error';
+  message: string;
+  progress: number;
+}
+
+export interface DiscoveryResponse {
+  taskId: string;
+  status: DiscoveryStatus;
+  digitalTwin?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+}
+
+export interface DiscoverRequest {
+  id: string;
+  semanticId: string;
+  dtrPolicies?: Array<Record<string, unknown>>;
+  governance?: Record<string, unknown>;
+}
+
+const API_BASE_URL = '/addons/ecopass-kit';
+
+/**
+ * Initiates a discovery request to find and retrieve a DPP
+ * @param request - Discovery request with id and semanticId
+ * @returns Promise with task ID and initial status
+ */
+export const initiateDiscovery = async (request: DiscoverRequest): Promise<DiscoveryResponse> => {
+  try {
+    const response = await httpClient.post<DiscoveryResponse>(`${API_BASE_URL}/discover`, request);
+    return response.data;
+  } catch (error) {
+    const errorMsg = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Discovery request failed';
+    throw new Error(errorMsg);
+  }
 };
 
 /**
- * Simulates fetching passport data with digital twin information
- * @param _passportId - The passport identifier (currently unused in mock)
- * @returns Promise with passport data including digital twin
+ * Polls the discovery status endpoint
+ * @param taskId - The task ID from initiateDiscovery
+ * @returns Promise with current discovery status and results (if completed)
  */
-export const fetchPassportWithDigitalTwin = async (
-  _passportId: string
+export const getDiscoveryStatus = async (taskId: string): Promise<DiscoveryResponse> => {
+  try {
+    const response = await httpClient.get<DiscoveryResponse>(`${API_BASE_URL}/discover/${taskId}/status`);
+    return response.data;
+  } catch (error) {
+    const errorMsg = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail || 'Status check failed';
+    throw new Error(errorMsg);
+  }
+};
+
+/**
+ * Discovers a passport using the backend discovery API with polling
+ * @param id - The identifier in format 'CX:<manufacturerPartId>:<partInstanceId>'
+ * @param semanticId - The semantic ID of the submodel
+ * @param onProgress - Callback function for progress updates
+ * @param dtrPolicies - Optional policies for DTR access
+ * @param governance - Optional governance policies for submodel consumption
+ * @returns Promise with final passport data
+ */
+export const discoverPassport = async (
+  id: string,
+  semanticId: string,
+  onProgress?: (status: DiscoveryStatus) => void,
+  dtrPolicies?: Array<Record<string, unknown>>,
+  governance?: Record<string, unknown>
 ): Promise<PassportResponse> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1200));
+  // Initiate discovery
+  const initialResponse = await initiateDiscovery({ 
+    id, 
+    semanticId,
+    dtrPolicies,
+    governance
+  });
+  const taskId = initialResponse.taskId;
 
-  // Import digital twin mock data dynamically to avoid circular dependencies
-  const { mockDigitalTwinData, mockCounterPartyId } = await import('../mockDigitalTwinData');
+  // Poll for status updates
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Poll every second
 
-  return {
-    data: mockGenericPassport,
-    semanticId: "urn:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport",
-    digitalTwin: mockDigitalTwinData,
-    counterPartyId: mockCounterPartyId
-  };
-};
+    const statusResponse = await getDiscoveryStatus(taskId);
 
-/**
- * Simulates searching for passports
- * @param _query - Search query (currently unused in mock)
- * @returns Promise with array of passport results
- */
-export const searchPassports = async (_query: string): Promise<PassportResponse[]> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  // For now, return a single mock result
-  // Later, this will make actual API calls with search parameters
-  return [
-    {
-      data: mockGenericPassport,
-      semanticId: "urn:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport",
-      digitalTwin: undefined,
-      counterPartyId: undefined
+    // Notify progress callback
+    if (onProgress) {
+      onProgress(statusResponse.status);
     }
-  ];
+
+    // Check if completed
+    if (statusResponse.status.status === 'completed') {
+      if (!statusResponse.digitalTwin || !statusResponse.data) {
+        throw new Error('Discovery completed but no data was returned');
+      }
+
+      return {
+        data: statusResponse.data,
+        semanticId: semanticId,
+        digitalTwin: statusResponse.digitalTwin as PassportResponse['digitalTwin']
+      };
+    }
+
+    // Check if failed
+    if (statusResponse.status.status === 'failed') {
+      throw new Error(statusResponse.status.message || 'Discovery failed');
+    }
+
+    // Continue polling if still in progress
+  }
 };
