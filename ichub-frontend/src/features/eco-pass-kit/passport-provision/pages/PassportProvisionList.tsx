@@ -69,14 +69,13 @@ import {
   TableRows as TableRowsIcon
 } from '@mui/icons-material';
 import { DPPListItem } from '../types';
-import { fetchUserDPPs, deleteDPP, getDPPById, fetchSubmodelData } from '../api/provisionApi';
+import { fetchUserDPPs, deleteDPP, getDPPById, fetchSubmodelData, shareDPP } from '../api/provisionApi';
 import { darkCardStyles } from '../styles/cardStyles';
 import { formatShortDate, generateCXId } from '../utils/formatters';
 import { CardChip } from '../components/CardChip';
 import { getParticipantId } from '@/services/EnvironmentService';
 import { exportPassportToPDF } from '../../utils/pdfExport';
 import { QRCodeSVG } from 'qrcode.react';
-import DppShareDialog from '../components/DppShareDialog';
 
 const getPassportType = (semanticId: string): string => {
   if (!semanticId) return 'Unknown';
@@ -145,8 +144,8 @@ const PassportProvisionList: React.FC = () => {
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [selectedDppForShare, setSelectedDppForShare] = useState<{ id: string; name: string } | null>(null);
+  const [sharedDpps, setSharedDpps] = useState<Set<string>>(new Set());
+  const [sharingInProgress, setSharingInProgress] = useState<Set<string>>(new Set());
   
   const checkCarouselOverflow = () => {
     if (carouselRef.current) {
@@ -284,7 +283,7 @@ const PassportProvisionList: React.FC = () => {
     }
   };
 
-  const handleShare = (dppId: string) => {
+  const handleShare = async (dppId: string) => {
     const dpp = dpps.find(d => d.id === dppId);
     if (!dpp) return;
 
@@ -293,8 +292,63 @@ const PassportProvisionList: React.FC = () => {
       ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`
       : dpp.id; // Fallback to internal ID if discovery ID not available
 
-    setSelectedDppForShare({ id: passportDiscoveryId, name: dpp.name });
-    setShareDialogOpen(true);
+    // Add to sharing in progress
+    setSharingInProgress(prev => new Set(prev).add(dppId));
+
+    try {
+      // TODO: Replace with actual BPNL from user input or configuration
+      const defaultBpnl = 'BPNL000000000000'; // Placeholder BPNL
+      
+      await shareDPP(passportDiscoveryId, defaultBpnl);
+      
+      // Mark as shared
+      setSharedDpps(prev => new Set(prev).add(dppId));
+      
+      // Show success message
+      console.log(`Successfully shared DPP: ${dpp.name}`);
+    } catch (error) {
+      console.error('Failed to share DPP:', error);
+      // TODO: Add error notification
+    } finally {
+      // Remove from sharing in progress
+      setSharingInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(dppId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleUnshare = async (dppId: string) => {
+    const dpp = dpps.find(d => d.id === dppId);
+    if (!dpp) return;
+
+    // Add to sharing in progress
+    setSharingInProgress(prev => new Set(prev).add(dppId));
+
+    try {
+      // TODO: Implement unshare API call
+      console.log(`Unsharing DPP: ${dpp.name}`);
+      
+      // Remove from shared
+      setSharedDpps(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(dppId);
+        return newSet;
+      });
+      
+      console.log(`Successfully unshared DPP: ${dpp.name}`);
+    } catch (error) {
+      console.error('Failed to unshare DPP:', error);
+      // TODO: Add error notification
+    } finally {
+      // Remove from sharing in progress
+      setSharingInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(dppId);
+        return newSet;
+      });
+    }
   };
 
   const handleExportPDF = async (dpp: DPPListItem) => {
@@ -1787,10 +1841,15 @@ const PassportProvisionList: React.FC = () => {
           <>
             <MenuItem
               onClick={() => {
-                handleShare(selectedDppForMenu.id);
+                if (sharedDpps.has(selectedDppForMenu.id)) {
+                  handleUnshare(selectedDppForMenu.id);
+                } else {
+                  handleShare(selectedDppForMenu.id);
+                }
                 setAnchorEl(null);
                 setSelectedDppForMenu(null);
               }}
+              disabled={sharingInProgress.has(selectedDppForMenu.id)}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1798,9 +1857,19 @@ const PassportProvisionList: React.FC = () => {
                 '&:hover': { backgroundColor: '#f5f5f5' }
               }}
             >
-              <IosShareIcon fontSize="small" sx={{ marginRight: 1, color: '#000000 !important', fill: '#000000 !important' }} />
+              {sharingInProgress.has(selectedDppForMenu.id) ? (
+                <CircularProgress size={16} sx={{ marginRight: 1 }} />
+              ) : sharedDpps.has(selectedDppForMenu.id) ? (
+                <ShareIcon fontSize="small" sx={{ marginRight: 1, color: '#000000 !important', fill: '#000000 !important' }} />
+              ) : (
+                <IosShareIcon fontSize="small" sx={{ marginRight: 1, color: '#000000 !important', fill: '#000000 !important' }} />
+              )}
               <Box component="span" sx={{ fontSize: '0.875rem', color: 'black' }}>
-                Share passport
+                {sharingInProgress.has(selectedDppForMenu.id) 
+                  ? 'Processing...' 
+                  : sharedDpps.has(selectedDppForMenu.id) 
+                  ? 'Unshare passport' 
+                  : 'Share passport'}
               </Box>
             </MenuItem>
             <MenuItem
@@ -1922,18 +1991,6 @@ const PassportProvisionList: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Share Dialog */}
-      {selectedDppForShare && (
-        <DppShareDialog
-          open={shareDialogOpen}
-          onClose={() => {
-            setShareDialogOpen(false);
-            setSelectedDppForShare(null);
-          }}
-          dppId={selectedDppForShare.id}
-          dppName={selectedDppForShare.name}
-        />
-      )}
     </Box>
   );
 };

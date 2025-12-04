@@ -180,19 +180,24 @@ async def _get_catalog_part_twin_by_dpp_id(dpp_id: str) -> Dict[str, Any]:
     from sqlalchemy.orm import selectinload, joinedload
     
     with RepositoryManagerFactory.create() as repo:
-        # Query for DPP aspects on catalog part twins only
+        # Query for DPP aspects - don't filter by catalog vs serialized yet
         dpp_semantic_pattern = "%digital_product_passport%"
         stmt = (
             select(TwinAspect)
-            .join(Twin, TwinAspect.twin_id == Twin.id)
-            .join(CatalogPart, Twin.id == CatalogPart.twin_id)
             .where(TwinAspect.semantic_id.like(dpp_semantic_pattern))  # type: ignore
             .options(
                 selectinload(TwinAspect.twin).selectinload(Twin.catalog_part).joinedload(CatalogPart.legal_entity),  # type: ignore
             )
         )
         
-        dpp_aspects = repo.twin_aspect_repository._session.scalars(stmt).all()
+        all_dpp_aspects = repo.twin_aspect_repository._session.scalars(stmt).all()
+        
+        logger.info(f"Found {len(all_dpp_aspects)} total DPP aspects")
+        
+        # Filter for catalog parts only
+        dpp_aspects = [asp for asp in all_dpp_aspects if asp.twin and asp.twin.catalog_part]
+        
+        logger.info(f"Found {len(dpp_aspects)} DPP aspects on catalog part twins")
         
         if not dpp_aspects:
             raise HTTPException(
