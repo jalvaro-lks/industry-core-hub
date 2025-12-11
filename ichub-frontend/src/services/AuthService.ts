@@ -204,21 +204,6 @@ class AuthService {
         throw new Error('Invalid token received');
       }
 
-      // 🔍 DEBUG: Imprimir token completo y datos parseados
-      console.log('='.repeat(80));
-      console.log('🎫 ACCESS TOKEN (JWT):');
-      console.log('='.repeat(80));
-      console.log(token);
-      console.log('='.repeat(80));
-      console.log('📋 TOKEN PARSED (Decoded):');
-      console.log('='.repeat(80));
-      console.log(JSON.stringify(tokenParsed, null, 2));
-      console.log('='.repeat(80));
-      console.log('🆔 ID TOKEN:');
-      console.log('='.repeat(80));
-      console.log(idToken || 'No ID token available');
-      console.log('='.repeat(80));
-
       if (window.ENV && window.ENV.ENABLE_DEV_TOOLS === 'true') try { console.log('📋 Token parsed: (redacted)'); } catch(e) {}
  
       // Extract user info from token claims (avoid loadUserProfile which has CORS issues)
