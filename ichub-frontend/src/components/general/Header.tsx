@@ -78,7 +78,8 @@ export default function PrimarySearchAppBar() {
   };
 
   const handleCopyParticipantId = () => {
-    navigator.clipboard.writeText(participantId);
+    const idToCopy = isAuthenticated && user?.attributes?.bpn ? user.attributes.bpn : participantId;
+    navigator.clipboard.writeText(idToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
