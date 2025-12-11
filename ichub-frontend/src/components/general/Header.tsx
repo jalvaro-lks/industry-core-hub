@@ -125,7 +125,9 @@ export default function PrimarySearchAppBar() {
             color: 'text.primary'
           }}
         >
-          Mathias Brunkow Moser
+          {isAuthenticated && user ? 
+            `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'User' 
+            : 'Guest'}
         </Typography>
         <Typography 
           variant="body2" 
@@ -135,7 +137,7 @@ export default function PrimarySearchAppBar() {
             fontSize: '0.875rem'
           }}
         >
-          {isAuthenticated && user ? user.username : 'Guest'}
+          {isAuthenticated && user ? user.username : 'Not logged in'}
         </Typography>
         {isAuthenticated && user?.email && (
           <Typography 
@@ -173,7 +175,7 @@ export default function PrimarySearchAppBar() {
               flex: 1
             }}
           >
-            Company ID: {participantId}
+            Company ID: {isAuthenticated && user?.attributes?.bpn ? user.attributes.bpn : participantId}
           </Typography>
           <Tooltip title={copied ? "Copied!" : "Copy ID"} arrow>
             <IconButton

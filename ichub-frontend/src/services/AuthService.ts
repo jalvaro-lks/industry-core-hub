@@ -125,6 +125,8 @@ class AuthService {
       if (window.ENV && window.ENV.ENABLE_DEV_TOOLS === 'true') try { console.log('⏳ Calling keycloak.init()...'); } catch(e) {}
       
       // Add timeout to prevent infinite hanging
+      // Note: Only requesting 'openid' scope since profile/email scopes are not defined in realm
+      // Protocol mappers in client configuration will include user claims automatically
       const initPromise = this.keycloak.init({
         onLoad: initOptions.onLoad,
         checkLoginIframe: initOptions.checkLoginIframe,
@@ -202,6 +204,21 @@ class AuthService {
         throw new Error('Invalid token received');
       }
 
+      // 🔍 DEBUG: Imprimir token completo y datos parseados
+      console.log('='.repeat(80));
+      console.log('🎫 ACCESS TOKEN (JWT):');
+      console.log('='.repeat(80));
+      console.log(token);
+      console.log('='.repeat(80));
+      console.log('📋 TOKEN PARSED (Decoded):');
+      console.log('='.repeat(80));
+      console.log(JSON.stringify(tokenParsed, null, 2));
+      console.log('='.repeat(80));
+      console.log('🆔 ID TOKEN:');
+      console.log('='.repeat(80));
+      console.log(idToken || 'No ID token available');
+      console.log('='.repeat(80));
+
       if (window.ENV && window.ENV.ENABLE_DEV_TOOLS === 'true') try { console.log('📋 Token parsed: (redacted)'); } catch(e) {}
  
       // Extract user info from token claims (avoid loadUserProfile which has CORS issues)
@@ -213,6 +230,9 @@ class AuthService {
         lastName: tokenParsed.family_name,
         roles: tokenParsed.realm_access?.roles || [],
         permissions: tokenParsed.resource_access?.[environmentService.getKeycloakClientId()]?.roles || [],
+        attributes: {
+          bpn: tokenParsed.BPN || tokenParsed.bpn, // BPN puede venir en mayúsculas o minúsculas
+        }
       };
  
       const tokens: AuthTokens = {
