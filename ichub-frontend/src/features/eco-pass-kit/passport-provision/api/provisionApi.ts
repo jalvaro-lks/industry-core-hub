@@ -138,11 +138,15 @@ export const shareDPP = async (
 
     console.log('Sharing DPP with payload:', JSON.stringify(payload));
 
-    await httpClient.post(`${API_BASE_URL}/provision/share`, payload, {
-      headers: {
-        'Content-Type': 'application/json'
+    await httpClient.post(
+      `${API_BASE_URL}/twin-management/serialized-part-twin/share?include_data_exchange_agreements=true`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
   } catch (error) {
     console.error('Error sharing DPP:', error);
     throw error;

@@ -49,7 +49,7 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
   Visibility as VisibilityIcon,
-  Share as ShareIcon,
+  LinkOff as LinkOffIcon,
   PictureAsPdf as PictureAsPdfIcon,
   Delete as DeleteIcon,
   PostAdd as PostAddIcon,
@@ -198,6 +198,12 @@ const PassportProvisionList: React.FC = () => {
       const data = await fetchUserDPPs();
       setDpps(data);
       setFilteredDpps(data);
+      
+      // Initialize sharedDpps Set with DPPs that have 'shared' status
+      const initialSharedDpps = new Set<string>(
+        data.filter(dpp => dpp.status === 'shared').map(dpp => dpp.id)
+      );
+      setSharedDpps(initialSharedDpps);
     } catch (err) {
       setError('Failed to load digital product passports');
     } finally {
@@ -296,19 +302,34 @@ const PassportProvisionList: React.FC = () => {
     setSharingInProgress(prev => new Set(prev).add(dppId));
 
     try {
-      // TODO: Replace with actual BPNL from user input or configuration
-      const defaultBpnl = 'BPNL000000000000'; // Placeholder BPNL
+      // Get BPNL from environment/configuration
+      const defaultBpnl = getParticipantId(); // Use actual participant ID
       
       await shareDPP(passportDiscoveryId, defaultBpnl);
       
-      // Mark as shared
-      setSharedDpps(prev => new Set(prev).add(dppId));
+      // Refresh DPP list to get updated status from backend
+      await loadDPPs();
       
       // Show success message
       console.log(`Successfully shared DPP: ${dpp.name}`);
     } catch (error) {
       console.error('Failed to share DPP:', error);
-      // TODO: Add error notification
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to share passport. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Sharing failed: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        if (axiosError.response?.data?.message) {
+          errorMessage = `Sharing failed: ${axiosError.response.data.message}`;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = `Sharing failed: ${axiosError.response.data.error}`;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       // Remove from sharing in progress
       setSharingInProgress(prev => {
@@ -327,20 +348,21 @@ const PassportProvisionList: React.FC = () => {
     setSharingInProgress(prev => new Set(prev).add(dppId));
 
     try {
-      // TODO: Implement unshare API call
-      console.log(`Unsharing DPP: ${dpp.name}`);
+      // TODO: Implement unshare API endpoint similar to serialized parts
+      // For now, show a message that this feature needs to be implemented
+      console.log(`Unshare API not yet implemented for DPP: ${dpp.name}`);
       
-      // Remove from shared
-      setSharedDpps(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(dppId);
-        return newSet;
-      });
-      
-      console.log(`Successfully unshared DPP: ${dpp.name}`);
+      setError('Unshare functionality is not yet available for Digital Product Passports. Please contact support.');
     } catch (error) {
       console.error('Failed to unshare DPP:', error);
-      // TODO: Add error notification
+      
+      let errorMessage = 'Failed to unshare passport. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = `Unsharing failed: ${error.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       // Remove from sharing in progress
       setSharingInProgress(prev => {
@@ -748,15 +770,26 @@ const PassportProvisionList: React.FC = () => {
                         </span>
                       </Tooltip>
                     )}
-                    {(dpp.status === 'active' || dpp.status === 'shared') && (
-                      <Tooltip title="Share passport" arrow>
+                    {(dpp.status === 'active' || dpp.status === 'shared' || dpp.status === 'draft') && (
+                      <Tooltip title={dpp.status === 'shared' ? "Unshare passport" : "Share passport"} arrow>
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleShare(dpp.id);
+                            if (dpp.status === 'shared') {
+                              handleUnshare(dpp.id);
+                            } else {
+                              handleShare(dpp.id);
+                            }
                           }}
+                          disabled={sharingInProgress.has(dpp.id)}
                         >
-                          <IosShareIcon sx={{ color: 'white' }} />
+                          {sharingInProgress.has(dpp.id) ? (
+                            <CircularProgress size={20} sx={{ color: 'white' }} />
+                          ) : dpp.status === 'shared' ? (
+                            <LinkOffIcon sx={{ color: 'white' }} />
+                          ) : (
+                            <IosShareIcon sx={{ color: 'white' }} />
+                          )}
                         </IconButton>
                       </Tooltip>
                     )}
@@ -1273,7 +1306,7 @@ const PassportProvisionList: React.FC = () => {
                     />
                   </Box>
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                    {(dpp.status === 'draft' || dpp.status === 'pending') && (
+                    {dpp.status === 'pending' && (
                       <Tooltip title="Register" arrow>
                         <IconButton
                           size="small"
@@ -1283,25 +1316,32 @@ const PassportProvisionList: React.FC = () => {
                           }}
                           sx={{ width: 32, height: 32 }}
                         >
-                          {dpp.status === 'draft' ? (
-                            <CloudUploadIcon sx={{ fontSize: 18, color: 'rgba(79, 172, 254, 0.9)' }} />
-                          ) : (
-                            <CloudQueueIcon sx={{ fontSize: 18, color: 'rgba(255, 255, 255, 0.5)' }} />
-                          )}
+                          <CloudQueueIcon sx={{ fontSize: 18, color: 'rgba(255, 255, 255, 0.5)' }} />
                         </IconButton>
                       </Tooltip>
                     )}
-                    {(dpp.status === 'active' || dpp.status === 'shared') && (
-                      <Tooltip title="Share" arrow>
+                    {(dpp.status === 'active' || dpp.status === 'shared' || dpp.status === 'draft') && (
+                      <Tooltip title={dpp.status === 'shared' ? "Unshare" : "Share"} arrow>
                         <IconButton
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleShare(dpp.id);
+                            if (dpp.status === 'shared') {
+                              handleUnshare(dpp.id);
+                            } else {
+                              handleShare(dpp.id);
+                            }
                           }}
+                          disabled={sharingInProgress.has(dpp.id)}
                           sx={{ width: 32, height: 32 }}
                         >
-                          <IosShareIcon sx={{ fontSize: 18, color: 'white' }} />
+                          {sharingInProgress.has(dpp.id) ? (
+                            <CircularProgress size={16} sx={{ color: 'white' }} />
+                          ) : dpp.status === 'shared' ? (
+                            <LinkOffIcon sx={{ fontSize: 18, color: 'white' }} />
+                          ) : (
+                            <IosShareIcon sx={{ fontSize: 18, color: 'white' }} />
+                          )}
                         </IconButton>
                       </Tooltip>
                     )}
@@ -1841,7 +1881,7 @@ const PassportProvisionList: React.FC = () => {
           <>
             <MenuItem
               onClick={() => {
-                if (sharedDpps.has(selectedDppForMenu.id)) {
+                if (selectedDppForMenu.status === 'shared') {
                   handleUnshare(selectedDppForMenu.id);
                 } else {
                   handleShare(selectedDppForMenu.id);
@@ -1859,7 +1899,7 @@ const PassportProvisionList: React.FC = () => {
             >
               {sharingInProgress.has(selectedDppForMenu.id) ? (
                 <CircularProgress size={16} sx={{ marginRight: 1 }} />
-              ) : sharedDpps.has(selectedDppForMenu.id) ? (
+              ) : selectedDppForMenu.status === 'shared' ? (
                 <ShareIcon fontSize="small" sx={{ marginRight: 1, color: '#000000 !important', fill: '#000000 !important' }} />
               ) : (
                 <IosShareIcon fontSize="small" sx={{ marginRight: 1, color: '#000000 !important', fill: '#000000 !important' }} />
@@ -1867,7 +1907,7 @@ const PassportProvisionList: React.FC = () => {
               <Box component="span" sx={{ fontSize: '0.875rem', color: 'black' }}>
                 {sharingInProgress.has(selectedDppForMenu.id) 
                   ? 'Processing...' 
-                  : sharedDpps.has(selectedDppForMenu.id) 
+                  : selectedDppForMenu.status === 'shared' 
                   ? 'Unshare passport' 
                   : 'Share passport'}
               </Box>

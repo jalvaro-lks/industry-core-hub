@@ -269,13 +269,11 @@ async def _execute_discovery_task(
         if not bpn_list:
             raise ValueError(f"No BPN found for manufacturerPartId: {manufacturer_part_id}")
         
-        # Use the first BPN if multiple are returned
-        counter_party_id = bpn_list[0]
-        logger.info(f"[Task {task_id}] Found BPN: {counter_party_id}")
+        logger.info(f"[Task {task_id}] Found {len(bpn_list)} BPN(s): {bpn_list}")
         
-        # Step 3: Retrieve digital twin shell using DTR
+        # Step 3: Retrieve digital twin shells using DTR (in parallel for multiple BPNs)
         logger.info(f"[Task {task_id}] Step 3: Retrieving digital twin for manufacturerPartId: {manufacturer_part_id}, partInstanceId: {part_instance_id}")
-        _update_task(task_id, "retrieving_twin", f"Retrieving digital twin from DTR...", 50)
+        _update_task(task_id, "retrieving_twin", f"Retrieving digital twin from DTR across {len(bpn_list)} BPN(s)...", 50)
         
         # Build query spec for DTR lookup using specific asset IDs
         query_spec = [
@@ -292,25 +290,52 @@ async def _execute_discovery_task(
                 "value": part_instance_id
             })
         
-        shell_result = await asyncio.to_thread(
-            dtr_manager.consumer.discover_shells,
-            counter_party_id=counter_party_id,
-            query_spec=query_spec,
-            dtr_policies=dtr_policies
-        )
+        # Query all BPNs in parallel to find shells with DPP submodels
+        shell_tasks = [
+            asyncio.to_thread(
+                dtr_manager.consumer.discover_shells,
+                counter_party_id=bpn,
+                query_spec=query_spec,
+                dtr_policies=dtr_policies
+            )
+            for bpn in bpn_list
+        ]
         
-        logger.info(f"[Task {task_id}] DTR discover_shells result: {shell_result}")
+        shell_results = await asyncio.gather(*shell_tasks, return_exceptions=True)
         
-        # Extract the first shell from results
-        shell_descriptors = shell_result.get("shellDescriptors", [])
-        if not shell_descriptors:
-            error_msg = shell_result.get("error", "No shells found")
-            dtrs = shell_result.get("dtrs", [])
-            logger.warning(f"[Task {task_id}] No shell descriptors found. Error: {error_msg}, DTRs checked: {len(dtrs)}")
-            raise ValueError(f"Digital twin shell not found for manufacturerPartId: {manufacturer_part_id}, partInstanceId: {part_instance_id}. DTR lookup error: {error_msg}")
+        # Process results and find shells with matching semantic ID
+        shell_descriptor = None
+        matching_bpn = None
         
-        shell_descriptor = shell_descriptors[0]
-        logger.info(f"[Task {task_id}] Retrieved digital twin shell with ID: {shell_descriptor.get('id')}")
+        for bpn, result in zip(bpn_list, shell_results):
+            if isinstance(result, Exception):
+                logger.warning(f"[Task {task_id}] Error querying BPN {bpn}: {str(result)}")
+                continue
+            
+            logger.info(f"[Task {task_id}] DTR discover_shells result for BPN {bpn}: found {result.get('shellsFound', 0)} shell(s)")
+            
+            shell_descriptors = result.get("shellDescriptors", [])
+            
+            # Check each shell for matching semantic ID in submodels
+            for shell in shell_descriptors:
+                for submodel in shell.get("submodelDescriptors", []):
+                    submodel_semantic_id = _extract_semantic_id(submodel)
+                    if submodel_semantic_id == semantic_id:
+                        shell_descriptor = shell
+                        matching_bpn = bpn
+                        logger.info(f"[Task {task_id}] Found matching shell with DPP submodel in BPN {bpn}, shell ID: {shell.get('id')}")
+                        break
+                
+                if shell_descriptor:
+                    break
+            
+            if shell_descriptor:
+                break
+        
+        if not shell_descriptor:
+            raise ValueError(f"Digital twin shell with semanticId '{semantic_id}' not found for manufacturerPartId: {manufacturer_part_id}, partInstanceId: {part_instance_id} across {len(bpn_list)} BPN(s)")
+        
+        logger.info(f"[Task {task_id}] Retrieved digital twin shell with ID: {shell_descriptor.get('id')} from BPN: {matching_bpn}")
         
         # Step 4: Look up submodel by semantic ID
         logger.info(f"[Task {task_id}] Step 4: Looking up submodel with semanticId: {semantic_id}")
@@ -330,30 +355,26 @@ async def _execute_discovery_task(
         logger.info(f"[Task {task_id}] Found matching submodel: {submodel_id}")
         
         # Step 5: Consume submodel data
-        logger.info(f"[Task {task_id}] Step 5: Consuming submodel data")
+        logger.info(f"[Task {task_id}] Step 5: Consuming submodel data for submodel: {submodel_id}")
         _update_task(task_id, "consuming_data", f"Retrieving submodel data...", 85)
         
-        # Prepare semantic IDs for discovery
-        semantic_ids = matching_submodel.get("semanticId", {}).get("keys", [])
-        if not semantic_ids and "semanticId" in matching_submodel:
-            # Try alternative format
-            semantic_ids = [{"type": "GlobalReference", "value": semantic_id}]
-        
-        # Use discover_submodel_by_semantic_ids to get the data
+        # Use discover_submodel to get the specific submodel data
         submodel_result = await asyncio.to_thread(
-            dtr_manager.consumer.discover_submodel_by_semantic_ids,
-            counter_party_id=counter_party_id,
-            id=id_str,
-            dtr_policies=None,
+            dtr_manager.consumer.discover_submodel,
+            counter_party_id=matching_bpn,
+            id=shell_descriptor.get("id"),
+            dtr_policies=dtr_policies,
             governance=governance,
-            semantic_ids=semantic_ids
+            submodel_id=submodel_id
         )
         
+        logger.info(f"[Task {task_id}] Submodel discovery result: {submodel_result.get('status', 'unknown')}")
+        
         # Extract the submodel data
-        submodel_data = None
-        if "submodels" in submodel_result and submodel_result["submodels"]:
-            # Get the first submodel data
-            submodel_data = next(iter(submodel_result["submodels"].values()), None)
+        submodel_data = submodel_result.get("submodel")
+        
+        if not submodel_data:
+            logger.warning(f"[Task {task_id}] No submodel data retrieved. Submodel descriptor: {submodel_result.get('submodelDescriptor', {})}")
         
         logger.info(f"[Task {task_id}] Successfully consumed submodel data")
         

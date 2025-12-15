@@ -491,7 +491,7 @@ frontend:
 
     # API and backend configuration
     ichubBackendUrl: "https://<backend-hostname>/v1"
-    apiTimeout: 30000
+    apiTimeout: 300000
     apiRetryAttempts: 3
     requireHttpsUrlPattern: false
 
