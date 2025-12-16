@@ -40,7 +40,10 @@ export function setValueByPath(obj: any, path: string, value: any): any {
         current = current[key];
     }
     const lastKey = keys[keys.length - 1];
-    if (value === '' || value === null || value === undefined) {
+    // For top-level keys (primitive sections), always set the value even if empty
+    // For nested keys, delete if empty
+    const isTopLevel = keys.length === 1;
+    if ((value === '' || value === null || value === undefined) && !isTopLevel) {
         delete current[lastKey];
     } else {
         current[lastKey] = value;

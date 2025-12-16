@@ -99,6 +99,8 @@ export interface FormField {
   key: string;
   label: string;
   type: 'text' | 'textarea' | 'number' | 'integer' | 'date' | 'datetime' | 'time' | 'email' | 'url' | 'password' | 'select' | 'multiselect' | 'checkbox' | 'radio' | 'array' | 'object';
+  fieldCategory: 'simple' | 'complex'; // Distinguishes between primitive fields and complex structures (arrays/objects)
+  sectionType?: 'primitive' | 'array' | 'object'; // Indicates if this is a top-level section and its type
   section: string;
   description?: string;
   urn?: string;
@@ -353,93 +355,35 @@ function debugRequiredFields(schema: JSONSchema, path: string = ''): void {
 }
 
 /**
- * Determines the section name for grouping fields - intelligently detects from schema
+ * Determines the section name for grouping fields - DYNAMICALLY from schema structure
+ * For top-level properties, uses the property key as section name
+ * For nested properties, uses the top-level parent as section
  */
-function getSectionName(key: string, property: JSONSchemaProperty, parentKey?: string): string {
-  // Use title from schema if available
-  if (property.title) {
-    return property.title;
-  }
-  
-  // Use description to infer section if it contains section-like keywords
-  if (property.description) {
-    const desc = property.description.toLowerCase();
-    if (desc.includes('metadata') || desc.includes('meta data')) return 'Metadata';
-    if (desc.includes('identification') || desc.includes('identifier')) return 'Identification';
-    if (desc.includes('operation') || desc.includes('manufacturing')) return 'Operation';
-    if (desc.includes('handling') || desc.includes('spare part')) return 'Handling';
-    if (desc.includes('characteristic') || desc.includes('dimension') || desc.includes('physical')) return 'Product Characteristics';
-    if (desc.includes('commercial') || desc.includes('market') || desc.includes('purchase')) return 'Commercial Information';
-    if (desc.includes('material') || desc.includes('substance') || desc.includes('composition')) return 'Materials';
-    if (desc.includes('sustainability') || desc.includes('environment') || desc.includes('carbon')) return 'Sustainability';
-    if (desc.includes('source') || desc.includes('documentation') || desc.includes('document')) return 'Sources & Documentation';
-  }
-  
-  // Predefined section mapping based on common JSON Schema keys
-  const sectionMap: Record<string, string> = {
-    // Core DPP sections
-    metadata: 'Metadata',
-    identification: 'Identification',
-    operation: 'Operation',
-    handling: 'Handling',
-    characteristics: 'Product Characteristics',
-    physicalDimension: 'Product Characteristics',
-    lifespan: 'Product Characteristics',
-    commercial: 'Commercial Information',
-    materials: 'Materials',
-    sustainability: 'Sustainability',
-    sources: 'Sources & Documentation',
-    additionalData: 'Additional Data',
-    
-    // Generic sections for common schema patterns
-    properties: 'Properties',
-    attributes: 'Attributes',
-    configuration: 'Configuration',
-    settings: 'Settings',
-    options: 'Options',
-    parameters: 'Parameters',
-    details: 'Details',
-    information: 'Information',
-  data: 'Additional Data',
-    content: 'Content',
-    
-    // Specific domain sections
-    product: 'Product Information',
-    manufacturer: 'Manufacturing Information',
-    supplier: 'Supplier Information',
-    customer: 'Customer Information',
-    technical: 'Technical Specifications',
-    compliance: 'Compliance & Certification',
-    quality: 'Quality Information',
-    security: 'Security Information',
-    contact: 'Contact Information',
-    address: 'Address Information',
-    location: 'Location Information',
-    date: 'Date Information',
-    version: 'Version Information'
-  };
-  
-  // Check exact key match
-  if (sectionMap[key.toLowerCase()]) {
-    return sectionMap[key.toLowerCase()];
-  }
-  
-  // Check if key contains section keywords
-  const lowerKey = key.toLowerCase();
-  for (const [keyword, section] of Object.entries(sectionMap)) {
-    if (lowerKey.includes(keyword)) {
-      return section;
+function getSectionName(key: string, property: JSONSchemaProperty, parentKey?: string, schema?: JSONSchema): string {
+  // For top-level properties (no parent), use the property itself as section
+  if (!parentKey) {
+    // Prefer title if available
+    if (property.title) {
+      return property.title;
     }
+    // Generate readable label from key
+    return generateLabel(key);
   }
   
-  // If we have a parent key, try to use it for context
-  if (parentKey) {
-    const parentSection = getSectionName(parentKey, property);
-    return `${parentSection} - ${generateLabel(key)}`;
+  // For nested properties, find the top-level parent
+  const topLevelKey = key.split('.')[0];
+  
+  // If we have access to schema, try to get title from top-level property
+  if (schema?.properties?.[topLevelKey]) {
+    const topLevelProperty = schema.properties[topLevelKey];
+    if (topLevelProperty.title) {
+      return topLevelProperty.title;
+    }
+    return generateLabel(topLevelKey);
   }
   
-  // Default fallback
-  return 'General Information';
+  // Fallback: generate from top-level key
+  return generateLabel(topLevelKey);
 }
 
 /**
@@ -487,8 +431,8 @@ function processProperties(
     // Resolve all possible references and compositions
     let resolvedProperty = resolveSchemaProperty(property, schema);
     
-    // Determine section - use intelligent section detection
-    const section = parentKey ? parentSection : getSectionName(key, resolvedProperty, parentKey);
+    // Determine section - use dynamic section detection from schema structure
+    const section = parentKey ? parentSection : getSectionName(key, resolvedProperty, parentKey, schema);
     
     // Handle different property types comprehensively
     const processedFields = processSchemaProperty(
@@ -595,17 +539,20 @@ function processSchemaProperty(
     const nestedRequiredFields = property.required || [];
     // If the object itself has a URN, add a pseudo-field for the object header
     const objectUrn = property['x-samm-aspect-model-urn'];
+    const isTopLevel = fullKey && !fullKey.includes('.');
     if (objectUrn) {
       // Patch: For top-level sections, use the short description from the root schema's properties
       let sectionDescription = property.description;
       // Only override if this is a top-level property (fullKey has no dot)
-      if (fullKey && !fullKey.includes('.') && schema.properties && schema.properties[key] && schema.properties[key].description) {
+      if (isTopLevel && schema.properties && schema.properties[key] && schema.properties[key].description) {
         sectionDescription = schema.properties[key].description;
       }
       fields.push({
         key: fullKey,
         label: generateLabel(key),
         type: 'object',
+        fieldCategory: 'complex', // Nested objects are complex structures
+        sectionType: isTopLevel ? 'object' : undefined, // Mark top-level objects as object sections
         section,
         description: sectionDescription,
         required: isRequired,
@@ -650,10 +597,13 @@ function processArrayProperty(
   isRequired: boolean,
   depth: number
 ): FormField {
+  const isTopLevel = fullKey && !fullKey.includes('.');
   const field: FormField = {
     key: fullKey,
     label: generateLabel(key),
     type: 'array',
+    fieldCategory: 'complex', // Arrays are complex structures
+    sectionType: isTopLevel ? 'array' : undefined, // Mark top-level arrays as array sections
     section,
     description: property.description,
     required: isRequired,
@@ -711,10 +661,13 @@ function createFormField(
   section: string,
   isRequired: boolean
 ): FormField {
+  const isTopLevel = fullKey && !fullKey.includes('.');
   const field: FormField = {
     key: fullKey,
     label: property.title || generateLabel(key),
     type: getFormFieldType(property),
+    fieldCategory: 'simple', // Primitive types are always simple
+    sectionType: isTopLevel ? 'primitive' : undefined, // Mark top-level primitives as primitive sections
     section,
     description: property.description,
     required: isRequired,
@@ -825,7 +778,7 @@ export function interpretJSONSchema(schema: JSONSchema): {
     schema.required || []
   );
   
-  // Enhanced validation function with comprehensive rules
+  // Enhanced validation function with comprehensive rules including recursive validation for arrays and objects
   const validate = (data: any): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
@@ -836,6 +789,161 @@ export function interpretJSONSchema(schema: JSONSchema): {
       return parts.slice(0, -1).join('.');
     }
 
+    // Helper: Validate a single item against itemFields (for arrays)
+    function validateArrayItem(item: any, itemIndex: number, itemFields: FormField[], arrayKey: string): void {
+      if (!itemFields || itemFields.length === 0) return;
+      
+      for (const itemField of itemFields) {
+        // Extract the last part of the key (e.g., 'id' from 'materials.content[item].id')
+        const fieldKeyParts = itemField.key.split('.');
+        const simpleKey = fieldKeyParts[fieldKeyParts.length - 1];
+        const itemValue = item?.[simpleKey];
+        
+        // Check required fields within array items
+        if (itemField.required) {
+          if (itemValue === undefined || itemValue === null ||
+              (typeof itemValue === 'string' && itemValue.trim() === '') ||
+              (Array.isArray(itemValue) && itemValue.length === 0)) {
+            errors.push(`Field '${arrayKey}[${itemIndex}].${simpleKey}' is required`);
+            continue;
+          }
+        }
+
+        // Skip validation for empty optional fields
+        if (!itemField.required && (itemValue === undefined || itemValue === null || itemValue === '')) {
+          continue;
+        }
+
+        // Validate nested arrays within array items
+        if (itemField.type === 'array' && Array.isArray(itemValue) && itemField.itemFields) {
+          // Validate array constraints
+          if (itemField.validation) {
+            if (itemField.validation.minItems !== undefined && itemValue.length < itemField.validation.minItems) {
+              errors.push(`Field '${arrayKey}[${itemIndex}].${simpleKey}' must have at least ${itemField.validation.minItems} items`);
+            }
+            if (itemField.validation.maxItems !== undefined && itemValue.length > itemField.validation.maxItems) {
+              errors.push(`Field '${arrayKey}[${itemIndex}].${simpleKey}' must have at most ${itemField.validation.maxItems} items`);
+            }
+          }
+          // Recursively validate nested array items
+          itemValue.forEach((nestedItem: any, nestedIndex: number) => {
+            validateArrayItem(nestedItem, nestedIndex, itemField.itemFields!, `${arrayKey}[${itemIndex}].${simpleKey}`);
+          });
+        }
+
+        // Validate nested objects within array items
+        if (itemField.type === 'object' && itemField.objectFields && itemValue) {
+          validateObjectFields(itemValue, itemField.objectFields, `${arrayKey}[${itemIndex}].${simpleKey}`);
+        }
+
+        // Apply field validation rules
+        if (itemField.validation && itemValue !== undefined && itemValue !== null && itemValue !== '') {
+          validateFieldRules(itemValue, itemField, `${arrayKey}[${itemIndex}].${simpleKey}`);
+        }
+      }
+    }
+
+    // Helper: Validate object fields recursively
+    function validateObjectFields(obj: any, objectFields: FormField[], objectKey: string): void {
+      if (!objectFields || objectFields.length === 0) return;
+      
+      for (const objField of objectFields) {
+        const fieldKeyParts = objField.key.split('.');
+        const simpleKey = fieldKeyParts[fieldKeyParts.length - 1];
+        const objValue = obj?.[simpleKey];
+        
+        // Check required fields within objects
+        if (objField.required) {
+          if (objValue === undefined || objValue === null ||
+              (typeof objValue === 'string' && objValue.trim() === '') ||
+              (Array.isArray(objValue) && objValue.length === 0)) {
+            errors.push(`Field '${objectKey}.${simpleKey}' is required`);
+            continue;
+          }
+        }
+
+        // Skip validation for empty optional fields
+        if (!objField.required && (objValue === undefined || objValue === null || objValue === '')) {
+          continue;
+        }
+
+        // Recursively validate nested arrays
+        if (objField.type === 'array' && Array.isArray(objValue) && objField.itemFields) {
+          if (objField.validation) {
+            if (objField.validation.minItems !== undefined && objValue.length < objField.validation.minItems) {
+              errors.push(`Field '${objectKey}.${simpleKey}' must have at least ${objField.validation.minItems} items`);
+            }
+            if (objField.validation.maxItems !== undefined && objValue.length > objField.validation.maxItems) {
+              errors.push(`Field '${objectKey}.${simpleKey}' must have at most ${objField.validation.maxItems} items`);
+            }
+          }
+          objValue.forEach((item: any, index: number) => {
+            validateArrayItem(item, index, objField.itemFields!, `${objectKey}.${simpleKey}`);
+          });
+        }
+
+        // Recursively validate nested objects
+        if (objField.type === 'object' && objField.objectFields && objValue) {
+          validateObjectFields(objValue, objField.objectFields, `${objectKey}.${simpleKey}`);
+        }
+
+        // Apply field validation rules
+        if (objField.validation && objValue !== undefined && objValue !== null && objValue !== '') {
+          validateFieldRules(objValue, objField, `${objectKey}.${simpleKey}`);
+        }
+      }
+    }
+
+    // Helper: Apply validation rules to a field value
+    function validateFieldRules(value: any, field: FormField, fieldPath: string): void {
+      const val = field.validation!;
+
+      // Numeric validations
+      if (val.min !== undefined && Number(value) < val.min) {
+        errors.push(`Field '${fieldPath}' must be at least ${val.min}`);
+      }
+      if (val.max !== undefined && Number(value) > val.max) {
+        errors.push(`Field '${fieldPath}' must be at most ${val.max}`);
+      }
+      if (val.exclusiveMin !== undefined && Number(value) <= val.exclusiveMin) {
+        errors.push(`Field '${fieldPath}' must be greater than ${val.exclusiveMin}`);
+      }
+      if (val.exclusiveMax !== undefined && Number(value) >= val.exclusiveMax) {
+        errors.push(`Field '${fieldPath}' must be less than ${val.exclusiveMax}`);
+      }
+      if (val.multipleOf !== undefined && Number(value) % val.multipleOf !== 0) {
+        errors.push(`Field '${fieldPath}' must be a multiple of ${val.multipleOf}`);
+      }
+
+      // String validations
+      if (val.minLength !== undefined && String(value).length < val.minLength) {
+        errors.push(`Field '${fieldPath}' must be at least ${val.minLength} characters`);
+      }
+      if (val.maxLength !== undefined && String(value).length > val.maxLength) {
+        errors.push(`Field '${fieldPath}' must be at most ${val.maxLength} characters`);
+      }
+      if (val.pattern && !new RegExp(val.pattern).test(String(value))) {
+        errors.push(`Field '${fieldPath}' format is invalid`);
+      }
+
+      // Enum validation
+      if (val.enum && !val.enum.includes(value)) {
+        errors.push(`Field '${fieldPath}' must be one of: ${val.enum.join(', ')}`);
+      }
+
+      // Const validation
+      if (val.const !== undefined && value !== val.const) {
+        errors.push(`Field '${fieldPath}' must be exactly: ${val.const}`);
+      }
+
+      // Format validation
+      if (val.format) {
+        const formatErrors = validateFormat(value, val.format, `Field '${fieldPath}'`);
+        errors.push(...formatErrors);
+      }
+    }
+
+    // Main validation loop for top-level fields
     for (const field of formFields) {
       const value = getValueByPath(data, field.key);
 
@@ -862,66 +970,39 @@ export function interpretJSONSchema(schema: JSONSchema): {
         continue;
       }
 
-      // Comprehensive validation based on field rules
-      if (field.validation) {
-        const val = field.validation;
-
-        // Numeric validations
-        if (val.min !== undefined && Number(value) < val.min) {
-          errors.push(`Field '${field.key}' must be at least ${val.min}`);
-        }
-        if (val.max !== undefined && Number(value) > val.max) {
-          errors.push(`Field '${field.key}' must be at most ${val.max}`);
-        }
-        if (val.exclusiveMin !== undefined && Number(value) <= val.exclusiveMin) {
-          errors.push(`Field '${field.key}' must be greater than ${val.exclusiveMin}`);
-        }
-        if (val.exclusiveMax !== undefined && Number(value) >= val.exclusiveMax) {
-          errors.push(`Field '${field.key}' must be less than ${val.exclusiveMax}`);
-        }
-        if (val.multipleOf !== undefined && Number(value) % val.multipleOf !== 0) {
-          errors.push(`Field '${field.key}' must be a multiple of ${val.multipleOf}`);
-        }
-
-        // String validations
-        if (val.minLength !== undefined && String(value).length < val.minLength) {
-          errors.push(`Field '${field.key}' must be at least ${val.minLength} characters`);
-        }
-        if (val.maxLength !== undefined && String(value).length > val.maxLength) {
-          errors.push(`Field '${field.key}' must be at most ${val.maxLength} characters`);
-        }
-        if (val.pattern && !new RegExp(val.pattern).test(String(value))) {
-          errors.push(`Field '${field.key}' format is invalid`);
-        }
-
-        // Array validations
-        if (Array.isArray(value)) {
-          if (val.minItems !== undefined && value.length < val.minItems) {
-            errors.push(`Field '${field.key}' must have at least ${val.minItems} items`);
+      // Handle array fields with recursive validation
+      if (field.fieldCategory === 'complex' && field.type === 'array' && Array.isArray(value)) {
+        // Validate array-level constraints
+        if (field.validation) {
+          if (field.validation.minItems !== undefined && value.length < field.validation.minItems) {
+            errors.push(`Field '${field.key}' must have at least ${field.validation.minItems} items`);
           }
-          if (val.maxItems !== undefined && value.length > val.maxItems) {
-            errors.push(`Field '${field.key}' must have at most ${val.maxItems} items`);
+          if (field.validation.maxItems !== undefined && value.length > field.validation.maxItems) {
+            errors.push(`Field '${field.key}' must have at most ${field.validation.maxItems} items`);
           }
-          if (val.uniqueItems && new Set(value).size !== value.length) {
+          if (field.validation.uniqueItems && new Set(value).size !== value.length) {
             errors.push(`Field '${field.key}' items must be unique`);
           }
         }
-
-        // Enum validation
-        if (val.enum && !val.enum.includes(value)) {
-          errors.push(`Field '${field.key}' must be one of: ${val.enum.join(', ')}`);
+        
+        // Recursively validate each array item if itemFields exist
+        if (field.itemFields && field.itemFields.length > 0) {
+          value.forEach((item: any, index: number) => {
+            validateArrayItem(item, index, field.itemFields!, field.key);
+          });
         }
+        continue;
+      }
 
-        // Const validation
-        if (val.const !== undefined && value !== val.const) {
-          errors.push(`Field '${field.key}' must be exactly: ${val.const}`);
-        }
+      // Handle object fields with recursive validation
+      if (field.fieldCategory === 'complex' && field.type === 'object' && value && field.objectFields) {
+        validateObjectFields(value, field.objectFields, field.key);
+        continue;
+      }
 
-        // Format validation
-        if (val.format) {
-          const formatErrors = validateFormat(value, val.format, `Field '${field.key}'`);
-          errors.push(...formatErrors);
-        }
+      // Comprehensive validation based on field rules for simple fields
+      if (field.validation) {
+        validateFieldRules(value, field, field.key);
       }
     }
     

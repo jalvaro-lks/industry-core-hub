@@ -61,6 +61,7 @@ type FormField = BaseFormField & { urn?: string };
 import { getValueByPath, setValueByPath } from './objectPathUtils';
 import { scrollToElement } from '../../utils/fieldNavigation';
 import '../../styles/fieldNavigation.css';
+import ComplexFieldPanel from './ComplexFieldPanel';
 
 // For backwards compatibility, use FormField as DPPFormField
 type DPPFormField = FormField;
@@ -184,19 +185,6 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         });
 
         return root;
-    };
-
-    // Get user-friendly section name
-    const getSectionDisplayName = (sectionName: string): string => {
-        const sectionNames: Record<string, string> = {
-            'Product Identifier': 'Product Identifier',
-            'Product Description': 'Product Description',
-            'Manufacturing Information': 'Manufacturing Information',
-            'Sustainability': 'Sustainability',
-            'Compliance': 'Compliance',
-            'Additional Information': 'Additional Information'
-        };
-        return sectionNames[sectionName] || sectionName.replace(/([A-Z])/g, ' $1').trim();
     };
 
     // Find which section contains a field
@@ -324,200 +312,268 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         );
     };
 
-    const renderField = (field: FormField) => {
-        const currentValue = getValueByPath(data, field.key) || '';
-        const hasPersistedError = fieldErrors.has(field.key);
-        const isFieldFocused = focusedField === field.key;
-        const { hasError, errorMessages } = errorStateMap[field.key] || { hasError: false, errorMessages: [] };
+    // Helper: Get field label with required indicator
+    const getFieldLabel = (label: string, isRequired: boolean = false) => {
+        const cleanLabel = label.replace(/(\s*\*\s*)+$/, '').trim();
+        return isRequired ? `${cleanLabel} *` : cleanLabel;
+    };
 
-        // Check if field is required and empty for additional visual feedback
-        const isRequiredAndEmpty = field.required && 
-            (!currentValue || currentValue === '' || 
-             (Array.isArray(currentValue) && currentValue.length === 0));
-
-        // Nueva función: Maneja etiquetas con asteriscos para campos requeridos
-        const getFieldLabel = (label: string, isRequired: boolean = false) => {
-            // Limpiar asteriscos existentes primero
-            const cleanLabel = label.replace(/(\s*\*\s*)+$/, '').trim();
-            // Agregar asterisco solo si es requerido
-            return isRequired ? `${cleanLabel} *` : cleanLabel;
-        };
-
-        // Función actualizada: Separar styling de errores reales vs campos requeridos
-        const getFieldStyles = (required: boolean, isEmpty: boolean = false, hasError: boolean = false) => ({
-            '& .MuiOutlinedInput-root, & .MuiInputBase-root, & .MuiSelect-root': {
-                backgroundColor: 'rgba(19, 19, 19, 0.02)',
-                // Hover should affect the visible outline for both OutlinedInput and Selects
-                '&:hover fieldset, &:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(96, 165, 250, 0.5)',
-                },
-                '&.Mui-focused fieldset, &.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: hasError ? 'error.main' : 'primary.main',
-                },
-                // Borde rojo solo para errores reales, no solo por ser requerido
-                ...(hasError && {
-                    '& fieldset, & .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'error.main',
-                        borderWidth: '2px',
-                    }
-                })
+    // Helper: Get field styles based on state
+    const getFieldStyles = (required: boolean, isEmpty: boolean = false, hasError: boolean = false) => ({
+        '& .MuiOutlinedInput-root, & .MuiInputBase-root, & .MuiSelect-root': {
+            backgroundColor: 'rgba(19, 19, 19, 0.02)',
+            '&:hover fieldset, &:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(96, 165, 250, 0.5)',
             },
-            '& .MuiInputLabel-root': {
-                color: hasError ? 'error.main' : 'text.secondary',
-                '&.Mui-focused': {
-                    color: hasError ? 'error.main' : 'primary.main',
+            '&.Mui-focused fieldset, &.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: hasError ? 'error.main' : 'primary.main',
+            },
+            ...(hasError && {
+                '& fieldset, & .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'error.main',
+                    borderWidth: '2px',
                 }
-            }
-        });
-
-        // Función para FormControl labels
-        const getFormControlLabelStyles = (isRequired: boolean, hasError: boolean = false) => ({
+            })
+        },
+        '& .MuiInputLabel-root': {
             color: hasError ? 'error.main' : 'text.secondary',
             '&.Mui-focused': {
                 color: hasError ? 'error.main' : 'primary.main',
             }
-        });
+        }
+    });
+
+    // Helper: Get FormControl label styles
+    const getFormControlLabelStyles = (isRequired: boolean, hasError: boolean = false) => ({
+        color: hasError ? 'error.main' : 'text.secondary',
+        '&.Mui-focused': {
+            color: hasError ? 'error.main' : 'primary.main',
+        }
+    });
+
+    /**
+     * Renders simple (primitive) fields - separated for reusability in ComplexFieldPanel
+     * @param field - The field definition
+     * @param value - Current value
+     * @param onChange - Change handler
+     * @param parentPath - Optional parent path for nested fields
+     */
+    const renderSimpleField = (field: FormField, value: any, onChange: (value: any) => void, parentPath?: string) => {
+        const fieldKey = parentPath ? `${parentPath}.${field.key}` : field.key;
+        const hasPersistedError = fieldErrors.has(fieldKey);
+        const isFieldFocused = focusedField === fieldKey;
+        const { hasError, errorMessages } = errorStateMap[fieldKey] || { hasError: false, errorMessages: [] };
+        
+        const isRequiredAndEmpty = field.required && 
+            (!value || value === '' || (Array.isArray(value) && value.length === 0));
+
+        const commonProps = {
+            onFocus: () => onFieldFocus?.(fieldKey),
+            onBlur: () => onFieldBlur?.(),
+            error: hasError,
+            helperText: hasError && isFieldFocused && errorMessages.length > 0 ? (
+                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+            ) : undefined,
+        };
 
         switch (field.type) {
             case 'text':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
                             fullWidth={false}
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            placeholder={field.placeholder}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
                         />
-                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'textarea':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
                             fullWidth={false}
                             multiline
                             maxRows={4}
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            placeholder={field.placeholder}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
                         />
-                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'number':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
                             fullWidth={false}
                             type="number"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            placeholder={field.placeholder}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
                         />
-                        {getIconContainer(field.description, field.key, field.urn)}
+                    </Box>
+                );
+
+            case 'integer':
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <TextField
+                            fullWidth={false}
+                            type="number"
+                            value={value || ''}
+                            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{ shrink: false }}
+                            inputProps={{
+                                min: field.validation?.min || 0,
+                                max: field.validation?.max,
+                                step: 1
+                            }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
+                        />
                     </Box>
                 );
 
             case 'date':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <TextField
                             fullWidth={false}
                             type="date"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
+                            InputLabelProps={{ shrink: false }}
                             InputProps={{
                                 startAdornment: (
-                                    <CalendarTodayIcon 
-                                        sx={{ 
-                                            fontSize: 20, 
-                                            color: '#ffffff',
-                                            mr: 1 
-                                        }} 
-                                    />
+                                    <CalendarTodayIcon sx={{ fontSize: 20, color: '#ffffff', mr: 1 }} />
                                 ),
                             }}
                             sx={{
                                 ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
-                                flex: 1,
-                                minWidth: 0,
-                                maxWidth: 'calc(100% - 32px)',
+                                flex: 1, minWidth: 0, maxWidth: '100%',
                                 '& input[type="date"]::-webkit-calendar-picker-indicator': {
                                     filter: 'invert(1)',
                                     cursor: 'pointer'
                                 }
                             }}
+                            {...commonProps}
                         />
-                        {getIconContainer(field.description, field.key, field.urn)}
+                    </Box>
+                );
+
+            case 'datetime':
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <TextField
+                            fullWidth={false}
+                            type="datetime-local"
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
+                        />
+                    </Box>
+                );
+
+            case 'time':
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <TextField
+                            fullWidth={false}
+                            type="time"
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
+                        />
+                    </Box>
+                );
+
+            case 'email':
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <TextField
+                            fullWidth={false}
+                            type="email"
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
+                        />
+                    </Box>
+                );
+
+            case 'url':
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <TextField
+                            fullWidth={false}
+                            type="url"
+                            value={value || ''}
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            variant="outlined"
+                            size="small"
+                            InputLabelProps={{ shrink: false }}
+                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
+                            {...commonProps}
+                        />
                     </Box>
                 );
 
             case 'select':
                 return (
-                    <Box key={field.key} sx={{ display: 'flex', alignItems: 'center' }}>
-                        <FormControl size="small" error={hasError} sx={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 32px)' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <FormControl size="small" error={hasError} sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
                             <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
                                 {getFieldLabel(field.label, field.required)}
                             </InputLabel>
                             <Select
-                                value={currentValue || ''}
+                                value={value || ''}
                                 label={getFieldLabel(field.label, field.required)}
-                                onChange={(e) => handleFieldChange(field, e.target.value)}
-                                onFocus={() => onFieldFocus?.(field.key)}
-                                onBlur={() => onFieldBlur?.()}
+                                onChange={(e) => onChange(e.target.value)}
                                 sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                                {...commonProps}
                             >
-                                {!field.required && (
-                                    <MenuItem value="">
-                                        <em>Select {getFieldLabel(field.label, false)}</em>
-                                    </MenuItem>
-                                )}
-                                {field.options?.map((option: { value: string; label: string }) => (
+                                <MenuItem value="">
+                                    <em>Empty</em>
+                                </MenuItem>
+                                {field.options?.map((option) => (
                                     <MenuItem key={option.value} value={option.value}>
                                         {option.label}
                                     </MenuItem>
@@ -529,18 +585,15 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 </FormHelperText>
                             )}
                         </FormControl>
-                        {getIconContainer(field.description, field.key, field.urn)}
                     </Box>
                 );
 
             case 'checkbox':
                 return (
-                    <Box key={field.key} data-boolean={field.key} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box 
-                                onClick={() => handleFieldChange(field, !currentValue)}
-                                onFocus={() => onFieldFocus?.(field.key)}
-                                onBlur={() => onFieldBlur?.()}
+                                onClick={() => onChange(!value)}
                                 tabIndex={0}
                                 sx={{ 
                                     display: 'flex', 
@@ -560,17 +613,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                         borderColor: 'rgba(96, 165, 250, 0.5)',
                                     }
                                 }}
+                                {...commonProps}
                             >
-                                <Typography variant="body2" sx={{ 
-                                    color: hasError ? 'error.main' : 'text.primary' 
-                                }}>
+                                <Typography variant="body2" sx={{ color: hasError ? 'error.main' : 'text.primary' }}>
                                     {getFieldLabel(field.label, field.required)}
                                 </Typography>
                                 <Switch
-                                    checked={!!currentValue}
+                                    checked={!!value}
                                     onChange={(e) => {
-                                        e.stopPropagation(); // Prevent double triggering
-                                        handleFieldChange(field, e.target.checked);
+                                        e.stopPropagation();
+                                        onChange(e.target.checked);
                                     }}
                                     sx={{
                                         '& .MuiSwitch-switchBase.Mui-checked': {
@@ -582,377 +634,55 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     }}
                                 />
                             </Box>
-                            {getIconContainer(field.description, field.key, field.urn)}
+                            {getIconContainer(field.description, fieldKey, field.urn)}
                         </Box>
                         {hasError && isFieldFocused && errorMessages.length > 0 && (
-                            <Typography variant="caption" sx={{ 
-                                color: 'error.main',
-                                ml: 1.75,
-                                fontSize: '0.75rem'
-                            }}>
+                            <Typography variant="caption" sx={{ color: 'error.main', ml: 1.75, fontSize: '0.75rem' }}>
                                 {errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}
                             </Typography>
                         )}
                     </Box>
                 );
 
-            case 'integer':
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <TextField
-                            fullWidth
-                            type="number"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, parseInt(e.target.value) || 0)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            placeholder={field.placeholder}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            variant="outlined"
-                            size="small"
-                            inputProps={{
-                                min: field.validation?.min || 0,
-                                max: field.validation?.max,
-                                step: 1
-                            }}
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                        />
-                        {getIconContainer(field.description, field.key, field.urn)}
-                    </Box>
-                );
+            default:
+                return null;
+        }
+    };
 
-            case 'email':
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <TextField
-                            fullWidth
-                            type="email"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            placeholder={field.placeholder || 'Enter email address'}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            variant="outlined"
-                            size="small"
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                        />
-                        {getIconContainer(field.description, field.key, field.urn)}
-                    </Box>
-                );
-            case 'url':
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <TextField
-                            fullWidth
-                            type="url"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            placeholder={field.placeholder || 'https://example.com'}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            variant="outlined"
-                            size="small"
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                        />
-                        {getIconContainer(field.description, field.key, field.urn)}
-                    </Box>
-                );
-            case 'datetime':
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <TextField
-                            fullWidth
-                            type="datetime-local"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            onFocus={() => onFieldFocus?.(field.key)}
-                            onBlur={() => onFieldBlur?.()}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                        />
-                        {getIconContainer(field.description, field.key, field.urn)}
-                    </Box>
-                );
+    const renderField = (field: FormField) => {
+        const currentValue = getValueByPath(data, field.key) || '';
 
-            case 'time':
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <TextField
-                            fullWidth
-                            type="time"
-                            label={getFieldLabel(field.label, field.required)}
-                            value={currentValue}
-                            onChange={(e) => handleFieldChange(field, e.target.value)}
-                            error={hasError}
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                            sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                        />
-                        {getIconContainer(field.description, undefined, field.urn)}
-                    </Box>
-                );
+        // Delegate to renderSimpleField for simple types or ComplexFieldPanel for complex types
+        if (field.fieldCategory === 'simple') {
+            return (
+                <Box key={field.key} sx={{ mb: 2 }}>
+                    {renderSimpleField(field, currentValue, (newValue) => handleFieldChange(field, newValue))}
+                </Box>
+            );
+        }
 
-            case 'radio':
-                // Convert radio options to dropdown for better UX
-                return (
-                    <Box key={field.key} sx={{ position: 'relative' }}>
-                        <FormControl fullWidth size="small" error={hasError}>
-                            <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
-                                {getFieldLabel(field.label, field.required)}
-                            </InputLabel>
-                            <Select
-                                value={currentValue || ''}
-                                label={getFieldLabel(field.label, field.required)}
-                                onChange={(e) => handleFieldChange(field, e.target.value)}
-                                sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                            >
-                                {!field.required && (
-                                    <MenuItem value="">
-                                        <em>Select {getFieldLabel(field.label, false)}</em>
-                                    </MenuItem>
-                                )}
-                                {field.options?.map((option) => (
-                                    <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        {getIconContainer(field.description, field.key, field.urn)}
-                    </Box>
-                );
+        // Handle complex fields (arrays and objects) - already covered above in switch statement
+        switch (field.type) {
 
             case 'array':
-                const arrayValue = getValueByPath(data, field.key) || [];
-                const ensureArray = Array.isArray(arrayValue) ? arrayValue : [];
-                
-                const addArrayItem = () => {
-                    const newItem = field.itemType === 'object' ? {} : '';
-                    const newArray = [...ensureArray, newItem];
-                    handleFieldChange(field, newArray);
-                };
-                
-                const removeArrayItem = (index: number) => {
-                    const newArray = ensureArray.filter((_, i) => i !== index);
-                    handleFieldChange(field, newArray);
-                };
-                
-                const updateArrayItem = (index: number, value: any) => {
-                    const newArray = [...ensureArray];
-                    newArray[index] = value;
-                    handleFieldChange(field, newArray);
-                };
-
+            case 'object':
+                // Delegate complex field rendering to ComplexFieldPanel
                 return (
-                    <Box sx={{ width: '100%' }}>
-                        {/* Array Header */}
-                        <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            mb: 2,
-                            pb: 1,
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.12)'
-                        }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="subtitle2" sx={{ 
-                                    color: hasError ? 'error.main' : 'text.primary',
-                                    fontWeight: 600
-                                }}>
-                                    {getFieldLabel(field.label, field.required)}
-                                </Typography>
-                                {getIconContainer(field.description, field.key, field.urn)}
-                            </Box>
-                            <Button
-                                size="small"
-                                startIcon={<AddIcon />}
-                                onClick={addArrayItem}
-                                sx={{
-                                    textTransform: 'none',
-                                    fontSize: '0.8rem',
-                                    color: 'primary.main',
-                                    border: '1px solid rgba(96, 165, 250, 0.3)',
-                                    '&:hover': {
-                                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                                        borderColor: 'primary.main'
-                                    }
-                                }}
-                            >
-                                Add Item
-                            </Button>
-                        </Box>
-
-                        {/* Array Items */}
-                        {ensureArray.length === 0 ? (
-                            <Box sx={{
-                                p: 3,
-                                textAlign: 'center',
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                borderRadius: 2,
-                                border: '1px dashed rgba(255, 255, 255, 0.2)'
-                            }}>
-                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                                    No items added yet. Click "Add Item" to get started.
-                                </Typography>
-                            </Box>
-                        ) : (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                {ensureArray.map((item, index) => (
-                                    <Card key={index} data-array-item sx={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        borderRadius: 2
-                                    }}>
-                                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                                                {/* Drag handle */}
-                                                <DragIndicatorIcon sx={{ 
-                                                    color: 'text.secondary', 
-                                                    fontSize: 20,
-                                                    mt: 1,
-                                                    cursor: 'grab'
-                                                }} />
-                                                
-                                                {/* Item content */}
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                                        <Typography variant="caption" sx={{ 
-                                                            color: 'text.secondary',
-                                                            fontWeight: 600,
-                                                            textTransform: 'uppercase',
-                                                            letterSpacing: 1
-                                                        }}>
-                                                            Item {index + 1}
-                                                        </Typography>
-                                                    </Box>
-                                                    
-                                                    {field.itemType === 'object' && field.itemFields ? (
-                                                        // Render object fields
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                            {field.itemFields.map((subField: any) => {
-                                                                // Usar solo la última parte de la key para el objeto del array
-                                                                const simpleKey = subField.key.includes('.') ? subField.key.split('.').pop() : subField.key;
-                                                                const subFieldValue = item[simpleKey] || '';
-                                                                return (
-                                                                    <Box key={subField.key} sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                        <TextField
-                                                                            fullWidth
-                                                                            size="small"
-                                                                            label={getFieldLabel(subField.label, subField.required)}
-                                                                            value={subFieldValue}
-                                                                            onChange={(e) => {
-                                                                                const newItem = { ...item, [simpleKey]: e.target.value };
-                                                                                updateArrayItem(index, newItem);
-                                                                            }}
-                                                                            placeholder={subField.placeholder}
-                                                                            type={subField.type === 'number' ? 'number' : 'text'}
-                                                                            multiline={subField.type === 'textarea'}
-                                                                            maxRows={subField.type === 'textarea' ? 3 : 1}
-                                                                            sx={{
-                                                                                '& .MuiOutlinedInput-root': {
-                                                                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                                                                    '&:hover fieldset': {
-                                                                                        borderColor: 'rgba(96, 165, 250, 0.5)',
-                                                                                    },
-                                                                                    '&.Mui-focused fieldset': {
-                                                                                        borderColor: 'primary.main',
-                                                                                    },
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                        {getIconContainer(subField.description, subField.key, subField.urn)}
-                                                                    </Box>
-                                                                );
-                                                            })}
-                                                        </Box>
-                                                    ) : (
-                                                        // Render simple field
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            value={item}
-                                                            onChange={(e) => updateArrayItem(index, e.target.value)}
-                                                            placeholder={`${field.label} item`}
-                                                            sx={{
-                                                                '& .MuiOutlinedInput-root': {
-                                                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                                                    '&:hover fieldset': {
-                                                                        borderColor: 'rgba(96, 165, 250, 0.5)',
-                                                                    },
-                                                                    '&.Mui-focused fieldset': {
-                                                                        borderColor: 'primary.main',
-                                                                    },
-                                                                }
-                                                            }}
-                                                        />
-                                                    )}
-                                                </Box>
-                                                
-                                                {/* Delete button */}
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => removeArrayItem(index)}
-                                                    sx={{
-                                                        color: 'error.main',
-                                                        '&:hover': {
-                                                            backgroundColor: 'rgba(244, 67, 54, 0.1)'
-                                                        }
-                                                    }}
-                                                >
-                                                    <DeleteIcon sx={{ fontSize: 18 }} />
-                                                </IconButton>
-                                            </Box>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </Box>
-                        )}
-
-                        {/* Array summary */}
-                        <Box sx={{ 
-                            mt: 2, 
-                            p: 1, 
-                            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                            borderRadius: 1,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}>
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                                {ensureArray.length} item{ensureArray.length !== 1 ? 's' : ''}
-                            </Typography>
-                            {field.validation?.minItems && ensureArray.length < field.validation.minItems && (
-                                <Typography variant="caption" sx={{ color: 'error.main' }}>
-                                    Minimum {field.validation.minItems} items required
-                                </Typography>
-                            )}
-                        </Box>
+                    <Box key={field.key} sx={{ width: '100%' }}>
+                        <ComplexFieldPanel
+                            field={field}
+                            value={currentValue}
+                            onChange={(newValue) => handleFieldChange(field, newValue)}
+                            depth={1}
+                            errors={errors}
+                            fieldErrors={fieldErrors}
+                            onFieldFocus={onFieldFocus}
+                            onFieldBlur={onFieldBlur}
+                            onInfoIconClick={onInfoIconClick}
+                            renderSimpleField={(simpleField, simpleValue, simpleOnChange) => 
+                                renderSimpleField(simpleField, simpleValue, simpleOnChange, field.key)
+                            }
+                        />
                     </Box>
                 );
 
@@ -1140,8 +870,85 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         >
             {Object.entries(groupedFields).map(([sectionName, sectionFields]: [string, DPPFormField[]]) => {
                 const requiredFieldsCount = sectionFields.filter((f: DPPFormField) => f.required).length;
-                const displayName = getSectionDisplayName(sectionName);
+                const displayName = sectionName; // Use section name directly (no hardcoded mapping)
                 
+                // Determine section type from first field with sectionType (should all be same)
+                const sectionField = sectionFields.find(f => f.sectionType);
+                const sectionType = sectionField?.sectionType;
+                
+                // PRIMITIVE SECTION: Render inline without accordion
+                if (sectionType === 'primitive') {
+                    const field = sectionFields[0]; // Primitive sections have only one field
+                    let fieldValue = getValueByPath(data, field.key);
+                    // Ensure primitive value - if it's an object, treat as empty
+                    if (typeof fieldValue === 'object' && fieldValue !== null) {
+                        fieldValue = '';
+                    }
+                    const hasError = fieldErrors.has(field.key);
+                    const fieldError = errors.find(err => err.includes(field.key));
+                    
+                    return (
+                        <Box
+                            key={sectionName}
+                            ref={(el) => {
+                                if (el) {
+                                    accordionRefs.current[sectionName] = el;
+                                    fieldRefs.current[field.key] = el;
+                                }
+                            }}
+                            data-section={sectionName}
+                            data-field={field.key}
+                            sx={{
+                                mb: 2,
+                                p: 1.5,
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                border: hasError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                                borderRadius: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                '&:before': {
+                                    display: 'none',
+                                }
+                            }}
+                        >
+                            {/* Section label */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
+                                {getIconContainer(field.description, undefined, field.urn)}
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                                    {displayName}
+                                    {field.required && <span style={{ color: '#ef4444' }}> *</span>}
+                                </Typography>
+                            </Box>
+                            
+                            {/* Input field - full width */}
+                            <Box sx={{ flex: 1, position: 'relative' }}>
+                                {renderSimpleField(field, fieldValue, (newValue) => handleFieldChange(field, newValue))}
+                            </Box>
+                            
+                            {/* Error icon with tooltip */}
+                            {hasError && fieldError && (
+                                <CustomTooltip title="Validation Error" description={fieldError}>
+                                    <IconButton
+                                        size="small"
+                                        sx={{
+                                            color: 'error.main',
+                                            '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.1)' }
+                                        }}
+                                        onClick={() => {
+                                            // Optional: navigate to errors panel or show detailed error
+                                            if (onFieldFocus) onFieldFocus(field.key);
+                                        }}
+                                    >
+                                        <InfoIcon sx={{ fontSize: 20 }} />
+                                    </IconButton>
+                                </CustomTooltip>
+                            )}
+                        </Box>
+                    );
+                }
+                
+                // ARRAY & OBJECT SECTIONS: Render as accordion (existing behavior)
                 return (
                     <Accordion
                         key={sectionName}

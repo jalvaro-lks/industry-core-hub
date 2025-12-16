@@ -201,9 +201,15 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             const rootKeys = Array.from(new Set(selectedSchema.formFields.map(f => f.key.split('.')[0])));
             const result: Record<string, any> = {};
             for (const key of rootKeys) {
-                const sectionFields = selectedSchema.formFields.filter(f => f.key.startsWith(key + '.'));
-                const isArray = sectionFields.some(f => f.type === 'array' && f.key === key);
-                result[key] = isArray ? [] : {};
+                const field = selectedSchema.formFields.find(f => f.key === key);
+                // Initialize based on sectionType
+                if (field?.sectionType === 'primitive') {
+                    result[key] = ''; // Primitive sections get empty string
+                } else if (field?.type === 'array') {
+                    result[key] = []; // Arrays get empty array
+                } else {
+                    result[key] = {}; // Objects get empty object
+                }
             }
             return result;
         }
@@ -309,34 +315,57 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             let fieldInfo: { key: string, label: string, path: string, section: string } | null = null;
             let arrayIndex: number | undefined = undefined;
             
+            // First, check if the error contains array indices and extract the highest one
+            // Matches patterns like "field[2]" or "nested.field[0].other[3]"
+            const arrayIndexMatches = error.match(/\[(\d+)\]/g);
+            if (arrayIndexMatches && arrayIndexMatches.length > 0) {
+                // Extract the first array index found (most relevant for navigation)
+                const firstIndexMatch = arrayIndexMatches[0].match(/\[(\d+)\]/);
+                if (firstIndexMatch) {
+                    arrayIndex = parseInt(firstIndexMatch[1]);
+                }
+            }
+            
             // Try different patterns to extract field name
             const patterns = [
-                // Array patterns
-                /(\w+)\[(\d+)\]\.(\w+)\s+is required/i,  // field[0].subfield is required
-                /(\w+)\[(\d+)\]\s+is required/i,        // field[0] is required
+                // New recursive validation patterns (handle any depth with array indices)
+                /^([\w.\[\]]+)\s+is required/i,           // path.to.field[0].nested is required
+                /^([\w.\[\]]+)\s+must be/i,               // path.to.field[0] must be
+                /^([\w.\[\]]+)\s+format is invalid/i,     // path.to.field[0] format is invalid
+                /^([\w.\[\]]+)\s+should match pattern/i,  // path.to.field[0] should match pattern
+                /^([\w.\[\]]+)\s+must be one of/i,        // path.to.field[0] must be one of
+                // Legacy array patterns (backwards compatibility)
+                /(\w+)\[(\d+)\]\.(\w+)\s+is required/i,   // field[0].subfield is required
+                /(\w+)\[(\d+)\]\s+is required/i,          // field[0] is required
                 // Nested field patterns
-                /(\w+)\.(\w+)\.(\w+)\s+is required/i,   // group.subgroup.field is required
-                /(\w+)\.(\w+)\s+is required/i,          // group.field is required
+                /(\w+)\.(\w+)\.(\w+)\s+is required/i,     // group.subgroup.field is required
+                /(\w+)\.(\w+)\s+is required/i,            // group.field is required
                 // Simple patterns
-                /(\w+)\s+is required/i,                 // field is required
-                /(\w+)\s+field is required/i,           // field field is required
-                /(\w+)\s+must be/i,                     // field must be
-                /(\w+)\s+format is invalid/i,           // field format is invalid
+                /(\w+)\s+is required/i,                   // field is required
+                /(\w+)\s+field is required/i,             // field field is required
+                /(\w+)\s+must be/i,                       // field must be
+                /(\w+)\s+format is invalid/i,             // field format is invalid
                 // Quoted patterns
-                /'([^']+)'\s+is required/i,             // 'field' is required
-                /"([^"]+)"\s+is required/i,             // "field" is required
+                /'([^']+)'\s+is required/i,               // 'field' is required
+                /"([^"]+)"\s+is required/i,               // "field" is required
                 // Property patterns
-                /field\s+'([^']+)'/i,                   // field 'name'
-                /property\s+'([^']+)'/i,                // property 'name'
+                /field\s+'([^']+)'/i,                     // field 'name'
+                /property\s+'([^']+)'/i,                  // property 'name'
             ];
             
             for (const pattern of patterns) {
                 const match = error.match(pattern);
                 if (match) {
-                    if (pattern.source.includes('\\[(\\d+)\\]')) {
-                        // Array field match
+                    // For the first pattern group (new recursive validation), extract full path
+                    if (pattern.source.startsWith('^([\\w.\\[\\]]+)')) {
+                        // Remove array indices from field name for lookup
+                        fieldName = match[1].replace(/\[\d+\]/g, '');
+                    } else if (pattern.source.includes('\\[(\\d+)\\]')) {
+                        // Legacy array field match
                         fieldName = match[1];
-                        arrayIndex = parseInt(match[2]);
+                        if (!arrayIndex && match[2]) {
+                            arrayIndex = parseInt(match[2]);
+                        }
                         if (match[3]) {
                             fieldName = `${match[1]}.${match[3]}`;
                         }
@@ -418,21 +447,46 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
         const parsedErrors = errors.map(parseValidationError);
 
-        // Define section order (matches DynamicForm sections order)
-        const sectionOrder = [
-            'Metadata',
-            'Identification',
-            'Operation',
-            'Handling',
-            'Product Characteristics',
-            'Commercial Information',
-            'Materials',
-            'Sustainability',
-            'Sources & Documentation',
-            'Additional Data',
-            'General Information',
-            'General'
-        ];
+        // Dynamically determine section order from schema properties
+        const sectionOrder = React.useMemo(() => {
+            if (!selectedSchema) return [];
+            
+            // Option 1: Use explicit section config if available
+            if (selectedSchema.sectionConfig?.order) {
+                return selectedSchema.sectionConfig.order;
+            }
+            
+            // Option 2: Extract sections from schema properties in order
+            if (selectedSchema.properties) {
+                const schemaPropertyKeys = Object.keys(selectedSchema.properties);
+                // Get unique section names from formFields, preserving schema property order
+                const sections = new Set<string>();
+                selectedSchema.formFields.forEach((field: any) => {
+                    sections.add(field.section);
+                });
+                
+                // Sort sections by their appearance in schema properties
+                return Array.from(sections).sort((a, b) => {
+                    // Find which schema property corresponds to this section
+                    const indexA = schemaPropertyKeys.findIndex(key => {
+                        const generatedLabel = key.replace(/([A-Z])/g, ' $1').trim().replace(/^(.)/, (m) => m.toUpperCase());
+                        return a === generatedLabel || key.toLowerCase() === a.toLowerCase();
+                    });
+                    const indexB = schemaPropertyKeys.findIndex(key => {
+                        const generatedLabel = key.replace(/([A-Z])/g, ' $1').trim().replace(/^(.)/, (m) => m.toUpperCase());
+                        return b === generatedLabel || key.toLowerCase() === b.toLowerCase();
+                    });
+                    
+                    if (indexA === -1) return 1;
+                    if (indexB === -1) return -1;
+                    return indexA - indexB;
+                });
+            }
+            
+            // Fallback: alphabetical order
+            const sections = Array.from(new Set(selectedSchema.formFields.map((f: any) => f.section)));
+            return sections.sort();
+        }, [selectedSchema]);
 
         // Group errors by section
         const groupedErrors = parsedErrors.reduce((acc, error) => {
@@ -461,25 +515,12 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             return sectionA.localeCompare(sectionB);
         });
 
-        // Get section display name
+        // Get section display name - use from schema config or section name directly
         const getSectionDisplayName = (sectionName: string): string => {
-            const sectionNames: Record<string, string> = {
-                'Metadata': 'Metadata',
-                'Identification': 'Identification',
-                'Operation': 'Operation',
-                'Handling': 'Handling',
-                'Characteristics': 'Product Characteristics',
-                'Product Characteristics': 'Product Characteristics',
-                'Commercial': 'Commercial Information',
-                'Commercial Information': 'Commercial Information',
-                'Materials': 'Materials',
-                'Sustainability': 'Sustainability',
-                'Sources & Documentation': 'Sources & Documentation',
-                'Additional Data': 'Additional Data',
-                'General Information': 'General Information',
-                'General': 'General'
-            };
-            return sectionNames[sectionName] || sectionName.replace(/([A-Z])/g, ' $1').trim();
+            if (selectedSchema?.sectionConfig?.displayNames?.[sectionName]) {
+                return selectedSchema.sectionConfig.displayNames[sectionName];
+            }
+            return sectionName; // Section names are already human-readable from schema
         };
 
         // Toggle group expansion

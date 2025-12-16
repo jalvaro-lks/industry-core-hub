@@ -111,13 +111,26 @@ export function getTopLevelKeysFromRequiredFields(schema: SchemaDefinition | nul
 export function createInitialFormData(schema: SchemaDefinition | null): Record<string, any> {
     if (!schema) return {};
     
-    const topLevelKeys = getTopLevelKeysFromRequiredFields(schema);
+    // Get ALL top-level keys (not just required ones) to ensure primitive sections appear
+    const allTopLevelKeys = new Set(
+        schema.formFields
+            .map(field => field.key.split('.')[0])
+            .filter(Boolean)
+    );
+    
     const initialData: Record<string, any> = {};
     
-    topLevelKeys.forEach(key => {
-        // Find the field definition to determine if it's an array or object
+    allTopLevelKeys.forEach(key => {
+        // Find the field definition to determine if it's an array, object, or primitive
         const field = schema.formFields.find(f => f.key === key);
-        initialData[key] = field?.type === 'array' ? [] : {};
+        // Initialize based on sectionType
+        if (field?.sectionType === 'primitive') {
+            initialData[key] = ''; // Primitive sections get empty string
+        } else if (field?.type === 'array') {
+            initialData[key] = []; // Arrays get empty array
+        } else {
+            initialData[key] = {}; // Objects get empty object
+        }
     });
     
     return initialData;
