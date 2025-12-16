@@ -367,6 +367,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         const isRequiredAndEmpty = field.required && 
             (!value || value === '' || (Array.isArray(value) && value.length === 0));
 
+        // For primitive sections (no parentPath), use placeholder style (shrink: false)
+        // For nested fields (has parentPath), use floating label style (default behavior)
+        const isPrimitiveSection = !parentPath;
+
         const commonProps = {
             onFocus: () => onFieldFocus?.(fieldKey),
             onBlur: () => onFieldBlur?.(),
@@ -384,13 +388,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             fullWidth={false}
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            {...(isPrimitiveSection 
+                                ? { placeholder: getFieldLabel(field.label, field.required) }
+                                : { label: getFieldLabel(field.label, field.required) }
+                            )}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -403,13 +410,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             maxRows={4}
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            {...(isPrimitiveSection 
+                                ? { placeholder: getFieldLabel(field.label, field.required) }
+                                : { label: getFieldLabel(field.label, field.required) }
+                            )}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -421,13 +431,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="number"
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            {...(isPrimitiveSection 
+                                ? { placeholder: getFieldLabel(field.label, field.required) }
+                                : { label: getFieldLabel(field.label, field.required) }
+                            )}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -439,10 +452,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="number"
                             value={value || ''}
                             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            {...(isPrimitiveSection 
+                                ? { placeholder: getFieldLabel(field.label, field.required) }
+                                : { label: getFieldLabel(field.label, field.required) }
+                            )}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
                             inputProps={{
                                 min: field.validation?.min || 0,
                                 max: field.validation?.max,
@@ -451,6 +466,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -462,10 +478,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="date"
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            label={getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
+                            InputLabelProps={{ shrink: true }}
                             InputProps={{
                                 startAdornment: (
                                     <CalendarTodayIcon sx={{ fontSize: 20, color: '#ffffff', mr: 1 }} />
@@ -481,6 +497,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -492,13 +509,14 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="datetime-local"
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            label={getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
+                            InputLabelProps={{ shrink: true }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -510,13 +528,14 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="time"
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            label={getFieldLabel(field.label, field.required)}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
+                            InputLabelProps={{ shrink: true }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -528,13 +547,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="email"
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            {...(isPrimitiveSection 
+                                ? { placeholder: getFieldLabel(field.label, field.required) }
+                                : { label: getFieldLabel(field.label, field.required) }
+                            )}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -546,13 +568,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             type="url"
                             value={value || ''}
                             onChange={(e) => onChange(e.target.value)}
-                            placeholder={field.placeholder || getFieldLabel(field.label, field.required)}
+                            {...(isPrimitiveSection 
+                                ? { placeholder: getFieldLabel(field.label, field.required) }
+                                : { label: getFieldLabel(field.label, field.required) }
+                            )}
                             variant="outlined"
                             size="small"
-                            InputLabelProps={{ shrink: false }}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
@@ -585,6 +610,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 </FormHelperText>
                             )}
                         </FormControl>
+                        {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
                 );
 
