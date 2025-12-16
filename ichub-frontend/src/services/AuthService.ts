@@ -204,6 +204,16 @@ class AuthService {
         throw new Error('Invalid token received');
       }
 
+      // 🔍 DEBUG: Expose raw tokens for manual decoding
+      console.log('\n' + '='.repeat(80));
+      console.log('🎫 KEYCLOAK SESSION TOKENS');
+      console.log('='.repeat(80));
+      console.log('📋 Access Token (JWT - copy to jwt.io):');
+      console.log(token);
+      console.log('\n🆔 ID Token (JWT - copy to jwt.io):');
+      console.log(idToken || 'No ID token available');
+      console.log('='.repeat(80) + '\n');
+      
       if (window.ENV && window.ENV.ENABLE_DEV_TOOLS === 'true') try { console.log('📋 Token parsed: (redacted)'); } catch(e) {}
  
       // Extract user info from token claims (avoid loadUserProfile which has CORS issues)
@@ -377,8 +387,11 @@ class AuthService {
   }
 }
  
-// Create singleton instance
 const authService = new AuthService();
+
+if (typeof window !== 'undefined') {
+  (window as any).__authService = authService;
+}
  
 export default authService;
 export { AuthService };
