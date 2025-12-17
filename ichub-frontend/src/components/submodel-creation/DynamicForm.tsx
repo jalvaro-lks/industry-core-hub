@@ -41,7 +41,8 @@ import {
     IconButton,
     Card,
     CardContent,
-    Collapse
+    Collapse,
+    Tooltip
 } from '@mui/material';
 import CustomTooltip from './CustomTooltip';
 import {
@@ -227,6 +228,46 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     // Precompute error states for all fields
     type ErrorState = { hasError: boolean; errorMessages: string[] };
     const errorStateMap: Record<string, ErrorState> = {};
+    
+    // Helper function to check if an error matches a field key (with or without array indices)
+    const errorMatchesField = (error: string, fieldKey: string, fieldLabel: string): boolean => {
+        const errorLower = error.toLowerCase();
+        const fieldKeyLower = fieldKey.toLowerCase();
+        const keyParts = fieldKey.split('.');
+        const lastKeyPart = keyParts[keyParts.length - 1];
+        
+        // Direct match with quotes
+        if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) return true;
+        
+        // Match with array indices - e.g., fieldKey[0].subfield
+        const arrayIndexPattern = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\[\\d+\\]`, 'i');
+        if (arrayIndexPattern.test(errorLower)) return true;
+        
+        // Match field within array - e.g., arrayField[0].fieldKey
+        if (keyParts.length > 0) {
+            const parentKey = keyParts[0];
+            const parentArrayPattern = new RegExp(`${parentKey.toLowerCase()}\\[\\d+\\]\\.${lastKeyPart.toLowerCase()}`, 'i');
+            if (parentArrayPattern.test(errorLower)) return true;
+        }
+        
+        // Exact field key match
+        if (errorLower.includes(fieldKeyLower)) {
+            const regex = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\b`);
+            if (regex.test(errorLower)) return true;
+        }
+        
+        // Label match
+        if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) return true;
+        
+        // Context match for nested fields
+        if (keyParts.length > 1 && errorLower.includes(lastKeyPart.toLowerCase())) {
+            const hasContextMatch = keyParts.slice(0, -1).some(part => errorLower.includes(part.toLowerCase()));
+            if (hasContextMatch) return true;
+        }
+        
+        return false;
+    };
+    
     for (const sectionFields of Object.values(groupedFields)) {
         for (const field of sectionFields) {
             const hasPersistedError = fieldErrors.has(field.key);
@@ -236,24 +277,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             }
             const fieldKey = field.key;
             const fieldLabel = field.label;
-            const keyParts = fieldKey.split('.')
-            const lastKeyPart = keyParts[keyParts.length - 1];
+            
             // Collect all errors for this field
-            const matchedErrors = errors.filter(error => {
-                const errorLower = error.toLowerCase();
-                const fieldKeyLower = fieldKey.toLowerCase();
-                if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) return true;
-                if (errorLower.includes(fieldKeyLower)) {
-                    const regex = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\b`);
-                    if (regex.test(errorLower)) return true;
-                }
-                if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) return true;
-                if (keyParts.length > 1 && errorLower.includes(lastKeyPart.toLowerCase())) {
-                    const hasContextMatch = keyParts.slice(0, -1).some(part => errorLower.includes(part.toLowerCase()));
-                    if (hasContextMatch) return true;
-                }
-                return false;
-            });
+            const matchedErrors = errors.filter(error => errorMatchesField(error, fieldKey, fieldLabel));
+            
             // Format all error messages for display
             const formattedMessages = matchedErrors.map(msg => {
                 let formatted = msg
@@ -261,6 +288,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     .replace(new RegExp(`"${fieldKey}"`, 'gi'), '')
                     .replace(new RegExp(`'${fieldLabel}'`, 'gi'), '')
                     .replace(new RegExp(`"${fieldLabel}"`, 'gi'), '')
+                    .replace(/\[\d+\]/g, '')  // Remove array indices from display
                     .replace(/\s{2,}/g, ' ')
                     .trim();
                 if (formatted && formatted.length > 0) {
@@ -359,10 +387,18 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
      * @param parentPath - Optional parent path for nested fields
      */
     const renderSimpleField = (field: FormField, value: any, onChange: (value: any) => void, parentPath?: string) => {
-        const fieldKey = parentPath ? `${parentPath}.${field.key}` : field.key;
-        const hasPersistedError = fieldErrors.has(fieldKey);
+        // For fields in arrays, parentPath includes array index (e.g., 'materialList[0]')
+        // For nested object fields, we need to use just the simple key
+        const simpleKey = field.key.includes('.') ? field.key.split('.').pop()! : field.key;
+        const fieldKey = parentPath ? `${parentPath}.${simpleKey}` : field.key;
+        
+        // For error lookup, check both with and without array indices
+        const baseFieldKey = field.key.replace(/\[\d+\]/g, ''); // Remove any existing array indices
+        const hasPersistedError = fieldErrors.has(baseFieldKey) || fieldErrors.has(fieldKey);
         const isFieldFocused = focusedField === fieldKey;
-        const { hasError, errorMessages } = errorStateMap[fieldKey] || { hasError: false, errorMessages: [] };
+        
+        // Check error state in errorStateMap using the base field key (without array indices)
+        const { hasError, errorMessages } = errorStateMap[baseFieldKey] || { hasError: false, errorMessages: [] };
         
         const isRequiredAndEmpty = field.required && 
             (!value || value === '' || (Array.isArray(value) && value.length === 0));
@@ -429,16 +465,41 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         <TextField
                             fullWidth={false}
                             type="number"
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
+                            value={value === null || value === undefined ? '' : value}
+                            onChange={(e) => {
+                                const input = e.target.value;
+                                if (input === '' || input === '-' || input === '.' || input === '-.') {
+                                    onChange(input);
+                                } else {
+                                    const numValue = parseFloat(input);
+                                    onChange(isNaN(numValue) ? input : numValue);
+                                }
+                            }}
+                            onFocus={() => onFieldFocus?.(fieldKey)}
+                            onBlur={(e) => {
+                                const input = e.target.value;
+                                if (input === '' || input === '-' || input === '.' || input === '-.') {
+                                    onChange('');
+                                } else {
+                                    const numValue = parseFloat(input);
+                                    onChange(isNaN(numValue) ? '' : numValue);
+                                }
+                                onFieldBlur?.();
+                            }}
                             {...(isPrimitiveSection 
                                 ? { placeholder: getFieldLabel(field.label, field.required) }
                                 : { label: getFieldLabel(field.label, field.required) }
                             )}
                             variant="outlined"
                             size="small"
+                            inputProps={{
+                                step: 'any'
+                            }}
+                            error={hasError}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
                         />
                         {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
@@ -450,8 +511,27 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         <TextField
                             fullWidth={false}
                             type="number"
-                            value={value || ''}
-                            onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+                            value={value === null || value === undefined ? '' : value}
+                            onChange={(e) => {
+                                const input = e.target.value;
+                                if (input === '' || input === '-') {
+                                    onChange(input);
+                                } else {
+                                    const intValue = parseInt(input, 10);
+                                    onChange(isNaN(intValue) ? input : intValue);
+                                }
+                            }}
+                            onFocus={() => onFieldFocus?.(fieldKey)}
+                            onBlur={(e) => {
+                                const input = e.target.value;
+                                if (input === '' || input === '-') {
+                                    onChange('');
+                                } else {
+                                    const intValue = parseInt(input, 10);
+                                    onChange(isNaN(intValue) ? '' : intValue);
+                                }
+                                onFieldBlur?.();
+                            }}
                             {...(isPrimitiveSection 
                                 ? { placeholder: getFieldLabel(field.label, field.required) }
                                 : { label: getFieldLabel(field.label, field.required) }
@@ -459,12 +539,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             variant="outlined"
                             size="small"
                             inputProps={{
-                                min: field.validation?.min || 0,
-                                max: field.validation?.max,
                                 step: 1
                             }}
+                            error={hasError}
+                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                            ) : undefined}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
                         />
                         {getIconContainer(field.description, fieldKey, field.urn)}
                     </Box>
@@ -895,8 +976,30 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             }}
         >
             {Object.entries(groupedFields).map(([sectionName, sectionFields]: [string, DPPFormField[]]) => {
-                const requiredFieldsCount = sectionFields.filter((f: DPPFormField) => f.required).length;
                 const displayName = sectionName; // Use section name directly (no hardcoded mapping)
+                
+                // Count errors in this section - match error messages that reference fields in this section
+                const errorCount = errors.filter(error => {
+                    // Check if error mentions any field from this section
+                    return sectionFields.some(field => {
+                        const fieldKey = field.key;
+                        const fieldLabel = field.label;
+                        const errorLower = error.toLowerCase();
+                        
+                        // Check if error contains field key or label
+                        if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) return true;
+                        if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) return true;
+                        
+                        // Check if field key appears in error (case-insensitive)
+                        const fieldKeyLower = fieldKey.toLowerCase();
+                        if (errorLower.includes(fieldKeyLower)) {
+                            const regex = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\b`);
+                            if (regex.test(errorLower)) return true;
+                        }
+                        
+                        return false;
+                    });
+                }).length;
                 
                 // Determine section type from first field with sectionType (should all be same)
                 const sectionField = sectionFields.find(f => f.sectionType);
@@ -974,7 +1077,366 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     );
                 }
                 
-                // ARRAY & OBJECT SECTIONS: Render as accordion (existing behavior)
+                // ARRAY SECTION: Direct array rendering without ComplexFieldPanel wrapper
+                if (sectionType === 'array') {
+                    const arrayField = sectionFields[0]; // Array sections have only one field
+                    const arrayValue = Array.isArray(getValueByPath(data, arrayField.key)) 
+                        ? getValueByPath(data, arrayField.key) 
+                        : [];
+                    
+                    // Check if this array has a direct error (e.g., "materialList is required")
+                    const hasDirectArrayError = () => {
+                        if (!fieldErrors.has(arrayField.key)) return false;
+                        const fieldKeyLower = arrayField.key.toLowerCase();
+                        return errors.some(error => {
+                            const errorLower = error.toLowerCase();
+                            if (errorLower.startsWith(fieldKeyLower)) {
+                                const afterKey = errorLower.substring(fieldKeyLower.length);
+                                return /^\s/.test(afterKey);
+                            }
+                            const quotedPattern = new RegExp(`^['"]${fieldKeyLower}['"]\\s+`, 'i');
+                            if (quotedPattern.test(errorLower)) return true;
+                            const fieldKeywordPattern = new RegExp(`^field\\s+['"]${fieldKeyLower}['"]\\s+`, 'i');
+                            if (fieldKeywordPattern.test(errorLower)) return true;
+                            return false;
+                        });
+                    };
+                    
+                    const hasArrayError = hasDirectArrayError();
+                    
+                    const addArrayItem = () => {
+                        const newItem = arrayField.itemType === 'object' ? {} : '';
+                        const newValue = [...arrayValue, newItem];
+                        const newData = setValueByPath(data, arrayField.key, newValue);
+                        onChange(newData, arrayField.key);
+                    };
+                    
+                    const removeArrayItem = (index: number) => {
+                        const newArray = arrayValue.filter((_: any, i: number) => i !== index);
+                        const newData = setValueByPath(data, arrayField.key, newArray);
+                        onChange(newData, arrayField.key);
+                    };
+                    
+                    const updateArrayItem = (index: number, itemValue: any) => {
+                        const newArray = [...arrayValue];
+                        newArray[index] = itemValue;
+                        const newData = setValueByPath(data, arrayField.key, newArray);
+                        onChange(newData, arrayField.key);
+                    };
+                    
+                    const simpleCount = arrayField.itemFields?.filter((f: any) => f.fieldCategory === 'simple').length || 0;
+                    const complexCount = arrayField.itemFields?.filter((f: any) => f.fieldCategory === 'complex').length || 0;
+                    
+                    const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+                    
+                    return (
+                        <Accordion
+                            key={sectionName}
+                            expanded={expandedPanel === sectionName}
+                            onChange={(event, isExpanded) => {
+                                setExpandedPanel(isExpanded ? sectionName : null);
+                                if (isExpanded) {
+                                    const el = accordionRefs.current[sectionName] as HTMLElement | null;
+                                    const container = containerRef.current;
+                                    setTimeout(() => {
+                                        if (el) {
+                                            scrollToElement({ element: el, container, focus: false, highlightClass: '', durationMs: 0, block: 'start' });
+                                        }
+                                    }, 120);
+                                }
+                            }}
+                            ref={(el) => {
+                                if (el) accordionRefs.current[sectionName] = el;
+                            }}
+                            data-section={sectionName}
+                            sx={{
+                                mb: 2,
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                border: hasArrayError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                                '&:before': {
+                                    display: 'none',
+                                },
+                                '& .MuiAccordionSummary-root': {
+                                    backgroundColor: hasArrayError ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255, 255, 255, 0.05)',
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                                }
+                            }}
+                        >
+                            <AccordionSummary 
+                                expandIcon={<ExpandMoreIcon sx={{ color: 'text.secondary' }} />}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                    {getIconContainer(arrayField.description, undefined, arrayField.urn)}
+                                    <Typography variant="h6" sx={{ 
+                                        fontWeight: 600,
+                                        color: hasArrayError ? 'error.main' : 'text.primary'
+                                    }}>
+                                        {displayName}
+                                    </Typography>
+                                    <Chip
+                                        label={`${arrayValue.length} item${arrayValue.length !== 1 ? 's' : ''}`}
+                                        size="small"
+                                        sx={{
+                                            fontSize: '0.7rem',
+                                            height: 20,
+                                            backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                                            color: 'primary.main'
+                                        }}
+                                    />
+                                    {(simpleCount > 0 || complexCount > 0) && (
+                                        <Tooltip title={`${simpleCount} simple field${simpleCount !== 1 ? 's' : ''}, ${complexCount} complex field${complexCount !== 1 ? 's' : ''}`}>
+                                            <Chip 
+                                                label={`${simpleCount}S / ${complexCount}C`}
+                                                size="small" 
+                                                sx={{ 
+                                                    height: 20,
+                                                    fontSize: '0.7rem',
+                                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                                    color: 'text.secondary'
+                                                }} 
+                                            />
+                                        </Tooltip>
+                                    )}
+                                    {errorCount > 0 && (
+                                        <Chip
+                                            label={`${errorCount} error${errorCount !== 1 ? 's' : ''}`}
+                                            size="small"
+                                            sx={{
+                                                fontSize: '0.7rem',
+                                                height: 20,
+                                                backgroundColor: 'rgba(239, 68, 68, 0.3)',
+                                                color: 'error.main',
+                                                fontWeight: 600
+                                            }}
+                                        />
+                                    )}
+                                    <Box sx={{ flex: 1 }} />
+                                    {arrayValue.length > 0 && (
+                                        <Button
+                                            size="small"
+                                            startIcon={<AddIcon />}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                addArrayItem();
+                                            }}
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontSize: '0.8rem',
+                                                color: 'primary.main',
+                                                border: '1px solid rgba(96, 165, 250, 0.4)',
+                                                mr: 2,
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                    borderColor: 'primary.main'
+                                                }
+                                            }}
+                                        >
+                                            Add Item
+                                        </Button>
+                                    )}
+                                </Box>
+                            </AccordionSummary>
+                            <AccordionDetails sx={{ p: 3 }}>
+                                {arrayValue.length === 0 ? (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Box 
+                                            sx={{
+                                                p: 3,
+                                                textAlign: 'center',
+                                                backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                                                borderRadius: 2,
+                                                border: '1px dashed rgba(255, 255, 255, 0.2)'
+                                            }}
+                                        >
+                                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                                No items added yet.
+                                            </Typography>
+                                        </Box>
+                                        
+                                        <Button
+                                            fullWidth
+                                            size="medium"
+                                            startIcon={<AddIcon />}
+                                            onClick={addArrayItem}
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontSize: '0.85rem',
+                                                color: 'primary.main',
+                                                border: '1px dashed rgba(96, 165, 250, 0.4)',
+                                                borderRadius: 2,
+                                                py: 1.5,
+                                                backgroundColor: 'rgba(96, 165, 250, 0.02)',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                                                    borderColor: 'primary.main',
+                                                    borderStyle: 'solid'
+                                                }
+                                            }}
+                                        >
+                                            Add Item
+                                        </Button>
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {arrayValue.map((item: any, index: number) => {
+                                            const isExpanded = expandedItems[index] ?? true;
+                                            return (
+                                                <Card key={index} sx={{
+                                                    backgroundColor: 'rgba(96, 165, 250, 0.02)',
+                                                    border: '1px solid rgba(96, 165, 250, 0.4)',
+                                                    borderRadius: 2
+                                                }}>
+                                                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                                                            <DragIndicatorIcon sx={{ 
+                                                                color: 'text.secondary', 
+                                                                fontSize: 20,
+                                                                mt: 1,
+                                                                cursor: 'grab'
+                                                            }} />
+                                                            
+                                                            <Box sx={{ flex: 1 }}>
+                                                                <Box 
+                                                                    sx={{ 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        gap: 1, 
+                                                                        mb: 1,
+                                                                        cursor: 'pointer',
+                                                                        userSelect: 'none'
+                                                                    }}
+                                                                    onClick={() => setExpandedItems(prev => ({ ...prev, [index]: !isExpanded }))}
+                                                                >
+                                                                    <ExpandMoreIcon 
+                                                                        sx={{ 
+                                                                            fontSize: 18,
+                                                                            color: 'primary.main',
+                                                                            transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                                                                            transition: 'transform 0.2s ease'
+                                                                        }} 
+                                                                    />
+                                                                    <Typography variant="caption" sx={{ 
+                                                                        color: 'text.secondary',
+                                                                        fontWeight: 600,
+                                                                        textTransform: 'uppercase',
+                                                                        letterSpacing: 1
+                                                                    }}>
+                                                                        Item {index + 1}
+                                                                    </Typography>
+                                                                </Box>
+                                                                
+                                                                <Collapse in={isExpanded} timeout={200}>
+                                                                    {arrayField.itemType === 'object' && arrayField.itemFields ? (
+                                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                                                                            {arrayField.itemFields.map((subField: FormField) => {
+                                                                                const simpleKey = subField.key.includes('.') 
+                                                                                    ? subField.key.split('.').pop() 
+                                                                                    : subField.key;
+                                                                                const subFieldValue = item[simpleKey!] || '';
+                                                                                
+                                                                                if (subField.fieldCategory === 'complex') {
+                                                                                    return (
+                                                                                        <ComplexFieldPanel
+                                                                                            key={subField.key}
+                                                                                            field={subField}
+                                                                                            value={subFieldValue}
+                                                                                            onChange={(newValue) => {
+                                                                                                const newItem = { ...item, [simpleKey!]: newValue };
+                                                                                                updateArrayItem(index, newItem);
+                                                                                            }}
+                                                                                            depth={2}
+                                                                                            errors={errors}
+                                                                                            fieldErrors={fieldErrors}
+                                                                                            onFieldFocus={onFieldFocus}
+                                                                                            onFieldBlur={onFieldBlur}
+                                                                                            onInfoIconClick={onInfoIconClick}
+                                                                                            parentPath={`${arrayField.key}[${index}]`}
+                                                                                            renderSimpleField={renderSimpleField}
+                                                                                        />
+                                                                                    );
+                                                                                }
+                                                                                
+                                                                                if (renderSimpleField) {
+                                                                                    const arrayParentPath = `${arrayField.key}[${index}]`;
+                                                                                    return (
+                                                                                        <Box key={subField.key}>
+                                                                                            {renderSimpleField(
+                                                                                                subField,
+                                                                                                subFieldValue,
+                                                                                                (newValue) => {
+                                                                                                    const newItem = { ...item, [simpleKey!]: newValue };
+                                                                                                    updateArrayItem(index, newItem);
+                                                                                                },
+                                                                                                arrayParentPath
+                                                                                            )}
+                                                                                        </Box>
+                                                                                    );
+                                                                                }
+                                                                                
+                                                                                return null;
+                                                                            })}
+                                                                        </Box>
+                                                                    ) : (
+                                                                        <TextField
+                                                                            fullWidth
+                                                                            size="small"
+                                                                            value={item}
+                                                                            onChange={(e) => updateArrayItem(index, e.target.value)}
+                                                                            placeholder={`${arrayField.label} item`}
+                                                                        />
+                                                                    )}
+                                                                </Collapse>
+                                                            </Box>
+                                                            
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => removeArrayItem(index)}
+                                                                sx={{
+                                                                    color: 'error.main',
+                                                                    '&:hover': {
+                                                                        backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <DeleteIcon sx={{ fontSize: 18 }} />
+                                                            </IconButton>
+                                                        </Box>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
+                                        
+                                        {/* Add Item button after last item */}
+                                        <Button
+                                            fullWidth
+                                            size="medium"
+                                            startIcon={<AddIcon />}
+                                            onClick={addArrayItem}
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontSize: '0.85rem',
+                                                color: 'primary.main',
+                                                border: '1px dashed rgba(96, 165, 250, 0.4)',
+                                                borderRadius: 2,
+                                                py: 1.5,
+                                                backgroundColor: 'rgba(96, 165, 250, 0.02)',
+                                                '&:hover': {
+                                                    backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                                                    borderColor: 'primary.main',
+                                                    borderStyle: 'solid'
+                                                }
+                                            }}
+                                        >
+                                            Add Item
+                                        </Button>
+                                    </Box>
+                                )}
+                            </AccordionDetails>
+                        </Accordion>
+                    );
+                }
+                
+                // OBJECT SECTIONS: Render as accordion (existing behavior)
                 return (
                     <Accordion
                         key={sectionName}
@@ -1040,15 +1502,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                         color: 'primary.main'
                                     }}
                                 />
-                                {requiredFieldsCount > 0 && (
+                                {errorCount > 0 && (
                                     <Chip
-                                        label={`${requiredFieldsCount} required`}
+                                        label={`${errorCount} error${errorCount !== 1 ? 's' : ''}`}
                                         size="small"
                                         sx={{
                                             fontSize: '0.7rem',
                                             height: 20,
-                                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                                            color: 'error.main'
+                                            backgroundColor: 'rgba(239, 68, 68, 0.3)',
+                                            color: 'error.main',
+                                            fontWeight: 600
                                         }}
                                     />
                                 )}

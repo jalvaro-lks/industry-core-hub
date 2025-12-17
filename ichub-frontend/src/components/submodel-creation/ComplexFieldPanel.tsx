@@ -54,6 +54,7 @@ interface ComplexFieldPanelProps {
     onFieldFocus?: (key: string) => void;
     onFieldBlur?: () => void;
     onInfoIconClick?: (key: string) => void;
+    parentPath?: string; // Parent path for nested fields in arrays (e.g., 'materialList[0]')
     // Callback for rendering simple fields within complex structures
     renderSimpleField?: (field: FormField, value: any, onChange: (value: any) => void, parentPath?: string) => React.ReactNode;
 }
@@ -72,6 +73,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
     onFieldFocus,
     onFieldBlur,
     onInfoIconClick,
+    parentPath,
     renderSimpleField
 }) => {
     const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
@@ -109,8 +111,35 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         );
     };
 
-    // Check if field has errors
-    const hasError = fieldErrors.has(field.key);
+    // Check if this field has a DIRECT error (not child field errors)
+    // For arrays/objects, only mark as error if the container itself has an error
+    // (e.g., "materialList is required"), not if child fields have errors
+    // (e.g., "materialList[0].currency is required" should not mark materialList red)
+    const hasDirectError = () => {
+        if (!fieldErrors.has(field.key)) return false;
+        
+        // Check if any error message mentions this exact field (not a child)
+        // by looking for the field key at the start of error messages
+        const fieldKeyLower = field.key.toLowerCase();
+        return errors.some(error => {
+            const errorLower = error.toLowerCase();
+            // Check if error starts with this field key (direct error)
+            // e.g., "materialList is required" or "materialList must be"
+            if (errorLower.startsWith(fieldKeyLower)) {
+                // Make sure it's not a child field error (no dot or bracket after)
+                const afterKey = errorLower.substring(fieldKeyLower.length);
+                // Direct error if followed by space, not by . or [
+                return /^\s/.test(afterKey);
+            }
+            // Also check quoted patterns: "'materialList' is required"
+            const quotedPattern = new RegExp(`^['"]${fieldKeyLower}['"]\\s+`, 'i');
+            if (quotedPattern.test(errorLower)) return true;
+            
+            return false;
+        });
+    };
+    
+    const hasError = hasDirectError();
 
     // ARRAY RENDERING
     if (field.type === 'array') {
@@ -205,16 +234,43 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
 
                 {/* Array Items */}
                 {arrayValue.length === 0 ? (
-                    <Box sx={{
-                        p: 3,
-                        textAlign: 'center',
-                        backgroundColor: 'rgba(255, 255, 255, 0.01)',
-                        borderRadius: 2,
-                        border: '1px dashed rgba(255, 255, 255, 0.2)'
-                    }}>
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                            No items added yet. Click "Add Item" to get started.
-                        </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box 
+                            sx={{
+                                p: 3,
+                                textAlign: 'center',
+                                backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                                borderRadius: 2,
+                                border: '1px dashed rgba(255, 255, 255, 0.2)'
+                            }}
+                        >
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                No items added yet.
+                            </Typography>
+                        </Box>
+                        
+                        <Button
+                            fullWidth
+                            size="medium"
+                            startIcon={<AddIcon />}
+                            onClick={addArrayItem}
+                            sx={{
+                                textTransform: 'none',
+                                fontSize: '0.85rem',
+                                color: 'primary.main',
+                                border: '1px dashed rgba(96, 165, 250, 0.4)',
+                                borderRadius: 2,
+                                py: 1.5,
+                                backgroundColor: 'rgba(96, 165, 250, 0.02)',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                                    borderColor: 'primary.main',
+                                    borderStyle: 'solid'
+                                }
+                            }}
+                        >
+                            Add Item
+                        </Button>
                     </Box>
                 ) : (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -281,6 +337,8 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                 
                                                                 // Recursively render complex fields
                                                                 if (subField.fieldCategory === 'complex') {
+                                                                    // Construct parent path with array index for nested complex fields
+                                                                    const nestedParentPath = `${field.key}[${index}]`;
                                                                     return (
                                                                         <ComplexFieldPanel
                                                                             key={subField.key}
@@ -296,6 +354,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                             onFieldFocus={onFieldFocus}
                                                                             onFieldBlur={onFieldBlur}
                                                                             onInfoIconClick={onInfoIconClick}
+                                                                            parentPath={nestedParentPath}
                                                                             renderSimpleField={renderSimpleField}
                                                                         />
                                                                     );
@@ -303,6 +362,8 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                 
                                                                 // Render simple field using callback if provided
                                                                 if (renderSimpleField) {
+                                                                    // Construct parent path with array index
+                                                                    const arrayParentPath = `${field.key}[${index}]`;
                                                                     return (
                                                                         <Box key={subField.key}>
                                                                             {renderSimpleField(
@@ -311,7 +372,8 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                                 (newValue) => {
                                                                                     const newItem = { ...item, [simpleKey!]: newValue };
                                                                                     updateArrayItem(index, newItem);
-                                                                                }
+                                                                                },
+                                                                                arrayParentPath
                                                                             )}
                                                                         </Box>
                                                                     );
@@ -480,6 +542,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                         onFieldFocus={onFieldFocus}
                                         onFieldBlur={onFieldBlur}
                                         onInfoIconClick={onInfoIconClick}
+                                        parentPath={parentPath}  // Propagate parentPath for nested structures
                                         renderSimpleField={renderSimpleField}
                                     />
                                 );
@@ -494,7 +557,8 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                             objValue,
                                             (newValue) => {
                                                 onChange({ ...value, [simpleKey]: newValue });
-                                            }
+                                            },
+                                            parentPath  // Pass parentPath if this object is nested in an array
                                         )}
                                     </Box>
                                 );

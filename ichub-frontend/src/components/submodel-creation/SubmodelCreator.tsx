@@ -312,6 +312,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             
             // Extract field name from error message with multiple patterns
             let fieldName: string | null = null;
+            let fullFieldPath: string | null = null; // Preserve full path with array indices
             let fieldInfo: { key: string, label: string, path: string, section: string } | null = null;
             let arrayIndex: number | undefined = undefined;
             
@@ -358,7 +359,9 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                 if (match) {
                     // For the first pattern group (new recursive validation), extract full path
                     if (pattern.source.startsWith('^([\\w.\\[\\]]+)')) {
-                        // Remove array indices from field name for lookup
+                        // Preserve the full path with array indices
+                        fullFieldPath = match[1];
+                        // Remove array indices from field name for schema lookup only
                         fieldName = match[1].replace(/\[\d+\]/g, '');
                     } else if (pattern.source.includes('\\[(\\d+)\\]')) {
                         // Legacy array field match
@@ -368,16 +371,22 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                         }
                         if (match[3]) {
                             fieldName = `${match[1]}.${match[3]}`;
+                            fullFieldPath = `${match[1]}[${match[2]}].${match[3]}`;
+                        } else {
+                            fullFieldPath = `${match[1]}[${match[2]}]`;
                         }
                     } else if (match[3]) {
                         // Triple nested match
                         fieldName = `${match[1]}.${match[2]}.${match[3]}`;
+                        fullFieldPath = fieldName;
                     } else if (match[2]) {
                         // Double nested match
                         fieldName = `${match[1]}.${match[2]}`;
+                        fullFieldPath = fieldName;
                     } else {
                         // Simple field match
                         fieldName = match[1];
+                        fullFieldPath = fieldName;
                     }
                     
                     fieldInfo = findFieldInSchema(fieldName);
@@ -437,7 +446,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                 message: specificMessage,
                 fieldKey: fieldInfo?.key,
                 fieldLabel: fieldInfo?.label,
-                fieldPath: fieldInfo?.path,
+                fieldPath: fullFieldPath || fieldInfo?.path,  // Use full path with array indices
                 section: fieldInfo?.section || 'General',
                 severity: 'error',
                 context,
@@ -668,7 +677,6 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                                 }}
                                                             >
                                                                 {parsedError.fieldPath}
-                                                                {parsedError.arrayIndex !== undefined && ` [${parsedError.arrayIndex}]`}
                                                             </Typography>
                                                         )}
                                                     </Box>
@@ -791,10 +799,18 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     setValidationErrors(uniqueErrors);
 
         // Extract field keys from errors and store them
+        // Only add the exact field with error, not parent fields
         const errorFieldKeys = new Set<string>();
         uniqueErrors.forEach(error => {
-            // Extract field key from error message using similar logic to ErrorViewer
+            // Extract field key from error message - support full paths with array indices
             const patterns = [
+                // Full path patterns (with array indices)
+                /^([\w.\[\]]+)\s+is required/i,           // path.to.field[0].nested is required
+                /^([\w.\[\]]+)\s+must be/i,               // path.to.field[0] must be
+                /^([\w.\[\]]+)\s+format is invalid/i,     // path.to.field[0] format is invalid
+                /^([\w.\[\]]+)\s+should match pattern/i,  // path.to.field[0] should match pattern
+                /^([\w.\[\]]+)\s+must be one of/i,        // path.to.field[0] must be one of
+                // Quoted patterns
                 /Field '([^']+)' is required/i,
                 /'([^']+)'\s+is required/i,
                 /"([^"]+)"\s+is required/i,
@@ -803,7 +819,15 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             for (const pattern of patterns) {
                 const match = error.match(pattern);
                 if (match && match[1]) {
-                    errorFieldKeys.add(match[1]);
+                    // Add the full path (with array indices if present)
+                    const fullPath = match[1];
+                    errorFieldKeys.add(fullPath);
+                    
+                    // Also add version without array indices for schema field matching
+                    const pathWithoutIndices = fullPath.replace(/\[\d+\]/g, '');
+                    if (pathWithoutIndices !== fullPath) {
+                        errorFieldKeys.add(pathWithoutIndices);
+                    }
                     break;
                 }
             }
