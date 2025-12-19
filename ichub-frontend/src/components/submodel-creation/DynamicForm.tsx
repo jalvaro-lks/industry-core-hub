@@ -229,6 +229,14 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     type ErrorState = { hasError: boolean; errorMessages: string[] };
     const errorStateMap: Record<string, ErrorState> = {};
     
+    // Helper function to extract field key from error message
+    // Handles patterns like: "Field 'identification.codes' is required" or "Field 'operation.manufacturer.facility[0].facility' is required"
+    const extractFieldKeyFromError = (error: string): string | null => {
+        // Match patterns: Field 'key' or Field "key"
+        const match = error.match(/Field ['"](.*?)['"]/i);
+        return match ? match[1] : null;
+    };
+    
     // Helper function to check if an error matches a field key (with or without array indices)
     const errorMatchesField = (error: string, fieldKey: string, fieldLabel: string): boolean => {
         const errorLower = error.toLowerCase();
@@ -300,6 +308,35 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 hasError: formattedMessages.length > 0,
                 errorMessages: formattedMessages
             };
+        }
+    }
+    
+    // Second pass: Extract field keys from ALL errors (including array items) and add to errorStateMap
+    // This ensures that fields like "operation.manufacturer.facility[0].facility" get their own entry
+    for (const error of errors) {
+        const extractedKey = extractFieldKeyFromError(error);
+        if (extractedKey && !errorStateMap[extractedKey]) {
+            // This is a field not in the top-level formFields (likely an array item field)
+            // Remove array indices to get the base field key for matching
+            const baseKey = extractedKey.replace(/\[\d+\]/g, '');
+            
+            // Format the error message
+            let formatted = error
+                .replace(new RegExp(`'${extractedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`, 'gi'), '')
+                .replace(new RegExp(`"${extractedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'gi'), '')
+                .replace(/Field\s+/gi, '')
+                .replace(/\[\d+\]/g, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (formatted && formatted.length > 0) {
+                formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+            }
+            
+            // Add entry for both the exact key (with indices) and the base key (without indices)
+            errorStateMap[extractedKey] = { hasError: true, errorMessages: [formatted] };
+            if (baseKey !== extractedKey && !errorStateMap[baseKey]) {
+                errorStateMap[baseKey] = { hasError: true, errorMessages: [formatted] };
+            }
         }
     }
 
@@ -397,8 +434,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         const hasPersistedError = fieldErrors.has(baseFieldKey) || fieldErrors.has(fieldKey);
         const isFieldFocused = focusedField === fieldKey;
         
-        // Check error state in errorStateMap using the base field key (without array indices)
-        const { hasError, errorMessages } = errorStateMap[baseFieldKey] || { hasError: false, errorMessages: [] };
+        // Check error state in errorStateMap - try exact match first (with array indices), then base key (without indices)
+        const { hasError, errorMessages } = 
+            errorStateMap[fieldKey] || 
+            errorStateMap[baseFieldKey] || 
+            { hasError: false, errorMessages: [] };
         
         const isRequiredAndEmpty = field.required && 
             (!value || value === '' || (Array.isArray(value) && value.length === 0));
@@ -783,6 +823,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             depth={1}
                             errors={errors}
                             fieldErrors={fieldErrors}
+                            errorStateMap={errorStateMap}
                             onFieldFocus={onFieldFocus}
                             onFieldBlur={onFieldBlur}
                             onInfoIconClick={onInfoIconClick}
@@ -1347,6 +1388,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                                                                             depth={2}
                                                                                             errors={errors}
                                                                                             fieldErrors={fieldErrors}
+                                                                                            errorStateMap={errorStateMap}
                                                                                             onFieldFocus={onFieldFocus}
                                                                                             onFieldBlur={onFieldBlur}
                                                                                             onInfoIconClick={onInfoIconClick}

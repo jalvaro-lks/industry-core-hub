@@ -51,6 +51,7 @@ interface ComplexFieldPanelProps {
     depth: number;
     errors: string[];
     fieldErrors?: Set<string>;
+    errorStateMap?: Record<string, { hasError: boolean; errorMessages: string[] }>;
     onFieldFocus?: (key: string) => void;
     onFieldBlur?: () => void;
     onInfoIconClick?: (key: string) => void;
@@ -70,6 +71,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
     depth,
     errors,
     fieldErrors = new Set(),
+    errorStateMap = {},
     onFieldFocus,
     onFieldBlur,
     onInfoIconClick,
@@ -111,35 +113,41 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         );
     };
 
-    // Check if this field has a DIRECT error (not child field errors)
-    // For arrays/objects, only mark as error if the container itself has an error
-    // (e.g., "materialList is required"), not if child fields have errors
-    // (e.g., "materialList[0].currency is required" should not mark materialList red)
-    const hasDirectError = () => {
+    // Check if this field or any of its children have errors
+    const hasDirectOrChildError = () => {
+        // If we have errorStateMap, use it directly (most reliable)
+        if (errorStateMap[field.key]) {
+            return errorStateMap[field.key].hasError;
+        }
+        
+        // Fallback: parse errors manually for backwards compatibility
         if (!fieldErrors.has(field.key)) return false;
         
-        // Check if any error message mentions this exact field (not a child)
-        // by looking for the field key at the start of error messages
         const fieldKeyLower = field.key.toLowerCase();
         return errors.some(error => {
             const errorLower = error.toLowerCase();
-            // Check if error starts with this field key (direct error)
-            // e.g., "materialList is required" or "materialList must be"
+            
+            // Check for direct error (e.g., "materialList is required")
             if (errorLower.startsWith(fieldKeyLower)) {
-                // Make sure it's not a child field error (no dot or bracket after)
                 const afterKey = errorLower.substring(fieldKeyLower.length);
-                // Direct error if followed by space, not by . or [
-                return /^\s/.test(afterKey);
+                // Direct error if followed by space
+                if (/^\s/.test(afterKey)) return true;
             }
-            // Also check quoted patterns: "'materialList' is required"
+            
+            // Check quoted patterns: "'materialList' is required"
             const quotedPattern = new RegExp(`^['"]${fieldKeyLower}['"]\\s+`, 'i');
             if (quotedPattern.test(errorLower)) return true;
+            
+            // Check for child field errors (e.g., "identification.type.manufacturerPartId is required")
+            // This includes nested object properties and array items
+            const childPattern = new RegExp(`['"]?${fieldKeyLower}\\.|['"]?${fieldKeyLower}\\[`, 'i');
+            if (childPattern.test(errorLower)) return true;
             
             return false;
         });
     };
     
-    const hasError = hasDirectError();
+    const hasError = hasDirectOrChildError();
 
     // ARRAY RENDERING
     if (field.type === 'array') {
@@ -337,8 +345,12 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                 
                                                                 // Recursively render complex fields
                                                                 if (subField.fieldCategory === 'complex') {
-                                                                    // Construct parent path with array index for nested complex fields
-                                                                    const nestedParentPath = `${field.key}[${index}]`;
+                                                                    // Construct parent path correctly, removing [item] placeholder and building proper indexed path
+                                                                    const baseFieldKey = field.key.replace(/\[item\]/g, '');
+                                                                    const fieldName = baseFieldKey.split('.').pop() || baseFieldKey;
+                                                                    const nestedParentPath = parentPath 
+                                                                        ? `${parentPath}.${fieldName}[${index}]`
+                                                                        : `${baseFieldKey}[${index}]`;
                                                                     return (
                                                                         <ComplexFieldPanel
                                                                             key={subField.key}
@@ -347,13 +359,14 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                             onChange={(newValue) => {
                                                                                 const newItem = { ...item, [simpleKey!]: newValue };
                                                                                 updateArrayItem(index, newItem);
-                                                                            }}
-                                                                            depth={depth + 1}
-                                                                            errors={errors}
-                                                                            fieldErrors={fieldErrors}
-                                                                            onFieldFocus={onFieldFocus}
-                                                                            onFieldBlur={onFieldBlur}
-                                                                            onInfoIconClick={onInfoIconClick}
+                                                                        }}
+                                                                        depth={depth + 1}
+                                                                        errors={errors}
+                                                                        fieldErrors={fieldErrors}
+                                                                        errorStateMap={errorStateMap}
+                                                                        onFieldFocus={onFieldFocus}
+                                                                        onFieldBlur={onFieldBlur}
+                                                                        onInfoIconClick={onInfoIconClick}
                                                                             parentPath={nestedParentPath}
                                                                             renderSimpleField={renderSimpleField}
                                                                         />
@@ -539,6 +552,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                         depth={depth + 1}
                                         errors={errors}
                                         fieldErrors={fieldErrors}
+                                        errorStateMap={errorStateMap}
                                         onFieldFocus={onFieldFocus}
                                         onFieldBlur={onFieldBlur}
                                         onInfoIconClick={onInfoIconClick}

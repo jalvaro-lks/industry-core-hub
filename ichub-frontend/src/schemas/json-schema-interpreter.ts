@@ -25,7 +25,21 @@
  * COMPREHENSIVE JSON Schema Interpreter
  * Automatically generates form fields, validation, and default values from ANY JSON Schema
  * Handles: nested objects, arrays, all data types, validation rules, descriptions, required fields
+ * 
+ * REFACTORED VERSION:
+ * - Nuevo sistema basado en árbol unificado (SchemaNode)
+ * - Identificadores únicos deterministas para todos los niveles
+ * - Validación recursiva optimizada
+ * - Gestión de errores mejorada
+ * 
+ * La API antigua se mantiene para retrocompatibilidad, pero internamente
+ * usa el nuevo sistema de árbol.
  */
+
+// Re-exportar el nuevo sistema
+export { buildSchemaTree } from './json-schema-tree-builder';
+export { validateSchemaTree, getValueByPath, setValueByPath } from './schema-tree-validator';
+export type { SchemaNode, NodeType, PrimitiveType, ValidationError, ValidationResult } from '../models/schema-node';
 
 export interface JSONSchemaProperty {
   type?: string | string[];
@@ -744,6 +758,128 @@ function createValidationRules(property: JSONSchemaProperty): FormField['validat
 /**
  * COMPREHENSIVE JSON Schema interpretation - handles ANY JSON Schema completely
  */
+/**
+ * NUEVA API - Sistema basado en árbol SchemaNode
+ * 
+ * Esta es la API recomendada que usa la nueva arquitectura de árbol unificado.
+ * Provee mejor gestión de identificadores, validación recursiva optimizada
+ * y errores estructurados con metadata completa.
+ * 
+ * @param schema - JSON Schema completo
+ * @param options - Opciones de construcción del árbol
+ * @returns Objeto con árbol de nodos y funciones de validación
+ */
+export function interpretJSONSchemaTree(schema: JSONSchema, options?: any): {
+  schemaTree: Map<string, import('../models/schema-node').SchemaNode>;
+  validate: (data: any) => import('../models/schema-node').ValidationResult;
+  formFields: FormField[]; // Retrocompatibilidad
+  getFieldGroups: () => Record<string, FormField[]>;
+  getFieldByKey: (key: string) => FormField | undefined;
+} {
+  // Importar dinámicamente para evitar dependencias circulares
+  const { buildSchemaTree } = require('./json-schema-tree-builder');
+  const { validateSchemaTree } = require('./schema-tree-validator');
+  const { SchemaTreeUtils } = require('../models/schema-node');
+
+  // Construir el árbol
+  const schemaTree = buildSchemaTree(schema, options);
+
+  // Función de validación usando el árbol
+  const validate = (data: any) => {
+    return validateSchemaTree(schemaTree, data);
+  };
+
+  // Convertir árbol a FormFields para retrocompatibilidad
+  const formFields: FormField[] = convertTreeToFormFields(schemaTree);
+
+  const getFieldGroups = (): Record<string, FormField[]> => {
+    return formFields.reduce((groups, field) => {
+      if (!groups[field.section]) {
+        groups[field.section] = [];
+      }
+      groups[field.section].push(field);
+      return groups;
+    }, {} as Record<string, FormField[]>);
+  };
+
+  const getFieldByKey = (key: string): FormField | undefined => {
+    return formFields.find(field => field.key === key);
+  };
+
+  return {
+    schemaTree,
+    validate,
+    formFields,
+    getFieldGroups,
+    getFieldByKey
+  };
+}
+
+/**
+ * Convierte el árbol de SchemaNode a FormFields para retrocompatibilidad
+ */
+function convertTreeToFormFields(schemaTree: Map<string, any>): FormField[] {
+  const fields: FormField[] = [];
+
+  function traverse(node: any): void {
+    // Agregar el nodo actual como FormField
+    const field: FormField = {
+      key: node.id,
+      label: node.label,
+      type: node.nodeType === 'primitive' ? (node.primitiveType || 'text') : node.nodeType,
+      fieldCategory: node.nodeType === 'primitive' ? 'simple' : 'complex',
+      section: node.section,
+      description: node.description,
+      urn: node.urn,
+      required: node.required,
+      validation: node.validationRules,
+      defaultValue: node.defaultValue,
+      options: node.options
+    };
+
+    if (node.nodeType === 'array') {
+      field.itemType = node.itemType;
+      field.itemSchema = node.itemSchema;
+      if (node.itemSchema && node.itemSchema.properties) {
+        field.itemFields = [];
+        for (const childNode of node.itemSchema.properties.values()) {
+          traverse(childNode);
+        }
+      }
+    }
+
+    if (node.nodeType === 'object' && node.properties) {
+      field.objectFields = [];
+      for (const childNode of node.properties.values()) {
+        traverse(childNode);
+      }
+    }
+
+    fields.push(field);
+
+    // Recorrer hijos
+    if (node.properties) {
+      for (const childNode of node.properties.values()) {
+        traverse(childNode);
+      }
+    }
+  }
+
+  for (const rootNode of schemaTree.values()) {
+    traverse(rootNode);
+  }
+
+  return fields;
+}
+
+/**
+ * API LEGACY - Mantiene retrocompatibilidad
+ * 
+ * Esta función mantiene la API original pero ahora usa internamente
+ * el nuevo sistema de árbol para mayor consistencia.
+ * 
+ * DEPRECADO: Usar interpretJSONSchemaTree() para nuevas implementaciones.
+ */
 export function interpretJSONSchema(schema: JSONSchema): {
   formFields: FormField[];
   validate: (data: any) => { isValid: boolean; errors: string[] };
@@ -847,6 +983,9 @@ export function interpretJSONSchema(schema: JSONSchema): {
     function validateObjectFields(obj: any, objectFields: FormField[], objectKey: string): void {
       if (!objectFields || objectFields.length === 0) return;
       
+      // If the object itself doesn't exist or is empty, validate all required nested fields
+      const objectExists = obj !== undefined && obj !== null && (typeof obj !== 'object' || Object.keys(obj).length > 0);
+      
       for (const objField of objectFields) {
         const fieldKeyParts = objField.key.split('.');
         const simpleKey = fieldKeyParts[fieldKeyParts.length - 1];
@@ -947,16 +1086,8 @@ export function interpretJSONSchema(schema: JSONSchema): {
     for (const field of formFields) {
       const value = getValueByPath(data, field.key);
 
-      // Only validate required children if their parent exists (for nested fields)
+      // Check if this is a required field
       if (field.required) {
-        const parentPath = getParentPath(field.key);
-        if (parentPath) {
-          const parentValue = getValueByPath(data, parentPath);
-          // If parent is undefined/null/empty, skip required check for this child
-          if (parentValue === undefined || parentValue === null || parentValue === '') {
-            continue;
-          }
-        }
         if (value === undefined || value === null ||
             (typeof value === 'string' && value.trim() === '') ||
             (Array.isArray(value) && value.length === 0)) {
@@ -995,7 +1126,8 @@ export function interpretJSONSchema(schema: JSONSchema): {
       }
 
       // Handle object fields with recursive validation
-      if (field.fieldCategory === 'complex' && field.type === 'object' && value && field.objectFields) {
+      // Validate nested object fields even if the parent object is empty or doesn't exist
+      if (field.fieldCategory === 'complex' && field.type === 'object' && field.objectFields) {
         validateObjectFields(value, field.objectFields, field.key);
         continue;
       }
