@@ -113,38 +113,51 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         );
     };
 
+    /**
+     * Normalize a path by removing array indices
+     * "materialList[0].processing[1].country" -> "materialList.processing.country"
+     */
+    const normalizePath = (path: string): string => {
+        return path.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
+    };
+
+    /**
+     * Build the actual field path considering parent context
+     */
+    const buildActualPath = (): string => {
+        if (!parentPath) return field.key;
+        const simpleKey = field.key.includes('.') ? field.key.split('.').pop()! : field.key;
+        return `${parentPath}.${simpleKey}`;
+    };
+
     // Check if this field or any of its children have errors
-    const hasDirectOrChildError = () => {
-        // If we have errorStateMap, use it directly (most reliable)
-        if (errorStateMap[field.key]) {
-            return errorStateMap[field.key].hasError;
-        }
+    const hasDirectOrChildError = (): boolean => {
+        const actualPath = buildActualPath();
+        const normalizedPath = normalizePath(actualPath);
+        const normalizedFieldKey = normalizePath(field.key);
         
-        // Fallback: parse errors manually for backwards compatibility
-        if (!fieldErrors.has(field.key)) return false;
+        // Check in errorStateMap with multiple path variations
+        if (errorStateMap[actualPath]?.hasError) return true;
+        if (errorStateMap[normalizedPath]?.hasError) return true;
+        if (errorStateMap[field.key]?.hasError) return true;
+        if (errorStateMap[normalizedFieldKey]?.hasError) return true;
         
-        const fieldKeyLower = field.key.toLowerCase();
-        return errors.some(error => {
-            const errorLower = error.toLowerCase();
-            
-            // Check for direct error (e.g., "materialList is required")
-            if (errorLower.startsWith(fieldKeyLower)) {
-                const afterKey = errorLower.substring(fieldKeyLower.length);
-                // Direct error if followed by space
-                if (/^\s/.test(afterKey)) return true;
-            }
-            
-            // Check quoted patterns: "'materialList' is required"
-            const quotedPattern = new RegExp(`^['"]${fieldKeyLower}['"]\\s+`, 'i');
-            if (quotedPattern.test(errorLower)) return true;
-            
-            // Check for child field errors (e.g., "identification.type.manufacturerPartId is required")
-            // This includes nested object properties and array items
-            const childPattern = new RegExp(`['"]?${fieldKeyLower}\\.|['"]?${fieldKeyLower}\\[`, 'i');
-            if (childPattern.test(errorLower)) return true;
-            
-            return false;
+        // Check in fieldErrors set
+        if (fieldErrors.has(actualPath)) return true;
+        if (fieldErrors.has(normalizedPath)) return true;
+        if (fieldErrors.has(field.key)) return true;
+        if (fieldErrors.has(normalizedFieldKey)) return true;
+        
+        // Check for child errors (errors that start with this path)
+        const hasChildError = Array.from(fieldErrors).some(errPath => {
+            const normalizedErr = normalizePath(errPath);
+            return normalizedErr.startsWith(normalizedPath + '.') ||
+                   normalizedErr.startsWith(normalizedFieldKey + '.') ||
+                   errPath.startsWith(actualPath + '.') ||
+                   errPath.startsWith(actualPath + '[');
         });
+        
+        return hasChildError;
     };
     
     const hasError = hasDirectOrChildError();

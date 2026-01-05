@@ -915,227 +915,181 @@ export function interpretJSONSchema(schema: JSONSchema): {
   );
   
   // Enhanced validation function with comprehensive rules including recursive validation for arrays and objects
+  // This version properly handles N levels of nesting for arrays and objects
   const validate = (data: any): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
     
-    // Helper: for a field key like 'a.b.c', return the parent path 'a.b' (or null if top-level)
-    function getParentPath(path: string): string | null {
-      const parts = path.split('.');
-      if (parts.length <= 1) return null;
-      return parts.slice(0, -1).join('.');
+    /**
+     * Check if a value is considered empty for validation purposes
+     */
+    function isEmpty(value: any): boolean {
+      if (value === undefined || value === null) return true;
+      if (typeof value === 'string' && value.trim() === '') return true;
+      if (Array.isArray(value) && value.length === 0) return true;
+      if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return true;
+      return false;
     }
 
-    // Helper: Validate a single item against itemFields (for arrays)
-    function validateArrayItem(item: any, itemIndex: number, itemFields: FormField[], arrayKey: string): void {
-      if (!itemFields || itemFields.length === 0) return;
-      
-      for (const itemField of itemFields) {
-        // Extract the last part of the key (e.g., 'id' from 'materials.content[item].id')
-        const fieldKeyParts = itemField.key.split('.');
-        const simpleKey = fieldKeyParts[fieldKeyParts.length - 1];
-        const itemValue = item?.[simpleKey];
-        
-        // Check required fields within array items
-        if (itemField.required) {
-          if (itemValue === undefined || itemValue === null ||
-              (typeof itemValue === 'string' && itemValue.trim() === '') ||
-              (Array.isArray(itemValue) && itemValue.length === 0)) {
-            errors.push(`Field '${arrayKey}[${itemIndex}].${simpleKey}' is required`);
-            continue;
-          }
-        }
-
-        // Skip validation for empty optional fields
-        if (!itemField.required && (itemValue === undefined || itemValue === null || itemValue === '')) {
-          continue;
-        }
-
-        // Validate nested arrays within array items
-        if (itemField.type === 'array' && Array.isArray(itemValue) && itemField.itemFields) {
-          // Validate array constraints
-          if (itemField.validation) {
-            if (itemField.validation.minItems !== undefined && itemValue.length < itemField.validation.minItems) {
-              errors.push(`Field '${arrayKey}[${itemIndex}].${simpleKey}' must have at least ${itemField.validation.minItems} items`);
-            }
-            if (itemField.validation.maxItems !== undefined && itemValue.length > itemField.validation.maxItems) {
-              errors.push(`Field '${arrayKey}[${itemIndex}].${simpleKey}' must have at most ${itemField.validation.maxItems} items`);
-            }
-          }
-          // Recursively validate nested array items
-          itemValue.forEach((nestedItem: any, nestedIndex: number) => {
-            validateArrayItem(nestedItem, nestedIndex, itemField.itemFields!, `${arrayKey}[${itemIndex}].${simpleKey}`);
-          });
-        }
-
-        // Validate nested objects within array items
-        if (itemField.type === 'object' && itemField.objectFields && itemValue) {
-          validateObjectFields(itemValue, itemField.objectFields, `${arrayKey}[${itemIndex}].${simpleKey}`);
-        }
-
-        // Apply field validation rules
-        if (itemField.validation && itemValue !== undefined && itemValue !== null && itemValue !== '') {
-          validateFieldRules(itemValue, itemField, `${arrayKey}[${itemIndex}].${simpleKey}`);
-        }
-      }
-    }
-
-    // Helper: Validate object fields recursively
-    function validateObjectFields(obj: any, objectFields: FormField[], objectKey: string): void {
-      if (!objectFields || objectFields.length === 0) return;
-      
-      // If the object itself doesn't exist or is empty, validate all required nested fields
-      const objectExists = obj !== undefined && obj !== null && (typeof obj !== 'object' || Object.keys(obj).length > 0);
-      
-      for (const objField of objectFields) {
-        const fieldKeyParts = objField.key.split('.');
-        const simpleKey = fieldKeyParts[fieldKeyParts.length - 1];
-        const objValue = obj?.[simpleKey];
-        
-        // Check required fields within objects
-        if (objField.required) {
-          if (objValue === undefined || objValue === null ||
-              (typeof objValue === 'string' && objValue.trim() === '') ||
-              (Array.isArray(objValue) && objValue.length === 0)) {
-            errors.push(`Field '${objectKey}.${simpleKey}' is required`);
-            continue;
-          }
-        }
-
-        // Skip validation for empty optional fields
-        if (!objField.required && (objValue === undefined || objValue === null || objValue === '')) {
-          continue;
-        }
-
-        // Recursively validate nested arrays
-        if (objField.type === 'array' && Array.isArray(objValue) && objField.itemFields) {
-          if (objField.validation) {
-            if (objField.validation.minItems !== undefined && objValue.length < objField.validation.minItems) {
-              errors.push(`Field '${objectKey}.${simpleKey}' must have at least ${objField.validation.minItems} items`);
-            }
-            if (objField.validation.maxItems !== undefined && objValue.length > objField.validation.maxItems) {
-              errors.push(`Field '${objectKey}.${simpleKey}' must have at most ${objField.validation.maxItems} items`);
-            }
-          }
-          objValue.forEach((item: any, index: number) => {
-            validateArrayItem(item, index, objField.itemFields!, `${objectKey}.${simpleKey}`);
-          });
-        }
-
-        // Recursively validate nested objects
-        if (objField.type === 'object' && objField.objectFields && objValue) {
-          validateObjectFields(objValue, objField.objectFields, `${objectKey}.${simpleKey}`);
-        }
-
-        // Apply field validation rules
-        if (objField.validation && objValue !== undefined && objValue !== null && objValue !== '') {
-          validateFieldRules(objValue, objField, `${objectKey}.${simpleKey}`);
-        }
-      }
-    }
-
-    // Helper: Apply validation rules to a field value
+    /**
+     * Apply validation rules to a field value
+     */
     function validateFieldRules(value: any, field: FormField, fieldPath: string): void {
-      const val = field.validation!;
+      if (!field.validation) return;
+      const val = field.validation;
 
       // Numeric validations
       if (val.min !== undefined && Number(value) < val.min) {
-        errors.push(`Field '${fieldPath}' must be at least ${val.min}`);
+        errors.push(`${fieldPath} must be at least ${val.min}`);
       }
       if (val.max !== undefined && Number(value) > val.max) {
-        errors.push(`Field '${fieldPath}' must be at most ${val.max}`);
+        errors.push(`${fieldPath} must be at most ${val.max}`);
       }
       if (val.exclusiveMin !== undefined && Number(value) <= val.exclusiveMin) {
-        errors.push(`Field '${fieldPath}' must be greater than ${val.exclusiveMin}`);
+        errors.push(`${fieldPath} must be greater than ${val.exclusiveMin}`);
       }
       if (val.exclusiveMax !== undefined && Number(value) >= val.exclusiveMax) {
-        errors.push(`Field '${fieldPath}' must be less than ${val.exclusiveMax}`);
+        errors.push(`${fieldPath} must be less than ${val.exclusiveMax}`);
       }
       if (val.multipleOf !== undefined && Number(value) % val.multipleOf !== 0) {
-        errors.push(`Field '${fieldPath}' must be a multiple of ${val.multipleOf}`);
+        errors.push(`${fieldPath} must be a multiple of ${val.multipleOf}`);
       }
 
       // String validations
       if (val.minLength !== undefined && String(value).length < val.minLength) {
-        errors.push(`Field '${fieldPath}' must be at least ${val.minLength} characters`);
+        errors.push(`${fieldPath} must be at least ${val.minLength} characters`);
       }
       if (val.maxLength !== undefined && String(value).length > val.maxLength) {
-        errors.push(`Field '${fieldPath}' must be at most ${val.maxLength} characters`);
+        errors.push(`${fieldPath} must be at most ${val.maxLength} characters`);
       }
       if (val.pattern && !new RegExp(val.pattern).test(String(value))) {
-        errors.push(`Field '${fieldPath}' format is invalid`);
+        errors.push(`${fieldPath} format is invalid`);
       }
 
       // Enum validation
       if (val.enum && !val.enum.includes(value)) {
-        errors.push(`Field '${fieldPath}' must be one of: ${val.enum.join(', ')}`);
+        errors.push(`${fieldPath} must be one of: ${val.enum.join(', ')}`);
       }
 
       // Const validation
       if (val.const !== undefined && value !== val.const) {
-        errors.push(`Field '${fieldPath}' must be exactly: ${val.const}`);
+        errors.push(`${fieldPath} must be exactly: ${val.const}`);
       }
 
       // Format validation
       if (val.format) {
-        const formatErrors = validateFormat(value, val.format, `Field '${fieldPath}'`);
+        const formatErrors = validateFormat(value, val.format, fieldPath);
         errors.push(...formatErrors);
+      }
+    }
+
+    /**
+     * Recursively validate a field and all its nested children
+     * This is the core recursive function that handles any depth of nesting
+     */
+    function validateField(field: FormField, value: any, currentPath: string): void {
+      // Check required constraint
+      if (field.required && isEmpty(value)) {
+        errors.push(`${currentPath} is required`);
+        return; // Don't continue validating if required field is empty
+      }
+
+      // Skip validation for empty optional fields
+      if (!field.required && isEmpty(value)) {
+        return;
+      }
+
+      // ARRAY VALIDATION
+      if (field.type === 'array') {
+        if (!Array.isArray(value)) {
+          // If value exists but isn't an array, that's an error
+          if (value !== undefined && value !== null) {
+            errors.push(`${currentPath} must be an array`);
+          }
+          return;
+        }
+
+        // Array-level constraints
+        if (field.validation) {
+          if (field.validation.minItems !== undefined && value.length < field.validation.minItems) {
+            errors.push(`${currentPath} must have at least ${field.validation.minItems} items`);
+          }
+          if (field.validation.maxItems !== undefined && value.length > field.validation.maxItems) {
+            errors.push(`${currentPath} must have at most ${field.validation.maxItems} items`);
+          }
+          if (field.validation.uniqueItems && new Set(value.map(JSON.stringify)).size !== value.length) {
+            errors.push(`${currentPath} items must be unique`);
+          }
+        }
+
+        // Validate each array item
+        if (field.itemFields && field.itemFields.length > 0) {
+          value.forEach((item: any, index: number) => {
+            const itemPath = `${currentPath}[${index}]`;
+            
+            // Validate each field within the array item
+            for (const itemField of field.itemFields!) {
+              // Get simple key (last part of the field key)
+              const keyParts = itemField.key.split('.');
+              const simpleKey = keyParts[keyParts.length - 1].replace(/\[item\]/g, '');
+              const itemValue = item?.[simpleKey];
+              const fieldPath = `${itemPath}.${simpleKey}`;
+              
+              // Recursively validate this field
+              validateField(itemField, itemValue, fieldPath);
+            }
+          });
+        } else if (field.itemSchema) {
+          // Primitive array items - validate each item against itemSchema
+          value.forEach((item: any, index: number) => {
+            const itemPath = `${currentPath}[${index}]`;
+            if (field.validation) {
+              validateFieldRules(item, field, itemPath);
+            }
+          });
+        }
+        return;
+      }
+
+      // OBJECT VALIDATION
+      if (field.type === 'object' && field.objectFields) {
+        if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+          // Value should be an object but isn't
+          if (value !== undefined && value !== null) {
+            errors.push(`${currentPath} must be an object`);
+          }
+          return;
+        }
+
+        // Validate each field within the object
+        for (const objField of field.objectFields) {
+          // Get simple key (last part of the field key)
+          const keyParts = objField.key.split('.');
+          const simpleKey = keyParts[keyParts.length - 1];
+          const objValue = value?.[simpleKey];
+          const fieldPath = `${currentPath}.${simpleKey}`;
+          
+          // Recursively validate this field
+          validateField(objField, objValue, fieldPath);
+        }
+        return;
+      }
+
+      // PRIMITIVE FIELD VALIDATION
+      if (field.fieldCategory === 'simple' && field.validation) {
+        validateFieldRules(value, field, currentPath);
       }
     }
 
     // Main validation loop for top-level fields
     for (const field of formFields) {
+      // Skip intermediate object nodes that are already processed as part of hierarchy
+      // We only want to validate actual form fields, not grouping nodes
+      if (field.type === 'object' && !field.objectFields && !field.required) {
+        continue;
+      }
+
       const value = getValueByPath(data, field.key);
-
-      // Check if this is a required field
-      if (field.required) {
-        if (value === undefined || value === null ||
-            (typeof value === 'string' && value.trim() === '') ||
-            (Array.isArray(value) && value.length === 0)) {
-          errors.push(`Field '${field.key}' is required`);
-          continue;
-        }
-      }
-
-      // Skip validation for empty optional fields
-      if (!field.required && (value === undefined || value === null || value === '')) {
-        continue;
-      }
-
-      // Handle array fields with recursive validation
-      if (field.fieldCategory === 'complex' && field.type === 'array' && Array.isArray(value)) {
-        // Validate array-level constraints
-        if (field.validation) {
-          if (field.validation.minItems !== undefined && value.length < field.validation.minItems) {
-            errors.push(`Field '${field.key}' must have at least ${field.validation.minItems} items`);
-          }
-          if (field.validation.maxItems !== undefined && value.length > field.validation.maxItems) {
-            errors.push(`Field '${field.key}' must have at most ${field.validation.maxItems} items`);
-          }
-          if (field.validation.uniqueItems && new Set(value).size !== value.length) {
-            errors.push(`Field '${field.key}' items must be unique`);
-          }
-        }
-        
-        // Recursively validate each array item if itemFields exist
-        if (field.itemFields && field.itemFields.length > 0) {
-          value.forEach((item: any, index: number) => {
-            validateArrayItem(item, index, field.itemFields!, field.key);
-          });
-        }
-        continue;
-      }
-
-      // Handle object fields with recursive validation
-      // Validate nested object fields even if the parent object is empty or doesn't exist
-      if (field.fieldCategory === 'complex' && field.type === 'object' && field.objectFields) {
-        validateObjectFields(value, field.objectFields, field.key);
-        continue;
-      }
-
-      // Comprehensive validation based on field rules for simple fields
-      if (field.validation) {
-        validateFieldRules(value, field, field.key);
-      }
+      validateField(field, value, field.key);
     }
     
     return {

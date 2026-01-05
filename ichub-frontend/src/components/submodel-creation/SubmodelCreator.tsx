@@ -81,6 +81,7 @@ import {
     Upload as UploadIcon
 } from '@mui/icons-material';
 import { getAvailableSchemas, SchemaDefinition } from '../../schemas';
+import { FormField } from '../../schemas/json-schema-interpreter';
 import SchemaSelector from './SchemaSelector';
 import DynamicForm, { DynamicFormRef } from './DynamicForm';
 import JsonPreview from './JsonPreview';
@@ -261,52 +262,128 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
 
         // Schema-aware error parsing function
         const parseValidationError = (error: string): ParsedError => {
-            // Extract field information using schema structure
+            /**
+             * Recursively search for a field in the schema structure
+             * This handles deeply nested fields in objectFields and itemFields
+             * 
+             * @param fieldName - The field path to search for (may contain array indices)
+             * @returns Field info if found, null otherwise
+             */
             const findFieldInSchema = (fieldName: string): { key: string, label: string, path: string, section: string } | null => {
                 if (!selectedSchema?.formFields) return null;
-                // 1. Exact match by key (full path)
-                const exactKeyMatch = selectedSchema.formFields.find(field => field.key === fieldName);
-                if (exactKeyMatch) {
-                    return {
-                        key: exactKeyMatch.key,
-                        label: exactKeyMatch.label,
-                        path: exactKeyMatch.key,
-                        section: exactKeyMatch.section || 'General'
-                    };
+                
+                // Normalize the field name by removing array indices for schema matching
+                // e.g., "sustainability.productFootprint.carbon[0].value" -> "sustainability.productFootprint.carbon.value"
+                const normalizedFieldName = fieldName.replace(/\[\d+\]/g, '');
+                // Also create a version with [item] placeholder for schema key matching
+                const schemaFieldName = fieldName.replace(/\[\d+\]/g, '[item]');
+                
+                /**
+                 * Recursively search through a field and its children
+                 */
+                const searchInField = (
+                    field: FormField, 
+                    currentPath: string,
+                    section: string
+                ): { key: string, label: string, path: string, section: string } | null => {
+                    // Normalize current path for comparison
+                    const normalizedCurrentPath = currentPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
+                    const simpleFieldKey = field.key.includes('.') ? field.key.split('.').pop()! : field.key;
+                    
+                    // Check if this field matches the search
+                    const fieldMatches = 
+                        field.key === fieldName ||
+                        field.key === normalizedFieldName ||
+                        field.key === schemaFieldName ||
+                        normalizedCurrentPath === normalizedFieldName ||
+                        // Check if the simple key matches the last part of the search path
+                        normalizedFieldName.endsWith(`.${simpleFieldKey}`) ||
+                        // Check by label
+                        field.label.toLowerCase() === fieldName.toLowerCase() ||
+                        field.label.toLowerCase() === normalizedFieldName.split('.').pop()?.toLowerCase();
+                    
+                    if (fieldMatches) {
+                        return {
+                            key: field.key,
+                            label: field.label,
+                            path: fieldName, // Return the original path with array indices
+                            section: field.section || section
+                        };
+                    }
+                    
+                    // Search in objectFields (for nested objects)
+                    if (field.objectFields && field.objectFields.length > 0) {
+                        for (const objField of field.objectFields) {
+                            const objSimpleKey = objField.key.includes('.') ? objField.key.split('.').pop()! : objField.key;
+                            const objPath = `${currentPath}.${objSimpleKey}`;
+                            const result = searchInField(objField, objPath, field.section || section);
+                            if (result) return result;
+                        }
+                    }
+                    
+                    // Search in itemFields (for arrays with object items)
+                    if (field.itemFields && field.itemFields.length > 0) {
+                        for (const itemField of field.itemFields) {
+                            const itemSimpleKey = itemField.key.includes('.') ? itemField.key.split('.').pop()!.replace(/\[item\]/g, '') : itemField.key.replace(/\[item\]/g, '');
+                            // For array items, the path includes [item] placeholder in schema, but actual index in data
+                            const itemPath = `${currentPath}[item].${itemSimpleKey}`;
+                            const result = searchInField(itemField, itemPath, field.section || section);
+                            if (result) return result;
+                        }
+                    }
+                    
+                    return null;
+                };
+                
+                // Search through all top-level form fields
+                for (const field of selectedSchema.formFields) {
+                    // Direct match at top level
+                    if (field.key === fieldName || field.key === normalizedFieldName || field.key === schemaFieldName) {
+                        return {
+                            key: field.key,
+                            label: field.label,
+                            path: fieldName,
+                            section: field.section || 'General'
+                        };
+                    }
+                    
+                    // Recursive search through children
+                    const result = searchInField(field, field.key, field.section || 'General');
+                    if (result) return result;
                 }
-                // 2. Exact match by label
-                const exactLabelMatch = selectedSchema.formFields.find(field => field.label === fieldName);
-                if (exactLabelMatch) {
-                    return {
-                        key: exactLabelMatch.key,
-                        label: exactLabelMatch.label,
-                        path: exactLabelMatch.key,
-                        section: exactLabelMatch.section || 'General'
+                
+                // Fallback: Try to find by simple name (last part of path)
+                const simpleName = normalizedFieldName.split('.').pop();
+                if (simpleName) {
+                    const searchBySimpleName = (fields: FormField[], section: string): { key: string, label: string, path: string, section: string } | null => {
+                        for (const field of fields) {
+                            const fieldSimpleName = field.key.includes('.') ? field.key.split('.').pop()!.replace(/\[item\]/g, '') : field.key.replace(/\[item\]/g, '');
+                            if (fieldSimpleName.toLowerCase() === simpleName.toLowerCase() || 
+                                field.label.toLowerCase() === simpleName.toLowerCase()) {
+                                return {
+                                    key: field.key,
+                                    label: field.label,
+                                    path: fieldName,
+                                    section: field.section || section
+                                };
+                            }
+                            // Search in nested structures
+                            if (field.objectFields) {
+                                const result = searchBySimpleName(field.objectFields, field.section || section);
+                                if (result) return result;
+                            }
+                            if (field.itemFields) {
+                                const result = searchBySimpleName(field.itemFields, field.section || section);
+                                if (result) return result;
+                            }
+                        }
+                        return null;
                     };
+                    
+                    const simpleMatch = searchBySimpleName(selectedSchema.formFields, 'General');
+                    if (simpleMatch) return simpleMatch;
                 }
-                // 3. Ends with (for nested fields)
-                const endsWithMatch = selectedSchema.formFields.find(field => field.key.endsWith(`.${fieldName}`));
-                if (endsWithMatch) {
-                    return {
-                        key: endsWithMatch.key,
-                        label: endsWithMatch.label,
-                        path: endsWithMatch.key,
-                        section: endsWithMatch.section || 'General'
-                    };
-                }
-                // 4. Partial match (fallback, less priority)
-                const partialMatch = selectedSchema.formFields.find(field => 
-                    field.key.toLowerCase().includes(fieldName.toLowerCase()) ||
-                    field.label.toLowerCase().includes(fieldName.toLowerCase())
-                );
-                if (partialMatch) {
-                    return {
-                        key: partialMatch.key,
-                        label: partialMatch.label,
-                        path: partialMatch.key,
-                        section: partialMatch.section || 'General'
-                    };
-                }
+                
                 return null;
             };
             
@@ -789,29 +866,28 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             return;
         }
 
-    const validation = selectedSchema.validate(formData);
-    // Debug: log all errors before and after deduplication
-    // eslint-disable-next-line no-console
-    // Debug: ALL validation.errors
-    const uniqueErrors = Array.from(new Set(validation.errors));
-    // eslint-disable-next-line no-console
-    // Debug: UNIQUE validation.errors
-    setValidationErrors(uniqueErrors);
+        const validation = selectedSchema.validate(formData);
+        const uniqueErrors = Array.from(new Set(validation.errors));
+        setValidationErrors(uniqueErrors);
 
-        // Extract field keys from errors and store them
-        // Only add the exact field with error, not parent fields
+        // Extract field keys from errors using comprehensive pattern matching
+        // This creates a set of all field paths that have errors (with and without array indices)
         const errorFieldKeys = new Set<string>();
+        
         uniqueErrors.forEach(error => {
-            // Extract field key from error message - support full paths with array indices
+            // Patterns to extract field paths from error messages
+            // The new validation format is: "path.to.field[0].name is required"
             const patterns = [
-                // Full path patterns (with array indices)
-                /^([\w.\[\]]+)\s+is required/i,           // path.to.field[0].nested is required
-                /^([\w.\[\]]+)\s+must be/i,               // path.to.field[0] must be
-                /^([\w.\[\]]+)\s+format is invalid/i,     // path.to.field[0] format is invalid
-                /^([\w.\[\]]+)\s+should match pattern/i,  // path.to.field[0] should match pattern
-                /^([\w.\[\]]+)\s+must be one of/i,        // path.to.field[0] must be one of
-                // Quoted patterns
-                /Field '([^']+)' is required/i,
+                // Full path patterns (with potential array indices) - no quotes
+                /^([\w.\[\]]+)\s+is required/i,
+                /^([\w.\[\]]+)\s+must be/i,
+                /^([\w.\[\]]+)\s+must have/i,
+                /^([\w.\[\]]+)\s+format is invalid/i,
+                /^([\w.\[\]]+)\s+should match/i,
+                /^([\w.\[\]]+)\s+items must be/i,
+                // Quoted patterns (legacy support)
+                /Field '([^']+)'/i,
+                /Field "([^"]+)"/i,
                 /'([^']+)'\s+is required/i,
                 /"([^"]+)"\s+is required/i,
             ];
@@ -819,19 +895,33 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
             for (const pattern of patterns) {
                 const match = error.match(pattern);
                 if (match && match[1]) {
-                    // Add the full path (with array indices if present)
                     const fullPath = match[1];
+                    
+                    // Add the full path with array indices
                     errorFieldKeys.add(fullPath);
                     
-                    // Also add version without array indices for schema field matching
+                    // Add version without array indices for schema field matching
                     const pathWithoutIndices = fullPath.replace(/\[\d+\]/g, '');
                     if (pathWithoutIndices !== fullPath) {
                         errorFieldKeys.add(pathWithoutIndices);
                     }
+                    
+                    // Also add all parent paths to ensure parent containers show error indication
+                    // For "a[0].b[1].c", add: "a[0].b[1]", "a[0].b", "a[0]", "a.b", "a"
+                    const parts = fullPath.split('.');
+                    let accumulated = '';
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        accumulated = accumulated ? `${accumulated}.${parts[i]}` : parts[i];
+                        errorFieldKeys.add(accumulated);
+                        // Also without array indices
+                        errorFieldKeys.add(accumulated.replace(/\[\d+\]/g, ''));
+                    }
+                    
                     break;
                 }
             }
         });
+        
         setFieldErrors(errorFieldKeys);
 
         if (validation.isValid) {

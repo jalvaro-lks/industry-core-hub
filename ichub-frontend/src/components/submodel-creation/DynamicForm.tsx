@@ -226,116 +226,141 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     };
 
     // Precompute error states for all fields
+    // This mapping handles both top-level fields and nested fields within arrays/objects
     type ErrorState = { hasError: boolean; errorMessages: string[] };
     const errorStateMap: Record<string, ErrorState> = {};
     
-    // Helper function to extract field key from error message
-    // Handles patterns like: "Field 'identification.codes' is required" or "Field 'operation.manufacturer.facility[0].facility' is required"
+    /**
+     * Helper function to extract field key from error message
+     * Supports multiple error message formats
+     */
     const extractFieldKeyFromError = (error: string): string | null => {
-        // Match patterns: Field 'key' or Field "key"
-        const match = error.match(/Field ['"](.*?)['"]/i);
-        return match ? match[1] : null;
+        const patterns = [
+            // New format: "path.to.field[0].name is required"
+            /^([\w.\[\]]+)\s+is required/i,
+            /^([\w.\[\]]+)\s+must be/i,
+            /^([\w.\[\]]+)\s+must have/i,
+            /^([\w.\[\]]+)\s+format is invalid/i,
+            // Quoted formats
+            /Field '([^']+)'/i,
+            /Field "([^"]+)"/i,
+            /'([^']+)'\s+is required/i,
+        ];
+        
+        for (const pattern of patterns) {
+            const match = error.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        return null;
     };
     
-    // Helper function to check if an error matches a field key (with or without array indices)
-    const errorMatchesField = (error: string, fieldKey: string, fieldLabel: string): boolean => {
-        const errorLower = error.toLowerCase();
-        const fieldKeyLower = fieldKey.toLowerCase();
-        const keyParts = fieldKey.split('.');
-        const lastKeyPart = keyParts[keyParts.length - 1];
+    /**
+     * Normalize a path by removing array indices
+     * "materialList[0].processing[1].country" -> "materialList.processing.country"
+     */
+    const normalizePath = (path: string): string => {
+        return path.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
+    };
+    
+    /**
+     * Check if an error path matches a field key
+     * Handles matching with and without array indices
+     */
+    const errorMatchesField = (errorPath: string, fieldKey: string): boolean => {
+        // Normalize both paths for comparison
+        const normalizedError = normalizePath(errorPath);
+        const normalizedField = normalizePath(fieldKey);
         
-        // Direct match with quotes
-        if (error.includes(`'${fieldKey}'`) || error.includes(`"${fieldKey}"`)) return true;
+        // Direct match
+        if (normalizedError === normalizedField) return true;
         
-        // Match with array indices - e.g., fieldKey[0].subfield
-        const arrayIndexPattern = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\[\\d+\\]`, 'i');
-        if (arrayIndexPattern.test(errorLower)) return true;
+        // Check if error path starts with field key (for child errors)
+        if (normalizedError.startsWith(normalizedField + '.')) return true;
         
-        // Match field within array - e.g., arrayField[0].fieldKey
-        if (keyParts.length > 0) {
-            const parentKey = keyParts[0];
-            const parentArrayPattern = new RegExp(`${parentKey.toLowerCase()}\\[\\d+\\]\\.${lastKeyPart.toLowerCase()}`, 'i');
-            if (parentArrayPattern.test(errorLower)) return true;
-        }
+        // Check if field key ends with the error path's last segment
+        const errorParts = normalizedError.split('.');
+        const fieldParts = normalizedField.split('.');
+        const errorLastPart = errorParts[errorParts.length - 1];
+        const fieldLastPart = fieldParts[fieldParts.length - 1];
         
-        // Exact field key match
-        if (errorLower.includes(fieldKeyLower)) {
-            const regex = new RegExp(`\\b${fieldKeyLower.replace(/\\./g, '\\.')}\\b`);
-            if (regex.test(errorLower)) return true;
-        }
-        
-        // Label match
-        if (error.includes(`'${fieldLabel}'`) || error.includes(`"${fieldLabel}"`)) return true;
-        
-        // Context match for nested fields
-        if (keyParts.length > 1 && errorLower.includes(lastKeyPart.toLowerCase())) {
-            const hasContextMatch = keyParts.slice(0, -1).some(part => errorLower.includes(part.toLowerCase()));
-            if (hasContextMatch) return true;
+        if (errorLastPart === fieldLastPart) {
+            // Verify parent context matches
+            if (errorParts.length >= fieldParts.length) {
+                const errorParent = errorParts.slice(0, fieldParts.length - 1).join('.');
+                const fieldParent = fieldParts.slice(0, -1).join('.');
+                if (errorParent === fieldParent || fieldParent === '' || errorParent.endsWith(fieldParent)) {
+                    return true;
+                }
+            }
         }
         
         return false;
     };
     
-    for (const sectionFields of Object.values(groupedFields)) {
-        for (const field of sectionFields) {
-            const hasPersistedError = fieldErrors.has(field.key);
-            if (!hasPersistedError || errors.length === 0) {
-                errorStateMap[field.key] = { hasError: false, errorMessages: [] };
-                continue;
+    // First pass: Build error state map from all errors
+    // This extracts field paths from error messages and groups them
+    for (const error of errors) {
+        const fieldKey = extractFieldKeyFromError(error);
+        if (!fieldKey) continue;
+        
+        // Add entry for the exact path (with array indices)
+        if (!errorStateMap[fieldKey]) {
+            errorStateMap[fieldKey] = { hasError: true, errorMessages: [] };
+        }
+        errorStateMap[fieldKey].errorMessages.push(error);
+        
+        // Also add entry for normalized path (without array indices)
+        const normalizedKey = normalizePath(fieldKey);
+        if (normalizedKey !== fieldKey) {
+            if (!errorStateMap[normalizedKey]) {
+                errorStateMap[normalizedKey] = { hasError: true, errorMessages: [] };
             }
-            const fieldKey = field.key;
-            const fieldLabel = field.label;
-            
-            // Collect all errors for this field
-            const matchedErrors = errors.filter(error => errorMatchesField(error, fieldKey, fieldLabel));
-            
-            // Format all error messages for display
-            const formattedMessages = matchedErrors.map(msg => {
-                let formatted = msg
-                    .replace(new RegExp(`'${fieldKey}'`, 'gi'), '')
-                    .replace(new RegExp(`"${fieldKey}"`, 'gi'), '')
-                    .replace(new RegExp(`'${fieldLabel}'`, 'gi'), '')
-                    .replace(new RegExp(`"${fieldLabel}"`, 'gi'), '')
-                    .replace(/\[\d+\]/g, '')  // Remove array indices from display
-                    .replace(/\s{2,}/g, ' ')
-                    .trim();
-                if (formatted && formatted.length > 0) {
-                    formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-                }
-                return formatted;
-            });
-            errorStateMap[field.key] = {
-                hasError: formattedMessages.length > 0,
-                errorMessages: formattedMessages
-            };
+            if (!errorStateMap[normalizedKey].errorMessages.includes(error)) {
+                errorStateMap[normalizedKey].errorMessages.push(error);
+            }
+        }
+        
+        // Add entries for parent paths (for highlighting parent containers)
+        const parts = fieldKey.split('.');
+        let accumulated = '';
+        for (let i = 0; i < parts.length - 1; i++) {
+            accumulated = accumulated ? `${accumulated}.${parts[i]}` : parts[i];
+            // Mark parent as having child errors (but don't add error messages to avoid duplication)
+            if (!errorStateMap[accumulated]) {
+                errorStateMap[accumulated] = { hasError: true, errorMessages: [] };
+            }
+            // Also normalized version
+            const normalizedAccumulated = normalizePath(accumulated);
+            if (!errorStateMap[normalizedAccumulated]) {
+                errorStateMap[normalizedAccumulated] = { hasError: true, errorMessages: [] };
+            }
         }
     }
     
-    // Second pass: Extract field keys from ALL errors (including array items) and add to errorStateMap
-    // This ensures that fields like "operation.manufacturer.facility[0].facility" get their own entry
-    for (const error of errors) {
-        const extractedKey = extractFieldKeyFromError(error);
-        if (extractedKey && !errorStateMap[extractedKey]) {
-            // This is a field not in the top-level formFields (likely an array item field)
-            // Remove array indices to get the base field key for matching
-            const baseKey = extractedKey.replace(/\[\d+\]/g, '');
+    // Second pass: Populate error state for form fields that are in fieldErrors but not yet in map
+    for (const sectionFields of Object.values(groupedFields)) {
+        for (const field of sectionFields) {
+            const fieldKey = field.key;
+            const normalizedKey = normalizePath(fieldKey);
             
-            // Format the error message
-            let formatted = error
-                .replace(new RegExp(`'${extractedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`, 'gi'), '')
-                .replace(new RegExp(`"${extractedKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'gi'), '')
-                .replace(/Field\s+/gi, '')
-                .replace(/\[\d+\]/g, '')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-            if (formatted && formatted.length > 0) {
-                formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-            }
+            // Check if this field has errors
+            const hasPersistedError = fieldErrors.has(fieldKey) || 
+                                      fieldErrors.has(normalizedKey) ||
+                                      Array.from(fieldErrors).some(errKey => errorMatchesField(errKey, fieldKey));
             
-            // Add entry for both the exact key (with indices) and the base key (without indices)
-            errorStateMap[extractedKey] = { hasError: true, errorMessages: [formatted] };
-            if (baseKey !== extractedKey && !errorStateMap[baseKey]) {
-                errorStateMap[baseKey] = { hasError: true, errorMessages: [formatted] };
+            if (hasPersistedError && !errorStateMap[fieldKey]) {
+                // Find matching errors for this field
+                const matchingErrors = errors.filter(error => {
+                    const errorKey = extractFieldKeyFromError(error);
+                    return errorKey && errorMatchesField(errorKey, fieldKey);
+                });
+                
+                errorStateMap[fieldKey] = {
+                    hasError: matchingErrors.length > 0,
+                    errorMessages: matchingErrors
+                };
             }
         }
     }
@@ -424,21 +449,56 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
      * @param parentPath - Optional parent path for nested fields
      */
     const renderSimpleField = (field: FormField, value: any, onChange: (value: any) => void, parentPath?: string) => {
+        // Build the complete field path for this field
         // For fields in arrays, parentPath includes array index (e.g., 'materialList[0]')
-        // For nested object fields, we need to use just the simple key
         const simpleKey = field.key.includes('.') ? field.key.split('.').pop()! : field.key;
         const fieldKey = parentPath ? `${parentPath}.${simpleKey}` : field.key;
         
-        // For error lookup, check both with and without array indices
-        const baseFieldKey = field.key.replace(/\[\d+\]/g, ''); // Remove any existing array indices
-        const hasPersistedError = fieldErrors.has(baseFieldKey) || fieldErrors.has(fieldKey);
-        const isFieldFocused = focusedField === fieldKey;
+        // For error lookup, we need to check multiple path variations:
+        // 1. Exact path with array indices (e.g., "materialList[0].processing[1].country")
+        // 2. Normalized path without indices (e.g., "materialList.processing.country")
+        // 3. Schema field key (e.g., "materialList.processing[item].country")
+        const normalizedFieldKey = normalizePath(fieldKey);
+        const schemaFieldKey = normalizePath(field.key);
         
-        // Check error state in errorStateMap - try exact match first (with array indices), then base key (without indices)
-        const { hasError, errorMessages } = 
-            errorStateMap[fieldKey] || 
-            errorStateMap[baseFieldKey] || 
-            { hasError: false, errorMessages: [] };
+        // Check if this field has errors - look in multiple places
+        const findErrorState = (): { hasError: boolean; errorMessages: string[] } => {
+            // Try exact match first
+            if (errorStateMap[fieldKey]?.hasError) {
+                return errorStateMap[fieldKey];
+            }
+            // Try normalized path
+            if (errorStateMap[normalizedFieldKey]?.hasError) {
+                return errorStateMap[normalizedFieldKey];
+            }
+            // Try schema field key
+            if (errorStateMap[schemaFieldKey]?.hasError) {
+                return errorStateMap[schemaFieldKey];
+            }
+            // Check if any error in fieldErrors matches this field
+            const hasMatchingError = Array.from(fieldErrors).some(errPath => {
+                const normalizedErr = normalizePath(errPath);
+                return normalizedErr === normalizedFieldKey || 
+                       normalizedErr === schemaFieldKey ||
+                       errPath === fieldKey;
+            });
+            if (hasMatchingError) {
+                // Find the matching errors from the errors array
+                const matchingErrors = errors.filter(error => {
+                    const errorKey = extractFieldKeyFromError(error);
+                    if (!errorKey) return false;
+                    const normalizedError = normalizePath(errorKey);
+                    return normalizedError === normalizedFieldKey || 
+                           normalizedError === schemaFieldKey ||
+                           errorKey === fieldKey;
+                });
+                return { hasError: true, errorMessages: matchingErrors };
+            }
+            return { hasError: false, errorMessages: [] };
+        };
+        
+        const { hasError, errorMessages } = findErrorState();
+        const isFieldFocused = focusedField === fieldKey;
         
         const isRequiredAndEmpty = field.required && 
             (!value || value === '' || (Array.isArray(value) && value.length === 0));
