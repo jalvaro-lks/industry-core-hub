@@ -173,6 +173,29 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
             );
             return hasItemError ? count + 1 : count;
         }, 0);
+
+        /**
+         * Get error information for a specific array item
+         * Returns the count of errors within this item and whether it has any errors
+         */
+        const getItemErrorInfo = (index: number): { hasErrors: boolean; errorCount: number } => {
+            const itemPath = `${actualPath}[${index}]`;
+            
+            // Count all errors that belong to this specific item
+            const itemErrors = Array.from(directFieldErrors).filter(errPath => {
+                // Check if error path starts with this item's path
+                // e.g., "materials[0].name" belongs to item 0
+                // e.g., "materials[0].nested[1].value" also belongs to item 0
+                return errPath === itemPath || 
+                       errPath.startsWith(itemPath + '.') || 
+                       errPath.startsWith(itemPath + '[');
+            });
+            
+            return {
+                hasErrors: itemErrors.length > 0,
+                errorCount: itemErrors.length
+            };
+        };
         
         const addArrayItem = () => {
             const newItem = field.itemType === 'object' ? {} : '';
@@ -320,20 +343,34 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {arrayValue.map((item: any, index: number) => {
                             const isExpanded = expandedItems[index] ?? true;
+                            // Get error info for this specific item
+                            const itemErrorInfo = getItemErrorInfo(index);
+                            const itemHasErrors = itemErrorInfo.hasErrors;
+                            const itemErrorCount = itemErrorInfo.errorCount;
+                            
                             return (
                                 <Card key={index} sx={{
-                                    backgroundColor: depthStyles.backgroundColor,
-                                    border: `1px solid ${depthStyles.borderColor}`,
-                                    borderRadius: 2
+                                    backgroundColor: itemHasErrors 
+                                        ? 'rgba(239, 68, 68, 0.03)' 
+                                        : depthStyles.backgroundColor,
+                                    border: itemHasErrors 
+                                        ? '1px solid rgba(239, 68, 68, 0.4)' 
+                                        : `1px solid ${depthStyles.borderColor}`,
+                                    borderRadius: 2,
+                                    transition: 'all 0.2s ease',
+                                    ...(itemHasErrors && {
+                                        boxShadow: '0 0 0 1px rgba(239, 68, 68, 0.1)'
+                                    })
                                 }}>
                                     <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                                             {/* Drag handle */}
                                             <DragIndicatorIcon sx={{ 
-                                                color: 'text.secondary', 
+                                                color: itemHasErrors ? 'error.main' : 'text.secondary', 
                                                 fontSize: 20,
                                                 mt: 1,
-                                                cursor: 'grab'
+                                                cursor: 'grab',
+                                                opacity: itemHasErrors ? 0.7 : 1
                                             }} />
                                             
                                             {/* Item content */}
@@ -353,19 +390,39 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                     <ExpandMoreIcon 
                                                         sx={{ 
                                                             fontSize: 18,
-                                                            color: 'primary.main',
+                                                            color: itemHasErrors ? 'error.main' : 'primary.main',
                                                             transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
                                                             transition: 'transform 0.2s ease'
                                                         }} 
                                                     />
                                                     <Typography variant="caption" sx={{ 
-                                                        color: 'text.secondary',
+                                                        color: itemHasErrors ? 'error.main' : 'text.secondary',
                                                         fontWeight: 600,
                                                         textTransform: 'uppercase',
                                                         letterSpacing: 1
                                                     }}>
                                                         Item {index + 1}
                                                     </Typography>
+                                                    {/* Error indicator chip for this item */}
+                                                    {itemHasErrors && (
+                                                        <Tooltip title={`This item contains ${itemErrorCount} validation error${itemErrorCount !== 1 ? 's' : ''}`}>
+                                                            <Chip
+                                                                label={`${itemErrorCount} error${itemErrorCount !== 1 ? 's' : ''}`}
+                                                                size="small"
+                                                                sx={{
+                                                                    height: 18,
+                                                                    fontSize: '0.65rem',
+                                                                    fontWeight: 600,
+                                                                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                                                    color: 'error.main',
+                                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                                    '& .MuiChip-label': {
+                                                                        px: 1
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
                                                 </Box>
                                                 
                                                 {/* Item fields (collapsible) */}
