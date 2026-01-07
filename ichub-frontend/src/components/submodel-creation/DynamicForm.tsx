@@ -937,6 +937,23 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     const groupId = `${node.path}-${depth}`;
                     const isGroupExpanded = expandedGroups[groupId] ?? true; // Default expanded
 
+                    // Get the field metadata for this group (the pseudo-field created for the object)
+                    const groupField = node.field;
+                    const isGroupRequired = groupField?.required || false;
+                    
+                    // Check if this group or any of its children have errors
+                    const groupPath = node.path;
+                    const normalizedGroupPath = groupPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
+                    const hasGroupError = fieldErrors.has(groupPath) || 
+                        fieldErrors.has(normalizedGroupPath) ||
+                        Array.from(fieldErrors).some(errPath => {
+                            const normalizedErr = errPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
+                            return normalizedErr.startsWith(normalizedGroupPath + '.') || 
+                                   normalizedErr.startsWith(normalizedGroupPath + '[') ||
+                                   errPath.startsWith(groupPath + '.') ||
+                                   errPath.startsWith(groupPath + '[');
+                        });
+
                     // Add data-object attribute for parent object containers (not for root)
                     const groupBoxProps: any = {
                         key: node.path,
@@ -951,9 +968,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             {/* Parent Group Container */}
                             <Box
                                 sx={{
-                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                    border: hasGroupError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
                                     borderRadius: 2,
-                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                    backgroundColor: hasGroupError ? 'rgba(239, 68, 68, 0.02)' : 'rgba(255, 255, 255, 0.02)',
                                     overflow: 'hidden',
                                     transition: 'all 0.2s ease',
                                     // Only apply hover effects to nested groups (depth > 0)
@@ -979,18 +996,18 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                             cursor: 'pointer',
                                             py: 1.5,
                                             px: 2,
-                                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                            backgroundColor: hasGroupError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.05)',
                                             borderBottom: isGroupExpanded ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
                                             transition: 'all 0.2s ease',
                                             '&:hover': {
-                                                backgroundColor: 'rgba(96, 165, 250, 0.1)'
+                                                backgroundColor: hasGroupError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(96, 165, 250, 0.1)'
                                             }
                                         }}
                                     >
                                         <ExpandMoreIcon 
                                             sx={{ 
                                                 fontSize: 18,
-                                                color: 'primary.main',
+                                                color: hasGroupError ? 'error.main' : 'primary.main',
                                                 transform: isGroupExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
                                                 transition: 'transform 0.2s ease'
                                             }} 
@@ -999,11 +1016,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                             variant="subtitle2" 
                                             sx={{ 
                                                 fontWeight: 600,
-                                                color: 'text.primary',
+                                                color: hasGroupError ? 'error.main' : 'text.primary',
                                                 fontSize: '0.875rem'
                                             }}
                                         >
                                             {groupLabel}
+                                            {isGroupRequired && ' *'}
                                         </Typography>
                                         {/* Info icon for object group if metadata present (now to the right of the label) */}
                                         {(() => {
@@ -1145,9 +1163,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             {/* Section label */}
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
                                 {getIconContainer(field.description, undefined, field.urn)}
-                                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: hasError ? 'error.main' : 'text.primary' }}>
                                     {displayName}
-                                    {field.required && <span style={{ color: '#ef4444' }}> *</span>}
+                                    {field.required && ' *'}
                                 </Typography>
                             </Box>
                             
@@ -1273,6 +1291,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                         color: hasArrayError ? 'error.main' : 'text.primary'
                                     }}>
                                         {displayName}
+                                        {arrayField.required && ' *'}
                                     </Typography>
                                     <Chip
                                         label={`${arrayValue.length} item${arrayValue.length !== 1 ? 's' : ''}`}
@@ -1539,6 +1558,20 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 }
                 
                 // OBJECT SECTIONS: Render as accordion (existing behavior)
+                // Check if the section itself has errors or if it's required
+                // The sectionRootField is the pseudo-field created for the object with type === 'object' 
+                // Its key is the camelCase version (e.g., 'materials') while section is the display name (e.g., 'Materials')
+                const sectionRootField = sectionFields.find(f => f.type === 'object' && f.section === sectionName && f.sectionType === 'object');
+                const isSectionRequired = sectionRootField?.required || false;
+                const sectionKey = sectionRootField?.key || sectionName.charAt(0).toLowerCase() + sectionName.slice(1);
+                const hasSectionError = errorCount > 0 || fieldErrors.has(sectionKey) || fieldErrors.has(sectionName) || 
+                    Array.from(fieldErrors).some(errPath => 
+                        errPath.startsWith(sectionKey + '.') || 
+                        errPath.startsWith(sectionKey + '[') ||
+                        errPath.startsWith(sectionName + '.') || 
+                        errPath.startsWith(sectionName + '[')
+                    );
+                
                 return (
                     <Accordion
                         key={sectionName}
@@ -1565,12 +1598,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         sx={{
                             mb: 2,
                             backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            border: hasSectionError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
                             '&:before': {
                                 display: 'none',
                             },
                             '& .MuiAccordionSummary-root': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                backgroundColor: hasSectionError ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255, 255, 255, 0.05)',
                                 borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
                             }
                         }}
@@ -1590,9 +1623,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 })()}
                                 <Typography variant="h6" sx={{ 
                                     fontWeight: 600,
-                                    color: 'text.primary'
+                                    color: hasSectionError ? 'error.main' : 'text.primary'
                                 }}>
                                     {displayName}
+                                    {isSectionRequired && ' *'}
                                 </Typography>
                                 <Chip
                                     label={`${sectionFields.length} field${sectionFields.length !== 1 ? 's' : ''}`}
