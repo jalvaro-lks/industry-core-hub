@@ -952,14 +952,27 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     const hasDirectGroupError = directFieldErrors.has(groupPath) || directFieldErrors.has(normalizedGroupPath);
                     
                     // Count child errors (errors in nested fields, not direct group errors)
-                    const childErrorCount = Array.from(directFieldErrors).filter(errPath => {
+                    // Use a Set to track unique normalized paths to avoid counting duplicates
+                    const uniqueChildErrors = new Set<string>();
+                    
+                    Array.from(directFieldErrors).forEach(errPath => {
                         const normalizedErr = errPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
-                        return (normalizedErr.startsWith(normalizedGroupPath + '.') || 
-                               normalizedErr.startsWith(normalizedGroupPath + '[') ||
-                               errPath.startsWith(groupPath + '.') ||
-                               errPath.startsWith(groupPath + '[')) &&
-                               errPath !== groupPath && errPath !== normalizedGroupPath;
-                    }).length;
+                        
+                        // Check if this error belongs to a child of this group
+                        const isChildError = (
+                            normalizedErr.startsWith(normalizedGroupPath + '.') || 
+                            normalizedErr.startsWith(normalizedGroupPath + '[') ||
+                            errPath.startsWith(groupPath + '.') ||
+                            errPath.startsWith(groupPath + '[')
+                        ) && errPath !== groupPath && errPath !== normalizedGroupPath;
+                        
+                        if (isChildError) {
+                            // Add the normalized path to avoid counting the same logical error twice
+                            uniqueChildErrors.add(normalizedErr);
+                        }
+                    });
+                    
+                    const childErrorCount = uniqueChildErrors.size;
 
                     // Add data-object attribute for parent object containers (not for root)
                     const groupBoxProps: any = {

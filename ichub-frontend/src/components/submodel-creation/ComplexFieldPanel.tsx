@@ -146,16 +146,27 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         if (directFieldErrors.has(normalizedFieldKey)) hasDirectError = true;
         
         // Count child errors using directFieldErrors
-        const childErrorCount = Array.from(directFieldErrors).filter(errPath => {
-            const normalizedErr = normalizePath(errPath);
-            return (normalizedErr.startsWith(normalizedPath + '.') ||
-                   normalizedErr.startsWith(normalizedFieldKey + '.') ||
-                   errPath.startsWith(actualPath + '.') ||
-                   errPath.startsWith(actualPath + '[')) &&
-                   errPath !== actualPath && errPath !== normalizedPath;
-        }).length;
+        // Use a Set to track unique normalized paths to avoid counting duplicates
+        const uniqueChildErrors = new Set<string>();
         
-        return { hasDirectError, childErrorCount };
+        Array.from(directFieldErrors).forEach(errPath => {
+            const normalizedErr = normalizePath(errPath);
+            
+            // Check if this error belongs to a child of this field
+            const isChildError = (
+                normalizedErr.startsWith(normalizedPath + '.') ||
+                normalizedErr.startsWith(normalizedPath + '[') ||
+                errPath.startsWith(actualPath + '.') ||
+                errPath.startsWith(actualPath + '[')
+            ) && errPath !== actualPath && errPath !== normalizedPath;
+            
+            if (isChildError) {
+                // Add the normalized path to avoid counting the same logical error twice
+                uniqueChildErrors.add(normalizedErr);
+            }
+        });
+        
+        return { hasDirectError, childErrorCount: uniqueChildErrors.size };
     };
     
     const { hasDirectError, childErrorCount } = hasDirectOrChildError();
@@ -181,19 +192,25 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         const getItemErrorInfo = (index: number): { hasErrors: boolean; errorCount: number } => {
             const itemPath = `${actualPath}[${index}]`;
             
-            // Count all errors that belong to this specific item
-            const itemErrors = Array.from(directFieldErrors).filter(errPath => {
-                // Check if error path starts with this item's path
-                // e.g., "materials[0].name" belongs to item 0
-                // e.g., "materials[0].nested[1].value" also belongs to item 0
-                return errPath === itemPath || 
+            // Use a Set to track unique normalized paths to avoid counting duplicates
+            const uniqueItemErrors = new Set<string>();
+            
+            Array.from(directFieldErrors).forEach(errPath => {
+                // Check if error path belongs to this item
+                const belongsToItem = errPath === itemPath || 
                        errPath.startsWith(itemPath + '.') || 
                        errPath.startsWith(itemPath + '[');
+                
+                if (belongsToItem) {
+                    // Normalize to avoid counting same logical error twice
+                    const normalizedErr = normalizePath(errPath);
+                    uniqueItemErrors.add(normalizedErr);
+                }
             });
             
             return {
-                hasErrors: itemErrors.length > 0,
-                errorCount: itemErrors.length
+                hasErrors: uniqueItemErrors.size > 0,
+                errorCount: uniqueItemErrors.size
             };
         };
         

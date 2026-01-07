@@ -501,12 +501,12 @@ export function processValidationErrors(
     errorsByNormalizedPath.get(normalizedPath)!.push(structuredError);
     normalizedPathsWithErrors.add(normalizedPath);
     
-    // Add schema path variation
+    // Add schema path variation to general path sets (for lookups/matching)
+    // BUT NOT to directErrorPaths - we only want actual error paths there to avoid duplicate counting
     if (schemaPath !== fullPath && schemaPath !== normalizedPath) {
       pathsWithErrors.add(schemaPath);
       normalizedPathsWithErrors.add(normalizePath(schemaPath));
-      directErrorPaths.add(schemaPath);
-      directErrorPathsNormalized.add(normalizePath(schemaPath));
+      // Note: intentionally NOT adding to directErrorPaths to prevent duplicate error counts
     }
     
     // Add all parent paths (for highlighting containers) - NOT added to directErrorPaths
