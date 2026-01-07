@@ -486,8 +486,9 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                 
                                                                 // Render simple field using callback if provided
                                                                 if (renderSimpleField) {
-                                                                    // Construct parent path with array index
-                                                                    const arrayParentPath = `${field.key}[${index}]`;
+                                                                    // Construct parent path with array index, replacing [item] placeholder
+                                                                    const baseFieldKey = field.key.replace(/\[item\]/g, '');
+                                                                    const arrayParentPath = `${baseFieldKey}[${index}]`;
                                                                     return (
                                                                         <Box key={subField.key}>
                                                                             {renderSimpleField(
@@ -584,15 +585,24 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         const depthStyles = getDepthStyles(depth);
         const simpleCount = field.objectFields.filter(f => f.fieldCategory === 'simple').length;
         const complexCount = field.objectFields.filter(f => f.fieldCategory === 'complex').length;
+        const objectHasErrors = hasDirectError || childErrorCount > 0;
 
         return (
             <Box sx={{ 
                 width: '100%', 
                 mb: 2,
-                border: `1px solid ${depthStyles.borderColor}`,
+                border: objectHasErrors 
+                    ? '1px solid rgba(239, 68, 68, 0.5)' 
+                    : `1px solid ${depthStyles.borderColor}`,
                 borderRadius: 2,
-                backgroundColor: depthStyles.backgroundColor,
-                overflow: 'hidden'
+                backgroundColor: objectHasErrors 
+                    ? 'rgba(239, 68, 68, 0.03)' 
+                    : depthStyles.backgroundColor,
+                overflow: 'hidden',
+                transition: 'all 0.2s ease',
+                ...(objectHasErrors && {
+                    boxShadow: '0 0 0 1px rgba(239, 68, 68, 0.1)'
+                })
             }}>
                 {/* Object Header */}
                 <Box sx={{
@@ -601,8 +611,12 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                     gap: 1,
                     py: 1.5,
                     px: 2,
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderBottom: `1px solid ${depthStyles.borderColor}`
+                    backgroundColor: objectHasErrors 
+                        ? 'rgba(239, 68, 68, 0.05)' 
+                        : 'rgba(255, 255, 255, 0.02)',
+                    borderBottom: objectHasErrors 
+                        ? '1px solid rgba(239, 68, 68, 0.3)' 
+                        : `1px solid ${depthStyles.borderColor}`
                 }}>
                     <Typography 
                         variant="subtitle2" 

@@ -551,9 +551,42 @@ function processSchemaProperty(
   // This prevents cross-contamination between contexts (e.g., metadata vs sustainability)
   if (property.type === 'object' && property.properties) {
     const nestedRequiredFields = property.required || [];
-    // If the object itself has a URN, add a pseudo-field for the object header
     const objectUrn = property['x-samm-aspect-model-urn'];
     const isTopLevel = fullKey && !fullKey.includes('.');
+    
+    // Check if we're inside an array context (path contains [item])
+    // In this case, nested objects should NOT be flattened - they should use objectFields
+    const isInsideArrayContext = fullKey.includes('[item]');
+    
+    if (isInsideArrayContext || !isTopLevel) {
+      // For objects inside arrays or non-top-level nested objects:
+      // Create a proper object FormField with objectFields instead of flattening
+      const nestedFields = processProperties(
+        property.properties,
+        schema,
+        nestedRequiredFields,
+        fullKey,
+        section,
+        depth
+      );
+      
+      const objectField: FormField = {
+        key: fullKey,
+        label: generateLabel(key),
+        type: 'object',
+        fieldCategory: 'complex',
+        section,
+        description: property.description,
+        required: isRequired,
+        urn: objectUrn,
+        objectFields: nestedFields // Nested fields go into objectFields, NOT flattened
+      };
+      
+      fields.push(objectField);
+      return fields;
+    }
+    
+    // For top-level objects (sections), flatten the fields as before
     if (objectUrn) {
       // Patch: For top-level sections, use the short description from the root schema's properties
       let sectionDescription = property.description;
