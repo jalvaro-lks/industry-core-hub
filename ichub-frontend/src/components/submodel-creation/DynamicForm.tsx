@@ -73,7 +73,8 @@ export interface DynamicFormProps {
     data: any;
     onChange: (data: any, changedFieldKey?: string) => void;
     errors: string[];
-    fieldErrors?: Set<string>; // Fields that have validation errors
+    fieldErrors?: Set<string>; // Fields that have validation errors (including parents for navigation)
+    directFieldErrors?: Set<string>; // Only direct errors (not parents) for marking containers in red
     focusedField?: string | null; // Currently focused field
     onFieldFocus?: (fieldKey: string) => void; // Callback when field is focused
     onFieldBlur?: () => void; // Callback when field loses focus
@@ -90,6 +91,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     onChange,
     errors,
     fieldErrors = new Set(),
+    directFieldErrors = new Set(),
     focusedField = null,
     onFieldFocus,
     onFieldBlur,
@@ -883,6 +885,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             depth={1}
                             errors={errors}
                             fieldErrors={fieldErrors}
+                            directFieldErrors={directFieldErrors}
                             errorStateMap={errorStateMap}
                             onFieldFocus={onFieldFocus}
                             onFieldBlur={onFieldBlur}
@@ -941,18 +944,22 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     const groupField = node.field;
                     const isGroupRequired = groupField?.required || false;
                     
-                    // Check if this group or any of its children have errors
+                    // Check errors for this group
                     const groupPath = node.path;
                     const normalizedGroupPath = groupPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
-                    const hasGroupError = fieldErrors.has(groupPath) || 
-                        fieldErrors.has(normalizedGroupPath) ||
-                        Array.from(fieldErrors).some(errPath => {
-                            const normalizedErr = errPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
-                            return normalizedErr.startsWith(normalizedGroupPath + '.') || 
-                                   normalizedErr.startsWith(normalizedGroupPath + '[') ||
-                                   errPath.startsWith(groupPath + '.') ||
-                                   errPath.startsWith(groupPath + '[');
-                        });
+                    
+                    // Direct error: only if the group itself has an actual error (using directFieldErrors, not parents)
+                    const hasDirectGroupError = directFieldErrors.has(groupPath) || directFieldErrors.has(normalizedGroupPath);
+                    
+                    // Count child errors (errors in nested fields, not direct group errors)
+                    const childErrorCount = Array.from(directFieldErrors).filter(errPath => {
+                        const normalizedErr = errPath.replace(/\[\d+\]/g, '').replace(/\[item\]/g, '');
+                        return (normalizedErr.startsWith(normalizedGroupPath + '.') || 
+                               normalizedErr.startsWith(normalizedGroupPath + '[') ||
+                               errPath.startsWith(groupPath + '.') ||
+                               errPath.startsWith(groupPath + '[')) &&
+                               errPath !== groupPath && errPath !== normalizedGroupPath;
+                    }).length;
 
                     // Add data-object attribute for parent object containers (not for root)
                     const groupBoxProps: any = {
@@ -968,9 +975,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             {/* Parent Group Container */}
                             <Box
                                 sx={{
-                                    border: hasGroupError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                                    border: hasDirectGroupError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
                                     borderRadius: 2,
-                                    backgroundColor: hasGroupError ? 'rgba(239, 68, 68, 0.02)' : 'rgba(255, 255, 255, 0.02)',
+                                    backgroundColor: hasDirectGroupError ? 'rgba(239, 68, 68, 0.02)' : 'rgba(255, 255, 255, 0.02)',
                                     overflow: 'hidden',
                                     transition: 'all 0.2s ease',
                                     // Only apply hover effects to nested groups (depth > 0)
@@ -996,18 +1003,18 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                             cursor: 'pointer',
                                             py: 1.5,
                                             px: 2,
-                                            backgroundColor: hasGroupError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                                            backgroundColor: hasDirectGroupError ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.05)',
                                             borderBottom: isGroupExpanded ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
                                             transition: 'all 0.2s ease',
                                             '&:hover': {
-                                                backgroundColor: hasGroupError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(96, 165, 250, 0.1)'
+                                                backgroundColor: hasDirectGroupError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(96, 165, 250, 0.1)'
                                             }
                                         }}
                                     >
                                         <ExpandMoreIcon 
                                             sx={{ 
                                                 fontSize: 18,
-                                                color: hasGroupError ? 'error.main' : 'primary.main',
+                                                color: hasDirectGroupError ? 'error.main' : 'primary.main',
                                                 transform: isGroupExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
                                                 transition: 'transform 0.2s ease'
                                             }} 
@@ -1016,7 +1023,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                             variant="subtitle2" 
                                             sx={{ 
                                                 fontWeight: 600,
-                                                color: hasGroupError ? 'error.main' : 'text.primary',
+                                                color: hasDirectGroupError ? 'error.main' : 'text.primary',
                                                 fontSize: '0.875rem'
                                             }}
                                         >
@@ -1031,6 +1038,21 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                             }
                                             return null;
                                         })()}
+                                        {childErrorCount > 0 && (
+                                            <Tooltip title={`${childErrorCount} error${childErrorCount !== 1 ? 's' : ''} in nested fields`}>
+                                                <Chip
+                                                    label={`${childErrorCount} error${childErrorCount !== 1 ? 's' : ''}`}
+                                                    size="small"
+                                                    sx={{
+                                                        height: 20,
+                                                        fontSize: '0.7rem',
+                                                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                                        color: 'error.main',
+                                                        fontWeight: 500
+                                                    }}
+                                                />
+                                            </Tooltip>
+                                        )}
                                         <Chip 
                                             label={Object.keys(node.children).length} 
                                             size="small" 
@@ -1223,6 +1245,15 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     
                     const hasArrayError = hasDirectArrayError();
                     
+                    // Count items that have errors (using directFieldErrors for accurate count)
+                    const itemsWithErrors = arrayValue.reduce((count: number, _: any, index: number) => {
+                        const itemPath = `${arrayField.key}[${index}]`;
+                        const hasItemError = Array.from(directFieldErrors).some(errPath => 
+                            errPath.startsWith(itemPath + '.') || errPath.startsWith(itemPath + '[') || errPath === itemPath
+                        );
+                        return hasItemError ? count + 1 : count;
+                    }, 0);
+                    
                     const addArrayItem = () => {
                         const newItem = arrayField.itemType === 'object' ? {} : '';
                         const newValue = [...arrayValue, newItem];
@@ -1317,18 +1348,20 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                             />
                                         </Tooltip>
                                     )}
-                                    {errorCount > 0 && (
-                                        <Chip
-                                            label={`${errorCount} error${errorCount !== 1 ? 's' : ''}`}
-                                            size="small"
-                                            sx={{
-                                                fontSize: '0.7rem',
-                                                height: 20,
-                                                backgroundColor: 'rgba(239, 68, 68, 0.3)',
-                                                color: 'error.main',
-                                                fontWeight: 600
-                                            }}
-                                        />
+                                    {itemsWithErrors > 0 && (
+                                        <Tooltip title={`${itemsWithErrors} item${itemsWithErrors !== 1 ? 's' : ''} contain${itemsWithErrors === 1 ? 's' : ''} errors`}>
+                                            <Chip
+                                                label={`${itemsWithErrors} item${itemsWithErrors !== 1 ? 's' : ''} with errors`}
+                                                size="small"
+                                                sx={{
+                                                    fontSize: '0.7rem',
+                                                    height: 20,
+                                                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                                    color: 'error.main',
+                                                    fontWeight: 500
+                                                }}
+                                            />
+                                        </Tooltip>
                                     )}
                                     <Box sx={{ flex: 1 }} />
                                     {arrayValue.length > 0 && (
@@ -1400,10 +1433,17 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         {arrayValue.map((item: any, index: number) => {
                                             const isExpanded = expandedItems[index] ?? true;
+                                            // Check if this specific item has errors (using directFieldErrors)
+                                            const itemPath = `${arrayField.key}[${index}]`;
+                                            const hasItemError = Array.from(directFieldErrors).some(errPath => 
+                                                errPath.startsWith(itemPath + '.') || 
+                                                errPath.startsWith(itemPath + '[') || 
+                                                errPath === itemPath
+                                            );
                                             return (
                                                 <Card key={index} sx={{
-                                                    backgroundColor: 'rgba(96, 165, 250, 0.02)',
-                                                    border: '1px solid rgba(96, 165, 250, 0.4)',
+                                                    backgroundColor: hasItemError ? 'rgba(239, 68, 68, 0.02)' : 'rgba(96, 165, 250, 0.02)',
+                                                    border: hasItemError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(96, 165, 250, 0.4)',
                                                     borderRadius: 2
                                                 }}>
                                                     <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
@@ -1430,13 +1470,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                                                     <ExpandMoreIcon 
                                                                         sx={{ 
                                                                             fontSize: 18,
-                                                                            color: 'primary.main',
+                                                                            color: hasItemError ? 'error.main' : 'primary.main',
                                                                             transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
                                                                             transition: 'transform 0.2s ease'
                                                                         }} 
                                                                     />
                                                                     <Typography variant="caption" sx={{ 
-                                                                        color: 'text.secondary',
+                                                                        color: hasItemError ? 'error.main' : 'text.secondary',
                                                                         fontWeight: 600,
                                                                         textTransform: 'uppercase',
                                                                         letterSpacing: 1
@@ -1467,6 +1507,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                                                                             depth={2}
                                                                                             errors={errors}
                                                                                             fieldErrors={fieldErrors}
+                                                                                            directFieldErrors={directFieldErrors}
                                                                                             errorStateMap={errorStateMap}
                                                                                             onFieldFocus={onFieldFocus}
                                                                                             onFieldBlur={onFieldBlur}
@@ -1564,13 +1605,11 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 const sectionRootField = sectionFields.find(f => f.type === 'object' && f.section === sectionName && f.sectionType === 'object');
                 const isSectionRequired = sectionRootField?.required || false;
                 const sectionKey = sectionRootField?.key || sectionName.charAt(0).toLowerCase() + sectionName.slice(1);
-                const hasSectionError = errorCount > 0 || fieldErrors.has(sectionKey) || fieldErrors.has(sectionName) || 
-                    Array.from(fieldErrors).some(errPath => 
-                        errPath.startsWith(sectionKey + '.') || 
-                        errPath.startsWith(sectionKey + '[') ||
-                        errPath.startsWith(sectionName + '.') || 
-                        errPath.startsWith(sectionName + '[')
-                    );
+                
+                // Direct section error: only if the section itself has an actual error (using directFieldErrors, not parents)
+                const hasDirectSectionError = directFieldErrors.has(sectionKey) || directFieldErrors.has(sectionName);
+                
+                // errorCount already counts errors in children fields - use it for the badge
                 
                 return (
                     <Accordion
@@ -1598,12 +1637,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         sx={{
                             mb: 2,
                             backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                            border: hasSectionError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
+                            border: hasDirectSectionError ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.12)',
                             '&:before': {
                                 display: 'none',
                             },
                             '& .MuiAccordionSummary-root': {
-                                backgroundColor: hasSectionError ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255, 255, 255, 0.05)',
+                                backgroundColor: hasDirectSectionError ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255, 255, 255, 0.05)',
                                 borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
                             }
                         }}
@@ -1623,7 +1662,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 })()}
                                 <Typography variant="h6" sx={{ 
                                     fontWeight: 600,
-                                    color: hasSectionError ? 'error.main' : 'text.primary'
+                                    color: hasDirectSectionError ? 'error.main' : 'text.primary'
                                 }}>
                                     {displayName}
                                     {isSectionRequired && ' *'}
@@ -1639,17 +1678,19 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     }}
                                 />
                                 {errorCount > 0 && (
-                                    <Chip
-                                        label={`${errorCount} error${errorCount !== 1 ? 's' : ''}`}
-                                        size="small"
-                                        sx={{
-                                            fontSize: '0.7rem',
-                                            height: 20,
-                                            backgroundColor: 'rgba(239, 68, 68, 0.3)',
-                                            color: 'error.main',
-                                            fontWeight: 600
-                                        }}
-                                    />
+                                    <Tooltip title={`${errorCount} error${errorCount !== 1 ? 's' : ''} in fields within this section`}>
+                                        <Chip
+                                            label={`${errorCount} error${errorCount !== 1 ? 's' : ''}`}
+                                            size="small"
+                                            sx={{
+                                                fontSize: '0.7rem',
+                                                height: 20,
+                                                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                                color: 'error.main',
+                                                fontWeight: 500
+                                            }}
+                                        />
+                                    </Tooltip>
                                 )}
                             </Box>
                         </AccordionSummary>

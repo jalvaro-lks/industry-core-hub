@@ -51,6 +51,7 @@ interface ComplexFieldPanelProps {
     depth: number;
     errors: string[];
     fieldErrors?: Set<string>;
+    directFieldErrors?: Set<string>; // Only direct errors (not parents) for marking containers in red
     errorStateMap?: Record<string, { hasError: boolean; errorMessages: string[] }>;
     onFieldFocus?: (key: string) => void;
     onFieldBlur?: () => void;
@@ -71,6 +72,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
     depth,
     errors,
     fieldErrors = new Set(),
+    directFieldErrors = new Set(),
     errorStateMap = {},
     onFieldFocus,
     onFieldBlur,
@@ -131,40 +133,46 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
     };
 
     // Check if this field or any of its children have errors
-    const hasDirectOrChildError = (): boolean => {
+    const hasDirectOrChildError = (): { hasDirectError: boolean; childErrorCount: number } => {
         const actualPath = buildActualPath();
         const normalizedPath = normalizePath(actualPath);
         const normalizedFieldKey = normalizePath(field.key);
         
-        // Check in errorStateMap with multiple path variations
-        if (errorStateMap[actualPath]?.hasError) return true;
-        if (errorStateMap[normalizedPath]?.hasError) return true;
-        if (errorStateMap[field.key]?.hasError) return true;
-        if (errorStateMap[normalizedFieldKey]?.hasError) return true;
+        // Check for direct error using directFieldErrors (not parents)
+        let hasDirectError = false;
+        if (directFieldErrors.has(actualPath)) hasDirectError = true;
+        if (directFieldErrors.has(normalizedPath)) hasDirectError = true;
+        if (directFieldErrors.has(field.key)) hasDirectError = true;
+        if (directFieldErrors.has(normalizedFieldKey)) hasDirectError = true;
         
-        // Check in fieldErrors set
-        if (fieldErrors.has(actualPath)) return true;
-        if (fieldErrors.has(normalizedPath)) return true;
-        if (fieldErrors.has(field.key)) return true;
-        if (fieldErrors.has(normalizedFieldKey)) return true;
-        
-        // Check for child errors (errors that start with this path)
-        const hasChildError = Array.from(fieldErrors).some(errPath => {
+        // Count child errors using directFieldErrors
+        const childErrorCount = Array.from(directFieldErrors).filter(errPath => {
             const normalizedErr = normalizePath(errPath);
-            return normalizedErr.startsWith(normalizedPath + '.') ||
+            return (normalizedErr.startsWith(normalizedPath + '.') ||
                    normalizedErr.startsWith(normalizedFieldKey + '.') ||
                    errPath.startsWith(actualPath + '.') ||
-                   errPath.startsWith(actualPath + '[');
-        });
+                   errPath.startsWith(actualPath + '[')) &&
+                   errPath !== actualPath && errPath !== normalizedPath;
+        }).length;
         
-        return hasChildError;
+        return { hasDirectError, childErrorCount };
     };
     
-    const hasError = hasDirectOrChildError();
+    const { hasDirectError, childErrorCount } = hasDirectOrChildError();
 
     // ARRAY RENDERING
     if (field.type === 'array') {
         const arrayValue = Array.isArray(value) ? value : [];
+        
+        // Count items with errors using directFieldErrors
+        const actualPath = buildActualPath();
+        const itemsWithErrors = arrayValue.reduce((count: number, _: any, index: number) => {
+            const itemPath = `${actualPath}[${index}]`;
+            const hasItemError = Array.from(directFieldErrors).some(errPath => 
+                errPath.startsWith(itemPath + '.') || errPath.startsWith(itemPath + '[') || errPath === itemPath
+            );
+            return hasItemError ? count + 1 : count;
+        }, 0);
         
         const addArrayItem = () => {
             const newItem = field.itemType === 'object' ? {} : '';
@@ -201,7 +209,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="subtitle2" sx={{ 
-                            color: hasError ? 'error.main' : 'text.primary',
+                            color: hasDirectError ? 'error.main' : 'text.primary',
                             fontWeight: 600,
                             fontSize: '0.95rem'
                         }}>
@@ -230,6 +238,21 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                         backgroundColor: 'rgba(255, 255, 255, 0.02)',
                                         color: 'text.secondary'
                                     }} 
+                                />
+                            </Tooltip>
+                        )}
+                        {itemsWithErrors > 0 && (
+                            <Tooltip title={`${itemsWithErrors} item${itemsWithErrors !== 1 ? 's' : ''} contain${itemsWithErrors === 1 ? 's' : ''} errors`}>
+                                <Chip
+                                    label={`${itemsWithErrors} item${itemsWithErrors !== 1 ? 's' : ''} with errors`}
+                                    size="small"
+                                    sx={{
+                                        height: 20,
+                                        fontSize: '0.7rem',
+                                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                        color: 'error.main',
+                                        fontWeight: 500
+                                    }}
                                 />
                             </Tooltip>
                         )}
@@ -376,6 +399,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                         depth={depth + 1}
                                                                         errors={errors}
                                                                         fieldErrors={fieldErrors}
+                                                                        directFieldErrors={directFieldErrors}
                                                                         errorStateMap={errorStateMap}
                                                                         onFieldFocus={onFieldFocus}
                                                                         onFieldBlur={onFieldBlur}
@@ -510,13 +534,28 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                         variant="subtitle2" 
                         sx={{ 
                             fontWeight: 600,
-                            color: hasError ? 'error.main' : 'text.primary',
+                            color: hasDirectError ? 'error.main' : 'text.primary',
                             fontSize: '0.9rem'
                         }}
                     >
                         {getFieldLabel(field.label, field.required)}
                     </Typography>
                     {getInfoIcon(field.description, field.key, field.urn)}
+                    {childErrorCount > 0 && (
+                        <Tooltip title={`${childErrorCount} error${childErrorCount !== 1 ? 's' : ''} in nested fields`}>
+                            <Chip
+                                label={`${childErrorCount} error${childErrorCount !== 1 ? 's' : ''}`}
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                    color: 'error.main',
+                                    fontWeight: 500
+                                }}
+                            />
+                        </Tooltip>
+                    )}
                     <Chip 
                         label={`${field.objectFields.length} field${field.objectFields.length !== 1 ? 's' : ''}`}
                         size="small" 
@@ -565,6 +604,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                         depth={depth + 1}
                                         errors={errors}
                                         fieldErrors={fieldErrors}
+                                        directFieldErrors={directFieldErrors}
                                         errorStateMap={errorStateMap}
                                         onFieldFocus={onFieldFocus}
                                         onFieldBlur={onFieldBlur}

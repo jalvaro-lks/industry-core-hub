@@ -227,6 +227,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     const [validationState, setValidationState] = useState<ValidationState>('initial');
     const [rulesSearchTerm, setRulesSearchTerm] = useState<string>('');
     const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set());
+    const [directFieldErrors, setDirectFieldErrors] = useState<Set<string>>(new Set());
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const [jsonImportOpen, setJsonImportOpen] = useState(false);
     const [jsonImportError, setJsonImportError] = useState<string | undefined>(undefined);
@@ -536,13 +537,16 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
         // This ensures both ErrorViewer and DynamicForm use the same logic
         if (uniqueErrors.length > 0) {
             const processed = processValidationErrors(uniqueErrors, selectedSchema);
-            // pathsWithErrors is the Set<string> ready for DynamicForm's fieldErrors prop
+            // pathsWithErrors includes parents for navigation/highlighting
             setFieldErrors(processed.pathsWithErrors);
+            // directErrorPaths only has actual errors (not parents) for marking containers in red
+            setDirectFieldErrors(processed.directErrorPaths);
             setValidationState('errors');
             setViewMode('errors'); // Show errors on failed validation
         } else {
             setValidationState('validated');
             setFieldErrors(new Set()); // Clear field errors when valid
+            setDirectFieldErrors(new Set());
             setViewMode('json'); // Show JSON on successful validation
         }
     };
@@ -1204,6 +1208,7 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                 onChange={handleFormChange}
                                                 errors={validationErrors}
                                                 fieldErrors={fieldErrors}
+                                                directFieldErrors={directFieldErrors}
                                                 focusedField={focusedField}
                                                 onFieldFocus={handleFieldFocus}
                                                 onFieldBlur={() => setFocusedField(null)}

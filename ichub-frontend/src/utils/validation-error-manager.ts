@@ -90,6 +90,10 @@ export interface ValidationErrorResult {
   pathsWithErrors: Set<string>;
   /** Set of all normalized paths with errors */
   normalizedPathsWithErrors: Set<string>;
+  /** Set of direct error paths only (NOT including parents) - for marking items in red */
+  directErrorPaths: Set<string>;
+  /** Set of direct error paths normalized */
+  directErrorPathsNormalized: Set<string>;
   /** Set of sections with errors */
   sectionsWithErrors: Set<string>;
   /** Total error count */
@@ -388,6 +392,8 @@ export function processValidationErrors(
   const errorsByNormalizedPath = new Map<string, StructuredValidationError[]>();
   const pathsWithErrors = new Set<string>();
   const normalizedPathsWithErrors = new Set<string>();
+  const directErrorPaths = new Set<string>();
+  const directErrorPathsNormalized = new Set<string>();
   const sectionsWithErrors = new Set<string>();
   
   // Deduplicate raw errors
@@ -484,6 +490,10 @@ export function processValidationErrors(
     errorsByPath.get(fullPath)!.push(structuredError);
     pathsWithErrors.add(fullPath);
     
+    // Add to direct error paths (without parents) - these are the actual errors
+    directErrorPaths.add(fullPath);
+    directErrorPathsNormalized.add(normalizedPath);
+    
     // Index by normalized path
     if (!errorsByNormalizedPath.has(normalizedPath)) {
       errorsByNormalizedPath.set(normalizedPath, []);
@@ -495,9 +505,11 @@ export function processValidationErrors(
     if (schemaPath !== fullPath && schemaPath !== normalizedPath) {
       pathsWithErrors.add(schemaPath);
       normalizedPathsWithErrors.add(normalizePath(schemaPath));
+      directErrorPaths.add(schemaPath);
+      directErrorPathsNormalized.add(normalizePath(schemaPath));
     }
     
-    // Add all parent paths (for highlighting containers)
+    // Add all parent paths (for highlighting containers) - NOT added to directErrorPaths
     const parentPaths = getAllParentPaths(fullPath);
     for (const parent of parentPaths) {
       pathsWithErrors.add(parent);
@@ -512,6 +524,8 @@ export function processValidationErrors(
     errorsByNormalizedPath,
     pathsWithErrors,
     normalizedPathsWithErrors,
+    directErrorPaths,
+    directErrorPathsNormalized,
     sectionsWithErrors,
     totalErrors: errors.length,
     isValid: errors.length === 0,
