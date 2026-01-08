@@ -42,7 +42,8 @@ import {
     Card,
     CardContent,
     Collapse,
-    Tooltip
+    Tooltip,
+    InputAdornment
 } from '@mui/material';
 import CustomTooltip from './CustomTooltip';
 import {
@@ -52,10 +53,12 @@ import {
     Add as AddIcon,
     Delete as DeleteIcon,
     DragIndicator as DragIndicatorIcon,
-    Fingerprint as FingerprintIcon
+    Fingerprint as FingerprintIcon,
+    KeyboardReturn as KeyboardReturnIcon
 } from '@mui/icons-material';
 import { SchemaDefinition } from '../../schemas';
 import { FormField as BaseFormField } from '../../schemas/json-schema-interpreter';
+import { generatePatternExample, hasPatternExample, getPatternDescription } from '../../utils/patternExampleGenerator';
 
 // Extend FormField to allow urn property for UI logic
 type FormField = BaseFormField & { urn?: string };
@@ -677,6 +680,87 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     });
 
     /**
+     * Helper: Get pattern example button for fields with pattern validation
+     * Shows a subtle "Fill example" button when the field is focused and has a pattern
+     */
+    const getPatternExampleAdornment = (
+        field: FormField, 
+        onChange: (value: any) => void,
+        isFieldFocused: boolean
+    ): React.ReactNode => {
+        // Only show for fields with pattern validation
+        const pattern = field.validation?.pattern;
+        if (!pattern) return null;
+        
+        // Check if we can generate an example for this pattern
+        if (!hasPatternExample(pattern, field.examples)) return null;
+        
+        // Only show when field is focused
+        if (!isFieldFocused) return null;
+        
+        const example = generatePatternExample(pattern, field.examples);
+        if (!example) return null;
+        
+        const patternDescription = getPatternDescription(pattern);
+        
+        const handleFillExample = (e: React.MouseEvent) => {
+            // Prevent the field from losing focus
+            e.preventDefault();
+            e.stopPropagation();
+            // Set the example value
+            onChange(example);
+        };
+        
+        return (
+            <InputAdornment position="end">
+                <Tooltip 
+                    title={
+                        <Box sx={{ p: 0.5 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                                This attribute must match a specific pattern
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                                {patternDescription}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'rgba(96, 165, 250, 0.9)', display: 'block', mt: 0.5 }}>
+                                Example: {example}
+                            </Typography>
+                        </Box>
+                    }
+                    placement="top"
+                    arrow
+                >
+                    <Button
+                        size="small"
+                        onMouseDown={handleFillExample}
+                        sx={{
+                            minWidth: 'auto',
+                            px: 1,
+                            py: 0.25,
+                            fontSize: '0.7rem',
+                            textTransform: 'none',
+                            color: 'rgba(96, 165, 250, 0.8)',
+                            backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                backgroundColor: 'rgba(96, 165, 250, 0.15)',
+                                color: 'rgba(96, 165, 250, 1)',
+                            }
+                        }}
+                    >
+                        Fill example
+                        <KeyboardReturnIcon sx={{ fontSize: 12 }} />
+                    </Button>
+                </Tooltip>
+            </InputAdornment>
+        );
+    };
+
+    /**
      * Renders simple (primitive) fields - separated for reusability in ComplexFieldPanel
      * @param field - The field definition
      * @param value - Current value
@@ -770,6 +854,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 )}
                                 variant="outlined"
                                 size="small"
+                                InputProps={{
+                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
                             />
@@ -794,6 +881,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 )}
                                 variant="outlined"
                                 size="small"
+                                InputProps={{
+                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
                             />
@@ -988,6 +1078,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 )}
                                 variant="outlined"
                                 size="small"
+                                InputProps={{
+                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
                             />
@@ -1011,6 +1104,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 )}
                                 variant="outlined"
                                 size="small"
+                                InputProps={{
+                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
                             />
