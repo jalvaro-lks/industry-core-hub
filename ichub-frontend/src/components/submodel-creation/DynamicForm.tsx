@@ -653,6 +653,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                 }
             })
         },
+        // Specific styles for Select component to ensure consistent error border
+        ...(hasError && {
+            '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'error.main',
+                borderWidth: '2px',
+            }
+        }),
         '& .MuiInputLabel-root': {
             color: hasError ? 'error.main' : 'text.secondary',
             '&.Mui-focused': {
