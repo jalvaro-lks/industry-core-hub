@@ -116,106 +116,109 @@ export function scrollToElement(options: ScrollOptions) {
   // Add highlight class temporarily
   let removed = false;
   if (highlightClass) {
-    // Prefer to highlight an inner value container (input/select/mui input root) instead of the full field wrapper
-    const selectors = [
-      '.MuiOutlinedInput-root',
-      '.MuiInputBase-root',
-      '.MuiSelect-root',
-      'input',
-      'textarea',
-      'select',
-      '.MuiSwitch-root',
-      '.MuiCheckbox-root',
-      '.MuiFormControlLabel-root',
-      '.MuiChip-root',
-      '.MuiCard-root',
-      '[data-array-item]',
-      '[data-section]',
-      '[data-schema-card]'
-    ];
+    // Check if this is a special container type that should be highlighted directly
+    // These are identified by the specific highlight class being passed
+    const isDirectHighlight = 
+      highlightClass.includes('array-header') ||
+      highlightClass.includes('nested-object') ||
+      highlightClass.includes('container');
+    
     let highlightTarget: HTMLElement | null = null;
-    for (const s of selectors) {
-      const found = target.querySelector(s) as HTMLElement | null;
-      if (found) { highlightTarget = found; break; }
-    }
-    // If navigating to a parent field (object/section) without a direct value, prefer the data-section or data-object container
-    if (!highlightTarget || highlightTarget === target) {
-      // Try to find a parent [data-section] or [data-object] container
-      const sectionWrapper = target.closest('[data-section]') as HTMLElement | null;
-      const objectWrapper = target.closest('[data-object]') as HTMLElement | null;
-      if (sectionWrapper) {
-        highlightTarget = sectionWrapper;
-      } else if (objectWrapper) {
-        highlightTarget = objectWrapper;
-      } else {
+    
+    if (isDirectHighlight) {
+      // For array headers, nested objects, and containers, apply highlight directly to the target element
+      highlightTarget = target;
+    } else {
+      // For simple fields, prefer to highlight an inner value container (input/select/mui input root)
+      const selectors = [
+        '.MuiOutlinedInput-root',
+        '.MuiInputBase-root',
+        '.MuiSelect-root',
+        'input',
+        'textarea',
+        'select',
+        '.MuiSwitch-root',
+        '.MuiCheckbox-root',
+        '.MuiFormControlLabel-root',
+        '.MuiChip-root'
+      ];
+      for (const s of selectors) {
+        const found = target.querySelector(s) as HTMLElement | null;
+        if (found) { highlightTarget = found; break; }
+      }
+      // If no inner control found, use the target itself
+      if (!highlightTarget) {
         highlightTarget = target;
       }
     }
 
     // If there's an explicit boolean wrapper (label + switch) nearby, prefer it
     // so the whole attribute block is highlighted instead of just the inner control.
+    // Skip this logic for direct highlights (containers, array headers, nested objects)
     let preferWrapper = false;
-    try {
-      // First try to find a boolean wrapper from the highlightTarget itself (covers case
-      // where we selected an inner control like the switch). If not found, fall back to
-      // the original target's ancestors.
-      let booleanWrapper: HTMLElement | null = null;
-      if (highlightTarget && (highlightTarget.closest as any)) {
-        booleanWrapper = highlightTarget.closest('[data-boolean]') as HTMLElement | null;
-      }
-      if (!booleanWrapper && target && (target.closest as any)) {
-        booleanWrapper = target.closest('[data-boolean]') as HTMLElement | null;
-      }
-      if (booleanWrapper) {
-        // Prefer the inner child inside the boolean wrapper that contains the actual
-        // switch/checkbox control. This excludes sibling elements like the info icon.
-        // Find the immediate child of the booleanWrapper that contains the actual control.
-        // This avoids selecting sibling columns (e.g. info icon column) as the highlight target.
-        const children = Array.from(booleanWrapper.children) as HTMLElement[];
-        let chosenChild: HTMLElement | null = null;
-        for (const ch of children) {
-          if (ch.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]')) {
-            // If the immediate child contains the control but also contains other siblings
-            // (like an info icon), prefer the direct child of this node that contains the control.
-            const subChildren = Array.from(ch.children) as HTMLElement[];
-            let directChildWithControl: HTMLElement | null = null;
-            for (const sub of subChildren) {
-              if (sub.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]')) {
-                directChildWithControl = sub;
-                break;
-              }
-            }
-            chosenChild = directChildWithControl || ch;
-            break;
-          }
+    if (!isDirectHighlight) {
+      try {
+        // First try to find a boolean wrapper from the highlightTarget itself (covers case
+        // where we selected an inner control like the switch). If not found, fall back to
+        // the original target's ancestors.
+        let booleanWrapper: HTMLElement | null = null;
+        if (highlightTarget && (highlightTarget.closest as any)) {
+          booleanWrapper = highlightTarget.closest('[data-boolean]') as HTMLElement | null;
         }
-        if (chosenChild) {
-          highlightTarget = chosenChild;
-          preferWrapper = true;
-        } else {
-          // Fallback: if no immediate child contains the control, try the previous approach
-          const innerControl = booleanWrapper.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]') as HTMLElement | null;
-          if (innerControl) {
-            // Walk up until we hit a direct child of booleanWrapper
-            let node: HTMLElement | null = innerControl;
-            while (node && node.parentElement && node.parentElement !== booleanWrapper) {
-              node = node.parentElement;
+        if (!booleanWrapper && target && (target.closest as any)) {
+          booleanWrapper = target.closest('[data-boolean]') as HTMLElement | null;
+        }
+        if (booleanWrapper) {
+          // Prefer the inner child inside the boolean wrapper that contains the actual
+          // switch/checkbox control. This excludes sibling elements like the info icon.
+          // Find the immediate child of the booleanWrapper that contains the actual control.
+          // This avoids selecting sibling columns (e.g. info icon column) as the highlight target.
+          const children = Array.from(booleanWrapper.children) as HTMLElement[];
+          let chosenChild: HTMLElement | null = null;
+          for (const ch of children) {
+            if (ch.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]')) {
+              // If the immediate child contains the control but also contains other siblings
+              // (like an info icon), prefer the direct child of this node that contains the control.
+              const subChildren = Array.from(ch.children) as HTMLElement[];
+              let directChildWithControl: HTMLElement | null = null;
+              for (const sub of subChildren) {
+                if (sub.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]')) {
+                  directChildWithControl = sub;
+                  break;
+                }
+              }
+              chosenChild = directChildWithControl || ch;
+              break;
             }
-            if (node && node.parentElement === booleanWrapper) {
-              highlightTarget = node;
-              preferWrapper = true;
+          }
+          if (chosenChild) {
+            highlightTarget = chosenChild;
+            preferWrapper = true;
+          } else {
+            // Fallback: if no immediate child contains the control, try the previous approach
+            const innerControl = booleanWrapper.querySelector('.MuiSwitch-root, .MuiCheckbox-root, .MuiFormControlLabel-root, input[type="checkbox"], input[type="radio"]') as HTMLElement | null;
+            if (innerControl) {
+              // Walk up until we hit a direct child of booleanWrapper
+              let node: HTMLElement | null = innerControl;
+              while (node && node.parentElement && node.parentElement !== booleanWrapper) {
+                node = node.parentElement;
+              }
+              if (node && node.parentElement === booleanWrapper) {
+                highlightTarget = node;
+                preferWrapper = true;
+              } else {
+                highlightTarget = booleanWrapper;
+                preferWrapper = true;
+              }
             } else {
               highlightTarget = booleanWrapper;
               preferWrapper = true;
             }
-          } else {
-            highlightTarget = booleanWrapper;
-            preferWrapper = true;
           }
         }
+      } catch (e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
     }
 
     const animClass = 'field-nav-animatable';

@@ -125,11 +125,32 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
 
     /**
      * Build the actual field path considering parent context
+     * This handles arrays and objects at any nesting level
      */
     const buildActualPath = (): string => {
-        if (!parentPath) return field.key;
-        const simpleKey = field.key.includes('.') ? field.key.split('.').pop()! : field.key;
-        return `${parentPath}.${simpleKey}`;
+        // If no parent path, use the field key directly (replacing [item] with actual indices if needed)
+        if (!parentPath) {
+            const result = field.key.replace(/\[item\]/g, '');
+            console.log('[ComplexFieldPanel] buildActualPath: no parentPath, returning cleaned field.key:', field.key, '->', result);
+            return result;
+        }
+        
+        // Extract the simple key (last segment) from the field.key
+        // field.key might be "parent[item].child" or "parent[item].nested[item].child"
+        // We need just "child" to append to parentPath
+        const keyWithoutPlaceholders = field.key.replace(/\[item\]/g, '');
+        const segments = keyWithoutPlaceholders.split('.');
+        const simpleKey = segments[segments.length - 1];
+        
+        const result = `${parentPath}.${simpleKey}`;
+        console.log('[ComplexFieldPanel] buildActualPath:', {
+            parentPath,
+            fieldKey: field.key,
+            keyWithoutPlaceholders,
+            simpleKey,
+            result
+        });
+        return result;
     };
 
     // Check if this field or any of its children have errors
@@ -240,16 +261,24 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         const arrayContainerPath = buildActualPath();
 
         return (
-            <Box sx={{ width: '100%', mb: 2 }} data-field-key={arrayContainerPath}>
-                {/* Array Header */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    mb: 2,
-                    pb: 1.5,
-                    borderBottom: `2px solid ${depthStyles.borderColor}`
-                }}>
+            <Box sx={{ width: '100%', mb: 2 }}>
+                {/* Array Header - this is the navigation target for the array */}
+                <Box 
+                    data-field-key={arrayContainerPath}
+                    data-array-header="true"
+                    sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        mb: 2,
+                        pb: 1.5,
+                        px: 1.5,
+                        py: 1,
+                        mx: -1.5,
+                        borderRadius: 1,
+                        borderBottom: `2px solid ${depthStyles.borderColor}`,
+                        transition: 'all 0.3s ease'
+                    }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="subtitle2" sx={{ 
                             color: hasDirectError ? 'error.main' : 'text.primary',
@@ -368,14 +397,14 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                             const itemHasErrors = itemErrorInfo.hasErrors;
                             const itemErrorCount = itemErrorInfo.errorCount;
                             
-                            // Build the item path for navigation
-                            const baseFieldKey = field.key.replace(/\[item\]/g, '');
-                            const itemPath = `${baseFieldKey}[${index}]`;
+                            // Build the item path for navigation - use actualPath to include parentPath context
+                            const itemPath = `${actualPath}[${index}]`;
                             
                             return (
                                 <Card 
                                     key={index} 
                                     data-field-key={itemPath}
+                                    data-array-item="true"
                                     sx={{
                                     backgroundColor: itemHasErrors 
                                         ? 'rgba(239, 68, 68, 0.03)' 
@@ -608,6 +637,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         return (
             <Box 
                 data-field-key={objectContainerPath}
+                data-nested-object="true"
                 sx={{ 
                 width: '100%', 
                 mb: 2,
@@ -619,7 +649,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                     ? 'rgba(239, 68, 68, 0.03)' 
                     : depthStyles.backgroundColor,
                 overflow: 'hidden',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.3s ease',
                 ...(objectHasErrors && {
                     boxShadow: '0 0 0 1px rgba(239, 68, 68, 0.1)'
                 })

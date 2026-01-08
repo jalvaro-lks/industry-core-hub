@@ -577,8 +577,12 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     };
 
     const handleSearchInRules = (fieldKey: string) => {
+        // Normalize the field key to match schema format (replace [0], [1], etc. with [item])
+        // This ensures consistency between error paths and schema paths
+        const normalizedKey = fieldKey.replace(/\[\d+\]/g, '[item]');
+        
         // Set the search term and switch to rules view
-        setRulesSearchTerm(fieldKey);
+        setRulesSearchTerm(normalizedKey);
         setViewMode('rules');
     };
 
@@ -588,6 +592,11 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
     // Local loading states for block-level spinners
     const [formLoading, setFormLoading] = useState(false);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);
+    
+    // Handlers for navigation state (used by DynamicForm)
+    const handleNavigationStart = () => setIsNavigating(true);
+    const handleNavigationEnd = () => setIsNavigating(false);
 
     // Show global loading if submitting or loading prop is true
     const globalLoading = isSubmitting || loading;
@@ -1200,6 +1209,40 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                     {/* Form Content - No scroll logic */}
                                     <Box sx={{ p: 3, position: 'relative' }}>
                                         {formLoading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 2 }} />}
+                                        
+                                        {/* Navigation loading overlay */}
+                                        {isNavigating && (
+                                            <Box sx={{ 
+                                                position: 'absolute', 
+                                                top: 0, 
+                                                left: 0, 
+                                                right: 0, 
+                                                bottom: 0, 
+                                                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                zIndex: 10,
+                                                borderRadius: 1
+                                            }}>
+                                                <Box sx={{ 
+                                                    display: 'flex', 
+                                                    flexDirection: 'column', 
+                                                    alignItems: 'center', 
+                                                    gap: 1,
+                                                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                                                    px: 3,
+                                                    py: 2,
+                                                    borderRadius: 2
+                                                }}>
+                                                    <CircularProgress size={24} color="primary" />
+                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                        Navigating to field...
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        )}
+                                        
                                         {selectedSchema && (
                                             <DynamicForm
                                                 ref={formRef}
@@ -1212,13 +1255,10 @@ const SubmodelCreator: React.FC<SubmodelCreatorProps> = ({
                                                 focusedField={focusedField}
                                                 onFieldFocus={handleFieldFocus}
                                                 onFieldBlur={() => setFocusedField(null)}
-                                                onInfoIconClick={(fieldKey) => {
-                                                    if (viewMode !== 'rules') {
-                                                        setViewMode('rules');
-                                                    }
-                                                    setRulesSearchTerm(fieldKey);
-                                                }}
+                                                onInfoIconClick={handleSearchInRules}
                                                 onlyRequired={requestedActive}
+                                                onNavigationStart={handleNavigationStart}
+                                                onNavigationEnd={handleNavigationEnd}
                                             />
                                         )}
                                     </Box>

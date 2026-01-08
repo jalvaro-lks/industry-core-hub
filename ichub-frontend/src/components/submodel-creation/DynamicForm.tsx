@@ -79,10 +79,12 @@ export interface DynamicFormProps {
     onFieldFocus?: (fieldKey: string) => void; // Callback when field is focused
     onFieldBlur?: () => void; // Callback when field loses focus
     onInfoIconClick?: (fieldKey: string) => void; // Callback when info icon is clicked
+    onNavigationStart?: () => void; // Callback when navigation starts
+    onNavigationEnd?: () => void; // Callback when navigation ends
 }
 
 interface DynamicFormRef {
-    scrollToField: (fieldKey: string) => void;
+    scrollToField: (fieldKey: string) => Promise<void>;
 }
 
 const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
@@ -96,7 +98,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     onFieldFocus,
     onFieldBlur,
     onInfoIconClick,
-    onlyRequired
+    onlyRequired,
+    onNavigationStart,
+    onNavigationEnd
 }, ref) => {
     // Recursively filter required fields if onlyRequired is true
     function filterRequiredFields(fields: FormField[]): FormField[] {
@@ -225,19 +229,43 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         // DOM might have "materials[0].name" or similar with actual indices
         const normalizedKey = fieldKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
         
+        console.log('[findElementByFieldKey] Searching for:', fieldKey, '-> normalized:', normalizedKey);
+        
         // Try exact match first
         let element = container.querySelector(`[data-field-key="${fieldKey}"]`) as HTMLElement | null;
-        if (element) return element;
+        if (element) {
+            console.log('[findElementByFieldKey] Found exact match');
+            return element;
+        }
         
-        // Try with wildcards for array indices
+        // Try with wildcards for array indices - find ALL matches and prefer array headers
         const allFieldElements = container.querySelectorAll('[data-field-key]');
+        let bestMatch: HTMLElement | null = null;
+        let bestMatchIsArrayHeader = false;
+        
         for (const el of allFieldElements) {
             const elKey = (el as HTMLElement).getAttribute('data-field-key') || '';
             const normalizedElKey = elKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
             
             if (normalizedElKey === normalizedKey) {
-                return el as HTMLElement;
+                const isArrayHeader = (el as HTMLElement).hasAttribute('data-array-header');
+                const isNestedObject = (el as HTMLElement).hasAttribute('data-nested-object');
+                
+                console.log('[findElementByFieldKey] Found normalized match:', elKey, 'isArrayHeader:', isArrayHeader, 'isNestedObject:', isNestedObject);
+                
+                // Prefer array headers and nested objects over other elements
+                if (!bestMatch || isArrayHeader || isNestedObject) {
+                    bestMatch = el as HTMLElement;
+                    bestMatchIsArrayHeader = isArrayHeader;
+                    // If we found an array header or nested object, stop searching
+                    if (isArrayHeader || isNestedObject) break;
+                }
             }
+        }
+        
+        if (bestMatch) {
+            console.log('[findElementByFieldKey] Returning best match:', bestMatch.getAttribute('data-field-key'));
+            return bestMatch;
         }
         
         // If the field is nested, try to find the closest parent container
@@ -245,54 +273,121 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         const parts = normalizedKey.split('.');
         while (parts.length > 0) {
             const parentKey = parts.join('.');
+            console.log('[findElementByFieldKey] Trying parent key:', parentKey);
             // Try to find a container for this parent
             const parentElement = container.querySelector(`[data-field-key="${parentKey}"]`) as HTMLElement || null;
             if (parentElement) {
+                console.log('[findElementByFieldKey] Found parent:', parentKey);
                 return parentElement;
             }
             parts.pop();
         }
         
+        console.log('[findElementByFieldKey] No element found');
         return null;
     };
 
+    // Constants for animation timing
+    const SECTION_ANIMATION_DURATION = 400; // ms for accordion animation
+    const POST_SCROLL_DELAY = 100; // ms extra delay after scroll
+
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
-        scrollToField: (fieldKey: string) => {
+        scrollToField: async (fieldKey: string): Promise<void> => {
+            // Notify navigation start
+            onNavigationStart?.();
+            
             // First, find and expand the section containing this field
             const sectionName = findFieldSection(fieldKey);
             
-            const performScroll = () => {
-                // Try fieldRefs first (for top-level fields)
-                let element = fieldRefs.current[fieldKey] as HTMLElement | null;
-                
-                // If not found in refs, search in DOM using data-field-key attribute
-                if (!element && containerRef.current) {
-                    element = findElementByFieldKey(fieldKey, containerRef.current);
-                }
-                
-                if (!element) {
-                    console.warn(`[scrollToField] Could not find element for fieldKey: ${fieldKey}`);
-                    return;
-                }
-                
-                // Use centralized helper: scroll, focus (if input), and highlight (3s)
-                scrollToElement({ 
-                    element, 
-                    container: containerRef.current, 
-                    focus: true, 
-                    highlightClass: 'field-nav-highlight', 
-                    durationMs: 3000, 
-                    block: 'center' 
+            const performScroll = (): Promise<void> => {
+                return new Promise((resolve) => {
+                    // Try fieldRefs first (for top-level fields)
+                    let element = fieldRefs.current[fieldKey] as HTMLElement | null;
+                    
+                    // If not found in refs, search in DOM using data-field-key attribute
+                    if (!element && containerRef.current) {
+                        element = findElementByFieldKey(fieldKey, containerRef.current);
+                    }
+                    
+                    if (!element) {
+                        console.warn(`[scrollToField] Could not find element for fieldKey: ${fieldKey}`);
+                        resolve();
+                        return;
+                    }
+                    
+                    // Determine the type of element for appropriate highlighting:
+                    // 1. Array headers: Have data-array-header attribute
+                    // 2. Nested objects: Have data-nested-object attribute
+                    // 3. Array item cards: Have data-field-key with [index] pattern
+                    // 4. Simple inputs: Contain input/select/textarea without being a container
+                    
+                    const isArrayHeader = element.hasAttribute('data-array-header');
+                    const isNestedObject = element.hasAttribute('data-nested-object');
+                    const isArrayItemCard = element.classList.contains('MuiCard-root') || 
+                        element.querySelector('.MuiCardContent-root') !== null;
+                    
+                    // Check if it's a simple input field
+                    const hasInputElement = element.querySelector('input, select, textarea') !== null;
+                    const isSimpleInput = hasInputElement && !isArrayHeader && !isNestedObject && !isArrayItemCard;
+                    
+                    console.log('[scrollToField] Element type detection:', {
+                        fieldKey,
+                        elementKey: element.getAttribute('data-field-key'),
+                        isArrayHeader,
+                        isNestedObject,
+                        isArrayItemCard,
+                        hasInputElement,
+                        isSimpleInput
+                    });
+                    
+                    // Determine highlight class based on element type
+                    let highlightClass = 'field-nav-highlight';
+                    if (isArrayHeader) {
+                        highlightClass = 'field-nav-highlight-array-header';
+                    } else if (isNestedObject) {
+                        highlightClass = 'field-nav-highlight-nested-object';
+                    } else if (isArrayItemCard) {
+                        highlightClass = 'field-nav-highlight-container';
+                    } else if (!isSimpleInput && element.hasAttribute('data-field-key')) {
+                        // Other complex containers
+                        highlightClass = 'field-nav-highlight-container';
+                    }
+                    
+                    console.log('[scrollToField] Using highlightClass:', highlightClass);
+                    
+                    // Use centralized helper: scroll, focus (if input), and highlight (3s)
+                    scrollToElement({ 
+                        element, 
+                        container: containerRef.current, 
+                        focus: isSimpleInput, // Only focus simple input fields
+                        highlightClass, 
+                        durationMs: 3000, 
+                        block: 'center' 
+                    });
+                    
+                    // Small delay to ensure scroll completes
+                    setTimeout(resolve, POST_SCROLL_DELAY);
                 });
             };
 
-            if (sectionName && expandedPanel !== sectionName) {
-                setExpandedPanel(sectionName);
-                // Wait for expansion animation to complete before scrolling. Use a short delay to allow render.
-                setTimeout(() => performScroll(), 320);
-            } else {
-                performScroll();
+            try {
+                if (sectionName && expandedPanel !== sectionName) {
+                    // Need to change section - wait for animation
+                    setExpandedPanel(sectionName);
+                    
+                    // Wait for section expansion animation to complete
+                    await new Promise(resolve => setTimeout(resolve, SECTION_ANIMATION_DURATION));
+                    
+                    // Now perform the scroll
+                    await performScroll();
+                } else {
+                    // Same section, just scroll
+                    await performScroll();
+                }
+            } finally {
+                // Notify navigation end
+                onNavigationEnd?.();
             }
         }
     }));

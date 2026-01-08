@@ -297,10 +297,32 @@ const SchemaRulesViewer: React.FC<SchemaRulesViewerProps> = ({
     const filterFields = (fields: FieldRule[]) => {
         if (!searchTerm.trim()) return fields;
         const term = searchTerm.toLowerCase();
-        return fields.filter(fieldRule =>
-            fieldRule.field.key.toLowerCase().includes(term) ||
-            fieldRule.field.label.toLowerCase().includes(term)
-        );
+        
+        // Normalize search term (replace [0], [1], etc. with [item] for consistency)
+        const normalizedTerm = term.replace(/\[\d+\]/g, '[item]');
+        
+        return fields.filter(fieldRule => {
+            const key = fieldRule.field.key.toLowerCase();
+            const label = fieldRule.field.label.toLowerCase();
+            const parentKey = (fieldRule.parentKey || '').toLowerCase();
+            
+            // Check direct matches
+            if (key.includes(normalizedTerm) || label.includes(normalizedTerm)) {
+                return true;
+            }
+            
+            // Check if searching for a parent path that contains this field
+            if (normalizedTerm && key.startsWith(normalizedTerm + '.')) {
+                return true;
+            }
+            
+            // Check parent key for nested fields
+            if (parentKey && parentKey.includes(normalizedTerm)) {
+                return true;
+            }
+            
+            return false;
+        });
     };
 
     const filteredRequiredFields = useMemo(() => filterFields(requiredFields), [requiredFields, searchTerm]);
