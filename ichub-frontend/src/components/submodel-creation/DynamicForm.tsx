@@ -55,7 +55,9 @@ import {
     DragIndicator as DragIndicatorIcon,
     Fingerprint as FingerprintIcon,
     KeyboardReturn as KeyboardReturnIcon,
-    Clear as ClearIcon
+    Clear as ClearIcon,
+    KeyboardArrowUp as KeyboardArrowUpIcon,
+    KeyboardArrowDown as KeyboardArrowDownIcon
 } from '@mui/icons-material';
 import { SchemaDefinition } from '../../schemas';
 import { FormField as BaseFormField } from '../../schemas/json-schema-interpreter';
@@ -1018,7 +1020,58 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputProps={{
-                                    endAdornment: getClearValueAdornment(field, value, onChange)
+                                    endAdornment: (
+                                        <InputAdornment position="end" sx={{ gap: 0.5, ml: -0.5 }}>
+                                            {getClearValueAdornment(field, value, onChange)}
+                                            {/* Custom up/down arrows */}
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, ml: 0.5 }}>
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const currentVal = parseFloat(value) || 0;
+                                                        const step = parseFloat((field as any).step) || 1;
+                                                        onChange(currentVal + step);
+                                                    }}
+                                                    sx={{
+                                                        padding: '1px',
+                                                        minWidth: 0,
+                                                        minHeight: 0,
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'transparent',
+                                                        }
+                                                    }}
+                                                >
+                                                    <KeyboardArrowUpIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const currentVal = parseFloat(value) || 0;
+                                                        const step = parseFloat((field as any).step) || 1;
+                                                        onChange(currentVal - step);
+                                                    }}
+                                                    sx={{
+                                                        padding: '1px',
+                                                        minWidth: 0,
+                                                        minHeight: 0,
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'transparent',
+                                                        }
+                                                    }}
+                                                >
+                                                    <KeyboardArrowDownIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                            </Box>
+                                        </InputAdornment>
+                                    )
                                 }}
                                 inputProps={{
                                     step: 'any'
@@ -1027,7 +1080,18 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
                                     <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
                                 ) : undefined}
-                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                sx={{
+                                    ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                    width: '100%',
+                                    // Hide native spinners completely
+                                    '& input[type="number"]::-webkit-outer-spin-button, & input[type="number"]::-webkit-inner-spin-button': {
+                                        WebkitAppearance: 'none',
+                                        margin: 0,
+                                    },
+                                    '& input[type="number"]': {
+                                        MozAppearance: 'textfield',
+                                    }
+                                }}
                             />
                         </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
@@ -1069,7 +1133,56 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputProps={{
-                                    endAdornment: getClearValueAdornment(field, value, onChange)
+                                    endAdornment: (
+                                        <InputAdornment position="end" sx={{ gap: 0.5, ml: -0.5 }}>
+                                            {getClearValueAdornment(field, value, onChange)}
+                                            {/* Custom up/down arrows */}
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0, ml: 0.5 }}>
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const currentVal = parseInt(value) || 0;
+                                                        onChange(currentVal + 1);
+                                                    }}
+                                                    sx={{
+                                                        padding: '1px',
+                                                        minWidth: 0,
+                                                        minHeight: 0,
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'transparent',
+                                                        }
+                                                    }}
+                                                >
+                                                    <KeyboardArrowUpIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const currentVal = parseInt(value) || 0;
+                                                        onChange(currentVal - 1);
+                                                    }}
+                                                    sx={{
+                                                        padding: '1px',
+                                                        minWidth: 0,
+                                                        minHeight: 0,
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'transparent',
+                                                        }
+                                                    }}
+                                                >
+                                                    <KeyboardArrowDownIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                            </Box>
+                                        </InputAdornment>
+                                    )
                                 }}
                                 inputProps={{
                                     step: 1
@@ -1078,7 +1191,23 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
                                     <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
                                 ) : undefined}
-                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                sx={{
+                                    ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                    width: '100%',
+                                    // Hide native spinners completely
+                                    '& input[type="number"]::-webkit-outer-spin-button, & input[type="number"]::-webkit-inner-spin-button': {
+                                        WebkitAppearance: 'none',
+                                        margin: 0,
+                                    },
+                                    '& input[type="number"]': {
+                                        MozAppearance: 'textfield',
+                                    }
+                                }}
+                            />
+                        </Box>
+                        {getIconContainer(field.description, schemaPath, field.urn)}
+                                    }
+                                }}
                             />
                         </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
@@ -1100,8 +1229,55 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{
                                     endAdornment: (
-                                        <InputAdornment position="end" sx={{ mr: -1.5 }}>
-                                            {getClearButton(field, value, onChange)}
+                                        <InputAdornment position="end" sx={{ gap: 0.5 }}>
+                                            {/* Clear button - shown when field has a value */}
+                                            {value && (
+                                                <Tooltip title="Clear value" placement="top">
+                                                    <IconButton
+                                                        size="small"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            onChange('');
+                                                        }}
+                                                        sx={{
+                                                            padding: '2px',
+                                                            color: 'rgba(255, 255, 255, 0.3)',
+                                                            transition: 'all 0.2s ease',
+                                                            '&:hover': {
+                                                                color: 'rgba(239, 68, 68, 0.8)',
+                                                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ClearIcon sx={{ fontSize: 16 }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {/* Calendar button - always shown */}
+                                            <Tooltip title="Select date" placement="top">
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const input = e.currentTarget.closest('.MuiInputBase-root')?.querySelector('input[type="date"]') as HTMLInputElement;
+                                                        if (input) {
+                                                            input.showPicker?.();
+                                                        }
+                                                    }}
+                                                    sx={{
+                                                        padding: '2px',
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                        }
+                                                    }}
+                                                >
+                                                    <CalendarTodayIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Tooltip>
                                         </InputAdornment>
                                     ),
                                 }}
@@ -1109,8 +1285,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
                                     width: '100%',
                                     '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                                        filter: 'invert(1)',
-                                        cursor: 'pointer'
+                                        display: 'none' // Hide native calendar icon
+                                    },
+                                    '& input[type="date"]::-webkit-inner-spin-button': {
+                                        display: 'none'
                                     }
                                 }}
                                 {...commonProps}
@@ -1135,12 +1313,68 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{
                                     endAdornment: (
-                                        <InputAdornment position="end" sx={{ mr: -1.5 }}>
-                                            {getClearButton(field, value, onChange)}
+                                        <InputAdornment position="end" sx={{ gap: 0.5 }}>
+                                            {/* Clear button - shown when field has a value */}
+                                            {value && (
+                                                <Tooltip title="Clear value" placement="top">
+                                                    <IconButton
+                                                        size="small"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            onChange('');
+                                                        }}
+                                                        sx={{
+                                                            padding: '2px',
+                                                            color: 'rgba(255, 255, 255, 0.3)',
+                                                            transition: 'all 0.2s ease',
+                                                            '&:hover': {
+                                                                color: 'rgba(239, 68, 68, 0.8)',
+                                                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ClearIcon sx={{ fontSize: 16 }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {/* Calendar button - always shown */}
+                                            <Tooltip title="Select date and time" placement="top">
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const input = e.currentTarget.closest('.MuiInputBase-root')?.querySelector('input[type="datetime-local"]') as HTMLInputElement;
+                                                        if (input) {
+                                                            input.showPicker?.();
+                                                        }
+                                                    }}
+                                                    sx={{
+                                                        padding: '2px',
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                        }
+                                                    }}
+                                                >
+                                                    <CalendarTodayIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Tooltip>
                                         </InputAdornment>
                                     ),
                                 }}
-                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                sx={{
+                                    ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                    width: '100%',
+                                    '& input[type="datetime-local"]::-webkit-calendar-picker-indicator': {
+                                        display: 'none' // Hide native calendar icon
+                                    },
+                                    '& input[type="datetime-local"]::-webkit-inner-spin-button': {
+                                        display: 'none'
+                                    }
+                                }}
                                 {...commonProps}
                             />
                         </Box>
@@ -1163,12 +1397,68 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{
                                     endAdornment: (
-                                        <InputAdornment position="end" sx={{ mr: -1.5 }}>
-                                            {getClearButton(field, value, onChange)}
+                                        <InputAdornment position="end" sx={{ gap: 0.5 }}>
+                                            {/* Clear button - shown when field has a value */}
+                                            {value && (
+                                                <Tooltip title="Clear value" placement="top">
+                                                    <IconButton
+                                                        size="small"
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            onChange('');
+                                                        }}
+                                                        sx={{
+                                                            padding: '2px',
+                                                            color: 'rgba(255, 255, 255, 0.3)',
+                                                            transition: 'all 0.2s ease',
+                                                            '&:hover': {
+                                                                color: 'rgba(239, 68, 68, 0.8)',
+                                                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                            }
+                                                        }}
+                                                    >
+                                                        <ClearIcon sx={{ fontSize: 16 }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {/* Clock button - always shown */}
+                                            <Tooltip title="Select time" placement="top">
+                                                <IconButton
+                                                    size="small"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        const input = e.currentTarget.closest('.MuiInputBase-root')?.querySelector('input[type="time"]') as HTMLInputElement;
+                                                        if (input) {
+                                                            input.showPicker?.();
+                                                        }
+                                                    }}
+                                                    sx={{
+                                                        padding: '2px',
+                                                        color: 'rgba(255, 255, 255, 0.5)',
+                                                        transition: 'all 0.2s ease',
+                                                        '&:hover': {
+                                                            color: 'rgba(96, 165, 250, 0.8)',
+                                                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                        }
+                                                    }}
+                                                >
+                                                    <CalendarTodayIcon sx={{ fontSize: 16 }} />
+                                                </IconButton>
+                                            </Tooltip>
                                         </InputAdornment>
                                     ),
                                 }}
-                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                sx={{
+                                    ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                    width: '100%',
+                                    '& input[type="time"]::-webkit-calendar-picker-indicator': {
+                                        display: 'none' // Hide native time icon
+                                    },
+                                    '& input[type="time"]::-webkit-inner-spin-button': {
+                                        display: 'none'
+                                    }
+                                }}
                                 {...commonProps}
                             />
                         </Box>
@@ -1251,7 +1541,16 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     label={getFieldLabel(field.label, field.required)}
                                     onChange={(e) => onChange(e.target.value)}
                                     endAdornment={getClearValueAdornment(field, value, onChange)}
-                                    sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                                    sx={{
+                                        ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                        '& .MuiSvgIcon-root': {
+                                            color: 'rgba(255, 255, 255, 0.5)',
+                                            transition: 'all 0.2s ease',
+                                        },
+                                        '&:hover .MuiSvgIcon-root': {
+                                            color: 'rgba(96, 165, 250, 0.8)',
+                                        }
+                                    }}
                                     {...commonProps}
                                 >
                                     <MenuItem value="">
@@ -1305,21 +1604,47 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 <Typography variant="body2" sx={{ color: hasError ? 'error.main' : 'text.primary' }}>
                                     {getFieldLabel(field.label, field.required)}
                                 </Typography>
-                                <Switch
-                                    checked={!!value}
-                                    onChange={(e) => {
-                                        e.stopPropagation();
-                                        onChange(e.target.checked);
-                                    }}
-                                    sx={{
-                                        '& .MuiSwitch-switchBase.Mui-checked': {
-                                            color: 'primary.main',
-                                        },
-                                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                            backgroundColor: 'primary.main',
-                                        },
-                                    }}
-                                />
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {/* Clear button - shown when field has a value (true or false) */}
+                                    {value !== undefined && value !== null && (
+                                        <Tooltip title="Clear value" placement="top">
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onChange(undefined);
+                                                }}
+                                                sx={{
+                                                    padding: '2px',
+                                                    color: 'rgba(255, 255, 255, 0.3)',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        color: 'rgba(239, 68, 68, 0.8)',
+                                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                                    }
+                                                }}
+                                            >
+                                                <ClearIcon sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    <Switch
+                                        checked={!!value}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            onChange(e.target.checked);
+                                        }}
+                                        sx={{
+                                            '& .MuiSwitch-switchBase.Mui-checked': {
+                                                color: 'primary.main',
+                                            },
+                                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                                                backgroundColor: 'primary.main',
+                                            },
+                                        }}
+                                    />
+                                </Box>
                             </Box>
                             {getIconContainer(field.description, schemaPath, field.urn)}
                         </Box>
