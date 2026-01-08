@@ -674,6 +674,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         const simpleKey = field.key.includes('.') ? field.key.split('.').pop()! : field.key;
         const fieldKey = parentPath ? `${parentPath}.${simpleKey}` : field.key;
         
+        // For Schema Rules navigation, use field.key directly as it already has the correct [item] format
+        // This ensures the info icon always navigates to the correct schema rule
+        const schemaPath = field.key;
+        
         // For error lookup, we need to check multiple path variations:
         // 1. Exact path with array indices (e.g., "materialList[0].processing[1].country")
         // 2. Normalized path without indices (e.g., "materialList.processing.country")
@@ -753,7 +757,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -775,7 +779,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -821,7 +825,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             ) : undefined}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -867,7 +871,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             ) : undefined}
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -898,7 +902,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -917,7 +921,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -936,7 +940,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -957,7 +961,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -978,7 +982,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
                             {...commonProps}
                         />
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -1011,7 +1015,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 </FormHelperText>
                             )}
                         </FormControl>
-                        {getIconContainer(field.description, fieldKey, field.urn)}
+                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -1062,7 +1066,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     }}
                                 />
                             </Box>
-                            {getIconContainer(field.description, fieldKey, field.urn)}
+                            {getIconContainer(field.description, schemaPath, field.urn)}
                         </Box>
                         {hasError && isFieldFocused && errorMessages.length > 0 && (
                             <Typography variant="caption" sx={{ color: 'error.main', ml: 1.75, fontSize: '0.75rem' }}>

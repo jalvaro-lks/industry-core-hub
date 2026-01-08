@@ -124,6 +124,36 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
     };
 
     /**
+     * Build the schema path for the info icon click (Schema Rules navigation)
+     * This converts actual paths with numeric indices to schema format with [item]
+     * e.g., "sustainability.productFootprint.environmental[0]" -> "sustainability.productFootprint.environmental[item]"
+     */
+    const buildSchemaPath = (): string => {
+        // If no parent path, use the field key directly (it already has [item] format)
+        if (!parentPath) {
+            return field.key;
+        }
+        
+        // Convert parentPath indices [0], [1], etc. to [item] for schema matching
+        const parentPathWithItemPlaceholder = parentPath.replace(/\[\d+\]/g, '[item]');
+        
+        // Extract the simple key (last segment) from the field.key
+        // field.key might be "parent[item].child" or "parent[item].nested[item].child"
+        const keyWithoutPlaceholders = field.key.replace(/\[item\]/g, '');
+        const segments = keyWithoutPlaceholders.split('.');
+        const simpleKey = segments[segments.length - 1];
+        
+        // Check if the field itself is an array (has [item] at the end of its key)
+        const fieldIsArray = field.key.endsWith('[item]') || field.type === 'array';
+        
+        const result = fieldIsArray 
+            ? `${parentPathWithItemPlaceholder}.${simpleKey}[item]`
+            : `${parentPathWithItemPlaceholder}.${simpleKey}`;
+        
+        return result;
+    };
+
+    /**
      * Build the actual field path considering parent context
      * This handles arrays and objects at any nesting level
      */
@@ -525,9 +555,13 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                 
                                                                 // Render simple field using callback if provided
                                                                 if (renderSimpleField) {
-                                                                    // Construct parent path with array index, replacing [item] placeholder
+                                                                    // Construct parent path with array index
+                                                                    // Use parentPath context if available, otherwise fall back to field.key
                                                                     const baseFieldKey = field.key.replace(/\[item\]/g, '');
-                                                                    const arrayParentPath = `${baseFieldKey}[${index}]`;
+                                                                    const fieldName = baseFieldKey.split('.').pop() || baseFieldKey;
+                                                                    const arrayParentPath = parentPath 
+                                                                        ? `${parentPath}.${fieldName}[${index}]`
+                                                                        : `${baseFieldKey}[${index}]`;
                                                                     // Build the full field path for navigation
                                                                     const fullFieldPath = `${arrayParentPath}.${simpleKey}`;
                                                                     return (
@@ -733,6 +767,10 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                             const simpleKey = fieldKeyParts[fieldKeyParts.length - 1];
                             const objValue = value?.[simpleKey] || '';
                             
+                            // Build the parent path for child fields
+                            // This should include the current object's path
+                            const objectParentPath = buildActualPath();
+                            
                             // Recursively render complex fields
                             if (objField.fieldCategory === 'complex') {
                                 return (
@@ -751,7 +789,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                         onFieldFocus={onFieldFocus}
                                         onFieldBlur={onFieldBlur}
                                         onInfoIconClick={onInfoIconClick}
-                                        parentPath={parentPath}  // Propagate parentPath for nested structures
+                                        parentPath={objectParentPath}  // Pass the object's path as parent for nested structures
                                         renderSimpleField={renderSimpleField}
                                     />
                                 );
@@ -760,8 +798,8 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                             // Render simple field using callback
                             if (renderSimpleField) {
                                 // Build the full field path for navigation
-                                const objectFieldPath = parentPath 
-                                    ? `${parentPath}.${simpleKey}` 
+                                const objectFieldPath = objectParentPath 
+                                    ? `${objectParentPath}.${simpleKey}` 
                                     : objField.key;
                                 return (
                                     <Box 
@@ -774,7 +812,7 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                             (newValue) => {
                                                 onChange({ ...value, [simpleKey]: newValue });
                                             },
-                                            parentPath  // Pass parentPath if this object is nested in an array
+                                            objectParentPath  // Pass object's path as parentPath for simple fields
                                         )}
                                     </Box>
                                 );
