@@ -235,9 +235,12 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         const complexCount = field.itemFields?.filter(f => f.fieldCategory === 'complex').length || 0;
 
         const depthStyles = getDepthStyles(depth);
+        
+        // Build the array container path for navigation
+        const arrayContainerPath = buildActualPath();
 
         return (
-            <Box sx={{ width: '100%', mb: 2 }}>
+            <Box sx={{ width: '100%', mb: 2 }} data-field-key={arrayContainerPath}>
                 {/* Array Header */}
                 <Box sx={{ 
                     display: 'flex', 
@@ -365,8 +368,15 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                             const itemHasErrors = itemErrorInfo.hasErrors;
                             const itemErrorCount = itemErrorInfo.errorCount;
                             
+                            // Build the item path for navigation
+                            const baseFieldKey = field.key.replace(/\[item\]/g, '');
+                            const itemPath = `${baseFieldKey}[${index}]`;
+                            
                             return (
-                                <Card key={index} sx={{
+                                <Card 
+                                    key={index} 
+                                    data-field-key={itemPath}
+                                    sx={{
                                     backgroundColor: itemHasErrors 
                                         ? 'rgba(239, 68, 68, 0.03)' 
                                         : depthStyles.backgroundColor,
@@ -489,8 +499,13 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                                                                     // Construct parent path with array index, replacing [item] placeholder
                                                                     const baseFieldKey = field.key.replace(/\[item\]/g, '');
                                                                     const arrayParentPath = `${baseFieldKey}[${index}]`;
+                                                                    // Build the full field path for navigation
+                                                                    const fullFieldPath = `${arrayParentPath}.${simpleKey}`;
                                                                     return (
-                                                                        <Box key={subField.key}>
+                                                                        <Box 
+                                                                            key={subField.key}
+                                                                            data-field-key={fullFieldPath}
+                                                                        >
                                                                             {renderSimpleField(
                                                                                 subField,
                                                                                 subFieldValue,
@@ -586,9 +601,14 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         const simpleCount = field.objectFields.filter(f => f.fieldCategory === 'simple').length;
         const complexCount = field.objectFields.filter(f => f.fieldCategory === 'complex').length;
         const objectHasErrors = hasDirectError || childErrorCount > 0;
+        
+        // Build the object container path for navigation
+        const objectContainerPath = buildActualPath();
 
         return (
-            <Box sx={{ 
+            <Box 
+                data-field-key={objectContainerPath}
+                sx={{ 
                 width: '100%', 
                 mb: 2,
                 border: objectHasErrors 
@@ -705,8 +725,15 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                             
                             // Render simple field using callback
                             if (renderSimpleField) {
+                                // Build the full field path for navigation
+                                const objectFieldPath = parentPath 
+                                    ? `${parentPath}.${simpleKey}` 
+                                    : objField.key;
                                 return (
-                                    <Box key={objField.key}>
+                                    <Box 
+                                        key={objField.key}
+                                        data-field-key={objectFieldPath}
+                                    >
                                         {renderSimpleField(
                                             objField,
                                             objValue,

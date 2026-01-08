@@ -190,13 +190,69 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         return root;
     };
 
-    // Find which section contains a field
+    // Find which section contains a field (supports nested field paths)
     const findFieldSection = (fieldKey: string): string | null => {
+        // First, try direct match
         for (const [sectionName, sectionFields] of Object.entries(groupedFields)) {
             if (sectionFields.some(field => field.key === fieldKey)) {
                 return sectionName;
             }
         }
+        
+        // For nested paths, find the root parent's section
+        // e.g., "materials[item].name" -> look for "materials" section or field
+        const normalizedKey = fieldKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
+        const rootKey = normalizedKey.split('.')[0];
+        
+        for (const [sectionName, sectionFields] of Object.entries(groupedFields)) {
+            if (sectionFields.some(field => {
+                const fieldRoot = field.key.split('.')[0];
+                return fieldRoot === rootKey;
+            })) {
+                return sectionName;
+            }
+        }
+        
+        return null;
+    };
+
+    // Helper function to find an element by data-field-key attribute
+    const findElementByFieldKey = (fieldKey: string, container: HTMLElement | null): HTMLElement | null => {
+        if (!container) return null;
+        
+        // Normalize the field key for matching
+        // SchemaRulesViewer uses "materials[item].name" format
+        // DOM might have "materials[0].name" or similar with actual indices
+        const normalizedKey = fieldKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
+        
+        // Try exact match first
+        let element = container.querySelector(`[data-field-key="${fieldKey}"]`) as HTMLElement | null;
+        if (element) return element;
+        
+        // Try with wildcards for array indices
+        const allFieldElements = container.querySelectorAll('[data-field-key]');
+        for (const el of allFieldElements) {
+            const elKey = (el as HTMLElement).getAttribute('data-field-key') || '';
+            const normalizedElKey = elKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
+            
+            if (normalizedElKey === normalizedKey) {
+                return el as HTMLElement;
+            }
+        }
+        
+        // If the field is nested, try to find the closest parent container
+        // e.g., for "materials[item].name", find the "materials" array container
+        const parts = normalizedKey.split('.');
+        while (parts.length > 0) {
+            const parentKey = parts.join('.');
+            // Try to find a container for this parent
+            const parentElement = container.querySelector(`[data-field-key="${parentKey}"]`) as HTMLElement || null;
+            if (parentElement) {
+                return parentElement;
+            }
+            parts.pop();
+        }
+        
         return null;
     };
 
@@ -205,11 +261,30 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         scrollToField: (fieldKey: string) => {
             // First, find and expand the section containing this field
             const sectionName = findFieldSection(fieldKey);
+            
             const performScroll = () => {
-                const element = fieldRefs.current[fieldKey] as HTMLElement | null;
-                if (!element) return;
+                // Try fieldRefs first (for top-level fields)
+                let element = fieldRefs.current[fieldKey] as HTMLElement | null;
+                
+                // If not found in refs, search in DOM using data-field-key attribute
+                if (!element && containerRef.current) {
+                    element = findElementByFieldKey(fieldKey, containerRef.current);
+                }
+                
+                if (!element) {
+                    console.warn(`[scrollToField] Could not find element for fieldKey: ${fieldKey}`);
+                    return;
+                }
+                
                 // Use centralized helper: scroll, focus (if input), and highlight (3s)
-                scrollToElement({ element, container: containerRef.current, focus: true, highlightClass: 'field-nav-highlight', durationMs: 3000, block: 'center' });
+                scrollToElement({ 
+                    element, 
+                    container: containerRef.current, 
+                    focus: true, 
+                    highlightClass: 'field-nav-highlight', 
+                    durationMs: 3000, 
+                    block: 'center' 
+                });
             };
 
             if (sectionName && expandedPanel !== sectionName) {
