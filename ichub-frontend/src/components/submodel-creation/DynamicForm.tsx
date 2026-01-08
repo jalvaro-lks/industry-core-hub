@@ -54,7 +54,8 @@ import {
     Delete as DeleteIcon,
     DragIndicator as DragIndicatorIcon,
     Fingerprint as FingerprintIcon,
-    KeyboardReturn as KeyboardReturnIcon
+    KeyboardReturn as KeyboardReturnIcon,
+    Clear as ClearIcon
 } from '@mui/icons-material';
 import { SchemaDefinition } from '../../schemas';
 import { FormField as BaseFormField } from '../../schemas/json-schema-interpreter';
@@ -761,6 +762,86 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     };
 
     /**
+     * Helper: Get clear value button for fields with defined values
+     * Shows a subtle "X" button to clear the field value
+     */
+    const getClearValueAdornment = (
+        field: FormField,
+        value: any,
+        onChange: (value: any) => void
+    ): React.ReactNode => {
+        const button = getClearButton(field, value, onChange);
+        if (!button) return null;
+
+        // Add margin for number/integer/select fields to avoid overlap with native controls
+        // Select needs more margin to avoid overlapping with dropdown arrow
+        const marginRight = field.type === 'select' ? 2 : (field.type === 'number' || field.type === 'integer') ? 1 : 0;
+
+        return (
+            <InputAdornment position="end" sx={marginRight > 0 ? { mr: marginRight } : undefined}>
+                {button}
+            </InputAdornment>
+        );
+    };
+
+    /**
+     * Helper: Get just the clear button without InputAdornment wrapper
+     * Used for date/time fields where we need custom positioning
+     */
+    const getClearButton = (
+        field: FormField,
+        value: any,
+        onChange: (value: any) => void
+    ): React.ReactNode => {
+        // Don't show clear button for checkboxes
+        if (field.type === 'checkbox') {
+            return null;
+        }
+
+        // Determine if the field has a value
+        const hasValue = (() => {
+            if (value === undefined || value === null) return false;
+            if (typeof value === 'string' && value.trim() === '') return false;
+            if (typeof value === 'number') return !isNaN(value);
+            return true;
+        })();
+
+        if (!hasValue) return null;
+
+        const handleClear = (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Clear the value based on field type
+            if (field.type === 'select') {
+                onChange(''); // Reset select to empty
+            } else {
+                onChange(''); // Clear text/number fields
+            }
+        };
+
+        return (
+            <Tooltip title="Clear value" placement="top">
+                <IconButton
+                    size="small"
+                    onMouseDown={handleClear}
+                    sx={{
+                        padding: '2px',
+                        color: 'rgba(255, 255, 255, 0.3)',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                            color: 'rgba(239, 68, 68, 0.8)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        }
+                    }}
+                >
+                    <ClearIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+            </Tooltip>
+        );
+    };
+
+    /**
      * Renders simple (primitive) fields - separated for reusability in ComplexFieldPanel
      * @param field - The field definition
      * @param value - Current value
@@ -855,7 +936,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputProps={{
-                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                    endAdornment: (
+                                        <>
+                                            {getClearValueAdornment(field, value, onChange)}
+                                            {getPatternExampleAdornment(field, onChange, isFieldFocused)}
+                                        </>
+                                    )
                                 }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
@@ -882,7 +968,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputProps={{
-                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                    endAdornment: (
+                                        <>
+                                            {getClearValueAdornment(field, value, onChange)}
+                                            {getPatternExampleAdornment(field, onChange, isFieldFocused)}
+                                        </>
+                                    )
                                 }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
@@ -926,6 +1017,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 )}
                                 variant="outlined"
                                 size="small"
+                                InputProps={{
+                                    endAdornment: getClearValueAdornment(field, value, onChange)
+                                }}
                                 inputProps={{
                                     step: 'any'
                                 }}
@@ -974,6 +1068,9 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 )}
                                 variant="outlined"
                                 size="small"
+                                InputProps={{
+                                    endAdornment: getClearValueAdornment(field, value, onChange)
+                                }}
                                 inputProps={{
                                     step: 1
                                 }}
@@ -1002,8 +1099,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 size="small"
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{
-                                    startAdornment: (
-                                        <CalendarTodayIcon sx={{ fontSize: 20, color: '#ffffff', mr: 1 }} />
+                                    endAdornment: (
+                                        <InputAdornment position="end" sx={{ mr: -1.5 }}>
+                                            {getClearButton(field, value, onChange)}
+                                        </InputAdornment>
                                     ),
                                 }}
                                 sx={{
@@ -1034,6 +1133,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputLabelProps={{ shrink: true }}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end" sx={{ mr: -1.5 }}>
+                                            {getClearButton(field, value, onChange)}
+                                        </InputAdornment>
+                                    ),
+                                }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
                             />
@@ -1055,6 +1161,13 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputLabelProps={{ shrink: true }}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end" sx={{ mr: -1.5 }}>
+                                            {getClearButton(field, value, onChange)}
+                                        </InputAdornment>
+                                    ),
+                                }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
                             />
@@ -1079,7 +1192,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputProps={{
-                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                    endAdornment: (
+                                        <>
+                                            {getClearValueAdornment(field, value, onChange)}
+                                            {getPatternExampleAdornment(field, onChange, isFieldFocused)}
+                                        </>
+                                    )
                                 }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
@@ -1105,7 +1223,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 variant="outlined"
                                 size="small"
                                 InputProps={{
-                                    endAdornment: getPatternExampleAdornment(field, onChange, isFieldFocused)
+                                    endAdornment: (
+                                        <>
+                                            {getClearValueAdornment(field, value, onChange)}
+                                            {getPatternExampleAdornment(field, onChange, isFieldFocused)}
+                                        </>
+                                    )
                                 }}
                                 sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
                                 {...commonProps}
@@ -1127,6 +1250,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                     value={value || ''}
                                     label={getFieldLabel(field.label, field.required)}
                                     onChange={(e) => onChange(e.target.value)}
+                                    endAdornment={getClearValueAdornment(field, value, onChange)}
                                     sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
                                     {...commonProps}
                                 >
