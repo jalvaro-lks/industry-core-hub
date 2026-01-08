@@ -641,19 +641,23 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                 sx={{ 
                 width: '100%', 
                 mb: 2,
-                border: objectHasErrors 
-                    ? '1px solid rgba(239, 68, 68, 0.5)' 
-                    : `1px solid ${depthStyles.borderColor}`,
-                borderRadius: 2,
-                backgroundColor: objectHasErrors 
-                    ? 'rgba(239, 68, 68, 0.03)' 
-                    : depthStyles.backgroundColor,
-                overflow: 'hidden',
-                transition: 'all 0.3s ease',
-                ...(objectHasErrors && {
-                    boxShadow: '0 0 0 1px rgba(239, 68, 68, 0.1)'
-                })
+                position: 'relative', // Needed for pseudo-elements positioning
+                transition: 'all 0.3s ease'
             }}>
+                {/* Inner container with border and background */}
+                <Box sx={{
+                    border: objectHasErrors 
+                        ? '1px solid rgba(239, 68, 68, 0.5)' 
+                        : `1px solid ${depthStyles.borderColor}`,
+                    borderRadius: 2,
+                    backgroundColor: objectHasErrors 
+                        ? 'rgba(239, 68, 68, 0.03)' 
+                        : depthStyles.backgroundColor,
+                    overflow: 'hidden', // Keep content clipped
+                    ...(objectHasErrors && {
+                        boxShadow: '0 0 0 1px rgba(239, 68, 68, 0.1)'
+                    })
+                }}>
                 {/* Object Header */}
                 <Box sx={{
                     display: 'flex',
@@ -781,6 +785,8 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
                         })}
                     </Box>
                 </Box>
+                </Box>
+                {/* End of inner container */}
             </Box>
         );
     }

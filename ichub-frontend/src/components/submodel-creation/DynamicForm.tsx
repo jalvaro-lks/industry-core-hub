@@ -238,27 +238,40 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             return element;
         }
         
-        // Try with wildcards for array indices - find ALL matches and prefer array headers
+        // PRIORITY 1: Find array headers or nested objects with EXACT normalized match
+        // These should be prioritized over any other matches
         const allFieldElements = container.querySelectorAll('[data-field-key]');
+        
+        // First pass: look specifically for array headers and nested objects
+        for (const el of allFieldElements) {
+            const elKey = (el as HTMLElement).getAttribute('data-field-key') || '';
+            const normalizedElKey = elKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
+            
+            // EXACT normalized match only
+            if (normalizedElKey === normalizedKey) {
+                const isArrayHeader = (el as HTMLElement).hasAttribute('data-array-header');
+                const isNestedObject = (el as HTMLElement).hasAttribute('data-nested-object');
+                
+                if (isArrayHeader || isNestedObject) {
+                    console.log('[findElementByFieldKey] Found priority match (array-header/nested-object):', elKey);
+                    return el as HTMLElement;
+                }
+            }
+        }
+        
+        // Second pass: look for any element with exact normalized match
         let bestMatch: HTMLElement | null = null;
-        let bestMatchIsArrayHeader = false;
         
         for (const el of allFieldElements) {
             const elKey = (el as HTMLElement).getAttribute('data-field-key') || '';
             const normalizedElKey = elKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
             
             if (normalizedElKey === normalizedKey) {
-                const isArrayHeader = (el as HTMLElement).hasAttribute('data-array-header');
-                const isNestedObject = (el as HTMLElement).hasAttribute('data-nested-object');
+                console.log('[findElementByFieldKey] Found normalized match:', elKey);
                 
-                console.log('[findElementByFieldKey] Found normalized match:', elKey, 'isArrayHeader:', isArrayHeader, 'isNestedObject:', isNestedObject);
-                
-                // Prefer array headers and nested objects over other elements
-                if (!bestMatch || isArrayHeader || isNestedObject) {
+                // Take the first match (could be a simple field wrapper)
+                if (!bestMatch) {
                     bestMatch = el as HTMLElement;
-                    bestMatchIsArrayHeader = isArrayHeader;
-                    // If we found an array header or nested object, stop searching
-                    if (isArrayHeader || isNestedObject) break;
                 }
             }
         }
@@ -274,7 +287,24 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
         while (parts.length > 0) {
             const parentKey = parts.join('.');
             console.log('[findElementByFieldKey] Trying parent key:', parentKey);
-            // Try to find a container for this parent
+            
+            // First try to find a nested object or array header for this parent
+            for (const el of allFieldElements) {
+                const elKey = (el as HTMLElement).getAttribute('data-field-key') || '';
+                const normalizedElKey = elKey.replace(/\[item\]/g, '').replace(/\[\d+\]/g, '');
+                
+                if (normalizedElKey === parentKey) {
+                    const isArrayHeader = (el as HTMLElement).hasAttribute('data-array-header');
+                    const isNestedObject = (el as HTMLElement).hasAttribute('data-nested-object');
+                    
+                    if (isArrayHeader || isNestedObject) {
+                        console.log('[findElementByFieldKey] Found parent container:', parentKey);
+                        return el as HTMLElement;
+                    }
+                }
+            }
+            
+            // Fallback: try direct querySelector
             const parentElement = container.querySelector(`[data-field-key="${parentKey}"]`) as HTMLElement || null;
             if (parentElement) {
                 console.log('[findElementByFieldKey] Found parent:', parentKey);
@@ -316,24 +346,42 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         return;
                     }
                     
+                    // For elements found via fieldRefs (wrappers), check if the actual 
+                    // highlightable element is inside. The wrapper might not have the 
+                    // data attributes, but the inner ComplexFieldPanel does.
+                    let targetElement = element;
+                    
+                    // Check if this element has data-nested-object or data-array-header
+                    // If not, look for it inside (ComplexFieldPanel adds these to its root)
+                    if (!element.hasAttribute('data-nested-object') && !element.hasAttribute('data-array-header')) {
+                        const innerNestedObject = element.querySelector('[data-nested-object]') as HTMLElement | null;
+                        const innerArrayHeader = element.querySelector('[data-array-header]') as HTMLElement | null;
+                        
+                        if (innerNestedObject) {
+                            targetElement = innerNestedObject;
+                        } else if (innerArrayHeader) {
+                            targetElement = innerArrayHeader;
+                        }
+                    }
+                    
                     // Determine the type of element for appropriate highlighting:
                     // 1. Array headers: Have data-array-header attribute
                     // 2. Nested objects: Have data-nested-object attribute
                     // 3. Array item cards: Have data-field-key with [index] pattern
                     // 4. Simple inputs: Contain input/select/textarea without being a container
                     
-                    const isArrayHeader = element.hasAttribute('data-array-header');
-                    const isNestedObject = element.hasAttribute('data-nested-object');
-                    const isArrayItemCard = element.classList.contains('MuiCard-root') || 
-                        element.querySelector('.MuiCardContent-root') !== null;
+                    const isArrayHeader = targetElement.hasAttribute('data-array-header');
+                    const isNestedObject = targetElement.hasAttribute('data-nested-object');
+                    const isArrayItemCard = targetElement.classList.contains('MuiCard-root') || 
+                        targetElement.querySelector('.MuiCardContent-root') !== null;
                     
                     // Check if it's a simple input field
-                    const hasInputElement = element.querySelector('input, select, textarea') !== null;
+                    const hasInputElement = targetElement.querySelector('input, select, textarea') !== null;
                     const isSimpleInput = hasInputElement && !isArrayHeader && !isNestedObject && !isArrayItemCard;
                     
                     console.log('[scrollToField] Element type detection:', {
                         fieldKey,
-                        elementKey: element.getAttribute('data-field-key'),
+                        elementKey: targetElement.getAttribute('data-field-key'),
                         isArrayHeader,
                         isNestedObject,
                         isArrayItemCard,
@@ -349,7 +397,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                         highlightClass = 'field-nav-highlight-nested-object';
                     } else if (isArrayItemCard) {
                         highlightClass = 'field-nav-highlight-container';
-                    } else if (!isSimpleInput && element.hasAttribute('data-field-key')) {
+                    } else if (!isSimpleInput && targetElement.hasAttribute('data-field-key')) {
                         // Other complex containers
                         highlightClass = 'field-nav-highlight-container';
                     }
@@ -358,7 +406,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     
                     // Use centralized helper: scroll, focus (if input), and highlight (3s)
                     scrollToElement({ 
-                        element, 
+                        element: targetElement, 
                         container: containerRef.current, 
                         focus: isSimpleInput, // Only focus simple input fields
                         highlightClass, 
@@ -972,6 +1020,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box 
+                                data-field-target="true"
                                 onClick={() => onChange(!value)}
                                 tabIndex={0}
                                 sx={{ 
@@ -1081,16 +1130,26 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             .map(([key, node]) => {
                 if (node.isLeaf && node.field) {
                     // Render the actual field
+                    // For complex fields (objects/arrays), add navigation attributes to the wrapper
+                    const isComplexField = node.field.type === 'object' || node.field.type === 'array';
+                    const wrapperProps: any = {
+                        key: node.field.key,
+                        sx: { 
+                            mb: 2,
+                            ...(isComplexField && { position: 'relative' })
+                        },
+                        ref: (el: HTMLElement | null) => {
+                            if (el) fieldRefs.current[node.field!.key] = el;
+                        }
+                    };
+                    
+                    // NOTE: For leaf complex fields (objects/arrays), we do NOT add data-nested-object
+                    // or data-array-header here because ComplexFieldPanel already adds those attributes.
+                    // Adding them here would cause double highlighting.
+                    // We only add data-field-key for reference lookup in fieldRefs.
+                    
                     return (
-                        <Box 
-                            key={node.field.key}
-                            sx={{ 
-                                mb: 2
-                            }}
-                            ref={(el) => {
-                                if (el) fieldRefs.current[node.field!.key] = el;
-                            }}
-                        >
+                        <Box {...wrapperProps}>
                             {renderField(node.field)}
                         </Box>
                     );
@@ -1144,11 +1203,21 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     
                     const childErrorCount = uniqueChildErrors.size;
 
-                    // Add data-object attribute for parent object containers (not for root)
+                    // Add data attributes for parent object containers
+                    // - data-field-key: Required for navigation to find this element
+                    // - data-nested-object: Required for nested object highlighting style
+                    // Note: We add these attributes for ALL nested groups (depth >= 0)
+                    // because even top-level groups within a section need to be navigable
                     const groupBoxProps: any = {
                         key: node.path,
-                        sx: { mb: 2 }
+                        'data-field-key': node.path,
+                        'data-nested-object': 'true',
+                        sx: { 
+                            mb: 2,
+                            position: 'relative' // Required for nested object highlight positioning
+                        }
                     };
+                    // Keep data-object for backward compatibility
                     if (depth > 0) {
                         groupBoxProps['data-object'] = node.path;
                     }
