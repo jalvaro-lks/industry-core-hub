@@ -1059,6 +1059,20 @@ export function interpretJSONSchema(schema: JSONSchema): {
           value.forEach((item: any, index: number) => {
             const itemPath = `${currentPath}[${index}]`;
             
+            // For array items, check if at least one field has a value
+            // Only validate required fields if the item has some content
+            const hasAnyItemFieldValue = field.itemFields!.some(itemField => {
+              const keyParts = itemField.key.split('.');
+              const simpleKey = keyParts[keyParts.length - 1].replace(/\[item\]/g, '');
+              const itemValue = item?.[simpleKey];
+              return !isEmpty(itemValue);
+            });
+            
+            // If no field has a value in this item, skip validation
+            if (!hasAnyItemFieldValue) {
+              return;
+            }
+            
             // Validate each field within the array item
             for (const itemField of field.itemFields!) {
               // Get simple key (last part of the field key)
@@ -1091,6 +1105,25 @@ export function interpretJSONSchema(schema: JSONSchema): {
             errors.push(`${currentPath} must be an object`);
           }
           return;
+        }
+
+        // Check if this is an optional parent (not required)
+        // If so, only validate required children if at least one child has a value
+        const isOptionalParent = !field.required;
+        
+        if (isOptionalParent) {
+          // Check if any child has a value
+          const hasAnyChildValue = field.objectFields.some(objField => {
+            const keyParts = objField.key.split('.');
+            const simpleKey = keyParts[keyParts.length - 1];
+            const objValue = value?.[simpleKey];
+            return !isEmpty(objValue);
+          });
+          
+          // If no child has a value, skip validation of required children
+          if (!hasAnyChildValue) {
+            return;
+          }
         }
 
         // Validate each field within the object
