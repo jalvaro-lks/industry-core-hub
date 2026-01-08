@@ -351,9 +351,17 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     // data attributes, but the inner ComplexFieldPanel does.
                     let targetElement = element;
                     
+                    // For primitive fields, check if there's a data-field-target element inside
+                    // This allows us to highlight only the input field, excluding the info icon
+                    const fieldTargetElement = element.querySelector('[data-field-target]') as HTMLElement | null;
+                    if (fieldTargetElement) {
+                        targetElement = fieldTargetElement;
+                        console.log('[scrollToField] Found data-field-target, using it for highlighting');
+                    }
+                    
                     // Check if this element has data-nested-object or data-array-header
                     // If not, look for it inside (ComplexFieldPanel adds these to its root)
-                    if (!element.hasAttribute('data-nested-object') && !element.hasAttribute('data-array-header')) {
+                    if (!targetElement.hasAttribute('data-nested-object') && !targetElement.hasAttribute('data-array-header') && !targetElement.hasAttribute('data-field-target')) {
                         const innerNestedObject = element.querySelector('[data-nested-object]') as HTMLElement | null;
                         const innerArrayHeader = element.querySelector('[data-array-header]') as HTMLElement | null;
                         
@@ -744,19 +752,21 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'text':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            {...(isPrimitiveSection 
-                                ? { placeholder: getFieldLabel(field.label, field.required) }
-                                : { label: getFieldLabel(field.label, field.required) }
-                            )}
-                            variant="outlined"
-                            size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                {...(isPrimitiveSection 
+                                    ? { placeholder: getFieldLabel(field.label, field.required) }
+                                    : { label: getFieldLabel(field.label, field.required) }
+                                )}
+                                variant="outlined"
+                                size="small"
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -764,21 +774,23 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'textarea':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            multiline
-                            maxRows={4}
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            {...(isPrimitiveSection 
-                                ? { placeholder: getFieldLabel(field.label, field.required) }
-                                : { label: getFieldLabel(field.label, field.required) }
-                            )}
-                            variant="outlined"
-                            size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                multiline
+                                maxRows={4}
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                {...(isPrimitiveSection 
+                                    ? { placeholder: getFieldLabel(field.label, field.required) }
+                                    : { label: getFieldLabel(field.label, field.required) }
+                                )}
+                                variant="outlined"
+                                size="small"
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -786,45 +798,47 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'number':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="number"
-                            value={value === null || value === undefined ? '' : value}
-                            onChange={(e) => {
-                                const input = e.target.value;
-                                if (input === '' || input === '-' || input === '.' || input === '-.') {
-                                    onChange(input);
-                                } else {
-                                    const numValue = parseFloat(input);
-                                    onChange(isNaN(numValue) ? input : numValue);
-                                }
-                            }}
-                            onFocus={() => onFieldFocus?.(fieldKey)}
-                            onBlur={(e) => {
-                                const input = e.target.value;
-                                if (input === '' || input === '-' || input === '.' || input === '-.') {
-                                    onChange('');
-                                } else {
-                                    const numValue = parseFloat(input);
-                                    onChange(isNaN(numValue) ? '' : numValue);
-                                }
-                                onFieldBlur?.();
-                            }}
-                            {...(isPrimitiveSection 
-                                ? { placeholder: getFieldLabel(field.label, field.required) }
-                                : { label: getFieldLabel(field.label, field.required) }
-                            )}
-                            variant="outlined"
-                            size="small"
-                            inputProps={{
-                                step: 'any'
-                            }}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="number"
+                                value={value === null || value === undefined ? '' : value}
+                                onChange={(e) => {
+                                    const input = e.target.value;
+                                    if (input === '' || input === '-' || input === '.' || input === '-.') {
+                                        onChange(input);
+                                    } else {
+                                        const numValue = parseFloat(input);
+                                        onChange(isNaN(numValue) ? input : numValue);
+                                    }
+                                }}
+                                onFocus={() => onFieldFocus?.(fieldKey)}
+                                onBlur={(e) => {
+                                    const input = e.target.value;
+                                    if (input === '' || input === '-' || input === '.' || input === '-.') {
+                                        onChange('');
+                                    } else {
+                                        const numValue = parseFloat(input);
+                                        onChange(isNaN(numValue) ? '' : numValue);
+                                    }
+                                    onFieldBlur?.();
+                                }}
+                                {...(isPrimitiveSection 
+                                    ? { placeholder: getFieldLabel(field.label, field.required) }
+                                    : { label: getFieldLabel(field.label, field.required) }
+                                )}
+                                variant="outlined"
+                                size="small"
+                                inputProps={{
+                                    step: 'any'
+                                }}
+                                error={hasError}
+                                helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                    <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                                ) : undefined}
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -832,45 +846,47 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'integer':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="number"
-                            value={value === null || value === undefined ? '' : value}
-                            onChange={(e) => {
-                                const input = e.target.value;
-                                if (input === '' || input === '-') {
-                                    onChange(input);
-                                } else {
-                                    const intValue = parseInt(input, 10);
-                                    onChange(isNaN(intValue) ? input : intValue);
-                                }
-                            }}
-                            onFocus={() => onFieldFocus?.(fieldKey)}
-                            onBlur={(e) => {
-                                const input = e.target.value;
-                                if (input === '' || input === '-') {
-                                    onChange('');
-                                } else {
-                                    const intValue = parseInt(input, 10);
-                                    onChange(isNaN(intValue) ? '' : intValue);
-                                }
-                                onFieldBlur?.();
-                            }}
-                            {...(isPrimitiveSection 
-                                ? { placeholder: getFieldLabel(field.label, field.required) }
-                                : { label: getFieldLabel(field.label, field.required) }
-                            )}
-                            variant="outlined"
-                            size="small"
-                            inputProps={{
-                                step: 1
-                            }}
-                            error={hasError}
-                            helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
-                                <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
-                            ) : undefined}
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="number"
+                                value={value === null || value === undefined ? '' : value}
+                                onChange={(e) => {
+                                    const input = e.target.value;
+                                    if (input === '' || input === '-') {
+                                        onChange(input);
+                                    } else {
+                                        const intValue = parseInt(input, 10);
+                                        onChange(isNaN(intValue) ? input : intValue);
+                                    }
+                                }}
+                                onFocus={() => onFieldFocus?.(fieldKey)}
+                                onBlur={(e) => {
+                                    const input = e.target.value;
+                                    if (input === '' || input === '-') {
+                                        onChange('');
+                                    } else {
+                                        const intValue = parseInt(input, 10);
+                                        onChange(isNaN(intValue) ? '' : intValue);
+                                    }
+                                    onFieldBlur?.();
+                                }}
+                                {...(isPrimitiveSection 
+                                    ? { placeholder: getFieldLabel(field.label, field.required) }
+                                    : { label: getFieldLabel(field.label, field.required) }
+                                )}
+                                variant="outlined"
+                                size="small"
+                                inputProps={{
+                                    step: 1
+                                }}
+                                error={hasError}
+                                helperText={hasError && isFieldFocused && errorMessages.length > 0 ? (
+                                    <span>{errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}</span>
+                                ) : undefined}
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -878,30 +894,32 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'date':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="date"
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            label={getFieldLabel(field.label, field.required)}
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            InputProps={{
-                                startAdornment: (
-                                    <CalendarTodayIcon sx={{ fontSize: 20, color: '#ffffff', mr: 1 }} />
-                                ),
-                            }}
-                            sx={{
-                                ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
-                                flex: 1, minWidth: 0, maxWidth: '100%',
-                                '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                                    filter: 'invert(1)',
-                                    cursor: 'pointer'
-                                }
-                            }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="date"
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                label={getFieldLabel(field.label, field.required)}
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{ shrink: true }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <CalendarTodayIcon sx={{ fontSize: 20, color: '#ffffff', mr: 1 }} />
+                                    ),
+                                }}
+                                sx={{
+                                    ...getFieldStyles(field.required, isRequiredAndEmpty, hasError),
+                                    width: '100%',
+                                    '& input[type="date"]::-webkit-calendar-picker-indicator': {
+                                        filter: 'invert(1)',
+                                        cursor: 'pointer'
+                                    }
+                                }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -909,18 +927,20 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'datetime':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="datetime-local"
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            label={getFieldLabel(field.label, field.required)}
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="datetime-local"
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                label={getFieldLabel(field.label, field.required)}
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{ shrink: true }}
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -928,18 +948,20 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'time':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="time"
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            label={getFieldLabel(field.label, field.required)}
-                            variant="outlined"
-                            size="small"
-                            InputLabelProps={{ shrink: true }}
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="time"
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                label={getFieldLabel(field.label, field.required)}
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{ shrink: true }}
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -947,20 +969,22 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'email':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="email"
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            {...(isPrimitiveSection 
-                                ? { placeholder: getFieldLabel(field.label, field.required) }
-                                : { label: getFieldLabel(field.label, field.required) }
-                            )}
-                            variant="outlined"
-                            size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="email"
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                {...(isPrimitiveSection 
+                                    ? { placeholder: getFieldLabel(field.label, field.required) }
+                                    : { label: getFieldLabel(field.label, field.required) }
+                                )}
+                                variant="outlined"
+                                size="small"
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -968,20 +992,22 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'url':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <TextField
-                            fullWidth={false}
-                            type="url"
-                            value={value || ''}
-                            onChange={(e) => onChange(e.target.value)}
-                            {...(isPrimitiveSection 
-                                ? { placeholder: getFieldLabel(field.label, field.required) }
-                                : { label: getFieldLabel(field.label, field.required) }
-                            )}
-                            variant="outlined"
-                            size="small"
-                            sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), flex: 1, minWidth: 0, maxWidth: '100%' }}
-                            {...commonProps}
-                        />
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <TextField
+                                fullWidth={false}
+                                type="url"
+                                value={value || ''}
+                                onChange={(e) => onChange(e.target.value)}
+                                {...(isPrimitiveSection 
+                                    ? { placeholder: getFieldLabel(field.label, field.required) }
+                                    : { label: getFieldLabel(field.label, field.required) }
+                                )}
+                                variant="outlined"
+                                size="small"
+                                sx={{ ...getFieldStyles(field.required, isRequiredAndEmpty, hasError), width: '100%' }}
+                                {...commonProps}
+                            />
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
@@ -989,32 +1015,34 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
             case 'select':
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <FormControl size="small" error={hasError} sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
-                            <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
-                                {getFieldLabel(field.label, field.required)}
-                            </InputLabel>
-                            <Select
-                                value={value || ''}
-                                label={getFieldLabel(field.label, field.required)}
-                                onChange={(e) => onChange(e.target.value)}
-                                sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
-                                {...commonProps}
-                            >
-                                <MenuItem value="">
-                                    <em>Empty</em>
-                                </MenuItem>
-                                {field.options?.map((option) => (
-                                    <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
+                        <Box data-field-target="true" sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+                            <FormControl size="small" error={hasError} sx={{ width: '100%' }}>
+                                <InputLabel sx={getFormControlLabelStyles(field.required, hasError)}>
+                                    {getFieldLabel(field.label, field.required)}
+                                </InputLabel>
+                                <Select
+                                    value={value || ''}
+                                    label={getFieldLabel(field.label, field.required)}
+                                    onChange={(e) => onChange(e.target.value)}
+                                    sx={getFieldStyles(field.required, isRequiredAndEmpty, hasError)}
+                                    {...commonProps}
+                                >
+                                    <MenuItem value="">
+                                        <em>Empty</em>
                                     </MenuItem>
-                                ))}
-                            </Select>
-                            {hasError && isFieldFocused && errorMessages.length > 0 && (
-                                <FormHelperText>
-                                    {errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}
-                                </FormHelperText>
-                            )}
-                        </FormControl>
+                                    {field.options?.map((option) => (
+                                        <MenuItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                                {hasError && isFieldFocused && errorMessages.length > 0 && (
+                                    <FormHelperText>
+                                        {errorMessages.map((msg, i) => <div key={i}>{msg}</div>)}
+                                    </FormHelperText>
+                                )}
+                            </FormControl>
+                        </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
