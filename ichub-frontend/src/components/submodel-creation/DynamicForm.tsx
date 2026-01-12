@@ -99,6 +99,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     onChange,
     errors,
     fieldErrors = new Set(),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     directFieldErrors = new Set(),
     focusedField = null,
     onFieldFocus,
@@ -147,6 +148,10 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
     
     // State to control which main section is expanded (only one at a time, all collapsed by default)
     const [expandedPanel, setExpandedPanel] = useState<string | null>(null);
+
+    // State for array items expansion (global for all array sections)
+    // Key format: `${arrayKey}[${index}]` -> boolean
+    const [expandedArrayItems, setExpandedArrayItems] = useState<Record<string, boolean>>({});
 
     // Group fields by section using comprehensive interpreter data
     const groupedFields = formFields.reduce((acc, field) => {
@@ -1206,11 +1211,6 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                             />
                         </Box>
                         {getIconContainer(field.description, schemaPath, field.urn)}
-                                    }
-                                }}
-                            />
-                        </Box>
-                        {getIconContainer(field.description, schemaPath, field.urn)}
                     </Box>
                 );
 
@@ -2113,7 +2113,20 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     const simpleCount = arrayField.itemFields?.filter((f: any) => f.fieldCategory === 'simple').length || 0;
                     const complexCount = arrayField.itemFields?.filter((f: any) => f.fieldCategory === 'complex').length || 0;
                     
-                    const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+                    // Helper function to check if an array item is expanded
+                    const isArrayItemExpanded = (index: number): boolean => {
+                        const itemKey = `${arrayField.key}[${index}]`;
+                        return expandedArrayItems[itemKey] ?? true; // Default to expanded
+                    };
+                    
+                    // Helper function to toggle array item expansion
+                    const toggleArrayItemExpanded = (index: number) => {
+                        const itemKey = `${arrayField.key}[${index}]`;
+                        setExpandedArrayItems(prev => ({
+                            ...prev,
+                            [itemKey]: !(prev[itemKey] ?? true)
+                        }));
+                    };
                     
                     return (
                         <Accordion
@@ -2268,7 +2281,7 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                 ) : (
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         {arrayValue.map((item: any, index: number) => {
-                                            const isExpanded = expandedItems[index] ?? true;
+                                            const isExpanded = isArrayItemExpanded(index);
                                             // Check if this specific item has errors (using directFieldErrors)
                                             const itemPath = `${arrayField.key}[${index}]`;
                                             const hasItemError = Array.from(directFieldErrors).some(errPath => 
@@ -2294,14 +2307,14 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                                                             <Box sx={{ flex: 1 }}>
                                                                 <Box 
                                                                     sx={{ 
-                                                                        display: 'flex', 
+                                                                        display: 'flex',
                                                                         alignItems: 'center', 
                                                                         gap: 1, 
                                                                         mb: 1,
                                                                         cursor: 'pointer',
                                                                         userSelect: 'none'
                                                                     }}
-                                                                    onClick={() => setExpandedItems(prev => ({ ...prev, [index]: !isExpanded }))}
+                                                                    onClick={() => toggleArrayItemExpanded(index)}
                                                                 >
                                                                     <ExpandMoreIcon 
                                                                         sx={{ 
