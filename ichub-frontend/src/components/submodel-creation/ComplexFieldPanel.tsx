@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import { FormField } from '../../schemas/json-schema-interpreter';
 import CustomTooltip from './CustomTooltip';
+import { createInitialArrayItem } from '../../utils/schemaUtils';
 
 interface ComplexFieldPanelProps {
     field: FormField;
@@ -266,7 +267,12 @@ const ComplexFieldPanel: React.FC<ComplexFieldPanelProps> = ({
         };
         
         const addArrayItem = () => {
-            const newItem = field.itemType === 'object' ? {} : '';
+            // Create new item with properly initialized structure
+            // For object items, initialize all fields with appropriate empty values
+            // This ensures required field validation works from the moment the item is created
+            const newItem = field.itemType === 'object' 
+                ? createInitialArrayItem(field.itemFields) 
+                : '';
             onChange([...arrayValue, newItem]);
         };
         

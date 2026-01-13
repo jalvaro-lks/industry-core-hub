@@ -1059,17 +1059,24 @@ export function interpretJSONSchema(schema: JSONSchema): {
           value.forEach((item: any, index: number) => {
             const itemPath = `${currentPath}[${index}]`;
             
-            // For array items, check if at least one field has a value
-            // Only validate required fields if the item has some content
-            const hasAnyItemFieldValue = field.itemFields!.some(itemField => {
-              const keyParts = itemField.key.split('.');
-              const simpleKey = keyParts[keyParts.length - 1].replace(/\[item\]/g, '');
-              const itemValue = item?.[simpleKey];
-              return !isEmpty(itemValue);
-            });
+            // Check if the item has been explicitly created (has structure/keys defined)
+            // An item is considered "created" if:
+            // 1. It's an object with any keys (even if values are empty), OR
+            // 2. It's not an empty string/null/undefined (for primitive arrays)
+            const isItemCreated = (() => {
+              if (item === undefined || item === null) return false;
+              if (typeof item === 'object' && !Array.isArray(item)) {
+                // For objects, consider created if it has any keys
+                // This handles both {} and initialized structures like { name: '', id: '' }
+                return Object.keys(item).length > 0;
+              }
+              // For primitives, only skip if completely empty
+              return item !== '';
+            })();
             
-            // If no field has a value in this item, skip validation
-            if (!hasAnyItemFieldValue) {
+            // Skip validation only for items that don't exist or are completely uninitialized
+            // This allows validation of items with initialized structure but empty values
+            if (!isItemCreated) {
               return;
             }
             
@@ -1108,11 +1115,16 @@ export function interpretJSONSchema(schema: JSONSchema): {
         }
 
         // Check if this is an optional parent (not required)
-        // If so, only validate required children if at least one child has a value
+        // If so, only validate required children if:
+        // 1. At least one child has a value, OR
+        // 2. The object has been explicitly initialized with keys (structure defined)
         const isOptionalParent = !field.required;
         
         if (isOptionalParent) {
-          // Check if any child has a value
+          // Check if the object has been explicitly created (has structure/keys defined)
+          const hasObjectStructure = Object.keys(value).length > 0;
+          
+          // Check if any child has a non-empty value
           const hasAnyChildValue = field.objectFields.some(objField => {
             const keyParts = objField.key.split('.');
             const simpleKey = keyParts[keyParts.length - 1];
@@ -1120,8 +1132,9 @@ export function interpretJSONSchema(schema: JSONSchema): {
             return !isEmpty(objValue);
           });
           
-          // If no child has a value, skip validation of required children
-          if (!hasAnyChildValue) {
+          // If no child has a value AND the object has no structure, skip validation
+          // But if the object was explicitly initialized (has keys), validate it
+          if (!hasAnyChildValue && !hasObjectStructure) {
             return;
           }
         }

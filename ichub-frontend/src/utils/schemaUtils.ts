@@ -210,6 +210,65 @@ export function hasRequiredFields(schema: SchemaDefinition | null): boolean {
 }
 
 /**
+ * Creates an initial object for an array item based on its itemFields definition.
+ * This ensures that when a new array item is created, all its fields are properly
+ * initialized with empty values, making them visible in JSON Preview and enabling
+ * proper validation of required fields from the moment the item is created.
+ * 
+ * @param itemFields - Array of FormField definitions for the array item
+ * @returns An object with all fields initialized to appropriate empty values
+ * 
+ * @example
+ * // For itemFields: [{ key: 'name', type: 'text' }, { key: 'count', type: 'number' }]
+ * // Returns: { name: '', count: null }
+ */
+export function createInitialArrayItem(itemFields: FormField[] | undefined): Record<string, any> {
+    if (!itemFields || itemFields.length === 0) {
+        return {};
+    }
+    
+    const initialItem: Record<string, any> = {};
+    
+    for (const field of itemFields) {
+        // Extract the simple key (last segment of the path)
+        const keyParts = field.key.split('.');
+        const simpleKey = keyParts[keyParts.length - 1].replace(/\[item\]/g, '');
+        
+        // Initialize based on field type
+        switch (field.type) {
+            case 'array':
+                // Initialize arrays as empty - items will be added by user interaction
+                // If the array has itemFields defined (for object arrays), we don't pre-populate
+                // since that would create items the user didn't explicitly add
+                initialItem[simpleKey] = [];
+                break;
+            case 'object':
+                // Recursively initialize nested objects with their fields
+                if (field.objectFields && field.objectFields.length > 0) {
+                    initialItem[simpleKey] = createInitialArrayItem(field.objectFields);
+                } else {
+                    initialItem[simpleKey] = {};
+                }
+                break;
+            case 'number':
+            case 'integer':
+                // Use null for numbers to distinguish "not set" from 0
+                initialItem[simpleKey] = null;
+                break;
+            case 'checkbox':
+                // Use null for booleans to distinguish "not set" from false
+                initialItem[simpleKey] = null;
+                break;
+            default:
+                // Text, select, date, datetime, time, email, url, textarea etc. get empty string
+                initialItem[simpleKey] = '';
+        }
+    }
+    
+    return initialItem;
+}
+
+/**
  * Gets field count statistics for a schema
  * @param schema - The schema definition
  * @returns Object with total, required, and optional field counts

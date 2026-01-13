@@ -62,6 +62,7 @@ import {
 import { SchemaDefinition } from '../../schemas';
 import { FormField as BaseFormField } from '../../schemas/json-schema-interpreter';
 import { generatePatternExample, hasPatternExample, getPatternDescription } from '../../utils/patternExampleGenerator';
+import { createInitialArrayItem } from '../../utils/schemaUtils';
 
 // Extend FormField to allow urn property for UI logic
 type FormField = BaseFormField & { urn?: string };
@@ -2091,7 +2092,12 @@ const DynamicForm = forwardRef<DynamicFormRef, DynamicFormProps>(({
                     }, 0);
                     
                     const addArrayItem = () => {
-                        const newItem = arrayField.itemType === 'object' ? {} : '';
+                        // Create new item with properly initialized structure
+                        // For object items, initialize all fields with appropriate empty values
+                        // This ensures required field validation works from the moment the item is created
+                        const newItem = arrayField.itemType === 'object' 
+                            ? createInitialArrayItem(arrayField.itemFields) 
+                            : '';
                         const newValue = [...arrayValue, newItem];
                         const newData = setValueByPath(data, arrayField.key, newValue);
                         onChange(newData, arrayField.key);
