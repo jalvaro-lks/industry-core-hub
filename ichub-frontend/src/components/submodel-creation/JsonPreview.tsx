@@ -47,6 +47,7 @@ import {
     Download as DownloadIcon
 } from '@mui/icons-material';
 import { downloadJson } from '../../utils/downloadJson';
+import { cleanJsonForPreview, hasContent } from '../../utils/cleanJsonForPreview';
 
 interface JsonPreviewProps {
     data: any;
@@ -58,18 +59,21 @@ interface JsonPreviewProps {
 
 
 const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigateToField, interactive = false }) => {
-    // Función para copiar el JSON mostrado
+    // Clean the data for preview - removes empty values, null, empty objects/arrays
+    const cleanedData = useMemo(() => cleanJsonForPreview(data), [data]);
+    
+    // Función para copiar el JSON mostrado (uses cleaned data)
     const handleCopyJson = () => {
-        const jsonString = JSON.stringify(data, null, 2);
+        const jsonString = JSON.stringify(cleanedData, null, 2);
         navigator.clipboard.writeText(jsonString).then(() => {
             setCopySuccess(true);
             setTimeout(() => setCopySuccess(false), 2000);
         });
     };
 
-    // Función para descargar el JSON mostrado
+    // Función para descargar el JSON mostrado (uses cleaned data)
     const handleDownloadJson = () => {
-        downloadJson(data, 'submodel.json');
+        downloadJson(cleanedData, 'submodel.json');
     };
     const [errorsExpanded, setErrorsExpanded] = useState(false);
     const [hoveredLine, setHoveredLine] = useState<number | null>(null);
@@ -78,8 +82,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
     const [clickedAddress, setClickedAddress] = useState<string>('');
 
     // Lógica de generación dinámica de preview JSON
-    // Extrae las secciones (claves de primer nivel) del objeto data
-    // y las muestra siempre, aunque estén vacías
+    // Now uses cleanedData which only contains non-empty values
 
     // Utilidad para escapar caracteres especiales en strings JSON
     function escapeJsonString(str: string) {
@@ -228,7 +231,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
         return [{ line: String(value), address: path }];
     }
 
-    const jsonLinesWithAddress = useMemo(() => buildJsonLinesWithAddress(data), [data]);
+    const jsonLinesWithAddress = useMemo(() => buildJsonLinesWithAddress(cleanedData), [cleanedData]);
 
     // Función para colorear cada línea (imitando VSCode)
     const highlightJsonLine = (line: string) => {
@@ -290,8 +293,8 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
     };
 
     const hasErrors = errors.length > 0;
-    // Hay datos si hay al menos una sección
-    const hasData = jsonLinesWithAddress.length > 0;
+    // Check if there's meaningful data to display (using cleaned data)
+    const hasData = hasContent(cleanedData);
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -616,7 +619,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                         <Chip
-                            label={`${Object.keys(data).length} top-level fields`}
+                            label={`${Object.keys(cleanedData).length} top-level fields`}
                             size="small"
                             variant="outlined"
                             sx={{
@@ -627,7 +630,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                             }}
                         />
                         <Chip
-                            label={`${JSON.stringify(data, null, 2).length} characters`}
+                            label={`${JSON.stringify(cleanedData, null, 2).length} characters`}
                             size="small"
                             variant="outlined"
                             sx={{
