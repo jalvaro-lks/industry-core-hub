@@ -84,12 +84,12 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
     // Lógica de generación dinámica de preview JSON
     // Now uses cleanedData which only contains non-empty values
 
-    // Utilidad para escapar caracteres especiales en strings JSON
+    // Utility to escape special characters in JSON strings
     function escapeJsonString(str: string) {
         return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
     }
 
-    // Formatea un valor como JSON (string, number, boolean, null, objeto, array)
+    // Formats a value as JSON (string, number, boolean, null, object, array)
     function formatJsonValue(value: any, indent: number): string[] {
         const pad = (n: number) => '  '.repeat(n);
         if (value === null) return ['null'];
@@ -120,14 +120,14 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                 }
                 if (idx < keys.length - 1) lines[lines.length - 1] += ',';
             });
-            // Cambia: la llave de cierre debe estar alineada con la apertura del objeto (indent + 1 si es objeto anidado, indent si es raíz)
+            // Change: closing brace should be aligned with the object opening (indent + 1 if nested object, indent if root)
             lines.push(pad(indent) + '}');
             return lines;
         }
         return [String(value)];
     }
 
-    // Construye las líneas del preview, una por sección (clave de primer nivel)
+    // Builds preview lines, one per section (top-level key)
     function buildJsonPreviewLines(data: any): { section: string, lines: string[], path: string }[] {
         if (!data || typeof data !== 'object') return [];
         const keys = Object.keys(data);
@@ -144,13 +144,13 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                 } else if (valueLines.length === 1 && valueLines[0] === '[]') {
                     lines = [section + ': []'];
                 } else {
-                    // Primera línea: section: {
+                    // First line: section: {
                     lines = [section + ': ' + valueLines[0]];
-                    // Resto de líneas (si hay)
+                    // Rest of lines (if any)
                     for (let i = 1; i < valueLines.length; i++) {
-                        // Para la llave/corchete de cierre, si es la última línea y es '}' o ']', quitar indent extra
+                        // For closing brace/bracket, if it's the last line and is '}' or ']', remove extra indent
                         if ((i === valueLines.length - 1) && (/^\s*[}\]]$/.test(valueLines[i]))) {
-                            // El label de sección no tiene indentación, así que la llave de cierre tampoco
+                            // Section label has no indentation, so closing brace shouldn't either
                             lines.push(valueLines[i].replace(/^\s+/, ''));
                         } else {
                             lines.push(valueLines[i]);
@@ -162,21 +162,21 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
         });
     }
 
-    // Construir las líneas del preview con paths para navegación en atributos
+    // Build preview lines with paths for attribute navigation
     function buildJsonLinesWithAddress(data: any): { line: string, address: string | null, section: string }[] {
         const result: { line: string, address: string | null, section: string }[] = [];
         if (!data || typeof data !== 'object') return result;
         const keys = Object.keys(data);
         keys.forEach(section => {
             const value = data[section];
-            // Si la sección está vacía
+            // If the section is empty
             if (value === undefined || value === null || (typeof value === 'object' && Object.keys(value).length === 0 && !Array.isArray(value))) {
                 result.push({ line: section + ': {}', address: section, section });
             } else {
-                // Sección con contenido
-                // Recursivo para aplanar líneas y asociar paths
+                // Section with content
+                // Recursive to flatten lines and associate paths
                 const valueLines = formatJsonValueWithPath(value, 0, section);
-                // Primera línea: section: {
+                // First line: section: {
                 result.push({ line: section + ': ' + valueLines[0].line, address: valueLines[0].address, section });
                 for (let i = 1; i < valueLines.length; i++) {
                     result.push({ ...valueLines[i], section });
@@ -186,12 +186,12 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
         return result;
     }
 
-    // Formatea un valor como JSON y asocia path a cada línea navegable
+    // Formats a value as JSON and associates a path to each navigable line
     function formatJsonValueWithPath(value: any, indent: number, path: string): { line: string, address: string | null }[] {
         const pad = (n: number) => '  '.repeat(n);
         if (value === null) return [{ line: 'null', address: path }];
         if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-            // Valor primitivo: navegable
+            // Primitive value: navigable
             return [{ line: (typeof value === 'string' ? '"' + escapeJsonString(value) + '"' : String(value)), address: path }];
         }
         if (Array.isArray(value)) {
@@ -200,7 +200,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
             value.forEach((item, idx) => {
                 const itemPath = path + '[' + idx + ']';
                 const itemLines = formatJsonValueWithPath(item, indent + 1, itemPath);
-                // La línea de apertura del item (si es objeto o array) será navegable con su path
+                // The opening line of the item (if object or array) will be navigable with its path
                 itemLines[0].line = pad(indent + 1) + itemLines[0].line;
                 lines.push(...itemLines.map((l, i) => (i === 0 ? l : { ...l, line: pad(indent + 1) + l.line } )));
                 if (idx < value.length - 1) lines[lines.length - 1].line += ',';
@@ -216,7 +216,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                 const val = value[key];
                 const valPath = path + '.' + key;
                 const valLines = formatJsonValueWithPath(val, indent + 1, valPath);
-                // La línea de apertura del objeto/array hijo también es navegable
+                // The opening line of the child object/array is also navigable
                 let firstLine = { line: pad(indent + 1) + '"' + escapeJsonString(key) + '": ' + valLines[0].line, address: valPath };
                 lines.push(firstLine);
                 for (let i = 1; i < valLines.length; i++) {
@@ -224,7 +224,7 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
                 }
                 if (idx < keys.length - 1) lines[lines.length - 1].line += ',';
             });
-            // Cierre alineado
+            // Aligned closing
             lines.push({ line: pad(indent) + '}', address: path });
             return lines;
         }
@@ -233,15 +233,15 @@ const JsonPreview: React.FC<JsonPreviewProps> = ({ data, errors = [], onNavigate
 
     const jsonLinesWithAddress = useMemo(() => buildJsonLinesWithAddress(cleanedData), [cleanedData]);
 
-    // Función para colorear cada línea (imitando VSCode)
+    // Function to colorize each line (imitating VSCode)
     const highlightJsonLine = (line: string) => {
         let html = line
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-        // Resalta el label de sección (al inicio de línea, antes de los dos puntos)
+        // Highlight section label (at line start, before colon)
         html = html.replace(/^([a-zA-Z0-9_\-]+)(:)/, (m, p1, p2) => `<span style=\"color:#9CDCFE\">${p1}</span>${p2}`);
-        // Resalta claves normales
+        // Highlight normal keys
         html = html.replace(/("[^"]+?")(?=\s*:)/g, (m) => `<span style=\"color:#9CDCFE\">${m}</span>`);
         html = html.replace(/(:\s*)"(.*?)"/g, (m, p1, p2) => `${p1}<span style=\"color:#CE9178\">"${p2}"</span>`);
         html = html.replace(/(:\s*)(-?\d+(?:\.\d+)?)/g, (m, p1, p2) => `${p1}<span style=\"color:#B5CEA8\">${p2}</span>`);

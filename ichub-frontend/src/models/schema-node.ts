@@ -1,37 +1,42 @@
-/**
- * Modelo de datos tipo árbol para representar la estructura completa de un JSON Schema.
- * 
- * Este modelo es la fuente única de verdad para:
- * - Renderizado del formulario
- * - Validación de datos
- * - Gestión de errores
- * - Navegación por identificadores
- * - Visualización de reglas
- * 
- * Cada nodo del árbol representa un atributo del schema con:
- * - Identificador único determinista
- * - Tipo de dato y categoría
- * - Reglas de validación asociadas
- * - Hijos (si es objeto o array)
- * - Metadata para renderizado y UX
- */
+/********************************************************************************
+ * Eclipse Tractus-X - Industry Core Hub Frontend
+ *
+ * Copyright (c) 2025 LKS Next
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the
+ * License for the specific language govern in permissions and limitations
+ * under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
 
 import { FieldIdentifier } from '../utils/field-identifier';
 
 /**
- * Tipo de nodo según la estructura del schema
+ * Node type according to schema structure
  */
 export enum NodeType {
-  /** Valor primitivo: string, number, boolean, etc. */
+  /** Primitive value: string, number, boolean, etc. */
   PRIMITIVE = 'primitive',
-  /** Objeto con propiedades anidadas */
+  /** Object with nested properties */
   OBJECT = 'object',
-  /** Array de elementos (primitivos u objetos) */
+  /** Array of elements (primitives or objects) */
   ARRAY = 'array'
 }
 
 /**
- * Tipo de dato primitivo
+ * Primitive data type
  */
 export enum PrimitiveType {
   STRING = 'string',
@@ -51,32 +56,32 @@ export enum PrimitiveType {
 }
 
 /**
- * Reglas de validación asociadas a un nodo
+ * Validation rules associated with a node
  */
 export interface ValidationRules {
-  // Reglas numéricas
+  // Numeric rules
   min?: number;
   max?: number;
   exclusiveMin?: boolean;
   exclusiveMax?: boolean;
   multipleOf?: number;
 
-  // Reglas de string
+  // String rules
   minLength?: number;
   maxLength?: number;
   pattern?: string;
   format?: string;
 
-  // Reglas de array
+  // Array rules
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
 
-  // Reglas de enum/const
+  // Enum/const rules
   enum?: any[];
   const?: any;
 
-  // Reglas personalizadas adicionales
+  // Additional custom rules
   custom?: {
     rule: string;
     message: string;
@@ -85,161 +90,139 @@ export interface ValidationRules {
 }
 
 /**
- * Nodo del árbol de schema
- * Representa un atributo en cualquier nivel de la jerarquía
+ * Schema tree node
+ * Represents an attribute at any level of the hierarchy
  */
 export interface SchemaNode {
-  /** Identificador único: "user.emails[0].value" */
+  /** Unique identifier: "user.emails[0].value" */
   id: string;
-
-  /** Nombre de la propiedad sin path: "value" */
+  /** Property name without path: "value" */
   key: string;
-
-  /** Label legible para el usuario */
+  /** User-readable label */
   label: string;
-
-  /** Tipo de nodo: primitive, object, array */
+  /** Node type: primitive, object, array */
   nodeType: NodeType;
-
-  /** Tipo primitivo específico (solo si nodeType === PRIMITIVE) */
+  /** Specific primitive type (only if nodeType === PRIMITIVE) */
   primitiveType?: PrimitiveType;
-
-  /** Descripción del campo */
+  /** Field description */
   description?: string;
-
-  /** URN semántico (SAMM extension) */
+  /** Semantic URN (SAMM extension) */
   urn?: string;
-
-  /** Si el campo es requerido */
+  /** Whether the field is required */
   required: boolean;
-
-  /** Reglas de validación asociadas */
+  /** Associated validation rules */
   validationRules?: ValidationRules;
-
-  /** Valor por defecto */
+  /** Default value */
   defaultValue?: any;
-
-  /** Opciones para enums/select */
+  /** Options for enums/select */
   options?: Array<{ value: any; label: string }>;
-
-  /** Profundidad en el árbol (0 = raíz) */
+  /** Depth in the tree (0 = root) */
   depth: number;
-
-  /** Identificador del nodo padre */
+  /** Parent node identifier */
   parentId: string | null;
-
-  /** Path de la sección/grupo al que pertenece */
+  /** Path of the section/group it belongs to */
   section: string;
-
-  // --- Para nodos OBJECT ---
-  /** Propiedades del objeto (mapa key -> child node) */
+  // --- For OBJECT nodes ---
+  /** Object properties (map key -> child node) */
   properties?: Map<string, SchemaNode>;
-
-  // --- Para nodos ARRAY ---
-  /** Tipo de elementos que contiene el array */
+  // --- For ARRAY nodes ---
+  /** Type of elements contained in the array */
   itemType?: 'primitive' | 'object' | 'array';
-  
-  /** Schema del elemento del array (template para crear items) */
+  /** Array element schema (template to create items) */
   itemSchema?: SchemaNode;
-
-  /** Restricciones de cardinalidad del array */
+  /** Array cardinality constraints */
   arrayConstraints?: {
     minItems?: number;
     maxItems?: number;
     uniqueItems?: boolean;
   };
-
-  // --- Metadata para renderizado ---
-  /** Si es una sección de primer nivel */
+  // --- Metadata for rendering ---
+  /** Whether it is a top-level section */
   isTopLevel: boolean;
-
-  /** Orden de renderizado */
+  /** Rendering order */
   order: number;
-
-  /** Si debe mostrarse colapsado por defecto */
+  /** Whether it should be collapsed by default */
   collapsedByDefault?: boolean;
-
-  /** Placeholder para el input */
+  /** Placeholder for the input */
   placeholder?: string;
-
-  /** Hints visuales adicionales */
+  /** Additional visual hints */
   helpText?: string;
 }
 
 /**
- * Error de validación estructurado
+ * Structured validation error
  */
 export interface ValidationError {
-  /** Identificador del campo con error: "user.emails[0].value" */
+  /** Field identifier with error: "user.emails[0].value" */
   fieldId: string;
 
-  /** Mensaje de error legible */
+  /** Readable error message */
   message: string;
 
-  /** Regla de validación violada */
+  /** Violated validation rule */
   rule: string;
 
-  /** Severidad del error */
+  /** Error severity */
   severity: 'error' | 'warning';
 
-  /** Valor que causó el error */
+  /** Value that caused the error */
   value?: any;
 
-  /** Path del array padre si aplica: "user.emails" */
+  /** Parent array path if applicable: "user.emails" */
   arrayPath?: string;
 
-  /** Índice del elemento en el array si aplica */
+  /** Element index in the array if applicable */
   arrayIndex?: number;
 
-  /** Identificador de la sección afectada */
+  /** Affected section identifier */
   section: string;
 
-  /** Timestamp del error */
+  /** Error timestamp */
   timestamp: number;
 }
 
 /**
- * Resultado de validación de un árbol completo
+ * Validation result of a complete tree
  */
 export interface ValidationResult {
-  /** Si el schema completo es válido */
+  /** Whether the complete schema is valid */
   isValid: boolean;
 
-  /** Array de todos los errores encontrados */
+  /** Array of all errors found */
   errors: ValidationError[];
 
-  /** Mapa rápido: fieldId -> errores de ese campo */
+  /** Quick map: fieldId -> errors of that field */
   errorsByField: Map<string, ValidationError[]>;
 
-  /** Set de fieldIds con errores (lookup O(1)) */
+  /** Set of fieldIds with errors (lookup O(1)) */
   fieldsWithErrors: Set<string>;
 
-  /** Array de secciones con errores */
+  /** Array of sections with errors */
   sectionsWithErrors: string[];
 }
 
 /**
- * Opciones para construcción del árbol
+ * Options for tree construction
  */
 export interface SchemaTreeOptions {
-  /** Profundidad máxima permitida */
+  /** Maximum allowed depth */
   maxDepth?: number;
 
-  /** Si debe incluir campos opcionales */
+  /** Whether to include optional fields */
   includeOptional?: boolean;
 
-  /** Prefijo para los IDs generados */
+  /** Prefix for generated IDs */
   idPrefix?: string;
 
-  /** Si debe colapsar objetos por defecto */
+  /** Whether to collapse objects by default */
   collapseObjectsByDefault?: boolean;
 
-  /** Si debe colapsar arrays por defecto */
+  /** Whether to collapse arrays by default */
   collapseArraysByDefault?: boolean;
 }
 
 /**
- * Builder para construir nodos del árbol de forma fluida
+ * Builder to construct tree nodes in a fluent way
  */
 export class SchemaNodeBuilder {
   private node: Partial<SchemaNode>;
@@ -371,18 +354,18 @@ export class SchemaNodeBuilder {
 }
 
 /**
- * Utilidades para trabajar con árboles de schema
+ * Utilities for working with schema trees
  */
 export class SchemaTreeUtils {
   /**
-   * Encuentra un nodo por su ID en el árbol
+   * Finds a node by its ID in the tree
    */
   static findNodeById(root: SchemaNode, id: string): SchemaNode | null {
     if (root.id === id) {
       return root;
     }
 
-    // Buscar en propiedades (objeto)
+    // Search in properties (object)
     if (root.properties) {
       for (const child of root.properties.values()) {
         const found = this.findNodeById(child, id);
@@ -390,7 +373,7 @@ export class SchemaTreeUtils {
       }
     }
 
-    // Buscar en itemSchema (array)
+    // Search in itemSchema (array)
     if (root.itemSchema) {
       const found = this.findNodeById(root.itemSchema, id);
       if (found) return found;
@@ -400,7 +383,7 @@ export class SchemaTreeUtils {
   }
 
   /**
-   * Obtiene todos los nodos descendientes de un nodo
+   * Gets all descendant nodes of a node
    */
   static getDescendants(node: SchemaNode): SchemaNode[] {
     const descendants: SchemaNode[] = [];
@@ -421,7 +404,7 @@ export class SchemaTreeUtils {
   }
 
   /**
-   * Obtiene todos los nodos primitivos del árbol
+   * Gets all primitive nodes of the tree
    */
   static getPrimitiveNodes(node: SchemaNode): SchemaNode[] {
     const primitives: SchemaNode[] = [];
@@ -444,7 +427,7 @@ export class SchemaTreeUtils {
   }
 
   /**
-   * Obtiene todos los nodos que son arrays
+   * Gets all nodes that are arrays
    */
   static getArrayNodes(node: SchemaNode): SchemaNode[] {
     const arrays: SchemaNode[] = [];
@@ -467,7 +450,7 @@ export class SchemaTreeUtils {
   }
 
   /**
-   * Obtiene el path de ancestros hasta un nodo
+   * Gets the ancestor path to a node
    */
   static getAncestorPath(root: SchemaNode, targetId: string): SchemaNode[] {
     const path: SchemaNode[] = [];
@@ -500,7 +483,7 @@ export class SchemaTreeUtils {
   }
 
   /**
-   * Calcula estadísticas del árbol
+   * Calculates tree statistics
    */
   static getTreeStats(root: SchemaNode): {
     totalNodes: number;
@@ -559,8 +542,8 @@ export class SchemaTreeUtils {
   }
 
   /**
-   * Convierte el árbol a una representación plana
-   * Útil para debugging y visualización
+   * Converts the tree to a flat representation
+   * Useful for debugging and visualization
    */
   static flatten(root: SchemaNode): Array<{
     id: string;

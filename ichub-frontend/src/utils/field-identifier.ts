@@ -1,18 +1,41 @@
+/********************************************************************************
+ * Eclipse Tractus-X - Industry Core Hub Frontend
+ *
+ * Copyright (c) 2025 LKS Next
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License, Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0.
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the
+ * License for the specific language govern in permissions and limitations
+ * under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+
 /**
- * Sistema de identificación única para atributos en estructuras JSON anidadas.
+ * Unique identification system for attributes in nested JSON structures.
  * 
- * Genera identificadores deterministas basados en la ruta del atributo:
- * - Objetos: notación punto (user.address.street)
- * - Arrays: notación índice (emails[0].value)
- * - Combinaciones: user.orders[0].items[1].sku
+ * Generates deterministic identifiers based on the attribute path:
+ * - Objects: dot notation (user.address.street)
+ * - Arrays: index notation (emails[0].value)
+ * - Combinations: user.orders[0].items[1].sku
  * 
  * @example
- * // Generar identificador
+ * // Generate identifier
  * FieldIdentifier.generate(['user', 'emails', 0, 'value'])
  * // => "user.emails[0].value"
  * 
  * @example
- * // Parsear identificador
+ * // Parse identifier
  * FieldIdentifier.parse('user.emails[0].value')
  * // => {
  * //   segments: ['user', 'emails', 'value'],
@@ -23,39 +46,39 @@
  */
 
 /**
- * Segmento de path que puede ser string o índice de array
+ * Path segment that can be a string or array index
  */
 export type PathSegment = string | number;
 
 /**
- * Resultado del parsing de un identificador
+ * Result of parsing an identifier
  */
 export interface ParsedIdentifier {
-  /** Segmentos del path sin índices: ['user', 'emails', 'value'] */
+  /** Path segments without indices: ['user', 'emails', 'value'] */
   segments: string[];
-  /** Índices de array por posición: [null, 0, null] */
+  /** Array indices by position: [null, 0, null] */
   indices: (number | null)[];
-  /** Paths completos de arrays: ['user.emails'] */
+  /** Complete array paths: ['user.emails'] */
   arrayPaths: string[];
-  /** Profundidad total del path */
+  /** Total path depth */
   depth: number;
-  /** Path original */
+  /** Original path */
   original: string;
-  /** Si el identificador apunta a un elemento de array */
+  /** Whether the identifier points to an array element */
   isArrayElement: boolean;
-  /** Path sin índices: user.emails.value */
+  /** Path without indices: user.emails.value */
   schemaPath: string;
 }
 
 /**
- * Clase principal para gestión de identificadores únicos de campos
+ * Main class for managing unique field identifiers
  */
 export class FieldIdentifier {
   /**
-   * Genera un identificador único a partir de segmentos de path
+   * Generates a unique identifier from path segments
    * 
-   * @param segments - Array de segmentos (strings o números para índices)
-   * @returns Identificador en formato "parent.child[0].property"
+   * @param segments - Array of segments (strings or numbers for indices)
+   * @returns Identifier in format "parent.child[0].property"
    * 
    * @example
    * FieldIdentifier.generate(['user', 'emails', 0, 'value'])
@@ -77,11 +100,11 @@ export class FieldIdentifier {
       const segment = segments[i];
 
       if (typeof segment === 'number') {
-        // Índice de array
+        // Array index
         identifier += `[${segment}]`;
         isNextAfterArray = true;
       } else {
-        // Propiedad de objeto
+        // Object property
         if (identifier && !isNextAfterArray) {
           identifier += '.';
         }
@@ -94,11 +117,11 @@ export class FieldIdentifier {
   }
 
   /**
-   * Genera un identificador de schema (sin índices concretos)
-   * Útil para matching y definición en el schema
+   * Generates a schema identifier (without concrete indices)
+   * Useful for matching and schema definition
    * 
-   * @param segments - Array de segmentos (strings o 'item' para arrays)
-   * @returns Identificador en formato "parent.child[item].property"
+   * @param segments - Array of segments (strings or 'item' for arrays)
+   * @returns Identifier in format "parent.child[item].property"
    * 
    * @example
    * FieldIdentifier.generateSchemaPath(['user', 'emails', 'item', 'value'])
@@ -111,10 +134,10 @@ export class FieldIdentifier {
   }
 
   /**
-   * Parsea un identificador para extraer sus componentes
+   * Parses an identifier to extract its components
    * 
-   * @param identifier - Identificador en formato "parent.child[0].property"
-   * @returns Objeto ParsedIdentifier con información estructurada
+   * @param identifier - Identifier in format "parent.child[0].property"
+   * @returns ParsedIdentifier object with structured information
    * 
    * @example
    * FieldIdentifier.parse('user.emails[0].value')
@@ -133,8 +156,8 @@ export class FieldIdentifier {
     const indices: (number | null)[] = [];
     const arrayPaths: string[] = [];
     
-    // Regex para capturar segmentos y arrays
-    // Captura: "property", "[index]", o ".property"
+    // Regex to capture segments and arrays
+    // Captures: "property", "[index]", or ".property"
     const pattern = /([^.\[\]]+)|\[(\d+)\]/g;
     let match: RegExpExecArray | null;
     let currentPath = '';
@@ -142,7 +165,7 @@ export class FieldIdentifier {
 
     while ((match = pattern.exec(identifier)) !== null) {
       if (match[1]) {
-        // Es un nombre de propiedad
+        // It's a property name
         segments.push(match[1]);
         indices.push(null);
         
@@ -152,11 +175,11 @@ export class FieldIdentifier {
         currentPath += match[1];
         lastWasArray = false;
       } else if (match[2]) {
-        // Es un índice de array
+        // It's an array index
         const index = parseInt(match[2], 10);
         indices[indices.length - 1] = index;
         
-        // Registrar el path del array
+        // Register the array path
         if (!arrayPaths.includes(currentPath)) {
           arrayPaths.push(currentPath);
         }
@@ -165,7 +188,7 @@ export class FieldIdentifier {
       }
     }
 
-    // Generar schemaPath (sin índices)
+    // Generate schemaPath (without indices)
     let schemaPath = '';
     for (let i = 0; i < segments.length; i++) {
       if (i > 0) {
@@ -186,12 +209,12 @@ export class FieldIdentifier {
   }
 
   /**
-   * Comprueba si un identificador coincide con un patrón
-   * Soporta wildcards para índices de array
+   * Checks if an identifier matches a pattern
+   * Supports wildcards for array indices
    * 
-   * @param identifier - Identificador concreto: "user.emails[0].value"
-   * @param pattern - Patrón con wildcards: "user.emails[*].value"
-   * @returns true si coincide
+   * @param identifier - Concrete identifier: "user.emails[0].value"
+   * @param pattern - Pattern with wildcards: "user.emails[*].value"
+   * @returns true if it matches
    * 
    * @example
    * FieldIdentifier.matches('user.emails[0].value', 'user.emails[*].value')
@@ -199,24 +222,24 @@ export class FieldIdentifier {
    * 
    * @example
    * FieldIdentifier.matches('user.emails[0].value', 'user.*.value')
-   * // => false (no soporta wildcards en propiedades)
+   * // => false (does not support wildcards in properties)
    */
   static matches(identifier: string, pattern: string): boolean {
-    // Convertir pattern a regex
-    // Escapar caracteres especiales excepto * y []
+    // Convert pattern to regex
+    // Escape special characters except * and []
     const escapedPattern = pattern
       .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\\\*/g, '\\d+'); // * se convierte en \d+
+      .replace(/\\\*/g, '\\d+'); // * converts to \d+
     
     const regex = new RegExp(`^${escapedPattern}$`);
     return regex.test(identifier);
   }
 
   /**
-   * Extrae el identificador padre de un identificador
+   * Extracts the parent identifier from an identifier
    * 
-   * @param identifier - Identificador completo
-   * @returns Identificador del padre o null si es raíz
+   * @param identifier - Complete identifier
+   * @returns Parent identifier or null if it's root
    * 
    * @example
    * FieldIdentifier.getParent('user.emails[0].value')
@@ -237,7 +260,7 @@ export class FieldIdentifier {
       return null;
     }
 
-    // Reconstruir sin el último segmento
+    // Rebuild without the last segment
     const parentSegments: PathSegment[] = [];
     
     for (let i = 0; i < parsed.segments.length - 1; i++) {
@@ -251,10 +274,10 @@ export class FieldIdentifier {
   }
 
   /**
-   * Obtiene todos los identificadores ancestros de un identificador
+   * Gets all ancestor identifiers of an identifier
    * 
-   * @param identifier - Identificador completo
-   * @returns Array de identificadores desde raíz hasta padre inmediato
+   * @param identifier - Complete identifier
+   * @returns Array of identifiers from root to immediate parent
    * 
    * @example
    * FieldIdentifier.getAncestors('user.emails[0].value')
@@ -276,11 +299,11 @@ export class FieldIdentifier {
   }
 
   /**
-   * Comprueba si un identificador es descendiente de otro
+   * Checks if an identifier is a descendant of another
    * 
-   * @param identifier - Identificador a comprobar
-   * @param ancestor - Posible ancestro
-   * @returns true si identifier es descendiente de ancestor
+   * @param identifier - Identifier to check
+   * @param ancestor - Possible ancestor
+   * @returns true if identifier is a descendant of ancestor
    * 
    * @example
    * FieldIdentifier.isDescendantOf('user.emails[0].value', 'user')
@@ -300,11 +323,11 @@ export class FieldIdentifier {
   }
 
   /**
-   * Normaliza un identificador eliminando índices de array
-   * Útil para matching contra definiciones de schema
+   * Normalizes an identifier by removing array indices
+   * Useful for matching against schema definitions
    * 
-   * @param identifier - Identificador con índices
-   * @returns Identificador sin índices
+   * @param identifier - Identifier with indices
+   * @returns Identifier without indices
    * 
    * @example
    * FieldIdentifier.normalize('user.emails[0].value')
@@ -315,11 +338,11 @@ export class FieldIdentifier {
   }
 
   /**
-   * Obtiene el índice de array de un segmento específico
+   * Gets the array index of a specific segment
    * 
-   * @param identifier - Identificador completo
-   * @param arrayPath - Path del array
-   * @returns Índice del array o null si no es elemento de array
+   * @param identifier - Complete identifier
+   * @param arrayPath - Array path
+   * @returns Array index or null if not an array element
    * 
    * @example
    * FieldIdentifier.getArrayIndex('user.emails[2].value', 'user.emails')
@@ -328,7 +351,7 @@ export class FieldIdentifier {
   static getArrayIndex(identifier: string, arrayPath: string): number | null {
     const parsed = this.parse(identifier);
     
-    // Buscar el índice del arrayPath en los segmentos
+    // Search for the index of arrayPath in segments
     const arraySegments = arrayPath.split('.');
     let matchIndex = -1;
     
@@ -348,12 +371,12 @@ export class FieldIdentifier {
   }
 
   /**
-   * Reemplaza el índice de un array en un identificador
+   * Replaces the array index in an identifier
    * 
-   * @param identifier - Identificador original
-   * @param arrayPath - Path del array a modificar
-   * @param newIndex - Nuevo índice
-   * @returns Nuevo identificador con índice actualizado
+   * @param identifier - Original identifier
+   * @param arrayPath - Path of the array to modify
+   * @param newIndex - New index
+   * @returns New identifier with updated index
    * 
    * @example
    * FieldIdentifier.replaceArrayIndex('user.emails[0].value', 'user.emails', 2)
@@ -366,7 +389,7 @@ export class FieldIdentifier {
   ): string {
     const parsed = this.parse(identifier);
     
-    // Encontrar el segmento correspondiente al arrayPath
+    // Find the segment corresponding to arrayPath
     const arraySegments = arrayPath.split('.');
     let matchIndex = -1;
     
@@ -382,7 +405,7 @@ export class FieldIdentifier {
       return identifier;
     }
     
-    // Reconstruir con nuevo índice
+    // Rebuild with new index
     const newSegments: PathSegment[] = [];
     for (let i = 0; i < parsed.segments.length; i++) {
       newSegments.push(parsed.segments[i]);

@@ -24,19 +24,19 @@
 /**
  * REFACTORED JSON Schema Tree Builder
  * 
- * Construye una estructura de árbol unificada a partir de un JSON Schema.
- * Este árbol es la fuente única de verdad para:
- * - Renderizado del formulario
- * - Validación de datos
- * - Gestión de errores
- * - Navegación por identificadores
- * - Visualización de reglas
+ * Builds a unified tree structure from a JSON Schema.
+ * This tree is the single source of truth for:
+ * - Form rendering
+ * - Data validation
+ * - Error management
+ * - Navigation by identifiers
+ * - Rule visualization
  * 
- * MEJORAS CLAVE:
- * - Identificadores únicos deterministas para todos los nodos
- * - Estructura recursiva sin límite de niveles
- * - Validación unificada en el árbol
- * - Eliminación de duplicación entre FormField, itemFields y objectFields
+ * KEY IMPROVEMENTS:
+ * - Unique deterministic identifiers for all nodes
+ * - Recursive structure without level limits
+ * - Unified validation in the tree
+ * - Elimination of duplication between FormField, itemFields and objectFields
  */
 
 import {
@@ -51,11 +51,11 @@ import { FieldIdentifier, PathSegment } from '../utils/field-identifier';
 import { JSONSchema, JSONSchemaProperty } from './json-schema-interpreter';
 
 /**
- * Construye un árbol de SchemaNode a partir de un JSON Schema
+ * Builds a SchemaNode tree from a JSON Schema
  * 
- * @param schema - JSON Schema completo
- * @param options - Opciones de construcción
- * @returns Nodo raíz del árbol
+ * @param schema - Complete JSON Schema
+ * @param options - Build options
+ * @returns Root node of the tree
  */
 export function buildSchemaTree(
   schema: JSONSchema,
@@ -78,7 +78,7 @@ export function buildSchemaTree(
   const requiredFields = schema.required || [];
   let order = 0;
 
-  // Procesar cada propiedad de primer nivel
+  // Process each top-level property
   for (const [key, property] of Object.entries(schema.properties)) {
     const resolvedProperty = resolveSchemaProperty(property, schema);
 
@@ -110,7 +110,7 @@ export function buildSchemaTree(
 }
 
 /**
- * Contexto de construcción de nodo
+ * Node build context
  */
 interface NodeBuildContext {
   pathSegments: PathSegment[];
@@ -127,7 +127,7 @@ interface NodeBuildContext {
 }
 
 /**
- * Construye un nodo del árbol recursivamente
+ * Builds a tree node recursively
  */
 function buildNode(
   key: string,
@@ -135,30 +135,30 @@ function buildNode(
   schema: JSONSchema,
   context: NodeBuildContext
 ): SchemaNode | null {
-  // Verificar profundidad máxima
+  // Check maximum depth
   if (context.depth > context.maxDepth) {
     console.warn(`Max depth ${context.maxDepth} reached at ${FieldIdentifier.generate(context.pathSegments)}`);
     return null;
   }
 
-  // Omitir campos opcionales si la opción está desactivada
+  // Skip optional fields if the option is disabled
   if (!context.includeOptional && !context.isRequired) {
     return null;
   }
 
-  // Generar identificador único
+  // Generate unique identifier
   const id = FieldIdentifier.generate(context.pathSegments);
   const label = property.title || generateLabel(key);
   const description = property.description;
   const urn = property['x-samm-aspect-model-urn'];
 
-  // Extraer reglas de validación
+  // Extract validation rules
   const validationRules = extractValidationRules(property);
 
-  // Determinar tipo de nodo
+  // Determine node type
   const nodeType = determineNodeType(property);
 
-  // Crear builder base
+  // Create base builder
   const builder = new SchemaNodeBuilder(key, nodeType)
     .id(id)
     .label(label)
@@ -174,7 +174,7 @@ function buildNode(
   if (validationRules) builder.validationRules(validationRules);
   if (property.default !== undefined) builder.defaultValue(property.default);
 
-  // Procesar según el tipo de nodo
+  // Process according to node type
   switch (nodeType) {
     case NodeType.PRIMITIVE:
       return buildPrimitiveNode(builder, property, context);
@@ -190,7 +190,7 @@ function buildNode(
 }
 
 /**
- * Construye un nodo primitivo
+ * Builds a primitive node
  */
 function buildPrimitiveNode(
   builder: SchemaNodeBuilder,
@@ -200,7 +200,7 @@ function buildPrimitiveNode(
   const primitiveType = determinePrimitiveType(property);
   builder.primitiveType(primitiveType);
 
-  // Manejar enum/const
+  // Handle enum/const
   if (property.enum && property.enum.length > 0) {
     const options = property.enum.map(value => ({
       value,
@@ -209,7 +209,7 @@ function buildPrimitiveNode(
     builder.options(options);
   }
 
-  // Placeholder y help text
+  // Placeholder and help text
   const placeholder = generatePlaceholder(primitiveType, property);
   if (placeholder) builder.placeholder(placeholder);
 
@@ -221,7 +221,7 @@ function buildPrimitiveNode(
 }
 
 /**
- * Construye un nodo objeto
+ * Builds an object node
  */
 function buildObjectNode(
   builder: SchemaNodeBuilder,
@@ -270,7 +270,7 @@ function buildObjectNode(
 }
 
 /**
- * Construye un nodo array
+ * Builds an array node
  */
 function buildArrayNode(
   builder: SchemaNodeBuilder,
@@ -280,7 +280,7 @@ function buildArrayNode(
 ): SchemaNode {
   builder.collapsedByDefault(context.collapseArraysByDefault);
 
-  // Constraints del array
+  // Array constraints
   if (property.minItems !== undefined || property.maxItems !== undefined || property.uniqueItems) {
     builder.arrayConstraints({
       minItems: property.minItems,
@@ -289,7 +289,7 @@ function buildArrayNode(
     });
   }
 
-  // Procesar schema del item
+  // Process item schema
   if (property.items && !Array.isArray(property.items)) {
     const resolvedItem = resolveSchemaProperty(property.items, schema);
     const itemNodeType = determineNodeType(resolvedItem);
@@ -299,7 +299,7 @@ function buildArrayNode(
       itemNodeType === NodeType.OBJECT ? 'object' : 'array'
     );
 
-    // Crear schema del item con [item] en el path
+    // Create item schema with [item] in the path
     const itemNode = buildNode(
       'item',
       resolvedItem,
@@ -309,7 +309,7 @@ function buildArrayNode(
         depth: context.depth + 1,
         parentId: FieldIdentifier.generate(context.pathSegments),
         section: context.section,
-        isRequired: false, // Los items individuales heredan required del array
+        isRequired: false, // Individual items inherit required from the array
         order: 0,
         maxDepth: context.maxDepth,
         includeOptional: context.includeOptional,
@@ -328,7 +328,7 @@ function buildArrayNode(
 }
 
 /**
- * Determina el tipo de nodo basándose en la propiedad
+ * Determines the node type based on the property
  */
 function determineNodeType(property: JSONSchemaProperty): NodeType {
   const types = Array.isArray(property.type) ? property.type : [property.type];
@@ -346,7 +346,7 @@ function determineNodeType(property: JSONSchemaProperty): NodeType {
 }
 
 /**
- * Determina el tipo primitivo específico
+ * Determines the specific primitive type
  */
 function determinePrimitiveType(property: JSONSchemaProperty): PrimitiveType {
   const types = Array.isArray(property.type) ? property.type : [property.type];
@@ -394,7 +394,7 @@ function determinePrimitiveType(property: JSONSchemaProperty): PrimitiveType {
 }
 
 /**
- * Extrae reglas de validación de una propiedad
+ * Extracts validation rules from a property
  */
 function extractValidationRules(property: JSONSchemaProperty): ValidationRules | undefined {
   const rules: ValidationRules = {};
@@ -478,7 +478,7 @@ function extractValidationRules(property: JSONSchemaProperty): ValidationRules |
 }
 
 /**
- * Resuelve referencias y composiciones de schema
+ * Resolves references and schema compositions
  */
 function resolveSchemaProperty(
   property: JSONSchemaProperty,
@@ -486,7 +486,7 @@ function resolveSchemaProperty(
 ): JSONSchemaProperty {
   let resolved = { ...property };
 
-  // Resolver $ref
+  // Resolve $ref
   if (property.$ref) {
     const refResolved = resolveRef(property.$ref, schema);
     if (refResolved) {
@@ -495,7 +495,7 @@ function resolveSchemaProperty(
     }
   }
 
-  // Manejar allOf - merge all
+  // Handle allOf - merge all
   if (property.allOf) {
     for (const subSchema of property.allOf) {
       const subResolved = resolveSchemaProperty(subSchema, schema);
@@ -503,13 +503,13 @@ function resolveSchemaProperty(
     }
   }
 
-  // Manejar oneOf - tomar primero
+  // Handle oneOf - take first
   if (property.oneOf && property.oneOf.length > 0) {
     const firstOption = resolveSchemaProperty(property.oneOf[0], schema);
     resolved = mergeSchemas(resolved, firstOption);
   }
 
-  // Manejar anyOf - tomar primero
+  // Handle anyOf - take first
   if (property.anyOf && property.anyOf.length > 0) {
     const firstOption = resolveSchemaProperty(property.anyOf[0], schema);
     resolved = mergeSchemas(resolved, firstOption);
@@ -519,7 +519,7 @@ function resolveSchemaProperty(
 }
 
 /**
- * Resuelve una referencia $ref
+ * Resolves a $ref reference
  */
 function resolveRef(ref: string, schema: JSONSchema): JSONSchemaProperty | null {
   if (!ref.startsWith('#/')) {
@@ -555,7 +555,7 @@ function resolveRef(ref: string, schema: JSONSchema): JSONSchemaProperty | null 
 }
 
 /**
- * Merge dos schemas
+ * Merges two schemas
  */
 function mergeSchemas(
   base: JSONSchemaProperty,
@@ -578,7 +578,7 @@ function mergeSchemas(
 }
 
 /**
- * Genera un label legible desde un key
+ * Generates a readable label from a key
  */
 function generateLabel(key: string): string {
   return key
@@ -589,24 +589,24 @@ function generateLabel(key: string): string {
 }
 
 /**
- * Genera un placeholder según el tipo
+ * Generates a placeholder according to the type
  */
 function generatePlaceholder(type: PrimitiveType, property: JSONSchemaProperty): string | undefined {
   switch (type) {
     case PrimitiveType.EMAIL:
-      return 'ejemplo@correo.com';
+      return 'example@email.com';
     case PrimitiveType.URL:
-      return 'https://ejemplo.com';
+      return 'https://example.com';
     case PrimitiveType.DATE:
-      return 'AAAA-MM-DD';
+      return 'YYYY-MM-DD';
     case PrimitiveType.DATETIME:
-      return 'AAAA-MM-DDTHH:MM:SS';
+      return 'YYYY-MM-DDTHH:MM:SS';
     case PrimitiveType.TIME:
       return 'HH:MM:SS';
     case PrimitiveType.NUMBER:
     case PrimitiveType.INTEGER:
       if (property.minimum !== undefined) {
-        return `Mínimo: ${property.minimum}`;
+        return `Minimum: ${property.minimum}`;
       }
       return undefined;
     default:

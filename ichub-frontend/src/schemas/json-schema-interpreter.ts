@@ -27,16 +27,16 @@
  * Handles: nested objects, arrays, all data types, validation rules, descriptions, required fields
  * 
  * REFACTORED VERSION:
- * - Nuevo sistema basado en árbol unificado (SchemaNode)
- * - Identificadores únicos deterministas para todos los niveles
- * - Validación recursiva optimizada
- * - Gestión de errores mejorada
+ * - New unified tree-based system (SchemaNode)
+ * - Unique deterministic identifiers for all levels
+ * - Optimized recursive validation
+ * - Improved error management
  * 
- * La API antigua se mantiene para retrocompatibilidad, pero internamente
- * usa el nuevo sistema de árbol.
+ * The old API is maintained for backward compatibility, but internally
+ * uses the new tree system.
  */
 
-// Re-exportar el nuevo sistema
+// Re-export the new system
 export { buildSchemaTree } from './json-schema-tree-builder';
 export { validateSchemaTree, getValueByPath, setValueByPath } from './schema-tree-validator';
 export type { SchemaNode, NodeType, PrimitiveType, ValidationError, ValidationResult } from '../models/schema-node';
@@ -792,37 +792,37 @@ function createValidationRules(property: JSONSchemaProperty): FormField['validat
  * COMPREHENSIVE JSON Schema interpretation - handles ANY JSON Schema completely
  */
 /**
- * NUEVA API - Sistema basado en árbol SchemaNode
+ * NEW API - SchemaNode tree-based system
  * 
- * Esta es la API recomendada que usa la nueva arquitectura de árbol unificado.
- * Provee mejor gestión de identificadores, validación recursiva optimizada
- * y errores estructurados con metadata completa.
+ * This is the recommended API that uses the new unified tree architecture.
+ * Provides better identifier management, optimized recursive validation
+ * and structured errors with complete metadata.
  * 
- * @param schema - JSON Schema completo
- * @param options - Opciones de construcción del árbol
- * @returns Objeto con árbol de nodos y funciones de validación
+ * @param schema - Complete JSON Schema
+ * @param options - Tree build options
+ * @returns Object with node tree and validation functions
  */
 export function interpretJSONSchemaTree(schema: JSONSchema, options?: any): {
   schemaTree: Map<string, import('../models/schema-node').SchemaNode>;
   validate: (data: any) => import('../models/schema-node').ValidationResult;
-  formFields: FormField[]; // Retrocompatibilidad
+  formFields: FormField[]; // Backward compatibility
   getFieldGroups: () => Record<string, FormField[]>;
   getFieldByKey: (key: string) => FormField | undefined;
 } {
-  // Importar dinámicamente para evitar dependencias circulares
+  // Dynamically import to avoid circular dependencies
   const { buildSchemaTree } = require('./json-schema-tree-builder');
   const { validateSchemaTree } = require('./schema-tree-validator');
   const { SchemaTreeUtils } = require('../models/schema-node');
 
-  // Construir el árbol
+  // Build the tree
   const schemaTree = buildSchemaTree(schema, options);
 
-  // Función de validación usando el árbol
+  // Validation function using the tree
   const validate = (data: any) => {
     return validateSchemaTree(schemaTree, data);
   };
 
-  // Convertir árbol a FormFields para retrocompatibilidad
+  // Convert tree to FormFields for backward compatibility
   const formFields: FormField[] = convertTreeToFormFields(schemaTree);
 
   const getFieldGroups = (): Record<string, FormField[]> => {
@@ -849,13 +849,13 @@ export function interpretJSONSchemaTree(schema: JSONSchema, options?: any): {
 }
 
 /**
- * Convierte el árbol de SchemaNode a FormFields para retrocompatibilidad
+ * Converts SchemaNode tree to FormFields for backward compatibility
  */
 function convertTreeToFormFields(schemaTree: Map<string, any>): FormField[] {
   const fields: FormField[] = [];
 
   function traverse(node: any): void {
-    // Agregar el nodo actual como FormField
+    // Add current node as FormField
     const field: FormField = {
       key: node.id,
       label: node.label,

@@ -89,12 +89,12 @@ function validateNode(
   rootData: any,
   runtimeIndex?: number
 ): void {
-  // Generar fieldId apropiado (con índice si es elemento de array)
+  // Generate appropriate fieldId (with index if it's an array element)
   const fieldId = runtimeIndex !== undefined
     ? FieldIdentifier.generate([...FieldIdentifier.parse(node.id).segments.slice(0, -1), runtimeIndex, node.key])
     : node.id;
 
-  // Validar required
+  // Validate required
   if (node.required && isEmpty(value)) {
     errors.push(createError(
       fieldId,
@@ -104,10 +104,10 @@ function validateNode(
       'error',
       value
     ));
-    return; // Si es required y está vacío, no validar reglas adicionales
+    return; // If it's required and empty, don't validate additional rules
   }
 
-  // Si es opcional y está vacío, no validar
+  // If it's optional and empty, don't validate
   if (!node.required && isEmpty(value)) {
     return;
   }
