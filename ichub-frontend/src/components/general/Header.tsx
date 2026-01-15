@@ -22,6 +22,7 @@
 ********************************************************************************/
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -31,6 +32,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Menu from '@mui/material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 import Policy from '@mui/icons-material/Policy';
+import Hub from '@mui/icons-material/Hub';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MoreIcon from '@mui/icons-material/MoreVert';
 import { Divider, ListItemIcon, Typography, Tooltip } from '@mui/material';
@@ -44,6 +46,7 @@ export default function PrimarySearchAppBar() {
   const [scrolled, setScrolled] = useState(false);
   const [participantId, setParticipantId] = useState<string>('CX-Operator');
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
   
   // Auth hook
   const { isAuthenticated, user, logout } = useAuth();
@@ -313,6 +316,15 @@ export default function PrimarySearchAppBar() {
         </IconButton>
         <p>Policy Config</p>
       </MenuItem>
+      <MenuItem onClick={() => navigate('/system-management')}>
+        <IconButton
+          size="large"
+          aria-label="system management"
+        >
+          <Hub />
+        </IconButton>
+        <p>System Management</p>
+      </MenuItem>
       <MenuItem onClick={handleProfileMenuOpen}>
         <IconButton
           size="large"
@@ -398,6 +410,24 @@ export default function PrimarySearchAppBar() {
                 }}
               >
                 <Policy/>
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="System Management - Configure system connections" arrow>
+              <IconButton 
+                size="large" 
+                aria-label="system management"
+                onClick={() => navigate('/system-management')}
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.2)',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
+                  },
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                <Hub/>
               </IconButton>
             </Tooltip>
             <IconButton

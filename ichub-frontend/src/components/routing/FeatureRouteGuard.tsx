@@ -51,10 +51,11 @@ export const FeatureRouteGuard: React.FC = () => {
     // Check if current path matches any enabled feature route
     const currentPath = location.pathname;
     
-    // Skip check for kit-features and root paths (including dynamic routes like /kit-features/:kitId)
+    // Skip check for kit-features, root paths, and system management (including dynamic routes like /kit-features/:kitId)
     if (currentPath === '/kit-features' || 
         currentPath === '/' || 
         currentPath === '/catalog' ||
+        currentPath === '/system-management' ||
         currentPath.startsWith('/kit-features/')) {
       return;
     }
