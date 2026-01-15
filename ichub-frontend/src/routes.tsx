@@ -23,6 +23,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import { kitFeaturesFeature } from "./features/kit-features/routes";
+import { policyManagementFeature } from "./features/policy-management/routes";
 import { FeatureProvider, useFeatures } from "./contexts/FeatureContext";
 import { FeatureRouteGuard } from "./components/routing/FeatureRouteGuard";
 
@@ -32,8 +33,8 @@ function DynamicRoutes() {
   // Get all enabled routes dynamically
   const featureRoutes = enabledFeatures.flatMap(feature => feature.routes);
   
-  // Add KIT Features routes
-  const allRoutes = [...featureRoutes, ...kitFeaturesFeature.routes];
+  // Add KIT Features routes and Policy Management routes
+  const allRoutes = [...featureRoutes, ...kitFeaturesFeature.routes, ...policyManagementFeature.routes];
 
   return (
     <>

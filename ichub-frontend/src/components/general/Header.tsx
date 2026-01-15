@@ -22,6 +22,7 @@
 ********************************************************************************/
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -44,6 +45,7 @@ export default function PrimarySearchAppBar() {
   const [scrolled, setScrolled] = useState(false);
   const [participantId, setParticipantId] = useState<string>('CX-Operator');
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
   
   // Auth hook
   const { isAuthenticated, user, logout } = useAuth();
@@ -304,14 +306,14 @@ export default function PrimarySearchAppBar() {
         </IconButton>
         <p>Notifications</p>
       </MenuItem>
-      <MenuItem>
+      <MenuItem onClick={() => { handleMobileMenuClose(); navigate('/policies'); }}>
         <IconButton
           size="large"
           aria-label="configure policies"
         >
           <Policy />
         </IconButton>
-        <p>Policy Config</p>
+        <p>Policies</p>
       </MenuItem>
       <MenuItem onClick={handleProfileMenuOpen}>
         <IconButton
@@ -383,10 +385,11 @@ export default function PrimarySearchAppBar() {
                 </Badge>
               </IconButton>
             </Tooltip>
-            <Tooltip title="Policy/Governance Configuration is coming soon" arrow>
+            <Tooltip title="Policy Management" arrow>
               <IconButton 
                 size="large" 
                 aria-label="configure policies"
+                onClick={() => navigate('/policies')}
                 sx={{
                   color: 'white',
                   '&:hover': {
