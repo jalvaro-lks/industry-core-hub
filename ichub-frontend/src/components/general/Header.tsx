@@ -307,14 +307,14 @@ export default function PrimarySearchAppBar() {
         </IconButton>
         <p>Notifications</p>
       </MenuItem>
-      <MenuItem>
+      <MenuItem onClick={() => { handleMobileMenuClose(); navigate('/policies'); }}>
         <IconButton
           size="large"
           aria-label="configure policies"
         >
           <Policy />
         </IconButton>
-        <p>Policy Config</p>
+        <p>Policies</p>
       </MenuItem>
       <MenuItem onClick={() => navigate('/system-management')}>
         <IconButton
@@ -395,10 +395,11 @@ export default function PrimarySearchAppBar() {
                 </Badge>
               </IconButton>
             </Tooltip>
-            <Tooltip title="Policy/Governance Configuration is coming soon" arrow>
+            <Tooltip title="Policy Management" arrow>
               <IconButton 
                 size="large" 
                 aria-label="configure policies"
+                onClick={() => navigate('/policies')}
                 sx={{
                   color: 'white',
                   '&:hover': {

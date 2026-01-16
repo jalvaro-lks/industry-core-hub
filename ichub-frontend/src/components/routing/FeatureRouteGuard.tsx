@@ -55,6 +55,7 @@ export const FeatureRouteGuard: React.FC = () => {
     if (currentPath === '/kit-features' || 
         currentPath === '/' || 
         currentPath === '/catalog' ||
+        currentPath === '/policies' ||
         currentPath === '/system-management' ||
         currentPath.startsWith('/kit-features/')) {
       return;
@@ -62,7 +63,7 @@ export const FeatureRouteGuard: React.FC = () => {
 
     // Check if the current path is an enabled feature route (supports dynamic routes)
     const isValidRoute = enabledFeatures.some(feature => 
-      feature.routes.some(route => matchesRoute(route.path, currentPath))
+      feature.routes.some(route => route.path && matchesRoute(route.path, currentPath))
     );
 
     // If not valid, redirect to kit-features
