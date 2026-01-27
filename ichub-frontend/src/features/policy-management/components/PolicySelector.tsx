@@ -210,7 +210,7 @@ const PolicySelector: React.FC<PolicySelectorProps> = ({
       <Alert severity="info" sx={{ backgroundColor: 'rgba(96, 165, 250, 0.1)' }}>
         <Typography variant="body2">
           Select the access and usage policies to apply when sharing this resource.
-          {dataType && (
+          {dataType && DATA_TYPE_INFO[dataType] && (
             <> Showing policies configured for <strong>{DATA_TYPE_INFO[dataType].label}</strong>.</>
           )}
         </Typography>

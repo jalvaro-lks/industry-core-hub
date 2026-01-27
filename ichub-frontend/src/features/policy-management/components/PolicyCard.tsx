@@ -44,8 +44,6 @@ import {
   Visibility as VisibilityIcon,
   Lock as LockIcon,
   LockOpen as LockOpenIcon,
-  Storefront as StorefrontIcon,
-  Dashboard as DashboardIcon,
   Badge as BadgeIcon,
   Inventory as InventoryIcon,
   Public as PublicIcon,
@@ -69,8 +67,6 @@ interface PolicyCardProps {
  */
 const getDataTypeIcon = (dataType: PolicyDataType): React.ReactElement => {
   const iconMap: Record<PolicyDataType, React.ReactElement> = {
-    'catalog-parts': <StorefrontIcon />,
-    'serialized-parts': <DashboardIcon />,
     'digital-product-passport': <BadgeIcon />,
     'part-type-information': <InventoryIcon />,
     'us-tariff': <PublicIcon />,
@@ -119,8 +115,16 @@ const PolicyCard: React.FC<PolicyCardProps> = ({
     onDuplicate(policy);
   };
 
-  const dataTypeInfo = DATA_TYPE_INFO[policy.dataType];
-  const versionInfo = POLICY_VERSION_INFO[policy.version];
+  // Fallback for legacy data types that may no longer exist
+  const dataTypeInfo = DATA_TYPE_INFO[policy.dataType] || {
+    label: policy.dataType,
+    color: '#9ca3af',
+    description: 'Unknown data type'
+  };
+  const versionInfo = POLICY_VERSION_INFO[policy.version] || {
+    label: policy.version,
+    color: '#9ca3af'
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {

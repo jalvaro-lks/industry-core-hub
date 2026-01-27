@@ -23,8 +23,8 @@
 
 /**
  * Policy version - corresponds to connector versions
- * Saturn: Older connector version
- * Jupiter: Newer connector version
+ * Saturn: Current/latest connector version
+ * Jupiter: Older/legacy connector version
  */
 export type PolicyVersion = 'saturn' | 'jupiter';
 
@@ -37,8 +37,6 @@ export type PolicyType = 'access' | 'usage';
  * Data type that the policy applies to
  */
 export type PolicyDataType = 
-  | 'catalog-parts'
-  | 'serialized-parts'
   | 'digital-product-passport'
   | 'part-type-information'
   | 'us-tariff'
@@ -150,20 +148,6 @@ export interface DataTypeInfo {
  * Available data types with display info
  */
 export const DATA_TYPE_INFO: Record<PolicyDataType, DataTypeInfo> = {
-  'catalog-parts': {
-    id: 'catalog-parts',
-    label: 'Catalog Parts',
-    description: 'Policies for catalog/type level parts',
-    icon: 'Storefront',
-    color: '#60a5fa'
-  },
-  'serialized-parts': {
-    id: 'serialized-parts',
-    label: 'Serialized Parts',
-    description: 'Policies for serialized/instance level parts',
-    icon: 'Dashboard',
-    color: '#34d399'
-  },
   'digital-product-passport': {
     id: 'digital-product-passport',
     label: 'Digital Product Passport',
@@ -214,12 +198,12 @@ export const DATA_TYPE_INFO: Record<PolicyDataType, DataTypeInfo> = {
 export const POLICY_VERSION_INFO: Record<PolicyVersion, { label: string; description: string; color: string }> = {
   saturn: {
     label: 'Saturn',
-    description: 'Legacy connector version',
+    description: 'Latest connector version',
     color: '#f59e0b'
   },
   jupiter: {
     label: 'Jupiter',
-    description: 'Latest connector version',
+    description: 'Legacy connector version',
     color: '#8b5cf6'
   }
 };

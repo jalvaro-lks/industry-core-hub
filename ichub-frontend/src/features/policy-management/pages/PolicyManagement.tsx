@@ -247,13 +247,13 @@ const PolicyManagement: React.FC = () => {
       
       switch (groupBy) {
         case 'dataType':
-          groupKey = DATA_TYPE_INFO[policy.dataType].label;
+          groupKey = DATA_TYPE_INFO[policy.dataType]?.label || 'Other';
           break;
         case 'type':
           groupKey = policy.type === 'access' ? 'Access Policies' : 'Usage Policies';
           break;
         case 'version':
-          groupKey = `${POLICY_VERSION_INFO[policy.version].label} Version`;
+          groupKey = `${POLICY_VERSION_INFO[policy.version]?.label || policy.version} Version`;
           break;
         case 'status':
           groupKey = `${policy.status.charAt(0).toUpperCase() + policy.status.slice(1)} Policies`;
@@ -387,7 +387,7 @@ const PolicyManagement: React.FC = () => {
                 </Typography>
               </Box>
             </Box>
-            <Tooltip title="Create a new policy from JSON configuration">
+            <Tooltip title="Create a new policy from JSON configuration" placement="top">
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -438,7 +438,7 @@ const PolicyManagement: React.FC = () => {
               />
               
               {/* Version Toggle Switch - Custom styled */}
-              <Tooltip title={filters.version === 'all' ? 'Click to filter by version' : `Showing ${POLICY_VERSION_INFO[filters.version as PolicyVersion].label} policies - Click to change`}>
+              <Tooltip title={filters.version === 'all' ? 'Click to filter by version' : `Showing ${POLICY_VERSION_INFO[filters.version as PolicyVersion].label} policies - Click to change`} placement="top">
                 <Box
                   sx={{
                     display: 'flex',
@@ -588,7 +588,7 @@ const PolicyManagement: React.FC = () => {
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               {/* Filter Selects */}
-              <Tooltip title="Filter by policy type (Access or Usage)">
+              <Tooltip title="Filter by policy type (Access or Usage)" placement="top">
                 <FormControl size="small" sx={{ minWidth: 120 }}>
                   <InputLabel>Type</InputLabel>
                   <Select
@@ -604,7 +604,7 @@ const PolicyManagement: React.FC = () => {
                 </FormControl>
               </Tooltip>
 
-              <Tooltip title="Filter by data type">
+              <Tooltip title="Filter by data type" placement="top">
                 <FormControl size="small" sx={{ minWidth: 140 }}>
                   <InputLabel>Data Type</InputLabel>
                   <Select
@@ -626,7 +626,7 @@ const PolicyManagement: React.FC = () => {
                 </FormControl>
               </Tooltip>
 
-              <Tooltip title="Filter by status">
+              <Tooltip title="Filter by status" placement="top">
                 <FormControl size="small" sx={{ minWidth: 110 }}>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -647,7 +647,7 @@ const PolicyManagement: React.FC = () => {
               <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: 'rgba(255, 255, 255, 0.2)' }} />
 
               {/* Group By */}
-              <Tooltip title="Group policies by a category">
+              <Tooltip title="Group policies by a category" placement="top">
                 <FormControl size="small" sx={{ minWidth: 130 }}>
                   <InputLabel>Group By</InputLabel>
                   <Select
@@ -672,19 +672,19 @@ const PolicyManagement: React.FC = () => {
                 onChange={(_, newMode) => newMode && setViewMode(newMode)}
                 size="small"
               >
-                <Tooltip title="Grid view">
+                <Tooltip title="Grid view" placement="top">
                   <ToggleButton value="grid">
                     <ViewModuleIcon />
                   </ToggleButton>
                 </Tooltip>
-                <Tooltip title="List view">
+                <Tooltip title="List view" placement="top">
                   <ToggleButton value="list">
                     <ViewListIcon />
                   </ToggleButton>
                 </Tooltip>
               </ToggleButtonGroup>
 
-              <Tooltip title="Refresh policies">
+              <Tooltip title="Refresh policies" placement="top">
                 <IconButton onClick={loadPolicies} size="small">
                   <RefreshIcon />
                 </IconButton>
@@ -695,7 +695,7 @@ const PolicyManagement: React.FC = () => {
 
         {/* Stats Bar */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-          <Tooltip title={`Showing ${filteredPolicies.length} out of ${policies.length} total policies`}>
+          <Tooltip title={`Showing ${filteredPolicies.length} out of ${policies.length} total policies`} placement="top">
             <Chip
               label={`${filteredPolicies.length} of ${policies.length} policies`}
               sx={{ backgroundColor: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa' }}
@@ -703,7 +703,7 @@ const PolicyManagement: React.FC = () => {
           </Tooltip>
           {hasActiveFilters && (
             <>
-              <Tooltip title="Active filters are applied">
+              <Tooltip title="Active filters are applied" placement="top">
                 <Chip
                   label="Filtered"
                   color="primary"
@@ -712,7 +712,7 @@ const PolicyManagement: React.FC = () => {
                   sx={{ height: 32 }}
                 />
               </Tooltip>
-              <Tooltip title="Clear all filters">
+              <Tooltip title="Clear all filters" placement="top">
                 <Button 
                   size="small" 
                   onClick={handleClearFilters} 
@@ -810,7 +810,7 @@ const PolicyManagement: React.FC = () => {
                         sx={{ backgroundColor: 'rgba(96, 165, 250, 0.2)', color: '#60a5fa', height: 22, fontSize: '0.75rem', fontWeight: 600 }}
                       />
                     </Box>
-                    <Tooltip title={isExpanded ? 'Collapse group' : 'Expand group'}>
+                    <Tooltip title={isExpanded ? 'Collapse group' : 'Expand group'} placement="top">
                       <IconButton size="small" sx={{ color: 'text.secondary' }}>
                         {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                       </IconButton>

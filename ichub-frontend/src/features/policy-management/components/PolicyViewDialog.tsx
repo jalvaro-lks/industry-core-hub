@@ -73,8 +73,16 @@ const PolicyViewDialog: React.FC<PolicyViewDialogProps> = ({
 }) => {
   if (!policy) return null;
 
-  const dataTypeInfo = DATA_TYPE_INFO[policy.dataType];
-  const versionInfo = POLICY_VERSION_INFO[policy.version];
+  // Fallback for legacy data types that may no longer exist
+  const dataTypeInfo = DATA_TYPE_INFO[policy.dataType] || {
+    label: policy.dataType,
+    color: '#9ca3af',
+    description: 'Unknown data type'
+  };
+  const versionInfo = POLICY_VERSION_INFO[policy.version] || {
+    label: policy.version,
+    color: '#9ca3af'
+  };
 
   const handleCopyJson = async () => {
     try {
