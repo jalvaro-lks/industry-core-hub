@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -42,9 +42,10 @@ import {
   Step,
   StepLabel,
   Paper,
-  CircularProgress,
   Alert,
-  Collapse
+  Snackbar,
+  Fade,
+  LinearProgress
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -53,8 +54,9 @@ import {
   Error as ErrorIcon,
   Security as SecurityIcon,
   VpnKey as VpnKeyIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon
+  OpenInNew as OpenInNewIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import {
   Policy,
@@ -90,9 +92,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
-
+  
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -104,6 +104,14 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
 
   // Detected policy type from JSON
   const [detectedPolicyType, setDetectedPolicyType] = useState<PolicyType | null>(null);
+
+  // Policy Builder window and clipboard monitoring
+  const [policyBuilderOpen, setPolicyBuilderOpen] = useState(false);
+  const [isWaitingForClipboard, setIsWaitingForClipboard] = useState(false);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const lastClipboardContentRef = useRef<string>('');
+  const policyBuilderWindowRef = useRef<Window | null>(null);
 
   // Reset form when dialog opens/closes or edit policy changes
   useEffect(() => {
@@ -121,8 +129,13 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         resetForm();
       }
       setJsonError(null);
-      setIframeLoaded(false);
-      setIsPanelExpanded(true);
+    } else {
+      // Clean up when dialog closes
+      if (policyBuilderWindowRef.current && !policyBuilderWindowRef.current.closed) {
+        policyBuilderWindowRef.current.close();
+      }
+      setPolicyBuilderOpen(false);
+      setIsWaitingForClipboard(false);
     }
   }, [open, editPolicy]);
 
@@ -136,7 +149,111 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     setTagInput('');
     setActiveStep(0);
     setDetectedPolicyType(null);
+    lastClipboardContentRef.current = '';
   };
+
+  /**
+   * Check if content looks like a valid ODRL/JSON-LD policy
+   */
+  const isValidPolicyJson = useCallback((content: string): boolean => {
+    try {
+      const parsed = JSON.parse(content);
+      // Check for ODRL/JSON-LD policy indicators
+      const hasContext = parsed['@context'] !== undefined;
+      const hasType = parsed['@type'] !== undefined;
+      const hasId = parsed['@id'] !== undefined;
+      const hasPermission = parsed.permission !== undefined || 
+                           (parsed.policy && parsed.policy.permission !== undefined);
+      const hasOdrlIndicators = content.includes('odrl') || 
+                                content.includes('permission') ||
+                                content.includes('constraint');
+      
+      return (hasContext || hasType || hasId) && (hasPermission || hasOdrlIndicators);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /**
+   * Check clipboard for policy JSON when window regains focus
+   */
+  const checkClipboardForPolicy = useCallback(async () => {
+    try {
+      const clipboardContent = await navigator.clipboard.readText();
+      
+      // Skip if content hasn't changed
+      if (clipboardContent === lastClipboardContentRef.current) return;
+      
+      // Check if it looks like a valid policy JSON
+      if (isValidPolicyJson(clipboardContent)) {
+        lastClipboardContentRef.current = clipboardContent;
+        
+        // Auto-import the JSON
+        setPolicyJson(clipboardContent);
+        setJsonError(null);
+        
+        // Detect policy type
+        const type = detectPolicyType(clipboardContent);
+        setDetectedPolicyType(type);
+        
+        // Show success notification
+        setNotificationMessage(
+          `✨ Policy JSON imported! (${type === 'access' ? 'Access' : type === 'usage' ? 'Usage' : 'Unknown'} Policy)`
+        );
+        setShowSuccessNotification(true);
+        setIsWaitingForClipboard(false);
+      }
+    } catch (err) {
+      // Clipboard access denied - ignore silently
+      console.debug('Clipboard access denied:', err);
+    }
+  }, [isValidPolicyJson]);
+
+  /**
+   * Effect to monitor window focus and check clipboard
+   */
+  useEffect(() => {
+    if (!open || activeStep !== 0) return;
+
+    const handleFocus = () => {
+      // Check if Policy Builder window was opened and is now closed or user returned
+      if (policyBuilderOpen) {
+        checkClipboardForPolicy();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && policyBuilderOpen) {
+        checkClipboardForPolicy();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [open, activeStep, policyBuilderOpen, checkClipboardForPolicy]);
+
+  /**
+   * Monitor if Policy Builder window is closed
+   */
+  useEffect(() => {
+    if (!policyBuilderOpen || !policyBuilderWindowRef.current) return;
+
+    const checkWindowInterval = setInterval(() => {
+      if (policyBuilderWindowRef.current?.closed) {
+        setPolicyBuilderOpen(false);
+        setIsWaitingForClipboard(false);
+        checkClipboardForPolicy();
+        clearInterval(checkWindowInterval);
+      }
+    }, 500);
+
+    return () => clearInterval(checkWindowInterval);
+  }, [policyBuilderOpen, checkClipboardForPolicy]);
 
   /**
    * Detect policy type from JSON content
@@ -147,16 +264,19 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       const permissions = parsed.policy?.permission || parsed.permission || [];
       
       for (const permission of permissions) {
-        const action = permission.action?.toLowerCase() || '';
-        if (action === 'use') {
-          const constraints = permission.constraint || [];
-          for (const constraint of constraints) {
-            const and = constraint.and || [];
-            for (const andConstraint of and) {
-              const leftOperand = andConstraint.leftOperand?.toLowerCase() || '';
-              if (leftOperand.includes('usagepurpose') || leftOperand.includes('frameworkagreement')) {
-                return 'usage';
-              }
+        const action = permission.action?.toLowerCase?.() || 
+                       (typeof permission.action === 'object' ? permission.action['@id']?.toLowerCase?.() : '');
+        if (action === 'use' || action?.includes('use')) {
+          return 'usage';
+        }
+        const constraints = permission.constraint || [];
+        for (const constraint of constraints) {
+          const and = constraint.and || (constraint['odrl:and'] ? [constraint] : []);
+          for (const andConstraint of and) {
+            const leftOperand = andConstraint.leftOperand?.toLowerCase?.() || 
+                               andConstraint['odrl:leftOperand']?.toLowerCase?.() || '';
+            if (leftOperand.includes('usagepurpose') || leftOperand.includes('frameworkagreement')) {
+              return 'usage';
             }
           }
         }
@@ -166,6 +286,26 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       return null;
     }
   }, []);
+
+  /**
+   * Open Policy Builder in a new tab
+   */
+  const handleOpenPolicyBuilder = () => {
+    // Store current clipboard content to detect changes
+    navigator.clipboard.readText()
+      .then(content => {
+        lastClipboardContentRef.current = content;
+      })
+      .catch(() => {
+        lastClipboardContentRef.current = '';
+      });
+
+    // Open Policy Builder in new tab
+    const newWindow = window.open(POLICY_BUILDER_URL, '_blank', 'noopener');
+    policyBuilderWindowRef.current = newWindow;
+    setPolicyBuilderOpen(true);
+    setIsWaitingForClipboard(true);
+  };
 
   /**
    * Update the JSON with the policy name
@@ -304,264 +444,293 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     }
   };
 
-  const handleIframeLoad = () => {
-    setIframeLoaded(true);
-  };
-
-  const togglePanel = () => {
-    setIsPanelExpanded(prev => !prev);
-  };
-
   const isStep1Valid = policyJson.trim().length > 0 && !jsonError;
   const isStep2Valid = name.trim().length > 0;
 
   /**
-   * Step 1: Configure JSON - Policy Builder iframe + collapsible paste panel (FULLSCREEN)
+   * Step 1: Configure JSON - Open Policy Builder in new tab + auto-import
    */
   const renderStep1 = () => (
     <Box sx={{ 
       display: 'flex', 
+      flexDirection: 'column',
       height: '100%',
-      position: 'relative'
+      p: 3,
+      gap: 3
     }}>
-      {/* Policy Builder iframe - takes full width when panel collapsed */}
-      <Box sx={{ 
-        flex: 1,
-        display: 'flex', 
-        flexDirection: 'column',
-        transition: 'all 0.3s ease'
-      }}>
-        {!iframeLoaded && (
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center', 
-            justifyContent: 'center',
-            height: '100%',
-            gap: 2
-          }}>
-            <CircularProgress size={40} />
-            <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              Opening Policy Builder...
-            </Typography>
-          </Box>
-        )}
-        <iframe
-          src={POLICY_BUILDER_URL}
-          title="Policy Builder"
-          style={{
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            display: iframeLoaded ? 'block' : 'none',
-            backgroundColor: '#fff'
-          }}
-          onLoad={handleIframeLoad}
-        />
+      {/* Header */}
+      <Box sx={{ textAlign: 'center', pt: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+          Configure Policy JSON
+        </Typography>
+        <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 600, mx: 'auto' }}>
+          Use the Catena-X Policy Builder to create your policy, then click "Copy JSON-LD" and come back here.
+          <br />
+          <strong>The JSON will be imported automatically!</strong>
+        </Typography>
       </Box>
 
-      {/* Collapsible toggle bar - more transparent */}
-      <Box
-        onClick={togglePanel}
-        sx={{
-          position: 'absolute',
-          right: isPanelExpanded ? 350 : 0,
-          top: 0,
-          bottom: 0,
-          width: 20,
+      {/* Main content */}
+      <Box sx={{ 
+        flex: 1, 
+        display: 'flex', 
+        gap: 3,
+        minHeight: 0 // Important for flex child scrolling
+      }}>
+        {/* Left side - Open Policy Builder */}
+        <Paper sx={{ 
+          flex: 1, 
+          p: 3, 
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: 2,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'rgba(30, 30, 30, 0.5)',
-          backdropFilter: 'blur(4px)',
-          cursor: 'pointer',
-          zIndex: 10,
-          transition: 'all 0.3s ease',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRight: isPanelExpanded ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
-          '&:hover': {
-            backgroundColor: 'rgba(60, 60, 60, 0.7)',
-            '& .toggle-icon': {
-              color: '#60a5fa'
-            }
-          }
-        }}
-      >
-        <IconButton 
-          size="small" 
-          className="toggle-icon"
-          sx={{ 
-            color: 'rgba(255, 255, 255, 0.5)',
-            p: 0,
-            transition: 'color 0.2s ease'
-          }}
-        >
-          {isPanelExpanded ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-        </IconButton>
-      </Box>
-
-      {/* Close button - top right, adapts to panel state */}
-      <IconButton
-        onClick={onClose}
-        sx={{
-          position: 'absolute',
-          top: 8,
-          right: isPanelExpanded ? 358 : 8,
-          zIndex: 20,
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          color: 'rgba(255, 255, 255, 0.8)',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            color: '#fff'
-          }
-        }}
-      >
-        <CloseIcon />
-      </IconButton>
-
-      {/* Collapsible Configure JSON panel */}
-      <Collapse 
-        in={isPanelExpanded} 
-        orientation="horizontal"
-        sx={{
-          '& .MuiCollapse-wrapperInner': {
-            width: 350
-          }
-        }}
-      >
-        <Box sx={{ 
-          width: 350,
-          height: '100%',
-          display: 'flex', 
-          flexDirection: 'column',
-          p: 2,
-          backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.12)'
+          gap: 3
         }}>
-          <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-            Configure JSON
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            Build your policy using the Policy Builder, then <strong>select and copy (Ctrl+C)</strong> the JSON and paste it here.
-          </Typography>
-
-          {/* Paste JSON area */}
-          <Paper
-            sx={{
-              flex: 1,
-              p: 2,
-              backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              borderRadius: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden'
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
-                Policy JSON
+          {!policyBuilderOpen ? (
+            // Initial state - show open button
+            <>
+              <Box sx={{ 
+                width: 120, 
+                height: 120, 
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(96, 165, 250, 0.1) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <OpenInNewIcon sx={{ fontSize: 56, color: '#60a5fa' }} />
+              </Box>
+              <Typography variant="h6" sx={{ color: 'text.primary', textAlign: 'center' }}>
+                Catena-X Policy Builder
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', maxWidth: 300 }}>
+                The Policy Builder will open in a new tab. Configure your policy there and click "Copy JSON-LD" to import it here.
+              </Typography>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<OpenInNewIcon />}
+                onClick={handleOpenPolicyBuilder}
+                sx={{ 
+                  mt: 2,
+                  px: 4,
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                  }
+                }}
+              >
+                Open Policy Builder
+              </Button>
+            </>
+          ) : isWaitingForClipboard && !policyJson.trim() ? (
+            // Waiting for clipboard state
+            <>
+              <Box sx={{ position: 'relative' }}>
+                <Box sx={{ 
+                  width: 120, 
+                  height: 120, 
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'pulse 2s infinite',
+                  '@keyframes pulse': {
+                    '0%, 100%': { transform: 'scale(1)', opacity: 1 },
+                    '50%': { transform: 'scale(1.05)', opacity: 0.8 }
+                  }
+                }}>
+                  <AutoAwesomeIcon sx={{ fontSize: 56, color: '#22c55e' }} />
+                </Box>
+              </Box>
+              <Typography variant="h6" sx={{ color: '#22c55e', textAlign: 'center' }}>
+                Waiting for Policy JSON...
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', maxWidth: 350 }}>
+                Click <strong>"Copy JSON-LD"</strong> in the Policy Builder tab, then come back here.
+                The JSON will be imported automatically!
+              </Typography>
+              <LinearProgress 
+                sx={{ 
+                  width: '80%', 
+                  mt: 2,
+                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: '#22c55e',
+                    animation: 'indeterminate 1.5s linear infinite'
+                  }
+                }} 
+              />
+              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<PasteIcon />}
+                  onClick={handlePasteFromClipboard}
+                  sx={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}
+                >
+                  Paste Manually
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<OpenInNewIcon />}
+                  onClick={handleOpenPolicyBuilder}
+                  sx={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}
+                >
+                  Reopen Builder
+                </Button>
+              </Box>
+            </>
+          ) : policyJson.trim() ? (
+            // JSON imported successfully
+            <>
+              <Box sx={{ 
+                width: 120, 
+                height: 120, 
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0.15) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <CheckIcon sx={{ fontSize: 56, color: '#22c55e' }} />
+              </Box>
+              <Typography variant="h6" sx={{ color: '#22c55e', textAlign: 'center' }}>
+                Policy JSON Imported!
               </Typography>
               {detectedPolicyType && (
                 <Chip
                   icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
                   label={detectedPolicyType === 'access' ? 'Access Policy' : 'Usage Policy'}
-                  size="small"
                   sx={{
                     backgroundColor: detectedPolicyType === 'access' 
                       ? 'rgba(96, 165, 250, 0.15)' 
                       : 'rgba(244, 143, 177, 0.15)',
                     color: detectedPolicyType === 'access' ? '#60a5fa' : '#f48fb1',
-                    '& .MuiChip-icon': {
-                      color: 'inherit'
-                    }
+                    '& .MuiChip-icon': { color: 'inherit' }
                   }}
                 />
               )}
-            </Box>
+              <Button
+                variant="outlined"
+                startIcon={<OpenInNewIcon />}
+                onClick={handleOpenPolicyBuilder}
+                sx={{ mt: 2, borderColor: 'rgba(255, 255, 255, 0.3)' }}
+              >
+                Open Policy Builder Again
+              </Button>
+            </>
+          ) : null}
+        </Paper>
 
-            {!policyJson.trim() ? (
-              // Empty state - show paste button
-              <Box sx={{ 
-                flex: 1, 
-                display: 'flex', 
-                flexDirection: 'column',
-                alignItems: 'center', 
-                justifyContent: 'center',
-                gap: 2,
-                border: '2px dashed rgba(255, 255, 255, 0.2)',
-                borderRadius: 1,
-                p: 3
-              }}>
-                <PasteIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-                  Copy the JSON from Policy Builder and paste it here
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<PasteIcon />}
-                  onClick={handlePasteFromClipboard}
-                  sx={{ mt: 1 }}
-                >
-                  Paste JSON
-                </Button>
-              </Box>
-            ) : (
-              // JSON content
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <TextField
-                  multiline
-                  value={policyJson}
-                  onChange={(e) => handleJsonChange(e.target.value)}
-                  error={!!jsonError}
-                  sx={{
-                    flex: 1,
-                    '& .MuiOutlinedInput-root': {
-                      height: '100%',
-                      alignItems: 'flex-start',
-                      backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem'
-                    },
-                    '& .MuiInputBase-input': {
-                      height: '100% !important',
-                      overflow: 'auto !important'
-                    }
-                  }}
-                />
-                {jsonError && (
-                  <Alert 
-                    severity="error" 
-                    sx={{ mt: 1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                    icon={<ErrorIcon />}
-                  >
-                    {jsonError}
-                  </Alert>
-                )}
-                {!jsonError && policyJson.trim() && (
-                  <Alert 
-                    severity="success" 
-                    sx={{ mt: 1, backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
-                    icon={<CheckIcon />}
-                  >
-                    Valid JSON
-                  </Alert>
-                )}
-                <Button
-                  variant="text"
-                  size="small"
-                  startIcon={<PasteIcon />}
-                  onClick={handlePasteFromClipboard}
-                  sx={{ mt: 1, alignSelf: 'flex-start' }}
-                >
-                  Paste from Clipboard
-                </Button>
-              </Box>
+        {/* Right side - JSON Preview/Edit */}
+        <Paper sx={{ 
+          flex: 1, 
+          p: 2, 
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <VisibilityIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                Policy JSON
+              </Typography>
+            </Box>
+            {detectedPolicyType && policyJson.trim() && (
+              <Chip
+                icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
+                label={detectedPolicyType === 'access' ? 'Access Policy' : 'Usage Policy'}
+                size="small"
+                sx={{
+                  backgroundColor: detectedPolicyType === 'access' 
+                    ? 'rgba(96, 165, 250, 0.15)' 
+                    : 'rgba(244, 143, 177, 0.15)',
+                  color: detectedPolicyType === 'access' ? '#60a5fa' : '#f48fb1',
+                  '& .MuiChip-icon': { color: 'inherit' }
+                }}
+              />
             )}
-          </Paper>
-        </Box>
-      </Collapse>
+          </Box>
+
+          {!policyJson.trim() ? (
+            <Box sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: 2,
+              border: '2px dashed rgba(255, 255, 255, 0.15)',
+              borderRadius: 1
+            }}>
+              <PasteIcon sx={{ fontSize: 40, color: 'text.secondary', opacity: 0.5 }} />
+              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                JSON will appear here after you copy it from Policy Builder
+              </Typography>
+              <Button
+                variant="text"
+                startIcon={<PasteIcon />}
+                onClick={handlePasteFromClipboard}
+                size="small"
+              >
+                Or Paste Manually
+              </Button>
+            </Box>
+          ) : (
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <TextField
+                multiline
+                value={policyJson}
+                onChange={(e) => handleJsonChange(e.target.value)}
+                error={!!jsonError}
+                placeholder="Paste your policy JSON here..."
+                sx={{
+                  flex: 1,
+                  '& .MuiOutlinedInput-root': {
+                    height: '100%',
+                    alignItems: 'flex-start',
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem'
+                  },
+                  '& .MuiInputBase-input': {
+                    height: '100% !important',
+                    overflow: 'auto !important'
+                  }
+                }}
+              />
+              {jsonError && (
+                <Alert 
+                  severity="error" 
+                  sx={{ mt: 1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                  icon={<ErrorIcon />}
+                >
+                  {jsonError}
+                </Alert>
+              )}
+              {!jsonError && policyJson.trim() && (
+                <Alert 
+                  severity="success" 
+                  sx={{ mt: 1, backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
+                  icon={<CheckIcon />}
+                >
+                  Valid JSON - Ready to continue
+                </Alert>
+              )}
+            </Box>
+          )}
+        </Paper>
+      </Box>
     </Box>
   );
 
@@ -807,24 +976,22 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     );
   };
 
-  // Step 1 = fullScreen, Step 2 = floating dialog
-  const isFullScreen = activeStep === 0;
-
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
-      fullScreen={isFullScreen}
-      maxWidth={isFullScreen ? false : 'md'}
-      fullWidth={!isFullScreen}
+      maxWidth="lg"
+      fullWidth
       PaperProps={{
         sx: {
           backgroundColor: '#1e1e1e',
           backgroundImage: 'none',
-          border: isFullScreen ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           display: 'flex',
           flexDirection: 'column',
-          ...(isFullScreen ? {} : { minHeight: '70vh', maxHeight: '90vh' }),
+          minHeight: '80vh',
+          maxHeight: '90vh',
           // Custom scrollbar
           '& .MuiDialogContent-root': {
             '&::-webkit-scrollbar': {
@@ -846,36 +1013,34 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         }
       }}
     >
-      {/* Header only for Step 2 (floating dialog) */}
-      {!isFullScreen && (
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-            pb: 2
-          }}
-        >
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {editPolicy ? 'Edit Policy' : 'Create New Policy'}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Configure policy details and review
-            </Typography>
-          </Box>
-          <IconButton onClick={onClose} sx={{ color: 'text.secondary' }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-      )}
+      {/* Header */}
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          pb: 2
+        }}
+      >
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {editPolicy ? 'Edit Policy' : 'Create New Policy'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {activeStep === 0 ? 'Step 1: Configure your policy JSON' : 'Step 2: Add policy details'}
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} sx={{ color: 'text.secondary' }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
       {/* Content */}
       <DialogContent sx={{ 
         flex: 1, 
-        p: isFullScreen ? 0 : 3, 
-        overflow: isFullScreen ? 'hidden' : 'auto',
+        p: activeStep === 0 ? 0 : 3, 
+        overflow: 'auto',
         display: 'flex',
         flexDirection: 'column'
       }}>
@@ -888,7 +1053,6 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         px: 3, 
         py: 1.5, 
         borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-        backgroundColor: isFullScreen ? 'rgba(0, 0, 0, 0.3)' : 'transparent',
         display: 'flex',
         alignItems: 'center',
         gap: 2
@@ -952,6 +1116,30 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         </Box>
       </DialogActions>
     </Dialog>
+
+    {/* Success notification for auto-imported JSON */}
+    <Snackbar
+      open={showSuccessNotification}
+      autoHideDuration={4000}
+      onClose={() => setShowSuccessNotification(false)}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      TransitionComponent={Fade}
+    >
+      <Alert
+        onClose={() => setShowSuccessNotification(false)}
+        severity="success"
+        variant="filled"
+        icon={<AutoAwesomeIcon />}
+        sx={{ 
+          minWidth: 300,
+          backgroundColor: '#22c55e',
+          '& .MuiAlert-icon': { color: '#fff' }
+        }}
+      >
+        {notificationMessage}
+      </Alert>
+    </Snackbar>
+    </>
   );
 };
 
