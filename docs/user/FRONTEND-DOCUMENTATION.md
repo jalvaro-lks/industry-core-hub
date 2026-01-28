@@ -1,27 +1,60 @@
-PROMPT: Estoy generando la documentacion para el proyecto, concretamente para el frontend, en docs/user. Mi idea es generar un archivo raiz, un archivo principal, llamado FRONTEND-DOCUMENTATION, que introduzca el frontend, lo explique de manera bonita y demas, y luego introduzca las diferentes features o caracteristicas que tiene. Ya hay generada en ese documento una version cutre hecha, quiero que lo pongas en ingles, y que le des un buen formato Markdown apropiado, y generes los enlaces a los otros documentos de manera coherente, porque luego, al mismo nivel, esta la carpeta de features, la cual tiene la documentacion de todas las caracteristicas, algunas de primer nivel, y otras divididas en las caracteristicas especificas de los KITs. Con interpretar bien el documento raiz de la documentacion ya podras entener como tienes que hacer las cosas. Cada subdocumento tambien tiene mas o menos lo que quiero decir. Estructurame el contenido de todos estos documentos de features, para que yo luego vaya insertando capturas de pantalla y demas (preparame el sitio para dejar dichas capturas).
 
-Guia de uso del Frontend del Industry Core Hub.
+# Industry Core Hub Frontend Documentation
 
-Este documento sirve como guia para comprender y aprender a usar el frontend del Industry Core Hub (ICHub).
-El ICHub es una herramienta que facilita el uso de los componentes y KITs del espacio de datos y evita a los usuarios entrar en configuraciones y usos complejos. El frontend es ese componente que te permite hacer uso de dichos componentes de manera sencilla e intuitiva, con pantallas completas y practicas para el usuario final, siempre siguiendo los criterios y estandares de diseño de interfaces, y pensando sobre todo en la practicidad y usabilidad para nuestro usuario final.
+> **Welcome to the Industry Core Hub (ICHub) Frontend Documentation!**
+>
+> This guide will help you understand, navigate, and make the most of the ICHub frontend. The ICHub frontend is designed to provide a seamless, user-friendly interface for managing data space components and KITs, following modern UI/UX standards and focusing on usability and scalability.
 
-Este frontend permite no solo realizar funciones propias del Industry Core Hub como compartir y consumir publicaciones del sector automotriz en el espacio de datos, sino que tambien esta enfocado en un proyecto escalable enfocado a KITs, de tal manera que de manera progresiva se van implementando nuevas funcionalidades y caracteristicas basadas en los KITs de Tractus-X [insertar enlace].
+---
 
-Es por eso que esta documentacion se divide en otras subcategorias, las cuales cada una explica como usar y para que cada una de las caracteristicas del Industry Core Hub, a la vez que se divide en KITs. 
-Actualmente se contemplan 2 KITs y sus siguientes caracteristicas: 
-* Industry Core Hub KIT:
-    * Catalog Parts: Creas, registras y publicas Catalogs Parts en el espacio de datos
-    * Serialized Parts: Creas, asignas a un Catalog Part, registras y publicas Serialized Parts en el espacio de datos 
-    * Dataspace Discovery: Consumes los Catalog y Serialized Parts publicados de un contacto de tu Contact List
-    * Contact List: Defines los participantes del espacio de datos con los que quieras interactuar: Nombre y BPNL
-* Eco Pass KIT:
-    * Passport Provision & Management: Haz uso de un Wizard que te guia en el proceso de crecion de un Data Product Passport en el espacio de datos
-    * Passport Consumption & Visualization: Consume y visualiza un Pasaport Digital ya publicado en el espacio de datos mediante su QR o su identificador
+## Table of Contents
 
-Ademas de eso, el ICHub cuenta con otras caracteristicas y pantallas mas genericas propias del Industry Core Hub:
-* KIT Features: Habilita y deshabilita caracteristicas en tu aplicacion basadas en las funcionalidades de los KITs
-* Submodel Creator: Crea y registra de manera guiada un submodelo para una de tus piezas con una interfaz guiada de creacion de submodelo basada en los JSON Schemas de Tractus-X
-* Policy Management: Genera, visualiza, y gestiona las politicas definidas en tu espacio de datos haciendo uso de un Policy Builder
-* System Management: Conecta, registra y gestiona los sistemas relacionados con tu Industry Core Hub
+- [Introduction](#introduction)
+- [KITs and Features Overview](#kits-and-features-overview)
+- [Generic Features](#generic-features)
+- [Screenshots & Visuals](#screenshots--visuals)
+- [Licensing](#licensing)
 
-[TEMAS DE LICENCIAS Y DEMAS QUE HABRA QUE PONER]
+---
+
+## Introduction
+
+The Industry Core Hub frontend enables users to:
+- Interact with Tractus-X data space components and KITs without complex configuration.
+- Access, share, and manage automotive sector data products.
+- Scale progressively as new KITs and features are integrated.
+
+The application is organized by KITs, each providing a set of features. This documentation is divided accordingly, with each feature explained in its own document.
+
+---
+
+## KITs and Features Overview
+
+### 1. **Industry Core Hub KIT**
+- [Catalog Parts](features/ichub/CATALOG-PARTS.md): Create, register, and publish Catalog Parts in the data space.
+- [Serialized Parts](features/ichub/SERIALIZED-PARTS.md): Create, assign to Catalog Parts, register, and publish Serialized Parts.
+- [Dataspace Discovery](features/ichub/DATASPACE-DISCOVERY.md): Consume Catalog and Serialized Parts published by your contacts.
+- [Contact List](features/ichub/CONTACT-LIST.md): Define and manage data space participants (Name and BPNL).
+
+### 2. **Eco Pass KIT**
+- [Passport Provision & Management](features/eco-pass/DPP-PROVIDER-MANAGEMENT.md): Use a wizard to create a Data Product Passport in the data space.
+- [Passport Consumption & Visualization](features/eco-pass/DPP-CONSUMER-VIEWER.md): Consume and visualize a published Digital Passport via QR or identifier.
+
+---
+
+## Generic Features
+
+- [KIT Features](features/KIT-FEATURES.md): Enable or disable KIT-based features in your application. Configure which features appear in the ICHub frontend.
+- [Submodel Creator](features/SUBMODEL_CREATOR_GUIDE.md): Guided interface to create and register submodels for your parts, based on Tractus-X JSON Schemas.
+- [Policy Management](features/POLICY-MANAGEMENT.md): Generate, view, and manage data space policies using a Policy Builder.
+- [System Management](features/SYSTEM-MANAGEMENT.md): Connect, register, and manage systems related to your Industry Core Hub.
+
+---
+
+## Licensing
+
+This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode). For more details, see the [NOTICE](../../ichub-frontend/NOTICE.md) file.
+
+---
+
+> For detailed usage instructions, see each feature's documentation linked above. For questions or contributions, please refer to the [CONTRIBUTING.md](../../CONTRIBUTING.md).
