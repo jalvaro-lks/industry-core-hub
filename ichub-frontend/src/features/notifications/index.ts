@@ -18,12 +18,19 @@
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
-********************************************************************************/
+ ********************************************************************************/
 
-@forward 'CustomCardList';
-@forward 'Dialog';
-@forward 'SharedTable';
-@forward 'InstanceTable';
-@forward 'part-discovery';
-@forward 'CustomDataGrid';
-@forward 'notifications';
+// Export components
+export { default as NotificationsPanel } from './components/NotificationsPanel';
+export { default as ChatList } from './components/ChatList';
+export { default as ChatView } from './components/ChatView';
+export { default as ChatMessage } from './components/ChatMessage';
+
+// Export context and hook
+export { NotificationProvider, useNotifications } from './contexts/NotificationContext';
+
+// Export types
+export * from './types';
+
+// Export services
+export { generateMockMessage, generateInitialMockMessages } from './services/mockNotificationService';

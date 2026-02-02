@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -37,6 +37,7 @@ import { Divider, ListItemIcon, Typography, Tooltip } from '@mui/material';
 import { Logout, Settings, ContentCopy } from '@mui/icons-material';
 import { getParticipantId } from '../../services/EnvironmentService';
 import useAuth from '../../hooks/useAuth';
+import { useNotifications } from '../../features/notifications';
 
 export default function PrimarySearchAppBar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -47,6 +48,12 @@ export default function PrimarySearchAppBar() {
   
   // Auth hook
   const { isAuthenticated, user, logout } = useAuth();
+  
+  // Notifications hook
+  const { togglePanel, unreadCount, isPanelOpen } = useNotifications();
+  
+  // Ref for the notifications button to position the panel
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
 
   const isMenuOpen = Boolean(anchorEl);
   const isMobileMenuOpen = Boolean(mobileMoreAnchorEl);
@@ -293,16 +300,16 @@ export default function PrimarySearchAppBar() {
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
     >
-      <MenuItem>
+      <MenuItem onClick={() => { handleMobileMenuClose(); togglePanel(); }}>
         <IconButton
           size="large"
-          aria-label="show 17 new notifications"
+          aria-label={`show ${unreadCount} new notifications`}
         >
-          <Badge badgeContent={17} color="error">
+          <Badge badgeContent={unreadCount} color="error">
             <NotificationsIcon />
           </Badge>
         </IconButton>
-        <p>Notifications</p>
+        <p>Messages</p>
       </MenuItem>
       <MenuItem>
         <IconButton
@@ -364,21 +371,33 @@ export default function PrimarySearchAppBar() {
             </Typography>
           </Box>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
-            <Tooltip title="Notifications are coming soon" arrow>
+            <Tooltip title={isPanelOpen ? "Close messages" : "Open messages"} arrow>
               <IconButton
+                ref={notificationButtonRef}
                 size="large"
-                aria-label="show 17 new notifications"
+                aria-label={`show ${unreadCount} new notifications`}
+                onClick={togglePanel}
                 sx={{
                   color: 'white',
+                  position: 'relative',
                   '&:hover': {
                     backgroundColor: 'rgba(25, 118, 210, 0.2)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
                   },
-                  transition: 'all 0.2s ease-in-out'
+                  transition: 'all 0.2s ease-in-out',
+                  ...(isPanelOpen && {
+                    backgroundColor: 'rgba(25, 118, 210, 0.3)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.4)',
+                    },
+                  }),
                 }}
               >
-                <Badge badgeContent={17} color="error">
+                <Badge 
+                  badgeContent={unreadCount} 
+                  color="error"
+                >
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
