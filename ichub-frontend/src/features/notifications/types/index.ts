@@ -20,27 +20,14 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-/**
- * Represents an affected item in a notification message (DTR assignment)
- */
-export interface AffectedItem {
-  digitalTwinId: string;
-  assetId?: string;
-  name?: string;
-  submodelId?: string;
-}
+// ============================================================================
+// SWAGGER-based Types for Digital Twin Event Notification API
+// Based on: Catena-X Digital Twin Event Notification API Specification v3.0.0
+// ============================================================================
 
 /**
- * Content structure of a notification message
- */
-export interface NotificationContent {
-  information: string;
-  listOfAffectedItems?: AffectedItem[];
-  [key: string]: unknown;
-}
-
-/**
- * Header structure of a notification message following the Industry Core standard
+ * Notification Header following the shared message header standard
+ * urn:samm:io.catenax.shared.message_header:3.0.0
  */
 export interface NotificationHeader {
   messageId: string;
@@ -49,86 +36,225 @@ export interface NotificationHeader {
   senderBpn: string;
   receiverBpn: string;
   expectedResponseBy?: string;
+  relatedMessageId?: string;
   version: string;
 }
 
 /**
- * Complete notification message structure
+ * Digital Twin Type classification
  */
-export interface NotificationMessage {
+export type DigitalTwinType = 'PartType' | 'PartInstance';
+
+/**
+ * Base Part Item structure
+ */
+export interface PartItem {
+  manufacturerId: string;
+  manufacturerPartId: string;
+  customerPartId?: string;
+}
+
+/**
+ * Serialized Part Item (extends PartItem)
+ */
+export interface SerializedPartItem extends PartItem {
+  partInstanceId: string;
+  catenaXId: string;
+}
+
+/**
+ * Batch Item (extends PartItem)
+ */
+export interface BatchItem extends PartItem {
+  batchId: string;
+  catenaXId: string;
+}
+
+/**
+ * JIS (Just-In-Sequence) Item (extends PartItem)
+ */
+export interface JISItem extends PartItem {
+  jisNumber: string;
+  jisCallDate?: string;
+  parentOrderNumber?: string;
+  catenaXId: string;
+}
+
+/**
+ * Union type for all item types in Connect-to-Parent
+ */
+export type ConnectToParentItem = SerializedPartItem | BatchItem | JISItem;
+
+/**
+ * Connect-to-Parent Payload content
+ */
+export interface ConnectToParentPayload {
+  digitalTwinType: DigitalTwinType;
+  information?: string;
+  listOfItems: ConnectToParentItem[];
+}
+
+/**
+ * Complete Connect-to-Parent Request
+ */
+export interface ConnectToParentNotification {
   header: NotificationHeader;
-  content: NotificationContent;
+  content: ConnectToParentPayload;
 }
 
 /**
- * Internal chat message representation
+ * Item Feedback Status
  */
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  receiverId: string;
-  content: string;
-  timestamp: Date;
-  read: boolean;
-  expectedResponseBy?: Date;
-  affectedItems?: AffectedItem[];
-  context?: string;
-  version?: string;
-  replyToId?: string;
-  replyToContent?: string;
-  isOwn: boolean;
-}
+export type ItemFeedbackStatus = 'OK' | 'ERROR';
 
 /**
- * Chat/Conversation with a contact
+ * Feedback Status for overall notification
  */
-export interface Chat {
-  id: string;
-  participantBpn: string;
-  participantName: string;
-  isKnownContact: boolean;
-  messages: ChatMessage[];
-  unreadCount: number;
-  lastMessage?: ChatMessage;
-  lastActivity: Date;
+export type FeedbackStatus = 'OK' | 'ERROR';
+
+/**
+ * Individual Item Feedback
+ */
+export interface ItemFeedback {
+  catenaXId: string;
+  status: ItemFeedbackStatus;
+  statusMessage?: string;
 }
 
 /**
- * Contact from the Contact List
+ * Feedback Payload content
+ */
+export interface FeedbackPayload {
+  status: FeedbackStatus;
+  statusMessage?: string;
+  listOfItems: ItemFeedback[];
+}
+
+/**
+ * Complete Feedback Request
+ */
+export interface FeedbackNotification {
+  header: NotificationHeader;
+  content: FeedbackPayload;
+}
+
+// ============================================================================
+// Internal Application Types
+// ============================================================================
+
+/**
+ * Notification Type based on API operations
+ */
+export type NotificationType = 'connect-to-parent' | 'connect-to-child' | 'submodel-update' | 'feedback';
+
+/**
+ * Notification Status for inbox
+ */
+export type NotificationStatus = 'unread' | 'read' | 'pending-feedback' | 'feedback-sent';
+
+/**
+ * Digital Twin verification status
+ */
+export type DigitalTwinVerificationStatus = 'not-verified' | 'verifying' | 'accessible' | 'not-accessible' | 'error';
+
+/**
+ * Verified Digital Twin item with verification status
+ */
+export interface VerifiedItem {
+  item: ConnectToParentItem;
+  verificationStatus: DigitalTwinVerificationStatus;
+  verificationError?: string;
+  verifiedAt?: Date;
+}
+
+/**
+ * Internal Notification representation for the inbox
+ */
+export interface InboxNotification {
+  id: string;
+  type: NotificationType;
+  status: NotificationStatus;
+  header: NotificationHeader;
+  content: ConnectToParentPayload;
+  receivedAt: Date;
+  readAt?: Date;
+  feedbackSentAt?: Date;
+  feedbackResponse?: FeedbackPayload;
+  verifiedItems: VerifiedItem[];
+  // Thread-related
+  threadId: string;
+  isThreadStart: boolean;
+  relatedNotifications: string[];
+}
+
+/**
+ * Contact/Sender information
  */
 export interface Contact {
   bpnl: string;
   name: string;
+  isKnown: boolean;
 }
 
 /**
- * Notification panel state
+ * Grouped notifications by sender
  */
-export type NotificationPanelSize = 'collapsed' | 'quarter' | 'expanded';
-
-/**
- * Asset types that can be shared in chat
- */
-export type ShareableAssetType = 'catalog-part' | 'serialized-part' | 'submodel' | 'digital-twin';
-
-/**
- * Shareable asset structure
- */
-export interface ShareableAsset {
-  type: ShareableAssetType;
-  id: string;
-  name: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
+export interface SenderGroup {
+  sender: Contact;
+  notifications: InboxNotification[];
+  unreadCount: number;
+  lastActivity: Date;
 }
 
 /**
- * Message to send
+ * Notification panel view modes
  */
-export interface OutgoingMessage {
-  receiverBpn: string;
-  content: string;
-  replyToId?: string;
-  sharedAssets?: ShareableAsset[];
+export type InboxViewMode = 'list' | 'grouped';
+
+/**
+ * Notification panel size states
+ */
+export type NotificationPanelSize = 'collapsed' | 'normal' | 'expanded';
+
+/**
+ * Search/Filter options for notifications
+ */
+export interface NotificationFilters {
+  search: string;
+  status: NotificationStatus | 'all';
+  type: NotificationType | 'all';
+  dateRange?: {
+    from: Date;
+    to: Date;
+  };
+  senderBpn?: string;
 }
+
+/**
+ * Feedback form state
+ */
+export interface FeedbackFormState {
+  overallStatus: FeedbackStatus;
+  overallMessage: string;
+  itemFeedbacks: ItemFeedback[];
+}
+
+/**
+ * Statistics for notifications
+ */
+export interface NotificationStats {
+  total: number;
+  unread: number;
+  pendingFeedback: number;
+  feedbackSent: number;
+}
+
+/**
+ * Sorting options for notifications
+ */
+export type NotificationSortBy = 'receivedAt' | 'expectedResponseBy' | 'priority';
+
+/**
+ * Priority level based on response urgency
+ */
+export type NotificationPriority = 'urgent' | 'high' | 'normal' | 'low';

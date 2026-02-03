@@ -22,9 +22,9 @@
 
 // Export components
 export { default as NotificationsPanel } from './components/NotificationsPanel';
-export { default as ChatList } from './components/ChatList';
-export { default as ChatView } from './components/ChatView';
-export { default as ChatMessage } from './components/ChatMessage';
+export { default as NotificationInbox } from './components/NotificationInbox';
+export { default as NotificationDetail } from './components/NotificationDetail';
+export { default as FeedbackForm } from './components/FeedbackForm';
 
 // Export context and hook
 export { NotificationProvider, useNotifications } from './contexts/NotificationContext';
@@ -33,4 +33,4 @@ export { NotificationProvider, useNotifications } from './contexts/NotificationC
 export * from './types';
 
 // Export services
-export { generateMockMessage, generateInitialMockMessages } from './services/mockNotificationService';
+export { mockNotificationService } from './services/mockNotificationService';
