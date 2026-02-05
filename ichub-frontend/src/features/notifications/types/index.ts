@@ -148,7 +148,17 @@ export interface FeedbackNotification {
 export type NotificationType = 'connect-to-parent' | 'connect-to-child' | 'submodel-update' | 'feedback';
 
 /**
- * Notification Status for inbox
+ * Notification Status for inbox (read/unread state)
+ */
+export type NotificationReadStatus = 'unread' | 'read';
+
+/**
+ * Notification verification state (workflow status)
+ */
+export type NotificationVerificationState = 'not-verified' | 'verified' | 'feedback-sent';
+
+/**
+ * Legacy status - kept for compatibility, maps to combination of read + verification state
  */
 export type NotificationStatus = 'unread' | 'read' | 'pending-feedback' | 'feedback-sent';
 
@@ -185,7 +195,15 @@ export interface InboxNotification {
   threadId: string;
   isThreadStart: boolean;
   relatedNotifications: string[];
+  // New fields for archive and verification state
+  isArchived: boolean;
+  verificationState: NotificationVerificationState;
 }
+
+/**
+ * Inbox filter type for different views
+ */
+export type InboxFilterType = 'all' | 'unread' | 'not-verified' | 'verified' | 'feedback-sent' | 'archived';
 
 /**
  * Contact/Sender information
@@ -223,6 +241,7 @@ export interface NotificationFilters {
   search: string;
   status: NotificationStatus | 'all';
   type: NotificationType | 'all';
+  inboxFilter: InboxFilterType;
   dateRange?: {
     from: Date;
     to: Date;
@@ -245,8 +264,10 @@ export interface FeedbackFormState {
 export interface NotificationStats {
   total: number;
   unread: number;
-  pendingFeedback: number;
+  notVerified: number;
+  verified: number;
   feedbackSent: number;
+  archived: number;
 }
 
 /**

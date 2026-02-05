@@ -32,6 +32,8 @@ import {
   FeedbackPayload,
   DigitalTwinVerificationStatus,
   NotificationSortBy,
+  InboxFilterType,
+  NotificationVerificationState,
 } from '../types';
 import { mockNotificationService } from '../services/mockNotificationService';
 import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
@@ -58,11 +60,31 @@ interface NotificationContextType {
   sortBy: NotificationSortBy;
   setSortBy: (sort: NotificationSortBy) => void;
 
+  // Inbox filter
+  inboxFilter: InboxFilterType;
+  setInboxFilter: (filter: InboxFilterType) => void;
+
   // Notifications
   notifications: InboxNotification[];
   filteredNotifications: InboxNotification[];
   senderGroups: SenderGroup[];
   stats: NotificationStats;
+  unreadCount: number;
+
+  // Pagination
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  pageSize: number;
+  totalPages: number;
+  paginatedNotifications: InboxNotification[];
+
+  // Selection
+  selectedIds: Set<string>;
+  toggleSelection: (id: string) => void;
+  selectAll: () => void;
+  clearSelection: () => void;
+  isSelectionMode: boolean;
+  setSelectionMode: (mode: boolean) => void;
 
   // Filters
   filters: NotificationFilters;
@@ -71,7 +93,14 @@ interface NotificationContextType {
 
   // Actions
   markAsRead: (notificationId: string) => void;
+  markAsUnread: (notificationId: string) => void;
+  markSelectedAsRead: () => void;
+  markSelectedAsUnread: () => void;
   markAllAsRead: () => void;
+  archiveNotification: (notificationId: string) => void;
+  unarchiveNotification: (notificationId: string) => void;
+  archiveSelected: () => void;
+  unarchiveSelected: () => void;
   verifyDigitalTwin: (notificationId: string, catenaXId: string) => Promise<void>;
   verifyAllDigitalTwins: (notificationId: string) => Promise<void>;
   sendFeedback: (notificationId: string, feedback: FeedbackPayload) => Promise<void>;
@@ -88,13 +117,19 @@ interface NotificationContextType {
 
   // Stats helper
   getStats: () => NotificationStats;
+
+  // Verification state helper
+  getVerificationState: (notification: InboxNotification) => NotificationVerificationState;
 }
 
 const defaultFilters: NotificationFilters = {
   search: '',
   status: 'all',
   type: 'all',
+  inboxFilter: 'all',
 };
+
+const PAGE_SIZE = 20;
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -107,6 +142,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [viewMode, setViewMode] = useState<InboxViewMode>('list');
   const [selectedNotification, setSelectedNotification] = useState<InboxNotification | null>(null);
   const [sortBy, setSortBy] = useState<NotificationSortBy>('receivedAt');
+  const [inboxFilter, setInboxFilter] = useState<InboxFilterType>('all');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setSelectionMode] = useState(false);
 
   // Data
   const [notifications, setNotifications] = useState<InboxNotification[]>([]);
@@ -182,8 +225,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setPanelSize('normal');
   }, []);
 
-  // Select notification
+  // Select notification with browser history support
   const selectNotification = useCallback((notification: InboxNotification | null) => {
+    if (notification) {
+      // Push state to browser history when selecting a notification
+      window.history.pushState({ notificationOpen: true, notificationId: notification.id }, '');
+    }
     setSelectedNotification(notification);
     if (notification && notification.status === 'unread') {
       // Mark as read when selected
@@ -197,24 +244,95 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  // Filter notifications
+  // Handle browser back button to return to inbox
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // If we have a selected notification and user pressed back, close it
+      if (selectedNotification && !event.state?.notificationOpen) {
+        setSelectedNotification(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedNotification]);
+
+  // Helper to get verification state from notification
+  const getVerificationState = useCallback((notification: InboxNotification): NotificationVerificationState => {
+    if (notification.verificationState) return notification.verificationState;
+    // Derive from status for backwards compatibility
+    if (notification.status === 'feedback-sent') return 'feedback-sent';
+    const allVerified = notification.verifiedItems.every(
+      (vi) => vi.verificationStatus === 'accessible' || vi.verificationStatus === 'not-accessible'
+    );
+    return allVerified ? 'verified' : 'not-verified';
+  }, []);
+
+  // Filter notifications based on inbox filter and other criteria
   const filteredNotifications = React.useMemo(() => {
     return notifications.filter((notification) => {
-      // Search filter
+      // Inbox filter (archived vs non-archived and verification state)
+      const isArchived = notification.isArchived ?? false;
+      const verificationState = getVerificationState(notification);
+      
+      switch (inboxFilter) {
+        case 'archived':
+          if (!isArchived) return false;
+          break;
+        case 'all':
+        case 'unread':
+        case 'not-verified':
+        case 'verified':
+        case 'feedback-sent':
+          // Archived messages should not appear in non-archived lists
+          if (isArchived) return false;
+          break;
+      }
+
+      // Apply specific inbox filter
+      if (inboxFilter === 'unread' && notification.status !== 'unread') {
+        return false;
+      }
+      if (inboxFilter === 'not-verified' && verificationState !== 'not-verified') {
+        return false;
+      }
+      if (inboxFilter === 'verified' && verificationState !== 'verified') {
+        return false;
+      }
+      if (inboxFilter === 'feedback-sent' && verificationState !== 'feedback-sent') {
+        return false;
+      }
+
+      // Search filter - searches contacts, titles, content, BPNs, and part IDs
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
+        
+        // Get contact name for the sender
+        const senderBpn = notification.header.senderBpn;
+        const realPartner = realPartners.find((p) => p.bpnl === senderBpn);
+        const contactName = realPartner?.name || contacts.find((c) => c.bpnl === senderBpn)?.name || '';
+        
         const matchesSearch =
+          // Search by BPN
           notification.header.senderBpn.toLowerCase().includes(searchLower) ||
+          // Search by contact name
+          contactName.toLowerCase().includes(searchLower) ||
+          // Search by message content/information
           notification.content.information?.toLowerCase().includes(searchLower) ||
+          // Search by digital twin type
+          notification.content.digitalTwinType?.toLowerCase().includes(searchLower) ||
+          // Search by items (catenaXId, manufacturerPartId, customerPartId)
           notification.content.listOfItems.some(
             (item) =>
               item.catenaXId.toLowerCase().includes(searchLower) ||
-              item.manufacturerPartId.toLowerCase().includes(searchLower)
+              item.manufacturerPartId.toLowerCase().includes(searchLower) ||
+              item.customerPartId?.toLowerCase().includes(searchLower) ||
+              item.manufacturerId?.toLowerCase().includes(searchLower)
           );
         if (!matchesSearch) return false;
       }
 
-      // Status filter
+      // Status filter (legacy)
       if (filters.status !== 'all' && notification.status !== filters.status) {
         return false;
       }
@@ -231,7 +349,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       return true;
     });
-  }, [notifications, filters]);
+  }, [notifications, filters, inboxFilter, getVerificationState, realPartners, contacts]);
 
   // Calculate priority based on expectedResponseBy
   const getPriority = useCallback(
@@ -320,14 +438,37 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     );
   }, [sortedFilteredNotifications, contacts, realPartners]);
 
+  // Pagination
+  const totalPages = React.useMemo(() => {
+    return Math.ceil(sortedFilteredNotifications.length / PAGE_SIZE);
+  }, [sortedFilteredNotifications.length]);
+
+  const paginatedNotifications = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return sortedFilteredNotifications.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [sortedFilteredNotifications, currentPage]);
+
+  // Reset page when filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [inboxFilter, filters]);
+
   // Statistics
   const stats = React.useMemo((): NotificationStats => {
+    const nonArchived = notifications.filter((n) => !n.isArchived);
     return {
-      total: notifications.length,
-      unread: notifications.filter((n) => n.status === 'unread').length,
-      pendingFeedback: notifications.filter((n) => n.status === 'pending-feedback').length,
-      feedbackSent: notifications.filter((n) => n.status === 'feedback-sent').length,
+      total: nonArchived.length,
+      unread: nonArchived.filter((n) => n.status === 'unread').length,
+      notVerified: nonArchived.filter((n) => getVerificationState(n) === 'not-verified').length,
+      verified: nonArchived.filter((n) => getVerificationState(n) === 'verified').length,
+      feedbackSent: nonArchived.filter((n) => getVerificationState(n) === 'feedback-sent').length,
+      archived: notifications.filter((n) => n.isArchived).length,
     };
+  }, [notifications, getVerificationState]);
+
+  // Unread count for header
+  const unreadCount = React.useMemo(() => {
+    return notifications.filter((n) => n.status === 'unread' && !n.isArchived).length;
   }, [notifications]);
 
   // Mark as read
@@ -341,14 +482,118 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     );
   }, []);
 
+  // Mark as unread
+  const markAsUnread = useCallback((notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notificationId
+          ? { ...n, status: 'unread', readAt: undefined }
+          : n
+      )
+    );
+  }, []);
+
   // Mark all as read
   const markAllAsRead = useCallback(() => {
     setNotifications((prev) =>
       prev.map((n) =>
-        n.status === 'unread' ? { ...n, status: 'read', readAt: new Date() } : n
+        n.status === 'unread' && !n.isArchived ? { ...n, status: 'read', readAt: new Date() } : n
       )
     );
   }, []);
+
+  // Selection functions
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      // If no items selected, exit selection mode
+      if (next.size === 0) {
+        setSelectionMode(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    const allIds = new Set(paginatedNotifications.map((n) => n.id));
+    setSelectedIds(allIds);
+  }, [paginatedNotifications]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  }, []);
+
+  // Mark selected as read/unread
+  const markSelectedAsRead = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        selectedIds.has(n.id) && n.status === 'unread'
+          ? { ...n, status: 'read', readAt: new Date() }
+          : n
+      )
+    );
+    clearSelection();
+  }, [selectedIds, clearSelection]);
+
+  const markSelectedAsUnread = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        selectedIds.has(n.id)
+          ? { ...n, status: 'unread', readAt: undefined }
+          : n
+      )
+    );
+    clearSelection();
+  }, [selectedIds, clearSelection]);
+
+  // Archive functions
+  const archiveNotification = useCallback((notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notificationId
+          ? { ...n, isArchived: true }
+          : n
+      )
+    );
+  }, []);
+
+  const unarchiveNotification = useCallback((notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notificationId
+          ? { ...n, isArchived: false }
+          : n
+      )
+    );
+  }, []);
+
+  const archiveSelected = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        selectedIds.has(n.id)
+          ? { ...n, isArchived: true }
+          : n
+      )
+    );
+    clearSelection();
+  }, [selectedIds, clearSelection]);
+
+  const unarchiveSelected = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        selectedIds.has(n.id)
+          ? { ...n, isArchived: false }
+          : n
+      )
+    );
+    clearSelection();
+  }, [selectedIds, clearSelection]);
 
   // Verify a single digital twin
   const verifyDigitalTwin = useCallback(
@@ -376,20 +621,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications((prev) =>
         prev.map((n) => {
           if (n.id !== notificationId) return n;
+          const updatedItems = n.verifiedItems.map((vi) =>
+            vi.item.catenaXId === catenaXId
+              ? {
+                  ...vi,
+                  verificationStatus: isAccessible
+                    ? ('accessible' as DigitalTwinVerificationStatus)
+                    : ('not-accessible' as DigitalTwinVerificationStatus),
+                  verifiedAt: new Date(),
+                  verificationError: isAccessible ? undefined : 'Could not access digital twin',
+                }
+              : vi
+          );
+          // Update verification state if all items are verified
+          const allVerified = updatedItems.every(
+            (vi) => vi.verificationStatus === 'accessible' || vi.verificationStatus === 'not-accessible'
+          );
           return {
             ...n,
-            verifiedItems: n.verifiedItems.map((vi) =>
-              vi.item.catenaXId === catenaXId
-                ? {
-                    ...vi,
-                    verificationStatus: isAccessible
-                      ? ('accessible' as DigitalTwinVerificationStatus)
-                      : ('not-accessible' as DigitalTwinVerificationStatus),
-                    verifiedAt: new Date(),
-                    verificationError: isAccessible ? undefined : 'Could not access digital twin',
-                  }
-                : vi
-            ),
+            verifiedItems: updatedItems,
+            verificationState: allVerified ? 'verified' : n.verificationState,
           };
         })
       );
@@ -424,6 +675,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             ? {
                 ...n,
                 status: 'feedback-sent',
+                verificationState: 'feedback-sent' as NotificationVerificationState,
                 feedbackSentAt: new Date(),
                 feedbackResponse: feedback,
               }
@@ -490,15 +742,36 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     selectNotification,
     sortBy,
     setSortBy,
+    inboxFilter,
+    setInboxFilter,
     notifications,
     filteredNotifications: sortedFilteredNotifications,
     senderGroups,
     stats,
+    unreadCount,
+    currentPage,
+    setCurrentPage,
+    pageSize: PAGE_SIZE,
+    totalPages,
+    paginatedNotifications,
+    selectedIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    isSelectionMode,
+    setSelectionMode,
     filters,
     setFilters,
     clearFilters,
     markAsRead,
+    markAsUnread,
+    markSelectedAsRead,
+    markSelectedAsUnread,
     markAllAsRead,
+    archiveNotification,
+    unarchiveNotification,
+    archiveSelected,
+    unarchiveSelected,
     verifyDigitalTwin,
     verifyAllDigitalTwins,
     sendFeedback,
@@ -509,6 +782,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     refreshPartners,
     getPriority,
     getStats,
+    getVerificationState,
   };
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

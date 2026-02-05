@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -34,6 +34,7 @@ import {
   IconButton,
   Chip,
   Tooltip,
+  SelectChangeEvent,
 } from '@mui/material';
 import {
   Send,
@@ -58,15 +59,24 @@ interface FeedbackFormProps {
   onCancel: () => void;
 }
 
+// Default messages for each status
+const DEFAULT_MESSAGES = {
+  OK: 'Digital Twin accessible and processed successfully',
+  ERROR: 'Digital Twin not accessible or processing failed',
+};
+
 /**
  * FeedbackForm component - Professional feedback composition interface
+ * Blue themed to match the notification panel
  */
 const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) => {
   const { sendFeedback, panelSize } = useNotifications();
 
   const [overallStatus, setOverallStatus] = useState<FeedbackStatus>('OK');
   const [overallMessage, setOverallMessage] = useState('');
+  const [overallMessageModified, setOverallMessageModified] = useState(false);
   const [itemFeedbacks, setItemFeedbacks] = useState<ItemFeedback[]>([]);
+  const [itemMessageModified, setItemMessageModified] = useState<Set<string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
 
@@ -79,8 +89,8 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
       status: vi.verificationStatus === 'accessible' ? 'OK' : 'ERROR',
       statusMessage:
         vi.verificationStatus === 'accessible'
-          ? 'Digital Twin accessible and processed successfully'
-          : vi.verificationError || 'Digital Twin not accessible',
+          ? DEFAULT_MESSAGES.OK
+          : vi.verificationError || DEFAULT_MESSAGES.ERROR,
     }));
     setItemFeedbacks(initialFeedbacks);
 
@@ -89,12 +99,15 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
       (vi) => vi.verificationStatus !== 'accessible'
     );
     setOverallStatus(hasErrors ? 'ERROR' : 'OK');
-    setOverallMessage(
-      hasErrors
-        ? 'Some Digital Twins could not be processed'
-        : 'All Digital Twins processed successfully'
-    );
+    setOverallMessage(hasErrors ? DEFAULT_MESSAGES.ERROR : DEFAULT_MESSAGES.OK);
   }, [notification]);
+
+  // Auto-update overall message when status changes (if not manually modified)
+  useEffect(() => {
+    if (!overallMessageModified) {
+      setOverallMessage(DEFAULT_MESSAGES[overallStatus]);
+    }
+  }, [overallStatus, overallMessageModified]);
 
   const toggleItemExpanded = (catenaXId: string) => {
     setExpandedItems((prev) => {
@@ -108,11 +121,27 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
     });
   };
 
-  const updateItemFeedback = (catenaXId: string, field: keyof ItemFeedback, value: string) => {
+  // Handler to update item status with auto-message update
+  const updateItemStatus = useCallback((catenaXId: string, newStatus: FeedbackStatus) => {
     setItemFeedbacks((prev) =>
-      prev.map((f) => (f.catenaXId === catenaXId ? { ...f, [field]: value } : f))
+      prev.map((f) => {
+        if (f.catenaXId === catenaXId) {
+          const wasModified = itemMessageModified.has(catenaXId);
+          const newMessage = wasModified ? f.statusMessage : DEFAULT_MESSAGES[newStatus];
+          return { ...f, status: newStatus, statusMessage: newMessage };
+        }
+        return f;
+      })
     );
-  };
+  }, [itemMessageModified]);
+
+  // Handler to update item message
+  const updateItemMessage = useCallback((catenaXId: string, message: string) => {
+    setItemFeedbacks((prev) =>
+      prev.map((f) => (f.catenaXId === catenaXId ? { ...f, statusMessage: message } : f))
+    );
+    setItemMessageModified((prev) => new Set(prev).add(catenaXId));
+  }, []);
 
   const getItemInfo = (catenaXId: string) => {
     const verified = notification.verifiedItems.find((vi) => vi.item.catenaXId === catenaXId);
@@ -142,11 +171,11 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
   return (
     <Box
       sx={{
-        backgroundColor: '#1a1a1a',
+        background: 'linear-gradient(180deg, rgba(25, 35, 55, 0.98) 0%, rgba(15, 25, 45, 0.98) 100%)',
         borderRadius: '12px',
-        border: '1px solid rgba(66, 165, 245, 0.3)',
+        border: '1px solid rgba(66, 165, 245, 0.25)',
         overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(66, 165, 245, 0.1)',
       }}
     >
       {/* Header */}
@@ -155,18 +184,31 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: isCompact ? '10px 12px' : '12px 16px',
-          background: 'linear-gradient(135deg, rgba(66, 165, 245, 0.15) 0%, rgba(25, 118, 210, 0.1) 100%)',
+          padding: isCompact ? '12px 14px' : '14px 18px',
+          background: 'linear-gradient(135deg, rgba(66, 165, 245, 0.2) 0%, rgba(25, 118, 210, 0.15) 100%)',
           borderBottom: '1px solid rgba(66, 165, 245, 0.2)',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ReplyAll sx={{ color: '#42a5f5', fontSize: isCompact ? '1rem' : '1.2rem' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: '8px',
+              backgroundColor: 'rgba(66, 165, 245, 0.2)',
+            }}
+          >
+            <ReplyAll sx={{ color: '#64b5f6', fontSize: isCompact ? '1rem' : '1.1rem' }} />
+          </Box>
           <Typography
             sx={{
               color: '#ffffff',
               fontWeight: 600,
-              fontSize: isCompact ? '0.8rem' : '0.9rem',
+              fontSize: isCompact ? '0.9rem' : '1rem',
+              letterSpacing: '0.3px',
             }}
           >
             Compose Feedback
@@ -178,84 +220,101 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
             onClick={onCancel}
             sx={{
               color: 'rgba(255, 255, 255, 0.6)',
-              padding: '4px',
+              padding: '6px',
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
               '&:hover': { 
                 color: '#ef5350',
                 backgroundColor: 'rgba(244, 67, 54, 0.15)',
               },
             }}
           >
-            <Close sx={{ fontSize: isCompact ? '0.9rem' : '1rem' }} />
+            <Close sx={{ fontSize: isCompact ? '1rem' : '1.1rem' }} />
           </IconButton>
         </Tooltip>
       </Box>
 
       {/* Content */}
-      <Box sx={{ padding: isCompact ? '12px' : '16px' }}>
+      <Box sx={{ padding: isCompact ? '14px' : '18px' }}>
         {/* Overall Status Row */}
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2.5 }}>
           <Typography
             sx={{
               color: '#64b5f6',
-              fontSize: '0.65rem',
+              fontSize: '0.7rem',
               fontWeight: 600,
               textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              mb: 0.75,
+              letterSpacing: '0.8px',
+              mb: 1,
             }}
           >
             Response Status
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'stretch' }}>
-            <FormControl size="small" sx={{ minWidth: isCompact ? 90 : 110 }}>
+          <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', flexDirection: isCompact ? 'column' : 'row' }}>
+            <FormControl size="small" sx={{ minWidth: isCompact ? '100%' : 130 }}>
               <Select
                 value={overallStatus}
-                onChange={(e) => setOverallStatus(e.target.value as FeedbackStatus)}
+                onChange={(e: SelectChangeEvent<FeedbackStatus>) => {
+                  setOverallStatus(e.target.value as FeedbackStatus);
+                }}
                 sx={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                  color: '#ffffff',
-                  fontSize: '0.75rem',
-                  height: '32px',
+                  backgroundColor: overallStatus === 'OK' 
+                    ? 'rgba(129, 199, 132, 0.12)' 
+                    : 'rgba(239, 83, 80, 0.12)',
+                  color: overallStatus === 'OK' ? '#81c784' : '#ef5350',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  height: '40px',
+                  borderRadius: '8px',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    borderColor: overallStatus === 'OK' 
+                      ? 'rgba(129, 199, 132, 0.4)' 
+                      : 'rgba(239, 83, 80, 0.4)',
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    borderColor: overallStatus === 'OK' ? '#81c784' : '#ef5350',
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#42a5f5',
+                    borderColor: overallStatus === 'OK' ? '#81c784' : '#ef5350',
+                    borderWidth: '2px',
                   },
                   '& .MuiSelect-icon': {
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: overallStatus === 'OK' ? '#81c784' : '#ef5350',
                   },
                 }}
                 MenuProps={{
                   PaperProps: {
                     sx: {
-                      backgroundColor: '#2a2a2a',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      backgroundColor: 'rgba(20, 30, 45, 0.98)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(66, 165, 245, 0.2)',
+                      borderRadius: '10px',
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
                       '& .MuiMenuItem-root': {
                         color: '#ffffff',
-                        fontSize: '0.75rem',
+                        fontSize: '0.85rem',
+                        padding: '12px 16px',
                         '&:hover': { backgroundColor: 'rgba(66, 165, 245, 0.15)' },
-                        '&.Mui-selected': { backgroundColor: 'rgba(66, 165, 245, 0.25)' },
+                        '&.Mui-selected': { 
+                          backgroundColor: 'rgba(66, 165, 245, 0.25)',
+                          '&:hover': { backgroundColor: 'rgba(66, 165, 245, 0.3)' },
+                        },
                       },
                     },
                   },
                 }}
               >
                 <MenuItem value="OK">
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                    <CheckCircle sx={{ color: '#81c784', fontSize: '0.9rem' }} />
-                    <span>OK</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircle sx={{ color: '#81c784', fontSize: '1.1rem' }} />
+                    <span style={{ fontWeight: 600 }}>OK</span>
                   </Box>
                 </MenuItem>
                 <MenuItem value="ERROR">
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                    <Error sx={{ color: '#ef5350', fontSize: '0.9rem' }} />
-                    <span>ERROR</span>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Error sx={{ color: '#ef5350', fontSize: '1.1rem' }} />
+                    <span style={{ fontWeight: 600 }}>ERROR</span>
                   </Box>
                 </MenuItem>
               </Select>
@@ -266,48 +325,56 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
               size="small"
               placeholder="Add a message..."
               value={overallMessage}
-              onChange={(e) => setOverallMessage(e.target.value)}
+              onChange={(e) => {
+                setOverallMessage(e.target.value);
+                setOverallMessageModified(true);
+              }}
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   color: '#ffffff',
-                  fontSize: '0.75rem',
-                  height: '32px',
-                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.15)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                  '&.Mui-focused fieldset': { borderColor: '#42a5f5' },
+                  fontSize: '0.85rem',
+                  height: '40px',
+                  borderRadius: '8px',
+                  '& fieldset': { borderColor: 'rgba(66, 165, 245, 0.2)' },
+                  '&:hover fieldset': { borderColor: 'rgba(66, 165, 245, 0.4)' },
+                  '&.Mui-focused fieldset': { borderColor: '#42a5f5', borderWidth: '2px' },
                 },
-                '& .MuiInputBase-input': { padding: '6px 10px' },
-                '& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.35)', opacity: 1 },
+                '& .MuiInputBase-input': { padding: '10px 14px' },
+                '& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.4)', opacity: 1 },
               }}
             />
           </Box>
         </Box>
 
         {/* Summary Chips */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2.5 }}>
           <Chip
-            icon={<CheckCircle sx={{ fontSize: '0.8rem !important' }} />}
+            icon={<CheckCircle sx={{ fontSize: '0.9rem !important' }} />}
             label={`${okCount} OK`}
             size="small"
             sx={{
               backgroundColor: 'rgba(129, 199, 132, 0.15)',
               color: '#81c784',
-              fontSize: '0.65rem',
-              height: '22px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              height: '26px',
+              borderRadius: '13px',
               '& .MuiChip-icon': { color: '#81c784' },
             }}
           />
           {errorCount > 0 && (
             <Chip
-              icon={<Error sx={{ fontSize: '0.8rem !important' }} />}
+              icon={<Error sx={{ fontSize: '0.9rem !important' }} />}
               label={`${errorCount} Error`}
               size="small"
               sx={{
                 backgroundColor: 'rgba(239, 83, 80, 0.15)',
                 color: '#ef5350',
-                fontSize: '0.65rem',
-                height: '22px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                height: '26px',
+                borderRadius: '13px',
                 '& .MuiChip-icon': { color: '#ef5350' },
               }}
             />
@@ -315,15 +382,15 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
         </Box>
 
         {/* Per-Item Feedback */}
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2.5 }}>
           <Typography
             sx={{
               color: '#64b5f6',
-              fontSize: '0.65rem',
+              fontSize: '0.7rem',
               fontWeight: 600,
               textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              mb: 0.75,
+              letterSpacing: '0.8px',
+              mb: 1,
             }}
           >
             Item Details ({itemFeedbacks.length})
@@ -331,11 +398,11 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
 
           <Box 
             sx={{ 
-              maxHeight: isCompact ? '120px' : '160px', 
+              maxHeight: isCompact ? '140px' : '180px', 
               overflow: 'auto',
-              '&::-webkit-scrollbar': { width: '4px' },
-              '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(255, 255, 255, 0.03)' },
-              '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(255, 255, 255, 0.15)', borderRadius: '2px' },
+              '&::-webkit-scrollbar': { width: '5px' },
+              '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(66, 165, 245, 0.05)', borderRadius: '3px' },
+              '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(66, 165, 245, 0.3)', borderRadius: '3px' },
             }}
           >
             {itemFeedbacks.map((feedback) => {
@@ -346,11 +413,16 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                 <Box
                   key={feedback.catenaXId}
                   sx={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    borderRadius: '6px',
-                    mb: 0.75,
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backgroundColor: 'rgba(66, 165, 245, 0.06)',
+                    borderRadius: '8px',
+                    mb: 1,
+                    border: '1px solid rgba(66, 165, 245, 0.12)',
                     overflow: 'hidden',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      backgroundColor: 'rgba(66, 165, 245, 0.1)',
+                      borderColor: 'rgba(66, 165, 245, 0.2)',
+                    },
                   }}
                 >
                   {/* Item Header */}
@@ -359,16 +431,16 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '6px 10px',
+                      padding: '10px 12px',
                       cursor: 'pointer',
-                      '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.03)' },
                     }}
                   >
-                    <DeviceHub sx={{ color: '#81c784', fontSize: '0.85rem', mr: 0.75 }} />
+                    <DeviceHub sx={{ color: '#64b5f6', fontSize: '1rem', mr: 1 }} />
                     <Typography
                       sx={{
                         color: '#ffffff',
-                        fontSize: '0.7rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 500,
                         flex: 1,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -378,20 +450,28 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                       {item?.manufacturerPartId || 'Unknown Item'}
                     </Typography>
                     <Chip
+                      icon={feedback.status === 'OK' 
+                        ? <CheckCircle sx={{ fontSize: '0.75rem !important' }} /> 
+                        : <Error sx={{ fontSize: '0.75rem !important' }} />
+                      }
                       label={feedback.status}
                       size="small"
                       sx={{
                         backgroundColor: feedback.status === 'OK' ? 'rgba(129, 199, 132, 0.2)' : 'rgba(239, 83, 80, 0.2)',
                         color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
-                        fontSize: '0.55rem',
-                        height: '16px',
-                        mr: 0.5,
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        height: '22px',
+                        mr: 1,
+                        '& .MuiChip-icon': {
+                          color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                        },
                       }}
                     />
                     {isExpanded ? (
-                      <ExpandLess sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.95rem' }} />
+                      <ExpandLess sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '1.1rem' }} />
                     ) : (
-                      <ExpandMore sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.95rem' }} />
+                      <ExpandMore sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '1.1rem' }} />
                     )}
                   </Box>
 
@@ -399,29 +479,32 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                   <Collapse in={isExpanded}>
                     <Box
                       sx={{
-                        padding: '8px 10px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        padding: '12px 14px',
+                        borderTop: '1px solid rgba(66, 165, 245, 0.1)',
                         backgroundColor: 'rgba(0, 0, 0, 0.15)',
                       }}
                     >
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         {/* Status selector row */}
-                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.65rem', minWidth: '40px' }}>
-                            Status:
+                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.75rem', fontWeight: 500, minWidth: '50px' }}>
+                            Status
                           </Typography>
-                          <FormControl size="small" sx={{ minWidth: 100 }}>
+                          <FormControl size="small" sx={{ flex: 1, maxWidth: 140 }}>
                             <Select
                               value={feedback.status}
-                              onChange={(e) => updateItemFeedback(feedback.catenaXId, 'status', e.target.value as FeedbackStatus)}
+                              onChange={(e: SelectChangeEvent<FeedbackStatus>) => {
+                                updateItemStatus(feedback.catenaXId, e.target.value as FeedbackStatus);
+                              }}
                               sx={{
                                 backgroundColor: feedback.status === 'OK' 
-                                  ? 'rgba(129, 199, 132, 0.15)' 
-                                  : 'rgba(239, 83, 80, 0.15)',
+                                  ? 'rgba(129, 199, 132, 0.12)' 
+                                  : 'rgba(239, 83, 80, 0.12)',
                                 color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
-                                fontSize: '0.7rem',
+                                fontSize: '0.8rem',
                                 fontWeight: 600,
-                                height: '28px',
+                                height: '34px',
+                                borderRadius: '8px',
                                 '& .MuiOutlinedInput-notchedOutline': { 
                                   borderColor: feedback.status === 'OK' 
                                     ? 'rgba(129, 199, 132, 0.4)' 
@@ -430,6 +513,10 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                                 '&:hover .MuiOutlinedInput-notchedOutline': { 
                                   borderColor: feedback.status === 'OK' ? '#81c784' : '#ef5350',
                                 },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+                                  borderColor: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                                  borderWidth: '2px',
+                                },
                                 '& .MuiSelect-icon': { 
                                   color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
                                 },
@@ -437,16 +524,20 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                               MenuProps={{
                                 PaperProps: {
                                   sx: {
-                                    backgroundColor: '#1e1e1e',
-                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                    borderRadius: '8px',
-                                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+                                    backgroundColor: 'rgba(20, 30, 45, 0.98)',
+                                    backdropFilter: 'blur(12px)',
+                                    border: '1px solid rgba(66, 165, 245, 0.2)',
+                                    borderRadius: '10px',
+                                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
                                     '& .MuiMenuItem-root': { 
                                       color: '#ffffff', 
-                                      fontSize: '0.75rem',
-                                      padding: '8px 12px',
-                                      '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.08)' },
-                                      '&.Mui-selected': { backgroundColor: 'rgba(66, 165, 245, 0.2)' },
+                                      fontSize: '0.8rem',
+                                      padding: '10px 14px',
+                                      '&:hover': { backgroundColor: 'rgba(66, 165, 245, 0.15)' },
+                                      '&.Mui-selected': { 
+                                        backgroundColor: 'rgba(66, 165, 245, 0.25)',
+                                        '&:hover': { backgroundColor: 'rgba(66, 165, 245, 0.3)' },
+                                      },
                                     },
                                   },
                                 },
@@ -469,32 +560,35 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                         </Box>
 
                         {/* Message input */}
-                        <TextField
-                          fullWidth
-                          size="small"
-                          multiline
-                          rows={2}
-                          placeholder="Enter status message..."
-                          value={feedback.statusMessage || ''}
-                          onChange={(e) => updateItemFeedback(feedback.catenaXId, 'statusMessage', e.target.value)}
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                              color: '#ffffff',
-                              fontSize: '0.75rem',
-                              textAlign: 'center',
-                              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.1)' },
-                              '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                              '&.Mui-focused fieldset': { borderColor: '#42a5f5' },
-                            },
-                            '& .MuiInputBase-input': { textAlign: 'center' },
-                            '& .MuiInputBase-input::placeholder': { 
-                              color: 'rgba(255, 255, 255, 0.3)', 
-                              opacity: 1,
-                              textAlign: 'center',
-                            },
-                          }}
-                        />
+                        <Box>
+                          <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.75rem', fontWeight: 500, mb: 0.75 }}>
+                            Message
+                          </Typography>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            multiline
+                            rows={2}
+                            placeholder="Enter status message..."
+                            value={feedback.statusMessage || ''}
+                            onChange={(e) => updateItemMessage(feedback.catenaXId, e.target.value)}
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                                color: '#ffffff',
+                                fontSize: '0.8rem',
+                                borderRadius: '8px',
+                                '& fieldset': { borderColor: 'rgba(66, 165, 245, 0.15)' },
+                                '&:hover fieldset': { borderColor: 'rgba(66, 165, 245, 0.3)' },
+                                '&.Mui-focused fieldset': { borderColor: '#42a5f5', borderWidth: '2px' },
+                              },
+                              '& .MuiInputBase-input::placeholder': { 
+                                color: 'rgba(255, 255, 255, 0.35)', 
+                                opacity: 1,
+                              },
+                            }}
+                          />
+                        </Box>
                       </Box>
                     </Box>
                   </Collapse>
@@ -505,18 +599,29 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
         </Box>
 
         {/* Actions - Compact buttons aligned right */}
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            gap: 1.5, 
+            justifyContent: 'flex-end',
+            pt: 1,
+            borderTop: '1px solid rgba(66, 165, 245, 0.1)',
+          }}
+        >
           <Button
             size="small"
             onClick={onCancel}
             sx={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '0.7rem',
-              padding: '4px 12px',
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: '0.8rem',
+              padding: '8px 20px',
               textTransform: 'none',
-              borderRadius: '6px',
+              fontWeight: 500,
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               '&:hover': {
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderColor: 'rgba(255, 255, 255, 0.25)',
                 color: '#ffffff',
               },
             }}
@@ -528,16 +633,19 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
             variant="contained"
             onClick={handleSend}
             disabled={sending}
-            startIcon={sending ? <CircularProgress size={12} color="inherit" /> : <Send sx={{ fontSize: '0.85rem' }} />}
+            startIcon={sending ? <CircularProgress size={14} color="inherit" /> : <Send sx={{ fontSize: '0.95rem' }} />}
             sx={{
               backgroundColor: '#42a5f5',
               color: '#ffffff',
-              fontSize: '0.7rem',
-              padding: '4px 14px',
+              fontSize: '0.8rem',
+              padding: '8px 24px',
               textTransform: 'none',
-              borderRadius: '6px',
+              fontWeight: 600,
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(66, 165, 245, 0.3)',
               '&:hover': {
-                backgroundColor: '#1976d2',
+                backgroundColor: '#1e88e5',
+                boxShadow: '0 6px 16px rgba(66, 165, 245, 0.4)',
               },
               '&.Mui-disabled': {
                 backgroundColor: 'rgba(66, 165, 245, 0.3)',
@@ -545,7 +653,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
               },
             }}
           >
-            {sending ? 'Sending...' : 'Send'}
+            {sending ? 'Sending...' : 'Send Feedback'}
           </Button>
         </Box>
       </Box>

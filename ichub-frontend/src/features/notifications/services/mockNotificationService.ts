@@ -190,6 +190,8 @@ class MockNotificationService {
       threadId: header.messageId,
       isThreadStart: true,
       relatedNotifications: [],
+      isArchived: false,
+      verificationState: 'not-verified',
     };
   }
 
@@ -198,7 +200,7 @@ class MockNotificationService {
     const notifications: InboxNotification[] = [];
 
     // Generate some historical notifications
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 25; i++) {
       const notification = this.generateNotification();
       // Set older dates
       const daysAgo = Math.floor(Math.random() * 14);
@@ -210,9 +212,20 @@ class MockNotificationService {
         notification.readAt = new Date(notification.receivedAt.getTime() + 3600000);
       }
 
+      // Some have verified items (but not all items necessarily verified)
+      if (notification.status === 'read' && Math.random() > 0.5) {
+        notification.verifiedItems = notification.verifiedItems.map((vi) => ({
+          ...vi,
+          verificationStatus: 'accessible',
+          verifiedAt: new Date(notification.readAt!.getTime() + 3600000),
+        }));
+        notification.verificationState = 'verified';
+      }
+
       // Some have feedback sent
-      if (notification.status === 'read' && Math.random() > 0.6) {
+      if (notification.verificationState === 'verified' && Math.random() > 0.5) {
         notification.status = 'feedback-sent';
+        notification.verificationState = 'feedback-sent';
         notification.feedbackSentAt = new Date(notification.readAt!.getTime() + 7200000);
         notification.feedbackResponse = {
           status: 'OK',
@@ -222,11 +235,11 @@ class MockNotificationService {
             status: 'OK',
           })),
         };
-        notification.verifiedItems = notification.verifiedItems.map((vi) => ({
-          ...vi,
-          verificationStatus: 'accessible',
-          verifiedAt: notification.feedbackSentAt,
-        }));
+      }
+
+      // Some are archived
+      if (Math.random() > 0.9) {
+        notification.isArchived = true;
       }
 
       notifications.push(notification);
