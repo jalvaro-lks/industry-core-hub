@@ -98,13 +98,16 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [version, setVersion] = useState<PolicyVersion>('saturn');
-  const [dataType, setDataType] = useState<PolicyDataType>('digital-product-passport');
+  const [dataType, setDataType] = useState<PolicyDataType | ''>('');
   const [policyJson, setPolicyJson] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
 
   // Detected policy type from JSON
   const [detectedPolicyType, setDetectedPolicyType] = useState<PolicyType | null>(null);
+  
+  // Detected policy version from JSON (Saturn vs Jupiter)
+  const [detectedPolicyVersion, setDetectedPolicyVersion] = useState<PolicyVersion | null>(null);
 
   // Policy Builder window and clipboard monitoring
   const [policyBuilderOpen, setPolicyBuilderOpen] = useState(false);
@@ -174,9 +177,15 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       setPolicyJson(existingClipboardJson);
       const type = detectPolicyType(existingClipboardJson);
       setDetectedPolicyType(type);
+      const policyVersion = detectPolicyVersion(existingClipboardJson);
+      setDetectedPolicyVersion(policyVersion);
+      if (policyVersion) {
+        setVersion(policyVersion);
+      }
       lastClipboardContentRef.current = existingClipboardJson;
+      const versionLabel = policyVersion === 'saturn' ? 'Saturn' : policyVersion === 'jupiter' ? 'Jupiter' : '';
       setNotificationMessage(
-        `✨ Existing Policy JSON imported! (${type === 'access' ? 'Access' : type === 'usage' ? 'Usage' : 'Unknown'} Policy)`
+        `✨ Existing Policy JSON imported! (${type === 'access' ? 'Access' : type === 'usage' ? 'Usage' : 'Unknown'} Policy${versionLabel ? ` - ${versionLabel}` : ''})`
       );
       setShowSuccessNotification(true);
     }
@@ -201,12 +210,13 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     setName('');
     setDescription('');
     setVersion('saturn');
-    setDataType('digital-product-passport');
+    setDataType('');
     setPolicyJson('');
     setTags([]);
     setTagInput('');
     setActiveStep(0);
     setDetectedPolicyType(null);
+    setDetectedPolicyVersion(null);
     lastClipboardContentRef.current = '';
     setShowLdMode(true);
     setExistingClipboardJson(null);
@@ -270,6 +280,53 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   }, []);
 
   /**
+   * Detect policy version from JSON content (Saturn vs Jupiter)
+   * Saturn: @context is array with w3id.org/catenax/2025 URLs, @type is "PolicyDefinition"
+   * Jupiter: @context is object, @type is "PolicyDefinitionRequestDto", uses odrl: prefixes
+   */
+  const detectPolicyVersion = useCallback((jsonContent: string): PolicyVersion | null => {
+    try {
+      const parsed = JSON.parse(jsonContent);
+      const context = parsed['@context'];
+      const type = parsed['@type'];
+      
+      // Check for Saturn indicators
+      if (Array.isArray(context)) {
+        // Saturn uses array @context with w3id.org/catenax/2025 URLs
+        const hasSaturnUrls = context.some((item: unknown) => 
+          typeof item === 'string' && item.includes('w3id.org/catenax/2025')
+        );
+        if (hasSaturnUrls) return 'saturn';
+      }
+      
+      // Check for Saturn @type
+      if (type === 'PolicyDefinition') return 'saturn';
+      
+      // Check for Jupiter indicators
+      if (context && typeof context === 'object' && !Array.isArray(context)) {
+        // Jupiter uses object @context with odrl and cx-policy keys
+        if ('odrl' in context || 'cx-policy' in context) return 'jupiter';
+      }
+      
+      // Check for Jupiter @type
+      if (type === 'PolicyDefinitionRequestDto') return 'jupiter';
+      
+      // Check for odrl: prefixes in stringified content (Jupiter uses them)
+      if (jsonContent.includes('"odrl:')) return 'jupiter';
+      
+      // If none of the above, check for simplified format (Saturn style)
+      const policy = parsed.policy || parsed;
+      if (policy.permission && !jsonContent.includes('"odrl:permission"')) {
+        return 'saturn';
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  /**
    * Check clipboard for policy JSON when window regains focus
    */
   const checkClipboardForPolicy = useCallback(async () => {
@@ -291,6 +348,13 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         const type = detectPolicyType(clipboardContent);
         setDetectedPolicyType(type);
         
+        // Detect policy version and auto-set it
+        const policyVersion = detectPolicyVersion(clipboardContent);
+        setDetectedPolicyVersion(policyVersion);
+        if (policyVersion) {
+          setVersion(policyVersion);
+        }
+        
         // Close the Policy Builder tab if it's open
         if (policyBuilderWindowRef.current && !policyBuilderWindowRef.current.closed) {
           policyBuilderWindowRef.current.close();
@@ -301,8 +365,9 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         setPolicyBuilderOpen(false);
         
         // Show success notification
+        const versionLabel = policyVersion === 'saturn' ? 'Saturn' : policyVersion === 'jupiter' ? 'Jupiter' : '';
         setNotificationMessage(
-          `✨ Policy JSON imported! (${type === 'access' ? 'Access' : type === 'usage' ? 'Usage' : 'Unknown'} Policy)`
+          `✨ Policy JSON imported! (${type === 'access' ? 'Access' : type === 'usage' ? 'Usage' : 'Unknown'} Policy${versionLabel ? ` - ${versionLabel}` : ''})`
         );
         setShowSuccessNotification(true);
       }
@@ -310,7 +375,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       // Clipboard access denied - ignore silently
       console.debug('Clipboard access denied:', err);
     }
-  }, [isValidPolicyJson, detectPolicyType]);
+  }, [isValidPolicyJson, detectPolicyType, detectPolicyVersion]);
 
   /**
    * Effect to monitor window focus and check clipboard
@@ -592,7 +657,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       return;
     }
 
-    if (!name.trim()) {
+    if (!name.trim() || !dataType) {
       return;
     }
 
@@ -605,7 +670,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         description: description.trim() || undefined,
         version,
         type: detectedPolicyType || 'access',
-        dataType,
+        dataType: dataType as PolicyDataType,
         status: editPolicy?.status || 'draft',
         policyJson: JSON.parse(updatedJson),
         tags: tags.length > 0 ? tags : undefined,
@@ -620,7 +685,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   };
 
   const isStep1Valid = policyJson.trim().length > 0 && !jsonError;
-  const isStep2Valid = name.trim().length > 0;
+  const isStep2Valid = name.trim().length > 0 && !!dataType;
 
   /**
    * Step 1: Configure JSON - Open Policy Builder in new tab + auto-import
@@ -770,6 +835,27 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
                     color: 'inherit',
                     fontSize: 14
                   },
+                  '& .MuiChip-label': {
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    px: 0.75
+                  }
+                }}
+              />
+            )}
+            {detectedPolicyVersion && (
+              <Chip
+                label={detectedPolicyVersion === 'saturn' ? 'Saturn' : 'Jupiter'}
+                size="small"
+                sx={{
+                  height: 26,
+                  backgroundColor: detectedPolicyVersion === 'saturn' 
+                    ? 'rgba(245, 158, 11, 0.1)' 
+                    : 'rgba(139, 92, 246, 0.1)',
+                  border: `1px solid ${detectedPolicyVersion === 'saturn' 
+                    ? 'rgba(245, 158, 11, 0.25)' 
+                    : 'rgba(139, 92, 246, 0.25)'}`,
+                  color: detectedPolicyVersion === 'saturn' ? '#f59e0b' : '#8b5cf6',
                   '& .MuiChip-label': {
                     fontSize: '0.7rem',
                     fontWeight: 500,
@@ -1191,7 +1277,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   const renderStep2 = () => {
     const updatedJson = getUpdatedJson();
     const versionInfo = POLICY_VERSION_INFO[version];
-    const dataTypeInfo = DATA_TYPE_INFO[dataType] || { label: dataType, color: '#9ca3af' };
+    const dataTypeInfo = dataType ? DATA_TYPE_INFO[dataType as PolicyDataType] : { label: 'Not selected', color: '#9ca3af' };
 
     return (
       <Box sx={{ 
@@ -1204,7 +1290,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
           <Alert
             severity="info"
             icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
-            sx={{ backgroundColor: 'rgba(96, 165, 250, 0.1)' }}
+            sx={{ backgroundColor: 'rgba(96, 165, 250, 0.1)', mt: 2 }}
           >
             <Typography variant="body2">
               This is an <strong>{detectedPolicyType === 'access' ? 'Access' : 'Usage'} Policy</strong> (detected from JSON configuration)
@@ -1236,9 +1322,32 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
             border: '1px solid rgba(255, 255, 255, 0.12)'
           }}
         >
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2 }}>
-            Connector Version
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+              Connector Version
+            </Typography>
+            {detectedPolicyVersion && (
+              <Chip
+                label={`Detected: ${detectedPolicyVersion === 'saturn' ? 'Saturn' : 'Jupiter'}`}
+                size="small"
+                sx={{
+                  height: 22,
+                  backgroundColor: detectedPolicyVersion === 'saturn' 
+                    ? 'rgba(245, 158, 11, 0.15)' 
+                    : 'rgba(139, 92, 246, 0.15)',
+                  border: `1px solid ${detectedPolicyVersion === 'saturn' 
+                    ? 'rgba(245, 158, 11, 0.3)' 
+                    : 'rgba(139, 92, 246, 0.3)'}`,
+                  color: detectedPolicyVersion === 'saturn' ? '#f59e0b' : '#8b5cf6',
+                  '& .MuiChip-label': {
+                    fontSize: '0.65rem',
+                    fontWeight: 500,
+                    px: 0.75
+                  }
+                }}
+              />
+            )}
+          </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             {(['saturn', 'jupiter'] as PolicyVersion[]).map((v) => {
               const info = POLICY_VERSION_INFO[v];
@@ -1293,14 +1402,19 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         />
 
         {/* Data Type */}
-        <FormControl fullWidth>
+        <FormControl fullWidth required>
           <InputLabel>Data Type</InputLabel>
           <Select
             value={dataType}
             label="Data Type"
-            onChange={(e) => setDataType(e.target.value as PolicyDataType)}
+            onChange={(e) => setDataType(e.target.value as PolicyDataType | '')}
             sx={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
           >
+            <MenuItem value="">
+              <Typography sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+                Select Data Type...
+              </Typography>
+            </MenuItem>
             {Object.entries(DATA_TYPE_INFO).map(([key, info]) => (
               <MenuItem key={key} value={key}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
