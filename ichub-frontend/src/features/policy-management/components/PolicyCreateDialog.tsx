@@ -46,8 +46,6 @@ import {
   Snackbar,
   Fade,
   LinearProgress,
-  Switch,
-  FormControlLabel,
   Tooltip
 } from '@mui/material';
 import {
@@ -59,7 +57,6 @@ import {
   VpnKey as VpnKeyIcon,
   OpenInNew as OpenInNewIcon,
   AutoAwesome as AutoAwesomeIcon,
-  Visibility as VisibilityIcon,
   Delete as DeleteIcon,
   Tab as TabIcon
 } from '@mui/icons-material';
@@ -112,7 +109,6 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
 
   // Policy Builder window and clipboard monitoring
   const [policyBuilderOpen, setPolicyBuilderOpen] = useState(false);
-  const [isWaitingForClipboard, setIsWaitingForClipboard] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const lastClipboardContentRef = useRef<string>('');
@@ -148,7 +144,6 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         policyBuilderWindowRef.current.close();
       }
       setPolicyBuilderOpen(false);
-      setIsWaitingForClipboard(false);
       setShowExistingJsonDialog(false);
       setExistingClipboardJson(null);
       setTabClosedNotification(false);
@@ -304,7 +299,6 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         }
         
         setPolicyBuilderOpen(false);
-        setIsWaitingForClipboard(false);
         
         // Show success notification
         setNotificationMessage(
@@ -355,7 +349,6 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     const checkWindowInterval = setInterval(() => {
       if (policyBuilderWindowRef.current?.closed) {
         setPolicyBuilderOpen(false);
-        setIsWaitingForClipboard(false);
         checkClipboardForPolicy();
         clearInterval(checkWindowInterval);
       }
@@ -412,7 +405,23 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     }
     
     setPolicyBuilderOpen(true);
-    setIsWaitingForClipboard(true);
+  };
+
+  /**
+   * Handle "Create Another" button - reset to initial state and open Policy Builder
+   */
+  const handleCreateAnother = async () => {
+    // Reset to initial state
+    setPolicyJson('');
+    setJsonError(null);
+    setShowLsMode(false);
+    setTabClosedNotification(false);
+    setPolicyBuilderOpen(false);
+    
+    // Small delay to let state reset, then open Policy Builder
+    setTimeout(() => {
+      handleOpenPolicyBuilder();
+    }, 50);
   };
 
   /**
@@ -622,121 +631,206 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       display: 'flex', 
       flexDirection: 'column',
       height: '100%',
-      p: 3,
-      gap: 3
+      p: policyJson.trim() ? 2 : 3,
+      gap: policyJson.trim() ? 1.5 : 2,
+      position: 'relative'
     }}>
-      {/* Header */}
-      <Box sx={{ textAlign: 'center', pt: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-          Configure Policy JSON
-        </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 600, mx: 'auto' }}>
-          {!policyJson.trim() ? (
-            <>
-              The application is monitoring your clipboard for a valid Policy JSON.
-              <br />
-              <strong>Go to the Policy Builder, configure your policy, and click "Copy JSON-LD".</strong>
-              <br />
-              <Typography component="span" variant="body2" sx={{ color: 'info.main' }}>
-                The JSON will be detected and imported automatically!
-              </Typography>
-            </>
-          ) : (
-            <>
-              Policy JSON detected and imported successfully!
-              <br />
-              <strong>Review the JSON and continue to the next step.</strong>
-            </>
+      {/* Elegant Compact Header */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        pb: policyJson.trim() ? 1 : 0
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {policyJson.trim() && (
+            <Box sx={{ 
+              width: 8, 
+              height: 8, 
+              borderRadius: '50%', 
+              background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+              boxShadow: '0 0 8px rgba(34, 197, 94, 0.5)'
+            }} />
           )}
-        </Typography>
+          <Typography variant="subtitle1" sx={{ 
+            fontWeight: 600, 
+            color: 'text.primary',
+            letterSpacing: '-0.01em'
+          }}>
+            {policyJson.trim() ? 'Policy JSON' : 'Configure Policy JSON'}
+          </Typography>
+          {!policyJson.trim() && (
+            <Typography variant="body2" sx={{ color: 'text.secondary', opacity: 0.7 }}>
+              — Use the Policy Builder to create your policy
+            </Typography>
+          )}
+        </Box>
+        {policyJson.trim() && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            {/* -LS Mode Toggle - More elegant */}
+            <Tooltip title="Toggle between full JSON-LD format and simplified -LS format" arrow>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 0.75,
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1,
+                backgroundColor: showLsMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                border: `1px solid ${showLsMode ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  backgroundColor: showLsMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.06)'
+                }
+              }}
+              onClick={() => setShowLsMode(!showLsMode)}
+              >
+                <Box sx={{ 
+                  width: 6, 
+                  height: 6, 
+                  borderRadius: '50%', 
+                  backgroundColor: showLsMode ? '#f59e0b' : 'rgba(255, 255, 255, 0.3)',
+                  transition: 'background-color 0.2s ease'
+                }} />
+                <Typography variant="caption" sx={{ 
+                  color: showLsMode ? '#f59e0b' : 'text.secondary',
+                  fontWeight: 500,
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.5px'
+                }}>
+                  -LS
+                </Typography>
+              </Box>
+            </Tooltip>
+            {detectedPolicyType && (
+              <Chip
+                icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
+                label={detectedPolicyType === 'access' ? 'Access' : 'Usage'}
+                size="small"
+                sx={{
+                  height: 26,
+                  backgroundColor: detectedPolicyType === 'access' 
+                    ? 'rgba(96, 165, 250, 0.1)' 
+                    : 'rgba(244, 143, 177, 0.1)',
+                  border: `1px solid ${detectedPolicyType === 'access' 
+                    ? 'rgba(96, 165, 250, 0.25)' 
+                    : 'rgba(244, 143, 177, 0.25)'}`,
+                  color: detectedPolicyType === 'access' ? '#60a5fa' : '#f48fb1',
+                  '& .MuiChip-icon': { 
+                    color: 'inherit',
+                    fontSize: 14
+                  },
+                  '& .MuiChip-label': {
+                    fontSize: '0.7rem',
+                    fontWeight: 500,
+                    px: 0.75
+                  }
+                }}
+              />
+            )}
+          </Box>
+        )}
       </Box>
 
-      {/* Tab closed notification */}
+      {/* Tab closed notification - More subtle */}
       {tabClosedNotification && (
-        <Alert 
-          severity="info" 
-          icon={<TabIcon />}
-          onClose={() => setTabClosedNotification(false)}
-          sx={{ 
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            border: '1px solid rgba(59, 130, 246, 0.3)'
-          }}
-        >
-          <Typography variant="body2">
-            The Policy Builder tab has been closed automatically to keep your browser clean.
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          px: 1.5,
+          py: 1,
+          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+          borderRadius: 1.5
+        }}>
+          <TabIcon sx={{ color: '#60a5fa', fontSize: 16 }} />
+          <Typography variant="caption" sx={{ color: '#60a5fa', flex: 1 }}>
+            Policy Builder tab closed automatically
           </Typography>
-        </Alert>
+          <IconButton 
+            size="small" 
+            onClick={() => setTabClosedNotification(false)}
+            sx={{ p: 0.25, color: 'rgba(96, 165, 250, 0.6)' }}
+          >
+            <CloseIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </Box>
       )}
 
       {/* Main content */}
-      <Box sx={{ 
-        flex: 1, 
-        display: 'flex', 
-        gap: 3,
-        minHeight: 0, // Important for flex child scrolling
-        justifyContent: policyJson.trim() ? 'flex-start' : 'center'
-      }}>
-        {/* Left side - Open Policy Builder */}
-        <Paper sx={{ 
-          flex: policyJson.trim() ? 1 : undefined,
-          width: policyJson.trim() ? undefined : '100%',
-          maxWidth: policyJson.trim() ? undefined : 600,
-          p: 3, 
-          backgroundColor: 'rgba(0, 0, 0, 0.3)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: 2,
-          display: 'flex',
-          flexDirection: 'column',
+      {!policyJson.trim() ? (
+        // No JSON yet - show Policy Builder options centered
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 3
+          minHeight: 0,
+          p: 3
         }}>
-          {!policyBuilderOpen && !policyJson.trim() ? (
-            // Initial state - show open button
-            <>
-              <Box sx={{ 
-                width: 120, 
-                height: 120, 
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(96, 165, 250, 0.1) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <OpenInNewIcon sx={{ fontSize: 56, color: '#60a5fa' }} />
-              </Box>
-              <Typography variant="h6" sx={{ color: 'text.primary', textAlign: 'center' }}>
-                Catena-X Policy Builder
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', maxWidth: 400 }}>
-                The Policy Builder will open in a new tab. Configure your policy there, then click <strong>"Copy JSON-LD"</strong>.
-                <br /><br />
-                <Typography component="span" sx={{ color: 'warning.main', fontSize: '0.85rem' }}>
-                  💡 Tip: The clipboard will be cleared to ensure proper detection of your new policy.
+          <Paper sx={{ 
+            width: '100%',
+            height: '100%',
+            maxWidth: 650,
+            maxHeight: 500,
+            p: 5, 
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3
+          }}>
+            {!policyBuilderOpen ? (
+              // Initial state - show open button
+              <>
+                <Box sx={{ 
+                  width: 120, 
+                  height: 120, 
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(96, 165, 250, 0.1) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <OpenInNewIcon sx={{ fontSize: 56, color: '#60a5fa' }} />
+                </Box>
+                <Typography variant="h5" sx={{ color: 'text.primary', textAlign: 'center', fontWeight: 500 }}>
+                  Catena-X Policy Builder
                 </Typography>
-              </Typography>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<OpenInNewIcon />}
-                onClick={handleOpenPolicyBuilder}
-                sx={{ 
-                  mt: 2,
-                  px: 4,
-                  py: 1.5,
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
-                  }
-                }}
-              >
-                Open Policy Builder
-              </Button>
-            </>
-          ) : isWaitingForClipboard && !policyJson.trim() ? (
-            // Waiting for clipboard state
-            <>
-              <Box sx={{ position: 'relative' }}>
+                <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', maxWidth: 420 }}>
+                  Configure your policy in the Policy Builder, then click <strong>"Copy JSON-LD"</strong>.
+                  <br />
+                  <Typography component="span" sx={{ color: 'info.main', fontSize: '0.9rem' }}>
+                    The JSON will be detected automatically!
+                  </Typography>
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<OpenInNewIcon />}
+                  onClick={handleOpenPolicyBuilder}
+                  sx={{ 
+                    mt: 2,
+                    px: 5,
+                    py: 1.75,
+                    fontSize: '1rem',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
+                    }
+                  }}
+                >
+                  Open Policy Builder
+                </Button>
+              </>
+            ) : (
+              // Waiting for clipboard state
+              <>
                 <Box sx={{ 
                   width: 120, 
                   height: 120, 
@@ -753,226 +847,234 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
                 }}>
                   <AutoAwesomeIcon sx={{ fontSize: 56, color: '#22c55e' }} />
                 </Box>
-              </Box>
-              <Typography variant="h6" sx={{ color: '#22c55e', textAlign: 'center' }}>
-                Monitoring Clipboard...
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', maxWidth: 400 }}>
-                Click <strong>"Copy JSON-LD"</strong> in the Policy Builder tab.
-                <br />
-                The JSON will be imported automatically when you return here!
-                <br /><br />
-                <Typography component="span" sx={{ color: 'info.main', fontSize: '0.8rem' }}>
-                  📋 The Policy Builder tab will close automatically once the JSON is detected.
+                <Typography variant="h5" sx={{ color: '#22c55e', textAlign: 'center', fontWeight: 500 }}>
+                  Monitoring Clipboard...
                 </Typography>
-              </Typography>
-              <LinearProgress 
-                sx={{ 
-                  width: '80%', 
-                  mt: 2,
-                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                  '& .MuiLinearProgress-bar': {
-                    backgroundColor: '#22c55e',
-                    animation: 'indeterminate 1.5s linear infinite'
-                  }
-                }} 
-              />
-              <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<PasteIcon />}
-                  onClick={handlePasteFromClipboard}
-                  sx={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                >
-                  Paste Manually
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<OpenInNewIcon />}
-                  onClick={handleOpenPolicyBuilder}
-                  sx={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}
-                >
-                  Reopen Builder
-                </Button>
-              </Box>
-            </>
-          ) : policyJson.trim() ? (
-            // JSON imported successfully
-            <>
-              <Box sx={{ 
-                width: 100, 
-                height: 100, 
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0.15) 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <CheckIcon sx={{ fontSize: 48, color: '#22c55e' }} />
-              </Box>
-              <Typography variant="h6" sx={{ color: '#22c55e', textAlign: 'center' }}>
-                Policy JSON Imported!
-              </Typography>
-              {detectedPolicyType && (
-                <Chip
-                  icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
-                  label={detectedPolicyType === 'access' ? 'Access Policy' : 'Usage Policy'}
-                  sx={{
-                    backgroundColor: detectedPolicyType === 'access' 
-                      ? 'rgba(96, 165, 250, 0.15)' 
-                      : 'rgba(244, 143, 177, 0.15)',
-                    color: detectedPolicyType === 'access' ? '#60a5fa' : '#f48fb1',
-                    '& .MuiChip-icon': { color: 'inherit' }
-                  }}
+                <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', maxWidth: 420 }}>
+                  Click <strong>"Copy JSON-LD"</strong> in the Policy Builder tab.
+                  <br />
+                  The JSON will be imported automatically!
+                </Typography>
+                <LinearProgress 
+                  sx={{ 
+                    width: '85%',
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#22c55e'
+                    }
+                  }} 
                 />
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<OpenInNewIcon />}
-                onClick={handleOpenPolicyBuilder}
-                size="small"
-                sx={{ mt: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }}
-              >
-                Create Another Policy
-              </Button>
-            </>
-          ) : null}
-        </Paper>
-
-        {/* Right side - JSON Preview/Edit - Only shown when JSON is detected */}
-        {policyJson.trim() && (
-          <Paper sx={{ 
+                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<PasteIcon />}
+                    onClick={handlePasteFromClipboard}
+                    sx={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}
+                  >
+                    Paste Manually
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<OpenInNewIcon />}
+                    onClick={handleOpenPolicyBuilder}
+                    sx={{ borderColor: 'rgba(255, 255, 255, 0.3)' }}
+                  >
+                    Reopen Builder
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Paper>
+        </Box>
+      ) : (
+        // JSON detected - show JSON as main content with separate success banner
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: 'hidden',
+          gap: 2
+        }}>
+          {/* JSON Content - Main area - Takes ALL available space and expands */}
+          <Box sx={{ 
             flex: 1, 
-            p: 2, 
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
+            display: 'flex', 
+            flexDirection: 'column', 
+            overflow: 'hidden',
             borderRadius: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
+            border: showLsMode 
+              ? '1px solid rgba(245, 158, 11, 0.25)' 
+              : '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            position: 'relative'
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <VisibilityIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                  Policy JSON
-                </Typography>
+            {showLsMode ? (
+              // Read-only view for -LS mode
+              <Box
+                sx={{
+                  flex: 1,
+                  overflow: 'auto',
+                  p: 2.5,
+                  '&::-webkit-scrollbar': { width: '6px' },
+                  '&::-webkit-scrollbar-track': { background: 'transparent' },
+                  '&::-webkit-scrollbar-thumb': { 
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+                    borderRadius: '3px',
+                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.25)' }
+                  }
+                }}
+              >
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1, 
+                  mb: 2,
+                  pb: 1.5,
+                  borderBottom: '1px solid rgba(245, 158, 11, 0.2)'
+                }}>
+                  <Box sx={{ 
+                    width: 6, 
+                    height: 6, 
+                    borderRadius: '50%', 
+                    backgroundColor: '#f59e0b' 
+                  }} />
+                  <Typography variant="caption" sx={{ color: '#f59e0b', fontWeight: 500, letterSpacing: '0.5px' }}>
+                    SIMPLIFIED -LS FORMAT
+                  </Typography>
+                </Box>
+                <pre style={{ 
+                  margin: 0, 
+                  fontSize: '0.82rem', 
+                  color: '#e2e8f0', 
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+                  lineHeight: 1.6
+                }}>
+                  {getDisplayJson()}
+                </pre>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                {/* -LS Mode Toggle */}
-                <Tooltip title="Toggle between full JSON-LD format and simplified -LS (LinkedSymbol) format" arrow>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size="small"
-                        checked={showLsMode}
-                        onChange={(e) => setShowLsMode(e.target.checked)}
-                        sx={{
-                          '& .MuiSwitch-switchBase.Mui-checked': {
-                            color: '#f59e0b',
-                          },
-                          '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                            backgroundColor: '#f59e0b',
-                          },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography variant="caption" sx={{ color: showLsMode ? '#f59e0b' : 'text.secondary' }}>
-                        -LS Mode
-                      </Typography>
-                    }
-                    sx={{ mr: 1 }}
-                  />
-                </Tooltip>
-                {detectedPolicyType && (
-                  <Chip
-                    icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
-                    label={detectedPolicyType === 'access' ? 'Access Policy' : 'Usage Policy'}
-                    size="small"
-                    sx={{
-                      backgroundColor: detectedPolicyType === 'access' 
-                        ? 'rgba(96, 165, 250, 0.15)' 
-                        : 'rgba(244, 143, 177, 0.15)',
-                      color: detectedPolicyType === 'access' ? '#60a5fa' : '#f48fb1',
-                      '& .MuiChip-icon': { color: 'inherit' }
-                    }}
-                  />
-                )}
-              </Box>
-            </Box>
-
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {showLsMode ? (
-                // Read-only view for -LS mode
-                <Box
-                  sx={{
-                    flex: 1,
-                    overflow: 'auto',
-                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                    borderRadius: 1,
-                    p: 1.5,
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                    '&::-webkit-scrollbar': { width: '8px' },
+            ) : (
+              <TextField
+                multiline
+                value={policyJson}
+                onChange={(e) => handleJsonChange(e.target.value)}
+                error={!!jsonError}
+                placeholder="Paste your policy JSON here..."
+                sx={{
+                  flex: 1,
+                  '& .MuiOutlinedInput-root': {
+                    height: '100%',
+                    alignItems: 'flex-start',
+                    backgroundColor: 'transparent',
+                    fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+                    fontSize: '0.82rem',
+                    lineHeight: 1.6,
+                    border: 'none',
+                    '& fieldset': { border: 'none' },
+                    '&:hover fieldset': { border: 'none' },
+                    '&.Mui-focused fieldset': { border: 'none' }
+                  },
+                  '& .MuiInputBase-input': {
+                    height: '100% !important',
+                    overflow: 'auto !important',
+                    padding: '20px',
+                    '&::-webkit-scrollbar': { width: '6px' },
                     '&::-webkit-scrollbar-track': { background: 'transparent' },
                     '&::-webkit-scrollbar-thumb': { 
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)', 
-                      borderRadius: '4px' 
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+                      borderRadius: '3px' 
                     }
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: '#f59e0b', display: 'block', mb: 1 }}>
-                    📝 Simplified -LS Format (read-only preview)
-                  </Typography>
-                  <pre style={{ margin: 0, fontSize: '0.75rem', color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>
-                    {getDisplayJson()}
-                  </pre>
-                </Box>
-              ) : (
-                <TextField
-                  multiline
-                  value={policyJson}
-                  onChange={(e) => handleJsonChange(e.target.value)}
-                  error={!!jsonError}
-                  placeholder="Paste your policy JSON here..."
-                  sx={{
-                    flex: 1,
-                    '& .MuiOutlinedInput-root': {
-                      height: '100%',
-                      alignItems: 'flex-start',
-                      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem'
-                    },
-                    '& .MuiInputBase-input': {
-                      height: '100% !important',
-                      overflow: 'auto !important'
-                    }
-                  }}
-                />
-              )}
-              {jsonError && (
-                <Alert 
-                  severity="error" 
-                  sx={{ mt: 1, backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
-                  icon={<ErrorIcon />}
-                >
+                  }
+                }}
+              />
+            )}
+            
+            {/* Error overlay if any */}
+            {jsonError && (
+              <Box sx={{ 
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                p: 1.5,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderTop: '1px solid rgba(239, 68, 68, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <ErrorIcon sx={{ color: '#ef4444', fontSize: 18 }} />
+                <Typography variant="body2" sx={{ color: '#ef4444' }}>
                   {jsonError}
-                </Alert>
-              )}
-              {!jsonError && policyJson.trim() && (
-                <Alert 
-                  severity="success" 
-                  sx={{ mt: 1, backgroundColor: 'rgba(34, 197, 94, 0.1)' }}
-                  icon={<CheckIcon />}
-                >
-                  Valid JSON - Ready to continue
-                </Alert>
-              )}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
+          {/* Success Banner - Separate independent block, sticky at bottom */}
+          {!jsonError && (
+            <Box sx={{ 
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              px: 2.5,
+              py: 1.5,
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(34, 197, 94, 0.25)',
+              borderRadius: 2,
+              boxShadow: '0 4px 20px rgba(34, 197, 94, 0.1)'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0.15) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <CheckIcon sx={{ color: '#22c55e', fontSize: 18 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ 
+                    color: '#22c55e', 
+                    fontWeight: 600,
+                    letterSpacing: '0.3px'
+                  }}>
+                    Policy JSON imported successfully
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'rgba(34, 197, 94, 0.7)' }}>
+                    Valid JSON • Ready to continue
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                onClick={handleCreateAnother}
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontSize: '0.8rem',
+                  textTransform: 'none',
+                  '&:hover': { 
+                    color: '#60a5fa',
+                    backgroundColor: 'rgba(96, 165, 250, 0.08)'
+                  }
+                }}
+              >
+                Create another
+              </Button>
             </Box>
-          </Paper>
-        )}
-      </Box>
+          )}
+        </Box>
+      )}
 
       {/* Existing JSON in Clipboard Dialog */}
       <Dialog
