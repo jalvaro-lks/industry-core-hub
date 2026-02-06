@@ -45,8 +45,7 @@ import {
   Alert,
   Snackbar,
   Fade,
-  LinearProgress,
-  Tooltip
+  LinearProgress
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -115,7 +114,8 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   const policyBuilderWindowRef = useRef<Window | null>(null);
 
   // New state for enhanced features
-  const [showLsMode, setShowLsMode] = useState(false);
+  // true = mostrar JSON-LD completo (por defecto), false = mostrar formato simplificado
+  const [showLdMode, setShowLdMode] = useState(true);
   const [existingClipboardJson, setExistingClipboardJson] = useState<string | null>(null);
   const [showExistingJsonDialog, setShowExistingJsonDialog] = useState(false);
   const [tabClosedNotification, setTabClosedNotification] = useState(false);
@@ -208,7 +208,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     setActiveStep(0);
     setDetectedPolicyType(null);
     lastClipboardContentRef.current = '';
-    setShowLsMode(false);
+    setShowLdMode(true);
     setExistingClipboardJson(null);
     setShowExistingJsonDialog(false);
     setTabClosedNotification(false);
@@ -414,7 +414,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
     // Reset to initial state
     setPolicyJson('');
     setJsonError(null);
-    setShowLsMode(false);
+    setShowLdMode(true);
     setTabClosedNotification(false);
     setPolicyBuilderOpen(false);
     
@@ -442,7 +442,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   }, [policyJson, name]);
 
   /**
-   * Convert JSON-LD to -LS (compact/linkedsymbol) format
+   * Convert JSON-LD to simplified format
    * This removes verbose keys and simplifies the structure
    */
   const convertToLsFormat = useCallback((jsonContent: string): string => {
@@ -490,14 +490,14 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
   }, []);
 
   /**
-   * Get display JSON based on -LS mode toggle
+   * Get display JSON based on LD mode toggle
    */
   const getDisplayJson = useCallback((): string => {
-    if (showLsMode) {
-      return convertToLsFormat(policyJson);
+    if (showLdMode) {
+      return policyJson; // JSON-LD completo
     }
-    return policyJson;
-  }, [policyJson, showLsMode, convertToLsFormat]);
+    return convertToLsFormat(policyJson); // Formato simplificado
+  }, [policyJson, showLdMode, convertToLsFormat]);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -632,15 +632,29 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
       flexDirection: 'column',
       height: '100%',
       p: policyJson.trim() ? 2 : 3,
+      pt: policyJson.trim() ? 0 : 3,
       gap: policyJson.trim() ? 1.5 : 2,
       position: 'relative'
     }}>
-      {/* Elegant Compact Header */}
+      {/* Header - Siempre sticky cuando hay JSON */}
       <Box sx={{ 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'space-between',
-        pb: policyJson.trim() ? 1 : 0
+        ...(policyJson.trim() ? {
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backgroundColor: 'rgba(30, 30, 30, 0.95)',
+          backdropFilter: 'blur(12px)',
+          mx: -2,
+          px: 2,
+          py: 1.5,
+          mb: 1,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+        } : {
+          pb: 0
+        })
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {policyJson.trim() && (
@@ -667,42 +681,77 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
         </Box>
         {policyJson.trim() && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            {/* -LS Mode Toggle - More elegant */}
-            <Tooltip title="Toggle between full JSON-LD format and simplified -LS format" arrow>
-              <Box sx={{ 
+            {/* JSON-LD Mode Toggle - Modern switch design */}
+            <Box 
+              onClick={() => setShowLdMode(!showLdMode)}
+              sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 0.75,
-                px: 1.5,
-                py: 0.5,
-                borderRadius: 1,
-                backgroundColor: showLsMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${showLsMode ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.08)'}`,
+                gap: 1,
+                px: 1.25,
+                py: 0.625,
+                borderRadius: 3,
+                width: 80,
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                  backgroundColor: showLsMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.06)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderColor: 'rgba(255, 255, 255, 0.2)'
+                },
+                '&:active': {
+                  transform: 'scale(0.98)'
                 }
               }}
-              onClick={() => setShowLsMode(!showLsMode)}
-              >
+            >
+              {/* Toggle Switch Track */}
+              <Box sx={{ 
+                position: 'relative',
+                width: 32,
+                height: 16,
+                borderRadius: 8,
+                backgroundColor: showLdMode ? 'rgba(96, 165, 250, 0.3)' : 'rgba(245, 158, 11, 0.3)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.2)'
+              }}>
+                {/* Toggle Switch Knob */}
                 <Box sx={{ 
-                  width: 6, 
-                  height: 6, 
-                  borderRadius: '50%', 
-                  backgroundColor: showLsMode ? '#f59e0b' : 'rgba(255, 255, 255, 0.3)',
-                  transition: 'background-color 0.2s ease'
+                  position: 'absolute',
+                  top: 2,
+                  left: showLdMode ? 2 : 16,
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  backgroundColor: showLdMode ? '#60a5fa' : '#f59e0b',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)'
+                  }
                 }} />
-                <Typography variant="caption" sx={{ 
-                  color: showLsMode ? '#f59e0b' : 'text.secondary',
-                  fontWeight: 500,
-                  fontSize: '0.7rem',
-                  letterSpacing: '0.5px'
-                }}>
-                  -LS
-                </Typography>
               </Box>
-            </Tooltip>
+              {/* Label */}
+              <Typography variant="caption" sx={{ 
+                color: showLdMode ? '#60a5fa' : '#f59e0b',
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                letterSpacing: '0.5px',
+                transition: 'color 0.3s ease',
+                width: 24,
+                textAlign: 'center'
+              }}>
+                {showLdMode ? 'LD' : 'SIM'}
+              </Typography>
+            </Box>
             {detectedPolicyType && (
               <Chip
                 icon={detectedPolicyType === 'access' ? <VpnKeyIcon /> : <SecurityIcon />}
@@ -889,42 +938,32 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
           </Paper>
         </Box>
       ) : (
-        // JSON detected - show JSON as main content with separate success banner
+        // JSON detected - show JSON as main content with floating banner
         <Box sx={{ 
           flex: 1, 
           display: 'flex', 
           flexDirection: 'column',
           minHeight: 0,
-          overflow: 'hidden',
-          gap: 2
+          overflow: 'auto',
+          pb: 9, // Padding at bottom for the floating banner
+          gap: 2,
+          position: 'relative'
         }}>
-          {/* JSON Content - Main area - Takes ALL available space and expands */}
+          {/* JSON Content - Expands based on content */}
           <Box sx={{ 
-            flex: 1, 
             display: 'flex', 
             flexDirection: 'column', 
-            overflow: 'hidden',
             borderRadius: 2,
-            border: showLsMode 
-              ? '1px solid rgba(245, 158, 11, 0.25)' 
-              : '1px solid rgba(255, 255, 255, 0.08)',
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            position: 'relative'
+            border: showLdMode 
+              ? '1px solid rgba(96, 165, 250, 0.25)' 
+              : '1px solid rgba(245, 158, 11, 0.25)',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)'
           }}>
-            {showLsMode ? (
-              // Read-only view for -LS mode
+            {!showLdMode ? (
+              // Read-only view for simplified mode
               <Box
                 sx={{
-                  flex: 1,
-                  overflow: 'auto',
-                  p: 2.5,
-                  '&::-webkit-scrollbar': { width: '6px' },
-                  '&::-webkit-scrollbar-track': { background: 'transparent' },
-                  '&::-webkit-scrollbar-thumb': { 
-                    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
-                    borderRadius: '3px',
-                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.25)' }
-                  }
+                  p: 2.5
                 }}
               >
                 <Box sx={{ 
@@ -942,7 +981,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
                     backgroundColor: '#f59e0b' 
                   }} />
                   <Typography variant="caption" sx={{ color: '#f59e0b', fontWeight: 500, letterSpacing: '0.5px' }}>
-                    SIMPLIFIED -LS FORMAT
+                    SIMPLIFIED FORMAT
                   </Typography>
                 </Box>
                 <pre style={{ 
@@ -963,10 +1002,9 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
                 onChange={(e) => handleJsonChange(e.target.value)}
                 error={!!jsonError}
                 placeholder="Paste your policy JSON here..."
+                minRows={10}
                 sx={{
-                  flex: 1,
                   '& .MuiOutlinedInput-root': {
-                    height: '100%',
                     alignItems: 'flex-start',
                     backgroundColor: 'transparent',
                     fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
@@ -978,15 +1016,7 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
                     '&.Mui-focused fieldset': { border: 'none' }
                   },
                   '& .MuiInputBase-input': {
-                    height: '100% !important',
-                    overflow: 'auto !important',
-                    padding: '20px',
-                    '&::-webkit-scrollbar': { width: '6px' },
-                    '&::-webkit-scrollbar-track': { background: 'transparent' },
-                    '&::-webkit-scrollbar-thumb': { 
-                      backgroundColor: 'rgba(255, 255, 255, 0.15)', 
-                      borderRadius: '3px' 
-                    }
+                    padding: '20px'
                   }
                 }}
               />
@@ -1013,66 +1043,78 @@ const PolicyCreateDialog: React.FC<PolicyCreateDialogProps> = ({
               </Box>
             )}
           </Box>
+        </Box>
+      )}
 
-          {/* Success Banner - Separate independent block, sticky at bottom */}
-          {!jsonError && (
+      {/* Success Banner - Overlay flotante fijo justo encima del footer */}
+      {policyJson.trim() && !jsonError && (
+        <Box sx={{ 
+          position: 'fixed',
+          bottom: 107,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: 1200,
+          zIndex: 1300,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 3,
+          py: 1.5,
+          background: 'rgba(34, 197, 94, 0.15)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1px solid rgba(34, 197, 94, 0.35)',
+          borderRadius: 0,
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ 
-              flexShrink: 0,
+              width: 32, 
+              height: 32, 
+              borderRadius: '50%',
+              background: 'rgba(34, 197, 94, 0.25)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              px: 2.5,
-              py: 1.5,
-              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(34, 197, 94, 0.25)',
-              borderRadius: 2,
-              boxShadow: '0 4px 20px rgba(34, 197, 94, 0.1)'
+              justifyContent: 'center'
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ 
-                  width: 32, 
-                  height: 32, 
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0.15) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <CheckIcon sx={{ color: '#22c55e', fontSize: 18 }} />
-                </Box>
-                <Box>
-                  <Typography variant="body2" sx={{ 
-                    color: '#22c55e', 
-                    fontWeight: 600,
-                    letterSpacing: '0.3px'
-                  }}>
-                    Policy JSON imported successfully
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'rgba(34, 197, 94, 0.7)' }}>
-                    Valid JSON • Ready to continue
-                  </Typography>
-                </Box>
-              </Box>
-              <Button
-                variant="text"
-                size="small"
-                startIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                onClick={handleCreateAnother}
-                sx={{ 
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  fontSize: '0.8rem',
-                  textTransform: 'none',
-                  '&:hover': { 
-                    color: '#60a5fa',
-                    backgroundColor: 'rgba(96, 165, 250, 0.08)'
-                  }
-                }}
-              >
-                Create another
-              </Button>
+              <CheckIcon sx={{ color: '#22c55e', fontSize: 18 }} />
             </Box>
-          )}
+            <Box>
+              <Typography variant="body2" sx={{ 
+                color: '#22c55e', 
+                fontWeight: 600,
+                letterSpacing: '0.3px'
+              }}>
+                Policy JSON imported successfully
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(34, 197, 94, 0.8)' }}>
+                Valid JSON • Ready to continue
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
+            onClick={handleCreateAnother}
+            sx={{ 
+              color: '#22c55e',
+              borderColor: 'rgba(34, 197, 94, 0.5)',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              textTransform: 'none',
+              px: 2,
+              py: 0.75,
+              borderRadius: 1.5,
+              '&:hover': { 
+                borderColor: '#22c55e',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)'
+              }
+            }}
+          >
+            Create another
+          </Button>
         </Box>
       )}
 
