@@ -1,3 +1,20 @@
+<!--
+Eclipse Tractus-X - Industry Core Hub
+
+Copyright (c) 2026 LKS Next
+Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+
+This work is made available under the terms of the
+Creative Commons Attribution 4.0 International (CC-BY-4.0) license,
+which is available at
+https://creativecommons.org/licenses/by/4.0/legalcode.
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # KIT Features
 
 > Manage and configure the features of each KIT integrated into the Industry Core Hub.
@@ -47,7 +64,6 @@ The foundational KIT providing core data management capabilities:
 - **Catalog Management**: Manage product catalogs and registrations
 - **Serialized Parts**: Track and manage serialized components
 - **Dataspace Discovery**: Discover and connect to data spaces
-- **Participants Management**: Manage ecosystem participants
 
 ### 2. PCF KIT (Product Carbon Footprint)
 **Status**: Available | **Category**: Sustainability
@@ -68,13 +84,10 @@ Secure data sharing and interoperability:
 - Data Governance
 
 ### 4. Business Partner KIT
-**Status**: Coming Soon | **Category**: Core
+**Status**: Available | **Category**: Core
 
 Business partner data management:
-- Partner Data management
-- Validation services
-- Master Data management
-- Golden Record creation
+- **Contact List**: Define and manage data space participants (Name and BPNL)
 
 ### 5. DCM KIT (Demand & Capacity Management)
 **Status**: Coming Soon | **Category**: Core
@@ -249,10 +262,19 @@ The carousel uses visual effects to indicate focus:
 - [Catalog Parts](ichub/CATALOG-PARTS.md): Part of Industry Core KIT
 - [Serialized Parts](ichub/SERIALIZED-PARTS.md): Part of Industry Core KIT
 - [Dataspace Discovery](ichub/DATASPACE-DISCOVERY.md): Part of Industry Core KIT
-- [Contact List](ichub/CONTACT-LIST.md): Part of Industry Core KIT
+- [Contact List](business-partner/CONTACT-LIST.md): Part of Business Partner KIT
 - [Passport Provision](eco-pass/DPP-PROVIDER-MANAGEMENT.md): Part of Eco Pass KIT
 - [Passport Consumption](eco-pass/DPP-CONSUMER-VIEWER.md): Part of Eco Pass KIT
 
 ---
 
 > For more information, see the main [Frontend Documentation](../FRONTEND-DOCUMENTATION.md).
+
+## NOTICE
+
+This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
+
+- SPDX-License-Identifier: CC-BY-4.0
+- SPDX-FileCopyrightText: 2026 LKS Next
+- SPDX-FileCopyrightText: 2026 Contributors to the Eclipse Foundation
+- Source URL: https://github.com/eclipse-tractusx/industry-core-hub

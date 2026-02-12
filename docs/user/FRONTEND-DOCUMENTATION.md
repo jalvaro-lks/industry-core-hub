@@ -1,4 +1,21 @@
 
+<!--
+Eclipse Tractus-X - Industry Core Hub
+
+Copyright (c) 2026 LKS Next
+Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+See the NOTICE file(s) distributed with this work for additional
+information regarding copyright ownership.
+
+This work is made available under the terms of the
+Creative Commons Attribution 4.0 International (CC-BY-4.0) license,
+which is available at
+https://creativecommons.org/licenses/by/4.0/legalcode.
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # Industry Core Hub Frontend Documentation
 
 > **Welcome to the Industry Core Hub (ICHub) Frontend Documentation!**
@@ -34,9 +51,11 @@ The application is organized by KITs, each providing a set of features. This doc
 - [Catalog Parts](features/ichub/CATALOG-PARTS.md): Create, register, and publish Catalog Parts in the data space.
 - [Serialized Parts](features/ichub/SERIALIZED-PARTS.md): Create, assign to Catalog Parts, register, and publish Serialized Parts.
 - [Dataspace Discovery](features/ichub/DATASPACE-DISCOVERY.md): Consume Catalog and Serialized Parts published by your contacts.
-- [Contact List](features/ichub/CONTACT-LIST.md): Define and manage data space participants (Name and BPNL).
 
-### 2. **Eco Pass KIT**
+### 2. **Business Partner KIT**
+- [Contact List](features/business-partner/CONTACT-LIST.md): Define and manage data space participants (Name and BPNL).
+
+### 3. **Eco Pass KIT**
 - [Passport Provision & Management](features/eco-pass/DPP-PROVIDER-MANAGEMENT.md): Use a wizard to create a Data Product Passport in the data space.
 - [Passport Consumption & Visualization](features/eco-pass/DPP-CONSUMER-VIEWER.md): Consume and visualize a published Digital Passport via QR or identifier.
 
@@ -51,10 +70,12 @@ The application is organized by KITs, each providing a set of features. This doc
 
 ---
 
-## Licensing
 
-This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode). For more details, see the [NOTICE](../../ichub-frontend/NOTICE.md) file.
+## NOTICE
 
----
+This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
 
-> For detailed usage instructions, see each feature's documentation linked above. For questions or contributions, please refer to the [CONTRIBUTING.md](../../CONTRIBUTING.md).
+- SPDX-License-Identifier: CC-BY-4.0
+- SPDX-FileCopyrightText: 2026 LKS Next
+- SPDX-FileCopyrightText: 2026 Contributors to the Eclipse Foundation
+- Source URL: https://github.com/eclipse-tractusx/industry-core-hub
