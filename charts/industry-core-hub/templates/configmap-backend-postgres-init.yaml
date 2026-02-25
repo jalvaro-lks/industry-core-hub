@@ -212,6 +212,7 @@ data:
         receiver_bpn character varying NOT NULL,
         direction public.notification_direction NOT NULL,
         status public.notification_status DEFAULT 'pending'::public.notification_status NOT NULL,
+        use_case VARCHAR(255),
         full_notification jsonb NOT NULL
     );
 

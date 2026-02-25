@@ -677,16 +677,18 @@ class NotificationRepository(BaseRepository[NotificationEntity]):
         self, 
         notification: Notification, 
         direction: NotificationDirection,
-        status: NotificationStatus = NotificationStatus.PENDING
+        status: NotificationStatus = NotificationStatus.PENDING,
+        use_case: str = None
     ) -> NotificationEntity:
         """
-        Creates a new NotificationEntity from an SDK model (passed as a dict) 
-        and the specific flow direction.
-        """        
+        Creates a new NotificationEntity from an SDK model (passed as a dict),
+        the specific flow direction, and an optional use_case/category.
+        """
         db_notification = NotificationEntity.from_sdk(
             notification=notification, 
             direction=direction, 
-            status=status
+            status=status,
+            use_case=use_case
         )
         self.create(db_notification)
         return db_notification
@@ -703,12 +705,14 @@ class NotificationRepository(BaseRepository[NotificationEntity]):
         bpn: str, 
         direction: Optional[NotificationDirection] = None,
         status: Optional[NotificationStatus] = None,
+        use_case: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
     ) -> List[NotificationEntity]:
         """
         Retrieves notifications related to a specific Business Partner.
         Useful for 'Inbox' (Incoming) or 'Sent' (Outgoing) views.
+        Optionally filter by use_case/category.
         """
         stmt = select(NotificationEntity)
         
@@ -726,6 +730,9 @@ class NotificationRepository(BaseRepository[NotificationEntity]):
 
         if status:
             stmt = stmt.where(NotificationEntity.status == status)
+
+        if use_case:
+            stmt = stmt.where(NotificationEntity.use_case == use_case)
 
         # Order by newest first
         stmt = stmt.order_by(desc(NotificationEntity.created_at)).offset(offset).limit(limit)

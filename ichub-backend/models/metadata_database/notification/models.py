@@ -56,6 +56,11 @@ class NotificationEntity(SQLModel, table=True):
     direction: NotificationDirection = Field(default=NotificationDirection.INCOMING, index=True)
     status: NotificationStatus = Field(default=NotificationStatus.RECEIVED, index=True)
 
+    use_case: Optional[str] = Field(
+        default=None,
+        description="Originating use case or category for the notification (e.g., 'CCM', 'TRACEABILITY', 'INDUSTRY CORE', 'PCF', etc.). Generic string for future extensibility."
+    )
+
     full_notification: Notification = Field(sa_column=Column(JSON, nullable=False))
 
     @classmethod
@@ -63,10 +68,16 @@ class NotificationEntity(SQLModel, table=True):
         cls,
         notification: Notification,
         direction: NotificationDirection = NotificationDirection.INCOMING,
-        status: NotificationStatus = NotificationStatus.RECEIVED
+        status: NotificationStatus = NotificationStatus.RECEIVED,
+        use_case: Optional[str] = None
         ) -> "NotificationEntity":
         """
         Maps the nested SDK Notification to a flat, searchable Database Entity.
+        Args:
+            notification: The SDK Notification object.
+            direction: Direction of the notification (incoming/outgoing).
+            status: Status of the notification.
+            use_case: Optional string indicating the use case/category (e.g., 'CCM', 'TRACEABILITY').
         """
         return cls(
             message_id=notification.header.message_id,
@@ -74,6 +85,7 @@ class NotificationEntity(SQLModel, table=True):
             receiver_bpn=notification.header.receiver_bpn,
             direction=direction,
             status=status,
+            use_case=use_case,
             full_notification=notification.model_dump(mode="json")
         )
 

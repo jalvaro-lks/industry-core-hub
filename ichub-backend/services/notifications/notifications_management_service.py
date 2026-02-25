@@ -44,7 +44,7 @@ class NotificationsManagementService():
     def __init__(self):
         self.connector_consumer_service: BaseConnectorConsumerService = connector_manager.consumer.connector_service
 
-    def create_notification(self, notification: Notification, direction: NotificationDirection) -> NotificationEntity:
+    def create_notification(self, notification: Notification, direction: NotificationDirection, use_case: str = None) -> NotificationEntity:
         """
         Create a new notification in the system.
         """
@@ -57,11 +57,11 @@ class NotificationsManagementService():
             status = NotificationStatus.PENDING
         
         with RepositoryManagerFactory().create() as repos:
-
             notification_data = repos.notification_repository.create_new(
                 notification=notification,
                 direction=direction,
-                status=status
+                status=status,
+                use_case=use_case
             )
             return notification_data
 
@@ -73,12 +73,12 @@ class NotificationsManagementService():
             db_obj = repos.notification_repository.update_status(message_id=message_id, new_status=new_status)
             return db_obj
         
-    def get_all_notifications(self, bpn: str, status: Optional[NotificationStatus] = None, offset: int = 0, limit: int = 100) -> List[NotificationEntity]:
+    def get_all_notifications(self, bpn: str, status: Optional[NotificationStatus] = None, use_case: Optional[str] = None, offset: int = 0, limit: int = 100) -> List[NotificationEntity]:
         """
-        Retrieve all notifications from the database, optionally filtered by BPN and status, with pagination support.
+        Retrieve all notifications from the database, optionally filtered by BPN, status, and use_case, with pagination support.
         """
         with RepositoryManagerFactory().create() as repos:
-            notifications = repos.notification_repository.find_by_bpn(bpn=bpn, status=status, offset=offset, limit=limit)
+            notifications = repos.notification_repository.find_by_bpn(bpn=bpn, status=status, use_case=use_case, offset=offset, limit=limit)
             return notifications
         
     def delete_notification(self, message_id: UUID) -> bool:
