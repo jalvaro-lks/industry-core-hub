@@ -1,6 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
+# Copyright (c) 2026 LKS Next
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
@@ -36,3 +37,9 @@ VAN_DESCRIPTION = "The optional VAN (Vehicle Assembly Number) of the serialized 
 
 # ==================== API VERSIONS =========================
 API_V1 = "v1"
+
+# ==================== USE CASE =========================
+CCM = "CCM"
+TRACEABILITY = "Traceability"
+INDUSTRY_CORE_HUB = "Industry Core Hub"
+PCF = "PCF"
