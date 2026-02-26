@@ -24,11 +24,11 @@
 - [What is the Industry Core Hub?](#what-is-the-industry-core-hub)
 - [Key Capabilities](#key-capabilities)
 - [Architecture](#architecture)
-  - [High-Level Architecture](#high-level-architecture)
+  - [High-Level System Context](#high-level-system-context)
   - [Building Blocks](#building-blocks)
   - [Backend](#backend)
   - [Frontend](#frontend)
-  - [The Catena-X Speedway](#the-catena-x-speedway)
+  - [Data Provision Flow](#data-provision-flow)
 - [Technology Stack](#technology-stack)
 - [Catena-X Standards](#catena-x-standards)
 - [Integrated Services](#integrated-services)
@@ -109,21 +109,81 @@ This dramatically reduces the onboarding effort for **SMEs and use case develope
 
 ## Architecture
 
-### High-Level Architecture
+### High-Level System Context
 
-The IC-Hub acts as the central orchestration layer between your applications and the Catena-X dataspace components.
+The IC-Hub acts as the central orchestration layer between your applications and the Catena-X dataspace components. Instead of integrating with each component individually, your application talks only to the IC-Hub.
 
-![High Level Architecture](./docs/architecture/media/Abstraction%20Levels.drawio.svg)
+```mermaid
+graph TB
+    subgraph "Your Organization"
+        APP["Business Application\n/ UI"]
+        ICH["🏭 Industry Core Hub\n(IC-Hub)"]
+        DB[("PostgreSQL\nMetadata DB")]
+    end
 
-The architecture follows a layered abstraction approach — each layer hides the complexity of the layer below it, so use-case developers only deal with high-level business concepts.
+    subgraph "Catena-X Dataspace Components"
+        EDC["Eclipse Dataspace\nConnector (EDC)"]
+        DTR["Digital Twin\nRegistry (DTR)"]
+        SS["Submodel Server"]
+    end
 
-![Abstraction Phases](./docs/architecture/media/Abstraction%20Phases.svg)
+    subgraph "Discovery Services"
+        DF["Discovery Finder"]
+        BPND["BPN Discovery"]
+        EDCD["EDC Discovery"]
+    end
+
+    subgraph "Identity & Access"
+        KC["Keycloak / IAM"]
+    end
+
+    subgraph "Business Partner"
+        PEDC["Partner EDC"]
+        PDTR["Partner DTR"]
+    end
+
+    APP -- "REST API / UI" --> ICH
+    ICH --> DB
+    ICH -- "Asset & Policy\nRegistration" --> EDC
+    ICH -- "AAS Twin\nRegistration" --> DTR
+    ICH -- "Submodel\nData" --> SS
+    ICH -- "Endpoint\nDiscovery" --> DF
+    DF --> BPND
+    DF --> EDCD
+    ICH -- "Auth" --> KC
+    EDC <-- "Data Contract\nNegotiation" --> PEDC
+    PEDC --> PDTR
+```
+
+The architecture follows a layered abstraction approach — each layer hides the complexity of the layer below it, so use-case developers only interact with high-level business concepts.
+
+```mermaid
+graph TB
+    subgraph L4["Layer 4 — Use Case Applications"]
+        UC1["DPP Use Case"]
+        UC2["Traceability Use Case"]
+        UC3["Quality Use Case"]
+    end
+    subgraph L3["Layer 3 — Industry Core Hub (this project)"]
+        ICH["IC-Hub API & UI\n(Orchestration)"]
+    end
+    subgraph L2["Layer 2 — Tractus-X SDK"]
+        SDK["tractusx-sdk\n(EDC & DTR client libraries)"]
+    end
+    subgraph L1["Layer 1 — Dataspace Foundation"]
+        EDC["EDC"]
+        DTR["DTR"]
+        SS["Submodel Server"]
+    end
+
+    L4 --> L3
+    L3 --> L2
+    L2 --> L1
+```
 
 For the full architecture documentation, see the [Architecture Guide](./docs/architecture/README.md).
 
 ### Building Blocks
-
-![Building Blocks](./docs/media/BuildingBlocks.png)
 
 The IC-Hub integrates with these core Catena-X / Tractus-X components:
 
@@ -140,13 +200,53 @@ The IC-Hub integrates with these core Catena-X / Tractus-X components:
 
 The backend exposes a RESTful API (documented via Swagger/OpenAPI) that orchestrates all interactions with the Catena-X components. It is built with **Python and FastAPI**, uses **SQLModel/PostgreSQL** for metadata persistence, and integrates with the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk).
 
-![Backend Architecture](./docs/media/BackendArchitecture.png)
+```mermaid
+graph TB
+    CLIENT["Frontend / API Client"]
 
-The backend is organized into:
-- **Controllers** — FastAPI routers exposing the REST API endpoints
-- **Services** — Business logic, independent of the exposing technology
-- **Managers** — Low-level wrappers around EDC, DTR, and the metadata database
-- **Repositories** — ORM-based database access layer
+    subgraph "Controllers (FastAPI)"
+        R_PROV["Provider Routers\n/parts /twins /submodels /sharing"]
+        R_CONS["Consumer Routers\n/discovery /consumption"]
+        R_AUTH["Authentication\nRouter"]
+        R_ADDON["Add-on Routers\n/addons"]
+    end
+
+    subgraph "Services"
+        PS["PartManagementService"]
+        TMS["TwinManagementService"]
+        SMS["SubmodelDispatcherService"]
+        SHS["SharingService"]
+        PMS["PartnerManagementService"]
+    end
+
+    subgraph "Managers"
+        CM["ConnectorManager\n(EDC)"]
+        DM["DTRManager\n(Digital Twin Registry)"]
+        SVM["SubmodelServiceManager\n(Submodel Server)"]
+        DB_M["MetadataDatabase\nRepositories"]
+    end
+
+    subgraph "External Systems"
+        EDC["EDC Connector"]
+        DTR["Digital Twin Registry"]
+        SS["Submodel Server"]
+        PG[("PostgreSQL")]
+    end
+
+    CLIENT --> R_PROV & R_CONS & R_AUTH & R_ADDON
+    R_PROV & R_CONS & R_ADDON --> PS & TMS & SMS & SHS & PMS
+    PS & TMS & SMS & SHS & PMS --> CM & DM & SVM & DB_M
+    CM --> EDC
+    DM --> DTR
+    SVM --> SS
+    DB_M --> PG
+```
+
+The backend is organized into four layers:
+- **Controllers** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
+- **Services** — Business logic orchestrating the managers, independent of the exposing technology
+- **Managers** — Low-level wrappers around EDC, DTR, Submodel Server, and the metadata database
+- **Repositories** — SQLModel-based ORM access layer for PostgreSQL
 
 See the [API Reference](./docs/api/openAPI.yaml) and [API Collection (Bruno)](./docs/api/bruno/) for details.
 
@@ -154,13 +254,68 @@ See the [API Reference](./docs/api/openAPI.yaml) and [API Collection (Bruno)](./
 
 The frontend is a **React/TypeScript** Single Page Application built with **Material-UI (MUI)** components. It provides an intuitive dashboard for managing digital twins, submodels, and EDC assets.
 
-![Frontend](./docs/architecture/media/Frontend_Mock_Industry_Core.png)
+```mermaid
+graph TB
+    subgraph "React SPA (ichub-frontend)"
+        subgraph "Feature Modules"
+            ICK["industry-core-kit\n(Catalog Parts, Serialized Parts,\nTwins, Submodels)"]
+            EPK["eco-pass-kit\n(Digital Product Passport)"]
+            BPK["business-partner-kit\n(Partner Discovery)"]
+        end
 
-### The Catena-X Speedway
+        subgraph "Shared Infrastructure"
+            CTX["React Contexts\n(Auth, Config, Notifications)"]
+            SVC["Services\n(HttpClient, AuthService,\nEnvironmentService)"]
+            CMP["Common Components\n(Layout, Navigation,\nDialogs, Forms)"]
+        end
 
-The IC-Hub is the engine that drives the **Catena-X Speedway** — the fast path from onboarding to live data exchange.
+        subgraph "Routing"
+            RT["React Router v7\n+ FeatureRouteGuard\n(role-based access)"]
+        end
+    end
 
-![Catena-X Speedway](./docs/architecture/media/catena-x-speedway.svg)
+    subgraph "Auth"
+        KC["Keycloak"]
+    end
+
+    subgraph "Backend"
+        API["IC-Hub REST API\n(FastAPI)"]
+    end
+
+    ICK & EPK & BPK --> CTX & SVC & CMP
+    RT --> ICK & EPK & BPK
+    SVC -- "Axios HTTP" --> API
+    CTX -- "OAuth2 / OIDC" --> KC
+```
+
+### Data Provision Flow
+
+The following sequence diagram shows how the IC-Hub orchestrates the registration of a new digital twin with a submodel:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as IC-Hub UI
+    participant API as IC-Hub API
+    participant DTR as Digital Twin Registry
+    participant EDC as EDC Connector
+    participant SS as Submodel Server
+
+    User->>UI: Create Part + attach Submodel
+    UI->>API: POST /provider/parts
+    API->>SS: Store submodel data
+    SS-->>API: Submodel URL
+    API->>DTR: Register AAS Shell (Digital Twin)
+    DTR-->>API: Shell ID
+    API->>DTR: Add Submodel Descriptor to Shell
+    DTR-->>API: OK
+    API->>EDC: Create EDC Asset for Submodel
+    EDC-->>API: Asset ID
+    API->>EDC: Create Access Policy + Contract Definition
+    EDC-->>API: Policy & Contract IDs
+    API-->>UI: Part registered ✓
+    UI-->>User: Success
+```
 
 ---
 
@@ -298,7 +453,28 @@ The IC-Hub is designed to be extended. It provides the same orchestration "engin
 - Add use-case-specific business logic to the backend
 - Be packaged and distributed independently via the Catena-X marketplace
 
-![Frontend Add-ons Architecture](./docs/media/FrontendArchitecture.png)
+```mermaid
+graph TB
+    subgraph "IC-Hub Core (Open Source)"
+        CORE["Industry Core Kit\n(Catalog Parts, Serialized Parts,\nBatches, Digital Twins)"]
+        API["IC-Hub Backend API"]
+    end
+
+    subgraph "KIT Add-ons (Extensible)"
+        DPP["♻️ Eco Pass KIT\n(Digital Product Passport)"]
+        TRACE["🔗 Traceability KIT\n(BoM, Parts Relationships)"]
+        QUAL["✅ Quality KIT\n(Quality Notifications)"]
+        CUSTOM["⚙️ Custom KIT\n(Your Use Case)"]
+    end
+
+    subgraph "Catena-X Marketplace"
+        MKT["Marketplace Listing\n(Ready-to-use KIT box)"]
+    end
+
+    CORE --> DPP & TRACE & QUAL & CUSTOM
+    API --> DPP & TRACE & QUAL & CUSTOM
+    DPP & TRACE & QUAL & CUSTOM --> MKT
+```
 
 This means solution providers can build and sell ready-to-use KIT toolboxes on top of the open-source IC-Hub core.
 
