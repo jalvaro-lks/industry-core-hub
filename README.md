@@ -4,141 +4,337 @@
 [![CC-BY-4.0][license-shield-non-code]][license-url-non-code]
 [![Latest Release][release-shield]][release-url]
 
-[![Tractus-X ](https://img.shields.io/pypi/v/tractusx-sdk?style=for-the-badge&label=Tractus-X%20SDK)](https://github.com/eclipse-tractusx/tractusx-sdk)
-
-# Industry Core Hub
+[![Tractus-X SDK](https://img.shields.io/pypi/v/tractusx-sdk?style=for-the-badge&label=Tractus-X%20SDK)](https://github.com/eclipse-tractusx/tractusx-sdk)
 
 <p align="center">
-  <img src="./docs/media/IndustryCoreHubLogo.png" alt="Industry Core Logo" width="250"/>
+  <img src="./docs/media/IndustryCoreHubLogo.png" alt="Industry Core Hub Logo" width="250"/>
 </p>
 
-A decentral lightweight, **plug and play data provision & consumption orchestrator** of the:
+<h1 align="center">Industry Core Hub</h1>
 
-- [Tractus-X Eclipse Dataspace Connector (EDC)](https://github.com/eclipse-tractusx/tractusx-edc)
-- [Tractus-X Digital Twin Registry](https://github.com/eclipse-tractusx/sldt-digital-twin-registry)
-- [Simple Data Backend](https://github.com/eclipse-tractusx/tractus-x-umbrella/tree/main/simple-data-backend)
+<p align="center">
+  A decentralized, lightweight <strong>plug-and-play data provision &amp; consumption orchestrator</strong> for the Catena-X dataspace.<br/>
+  Your <strong>DATASPACE KICKSTART</strong> — from onboarding to data exchange in days, not months.
+</p>
 
-It gives you the **DATASPACE KICKSTART** you need to adopt the Tractus-X Technology Stack, once you are onboarded to the operative data space.
+---
 
-**Additional Services**:
+## Table of Contents
 
-- Discovery Services:
-  - [Discovery Finder](https://github.com/eclipse-tractusx/sldt-discovery-finder)  
-  - [BPN Discovery](https://github.com/eclipse-tractusx/sldt-bpn-discovery)
-  - [EDC Discovery](https://github.com/eclipse-tractusx/portal-backend)
-  
-- [Portal IAM/IDP](https://github.com/eclipse-tractusx/portal-iam)
+- [What is the Industry Core Hub?](#what-is-the-industry-core-hub)
+- [Key Capabilities](#key-capabilities)
+- [Architecture](#architecture)
+  - [High-Level Architecture](#high-level-architecture)
+  - [Building Blocks](#building-blocks)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
+  - [The Catena-X Speedway](#the-catena-x-speedway)
+- [Technology Stack](#technology-stack)
+- [Catena-X Standards](#catena-x-standards)
+- [Integrated Services](#integrated-services)
+- [Roadmap](#roadmap)
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [KIT Add-on Extensions](#kit-add-on-extensions)
+- [How to Get Involved](#how-to-get-involved)
+- [Reporting a Bug or Sharing an Idea](#reporting-a-bug-or-sharing-an-idea)
+- [Reporting a Security Issue](#reporting-a-security-issue)
+- [Licenses](#licenses)
+- [NOTICE](#notice)
 
-It also will allow you to extend the "frontend", "backend" and a [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk) to support different use cases. Allowing you to create "ready to use" KIT toolboxes with personalized visualization for every Standard Catena-X Data Model. 
+---
 
-This application is a reference implementation from the Industry Core and aims to offer a implementation for integrating this Catena-X Standards: 
+## What is the Industry Core Hub?
 
-- [CX-0001 EDC Discovery API](https://catenax-ev.github.io/docs/standards/CX-0001-EDCDiscoveryAPI)
-- [CX-0002 Digital Twins in Catena-X](https://catenax-ev.github.io/docs/standards/CX-0002-DigitalTwinsInCatenaX)
-- [CX-0003 SAMM Aspect Meta Model](https://catenax-ev.github.io/docs/standards/CX-0003-SAMMSemanticAspectMetaModel)
-- [CX-0005 Item Relationship Service](https://catenax-ev.github.io/docs/standards/CX-0005-ItemRelationshipServiceAPI) (with IRS)
-- [CX-0007 Minimal Data Provider Service](https://catenax-ev.github.io/docs/standards/CX-0007-MinimalDataProviderServicesOffering)
-- [CX-0018 Dataspace Connectivity](https://catenax-ev.github.io/docs/standards/CX-0018-DataspaceConnectivity)
-- [CX-0030 Aspect Model BoM As Specified](https://catenax-ev.github.io/docs/standards/CX-0030-DataModelBoMAsSpecified)
-- [CX-0032 Data Model: Part as Specified](https://catenax-ev.github.io/docs/standards/CX-0032-DataModelPartAsSpecified)
-- [CX-0053 Discovery Finder & BPN Discovery Service](https://catenax-ev.github.io/docs/standards/CX-0053-BPNDiscoveryServiceAPIs)
-- [CX-0126 Industry Core: Part Type](https://catenax-ev.github.io/docs/standards/CX-0126-IndustryCorePartType)
-- [CX-0127 Industry Core: Part Instance](https://catenax-ev.github.io/docs/standards/CX-0127-IndustryCorePartInstance)
+The **Industry Core Hub (IC-Hub)** is an open-source reference implementation of the [Catena-X Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit). It acts as a **middleware orchestrator** that sits between your business applications and the underlying Catena-X dataspace components, eliminating the need for deep expertise in each individual component.
 
-## Overview
+### The Problem it Solves
 
-The Industry Core Hub is an plug-and-play application that allows use cases to build their logic without needing to understand in detail how the basic dataspace components (EDC, AAS/Digital Twin Registry, Submodel Server/Any Data Source) work.
+Adopting the Catena-X dataspace typically requires integrating multiple complex components:
 
-This application is built taking into consideration the best practices and standards of Catena-X Industry Core and Dataspace experts. It aims to create a real speedway for use cases. Allowing applications to be developed in less than two weeks.
+- The **Eclipse Dataspace Connector (EDC)** for sovereign data exchange
+- The **Digital Twin Registry (DTR)** for managing Asset Administration Shell (AAS) digital twins
+- A **Submodel Server** for hosting and serving aspect model data
+- **Discovery Services** for finding business partners' endpoints
 
-An application that allows you to provide and consumer data from your partners using the Catena-X Dataspace. This open source solution can be integrated into your business applications, open source applications and many other components. 
+Setting all of this up correctly — with the right policies, asset registrations, and data contracts — is a significant engineering effort that can take weeks or months, and requires specialist knowledge most companies don't have in-house.
 
-Building on a strong, scalable and fundamented foundation by Experts, and with the aim of reducing the complexity of a dataspace for the external constumer, like SMEs that want to be compatible with Catena-X, Factory-X, and many other dataspaces.
+### The Solution
 
-## Roadmap
-```
-February 3 2025     R25.06             R25.09          R25.12
-Kickoff              MVP                Stable          NEXT            2026 -> Beyond
-| ------------------> | ----------------> | -----------> |  ----------------> | 
-                Data Provision     Data Consumption    IC-HUB             + KIT Use Cases
-                 Orchestrator        Orchestrator        + Integrate First
-                                                           Use Case (e.g. DPP)
-```
+The IC-Hub abstracts all of this complexity behind a clean, unified API and an intuitive user interface. You interact with one system; the Hub orchestrates everything else for you:
 
-## Objectives
+- Register a **digital twin** for a part → the Hub creates the AAS shell in the DTR, registers the EDC asset, and sets up the access policies automatically.
+- Attach a **submodel** (e.g., a Digital Product Passport) → the Hub stores the data and exposes it as a standards-compliant EDC-protected endpoint.
+- **Consume data** from a business partner → the Hub discovers the partner's endpoints, negotiates the EDC data contract, and retrieves the submodel data — all transparently.
 
-- reduce the complexity of the Eclipse Tractus-X Adoption.
-- create an stable, scalable and easy to use backend SDK for the use case applications.
-- enable the 1.000 users goal of Catena-X for 2025.
-- give a simple and re-usable application for Small and Medium Companies that want to adopt the dataspace with data provision and consumption.
-- allow new applications to be build over a stable foundation of a dataspace.
-- create a technical foundation for technical enablement services to be used in a easy way.
-- create a industry core stack
-- have the posibility to create compatible "Use Case  or KIT Add-on" which can be extended as needed, and could be "selled" in the cx-marketplace as a "ready to use box".
+This dramatically reduces the onboarding effort for **SMEs and use case developers**, turning weeks of integration work into a matter of days.
 
-## Building Blocks (with stack)
+### Who is it for?
 
-![building blocks](./docs/media/BuildingBlocks.png)
+| Audience | Benefit |
+|---|---|
+| **Data Providers** | Register automotive parts, create digital twins, attach submodels, and share data with supply chain partners with minimal effort |
+| **Data Consumers** | Search, discover, and retrieve digital twin data from business partners without dealing with EDC negotiation complexity |
+| **Use Case Developers** | Build Catena-X use cases (e.g., DPP, Traceability) on top of a stable, pre-integrated foundation in days rather than months |
+| **SMEs** | Adopt the Catena-X dataspace with minimal IT investment and infrastructure knowledge |
+| **KIT Providers** | Extend the Hub with custom add-on views and features for specific use cases, distributable via the Catena-X marketplace |
 
-## Technologies
+---
 
-- **Backend**: Python, FAST API
-- **Frontend**: React.js, Portal Shared Components, Material UI
+## Key Capabilities
 
-## Backend
+### Data Provisioning
 
-![backend architecture](./docs/media/BackendArchitecture.png)
+- **Create, read, update, and delete digital twins** (Part Type / Part Instance) in the Digital Twin Registry
+- **Register submodels** of any type — including generic JSON, Industry Core models (SerialPart, Batch, JustInSequencePart), and use-case-specific models like the Digital Product Passport (DPP)
+- **Automatic EDC asset and policy registration** for each submodel — no manual EDC management required
+- **Bill of Materials (BoM) submodel support** — link parent parts to supplier twins across company boundaries
+- **Bulk and manual data input** — upload data via the UI or integrate programmatically via the REST API
 
-## Frontend
+### Data Consumption
 
-![frontend mock](./docs/architecture/media/Frontend_Mock_Industry_Core.png)
+- **Discover business partners** via the Catena-X Discovery Services (Discovery Finder → BPN Discovery → EDC Discovery)
+- **Negotiate EDC data contracts** automatically and retrieve submodel data from partner systems
+- **Browse and inspect** digital twins and all associated submodels from any Catena-X participant
 
-### Infinite Add-ons Extensions
+### Platform & Operations
 
-Proving the same "motor" of implementation for infinite add-ons of use cases that can build over the industry core standards. We provide the "technology" enablement, so you can orchestrate your use case in the best way, providing personalized views for your "Data Models" and also features for your use cases which were not originally included in the "open source" development, allowing you to sell specific extention views and features in the Catena-X marketplace.
+- **Keycloak-based authentication and authorization** — role-based access control out of the box
+- **Helm chart deployment** for Kubernetes clusters, with optional bundled EDC and DTR
+- **OpenAPI-documented REST backend** (FastAPI/Python) with Swagger UI
+- **React/MUI frontend** with a clean, intuitive interface
+- **Extensible add-on architecture** — add custom views and features per KIT use case
 
-![frontend-add-ons](./docs/media/FrontendArchitecture.png)
+---
 
-## High Level Architecture
+## Architecture
+
+### High-Level Architecture
+
+The IC-Hub acts as the central orchestration layer between your applications and the Catena-X dataspace components.
 
 ![High Level Architecture](./docs/architecture/media/Abstraction%20Levels.drawio.svg)
 
-## The Catena-X Speedway
+The architecture follows a layered abstraction approach — each layer hides the complexity of the layer below it, so use-case developers only deal with high-level business concepts.
 
-![Tractus-X Speedway](./docs/architecture/media/catena-x-speedway.svg)
+![Abstraction Phases](./docs/architecture/media/Abstraction%20Phases.svg)
 
-## How to Get Involved
+For the full architecture documentation, see the [Architecture Guide](./docs/architecture/README.md).
 
-- **Get onboarded**: [Getting started](https://eclipse-tractusx.github.io/docs/oss/getting-started/). Join the Eclipse Tractus-X open source community as a contributor!
-- Attend the [official community office hours](https://eclipse-tractusx.github.io/community/open-meetings/#Community%20Office%20Hour) and raise your issue!
+### Building Blocks
+
+![Building Blocks](./docs/media/BuildingBlocks.png)
+
+The IC-Hub integrates with these core Catena-X / Tractus-X components:
+
+| Component | Role |
+|---|---|
+| [Tractus-X EDC](https://github.com/eclipse-tractusx/tractusx-edc) | Sovereign data exchange via standardized data contracts |
+| [Digital Twin Registry (DTR)](https://github.com/eclipse-tractusx/sldt-digital-twin-registry) | AAS-compliant digital twin registration and discovery |
+| [Submodel Server](https://github.com/eclipse-tractusx/tractus-x-umbrella/tree/main/simple-data-backend) | Storage and serving of aspect model data |
+| [Discovery Finder](https://github.com/eclipse-tractusx/sldt-discovery-finder) | Locates BPN Discovery endpoints for a given asset type |
+| [BPN Discovery](https://github.com/eclipse-tractusx/sldt-bpn-discovery) | Maps manufacturer part IDs to Business Partner Numbers |
+| [Portal IAM / Keycloak](https://github.com/eclipse-tractusx/portal-iam) | Identity and access management |
+
+### Backend
+
+The backend exposes a RESTful API (documented via Swagger/OpenAPI) that orchestrates all interactions with the Catena-X components. It is built with **Python and FastAPI**, uses **SQLModel/PostgreSQL** for metadata persistence, and integrates with the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk).
+
+![Backend Architecture](./docs/media/BackendArchitecture.png)
+
+The backend is organized into:
+- **Controllers** — FastAPI routers exposing the REST API endpoints
+- **Services** — Business logic, independent of the exposing technology
+- **Managers** — Low-level wrappers around EDC, DTR, and the metadata database
+- **Repositories** — ORM-based database access layer
+
+See the [API Reference](./docs/api/openAPI.yaml) and [API Collection (Bruno)](./docs/api/bruno/) for details.
+
+### Frontend
+
+The frontend is a **React/TypeScript** Single Page Application built with **Material-UI (MUI)** components. It provides an intuitive dashboard for managing digital twins, submodels, and EDC assets.
+
+![Frontend](./docs/architecture/media/Frontend_Mock_Industry_Core.png)
+
+### The Catena-X Speedway
+
+The IC-Hub is the engine that drives the **Catena-X Speedway** — the fast path from onboarding to live data exchange.
+
+![Catena-X Speedway](./docs/architecture/media/catena-x-speedway.svg)
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend** | Python ≥ 3.12, FastAPI, SQLModel, Pydantic |
+| **Frontend** | React 18, TypeScript, Material-UI v6, Vite |
+| **Database** | PostgreSQL |
+| **Auth** | Keycloak (OAuth2 / OpenID Connect) |
+| **Deployment** | Docker, Helm Charts (Kubernetes) |
+| **SDK** | [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk) |
+
+---
+
+## Catena-X Standards
+
+The IC-Hub is a reference implementation for the following Catena-X standards:
+
+| Standard | Name |
+|---|---|
+| [CX-0001](https://catenax-ev.github.io/docs/standards/CX-0001-EDCDiscoveryAPI) | EDC Discovery API |
+| [CX-0002](https://catenax-ev.github.io/docs/standards/CX-0002-DigitalTwinsInCatenaX) | Digital Twins in Catena-X |
+| [CX-0003](https://catenax-ev.github.io/docs/standards/CX-0003-SAMMSemanticAspectMetaModel) | SAMM Aspect Meta Model |
+| [CX-0005](https://catenax-ev.github.io/docs/standards/CX-0005-ItemRelationshipServiceAPI) | Item Relationship Service |
+| [CX-0007](https://catenax-ev.github.io/docs/standards/CX-0007-MinimalDataProviderServicesOffering) | Minimal Data Provider Service |
+| [CX-0018](https://catenax-ev.github.io/docs/standards/CX-0018-DataspaceConnectivity) | Dataspace Connectivity |
+| [CX-0030](https://catenax-ev.github.io/docs/standards/CX-0030-DataModelBoMAsSpecified) | Aspect Model: BoM As Specified |
+| [CX-0032](https://catenax-ev.github.io/docs/standards/CX-0032-DataModelPartAsSpecified) | Data Model: Part As Specified |
+| [CX-0053](https://catenax-ev.github.io/docs/standards/CX-0053-BPNDiscoveryServiceAPIs) | Discovery Finder & BPN Discovery Service |
+| [CX-0126](https://catenax-ev.github.io/docs/standards/CX-0126-IndustryCorePartType) | Industry Core: Part Type |
+| [CX-0127](https://catenax-ev.github.io/docs/standards/CX-0127-IndustryCorePartInstance) | Industry Core: Part Instance |
+
+---
+
+## Integrated Services
+
+The IC-Hub orchestrates the following Tractus-X / Catena-X services:
+
+**Core Dataspace Components**
+- [Tractus-X Eclipse Dataspace Connector (EDC)](https://github.com/eclipse-tractusx/tractusx-edc)
+- [Tractus-X Digital Twin Registry (DTR)](https://github.com/eclipse-tractusx/sldt-digital-twin-registry)
+- [Simple Data Backend / Submodel Server](https://github.com/eclipse-tractusx/tractus-x-umbrella/tree/main/simple-data-backend)
+
+**Discovery Services**
+- [Discovery Finder](https://github.com/eclipse-tractusx/sldt-discovery-finder)
+- [BPN Discovery](https://github.com/eclipse-tractusx/sldt-bpn-discovery)
+- [EDC Discovery (via Portal Backend)](https://github.com/eclipse-tractusx/portal-backend)
+
+**Identity & Access**
+- [Portal IAM / Keycloak](https://github.com/eclipse-tractusx/portal-iam)
+
+---
+
+## Roadmap
+
+```
+Feb 2025        R25.06             R25.09          R25.12           2026+
+Kickoff          MVP                Stable          R25.12         Beyond
+|-------------->|----------------->|-------------->|------------>|---------->|
+              Data Provision    Data Consumption   IC-HUB +       KIT Use
+               Orchestrator      Orchestrator     First Use Case   Cases &
+                                                  (e.g., DPP)   Extensions
+```
+
+See the full [Changelog](./CHANGELOG.md) for details on released versions.
+
+---
 
 ## Installation
 
-For installing the Industry Core Hub please consult our [Intallation Guide](./INSTALL.md).
+Deploy the IC-Hub in a **Kubernetes cluster** (via Helm) or run it **locally** for development.
 
+### Quick Start (Local Development)
 
-### Found a bug?
+**Backend**
+```sh
+cd ichub-backend/
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+# Edit ichub-backend/config/configuration.yml with your settings
+python -m main --host 0.0.0.0 --port 8000
+# Swagger UI: http://localhost:8000/docs
+```
 
-👀 If you have identified a bug or want to fix an existing documentation, feel free to create a new issue at our project's corresponding [GitHub Issues page](https://github.com/eclipse-tractusx/industry-core-hub/issues/new/choose)
+**Frontend**
+```sh
+cd ichub-frontend/
+npm install
+# Set ICHUB_BACKEND_URL in ichub-frontend/index.html
+npm run dev
+# App: http://localhost:5173
+```
 
- ⁉️ Before doing so, please consider searching for potentially suitable [existing issues](https://github.com/eclipse-tractusx/industry-core-hub/issues).
+### Kubernetes / Helm
 
-🙋 **Assign to yourself** - Show others that you are working on this issue by assigning it to yourself.
-<br> To do so, click the cog wheel next to the Assignees section just to the right of this issue.
+```sh
+helm repo add tractusx-dev https://eclipse-tractusx.github.io/
+helm repo update
+helm install ichub -f your-values.yaml tractusx-dev/industry-core-hub
+```
 
-### Discuss
+For the complete guide — including prerequisites, configuration reference, and the Umbrella test environment — see the **[Installation Guide](./INSTALL.md)**.
 
-📣 If you want to share an idea to further enhance the project, please feel free to contribute to the [discussions](https://github.com/eclipse-tractusx/industry-core-hub/discussions),
-otherwise [create a new discussion](https://github.com/eclipse-tractusx/industry-core-hub/discussions/new/choose)
+---
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [Installation Guide](./INSTALL.md) | Step-by-step deployment for Kubernetes and local development |
+| [Architecture Guide](./docs/architecture/README.md) | Full arc42-based architecture documentation |
+| [Introduction & Goals](./docs/architecture/1-introduction-and-goals.md) | Business context, quality goals, and stakeholders |
+| [System Scope & Context](./docs/architecture/3-system-scope-and-context.md) | System boundaries and external interfaces |
+| [API Reference (OpenAPI)](./docs/api/openAPI.yaml) | Full REST API specification |
+| [API Collection (Bruno)](./docs/api/bruno/) | Ready-to-use API request collection |
+| [API Collection (Postman)](./docs/api/postman/) | Ready-to-use Postman collection |
+| [Submodel Creator Guide](./docs/user/SUBMODEL_CREATOR_GUIDE.md) | How to create and publish submodels via the UI |
+| [Umbrella Deployment Guide](./docs/umbrella/umbrella-deployment-guide.md) | Set up a full local Catena-X environment for testing |
+| [Database Schema](./docs/database/) | Metadata database structure |
+| [Migration Guide](./docs/migration-guides/) | Upgrade and migration instructions |
+| [Admin Guide](./docs/admin/) | Operational and administration topics |
+| [Contributing Guide](./CONTRIBUTING.md) | How to contribute to the project |
+| [Security Policy](./SECURITY.md) | Vulnerability reporting and security guidelines |
+| [Changelog](./CHANGELOG.md) | Release history and change log |
+
+---
+
+## KIT Add-on Extensions
+
+The IC-Hub is designed to be extended. It provides the same orchestration "engine" for an unlimited number of use-case-specific **KIT Add-ons**. Each add-on can:
+
+- Contribute custom frontend views for specific data models (e.g., DPP, Traceability, Quality)
+- Add use-case-specific business logic to the backend
+- Be packaged and distributed independently via the Catena-X marketplace
+
+![Frontend Add-ons Architecture](./docs/media/FrontendArchitecture.png)
+
+This means solution providers can build and sell ready-to-use KIT toolboxes on top of the open-source IC-Hub core.
+
+---
+
+## How to Get Involved
+
+- **Join the community**: [Getting started with Eclipse Tractus-X](https://eclipse-tractusx.github.io/docs/oss/getting-started/) — contribute as an open-source developer!
+- **Attend office hours**: Join the [official community office hours](https://eclipse-tractusx.github.io/community/open-meetings/#Community%20Office%20Hour) and bring your questions or ideas.
+- **Mailing list**: Reach the project team at the [tractusx-dev mailing list](https://accounts.eclipse.org/mailing-list/tractusx-dev).
+- **Contribute code**: Read the [Contributing Guide](./CONTRIBUTING.md) for how to get started with pull requests.
+
+---
+
+## Reporting a Bug or Sharing an Idea
+
+👀 **Found a bug?** Create a new issue on our [GitHub Issues page](https://github.com/eclipse-tractusx/industry-core-hub/issues/new/choose). Before opening a new one, please search [existing issues](https://github.com/eclipse-tractusx/industry-core-hub/issues) first.
+
+🙋 **Assign it to yourself** to let others know you're working on it — click the cog next to the Assignees section.
+
+📣 **Have an idea?** Share it in our [Discussions](https://github.com/eclipse-tractusx/industry-core-hub/discussions) or [start a new discussion](https://github.com/eclipse-tractusx/industry-core-hub/discussions/new/choose).
+
+---
 
 ## Reporting a Security Issue
 
-Please follow the [Security Issue Reporting Guidelines](https://eclipse-tractusx.github.io/docs/release/trg-7/trg-7-01#security-file) if you come across any security vulnerabilities or concerns.
+Please follow the [Security Issue Reporting Guidelines](https://eclipse-tractusx.github.io/docs/release/trg-7/trg-7-01#security-file) if you discover a security vulnerability or concern. See also our [Security Policy](./SECURITY.md).
+
+---
 
 ## Licenses
 
 - [Apache-2.0](https://raw.githubusercontent.com/eclipse-tractusx/industry-core-hub/main/LICENSE) for code
 - [CC-BY-4.0](https://spdx.org/licenses/CC-BY-4.0.html) for non-code
+
+---
 
 ## NOTICE
 
