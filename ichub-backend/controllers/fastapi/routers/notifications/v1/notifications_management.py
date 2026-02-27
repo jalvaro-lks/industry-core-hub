@@ -46,9 +46,9 @@ async def get_all_notifications(bpn: str, status: NotificationStatus = None, off
     return notification_management_service.get_all_notifications(bpn=bpn, status=status, offset=offset, limit=limit)
 
 @router.post("/notification")
-async def send_notification(notification: Notification, endpoint_url: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
+async def send_notification(notification: Notification, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
     notification_management_service.create_notification(notification, direction=NotificationDirection.OUTGOING)
-    success = notification_management_service.send_notification(notification, endpoint_url, provider_bpn, provider_dsp_url, list_policies)
+    success = notification_management_service.send_notification(notification, endpoint_path, provider_bpn, provider_dsp_url, list_policies)
     if success:
         return Response(status_code=201)
     else:

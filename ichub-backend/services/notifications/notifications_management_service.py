@@ -22,7 +22,7 @@
 #################################################################################
 
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from tractusx_sdk.extensions.notification_api.models import Notification
 from tractusx_sdk.extensions.notification_api import NotificationConsumerService, NotificationError
