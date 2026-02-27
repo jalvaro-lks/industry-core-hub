@@ -31,6 +31,7 @@ from tractusx_sdk.dataspace.services.connector.base_connector_consumer import Ba
 from managers.config.log_manager import LoggingManager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.notification.models import NotificationStatus, NotificationDirection, NotificationEntity
+from tools.exceptions import NotificationCreationError, NotificationUpdateStatusError, NotificationRetrievalError, NotificationDeleteError, NotificationSendingError
 
 from connector import connector_manager
 
@@ -48,46 +49,61 @@ class NotificationsManagementService():
         """
         Create a new notification in the system.
         """
-        status: NotificationStatus = None
-        if direction == NotificationDirection.INCOMING:
-            logger.info(f"Creating incoming notification with ID: {notification.header.message_id}")
-            status = NotificationStatus.RECEIVED
-        elif direction == NotificationDirection.OUTGOING:
-            logger.info(f"Creating outgoing notification with ID: {notification.header.message_id}")
-            status = NotificationStatus.PENDING
-        
-        with RepositoryManagerFactory().create() as repos:
-            notification_data = repos.notification_repository.create_new(
-                notification=notification,
-                direction=direction,
-                status=status,
-                use_case=use_case
-            )
-            return notification_data
+        try:
+            status: NotificationStatus = None
+            if direction == NotificationDirection.INCOMING:
+                logger.info(f"Creating incoming notification with ID: {notification.header.message_id}")
+                status = NotificationStatus.RECEIVED
+            elif direction == NotificationDirection.OUTGOING:
+                logger.info(f"Creating outgoing notification with ID: {notification.header.message_id}")
+                status = NotificationStatus.PENDING
+            with RepositoryManagerFactory().create() as repos:
+                notification_data = repos.notification_repository.create_new(
+                    notification=notification,
+                    direction=direction,
+                    status=status,
+                    use_case=use_case
+                )
+                return notification_data
+        except Exception as e:
+            logger.error(f"Error creating notification: {e}")
+            raise NotificationCreationError(f"Failed to create notification: {e}")
 
     def update_notification_status(self, message_id: UUID, new_status: NotificationStatus) -> Optional[NotificationEntity]:
         """
         Update the status of an existing notification identified by its message_id.
         """
-        with RepositoryManagerFactory().create() as repos:
-            db_obj = repos.notification_repository.update_status(message_id=message_id, new_status=new_status)
-            return db_obj
+        try:
+            with RepositoryManagerFactory().create() as repos:
+                db_obj = repos.notification_repository.update_status(message_id=message_id, new_status=new_status)
+                return db_obj
+        except Exception as e:
+            logger.error(f"Error updating notification status: {e}")
+            raise NotificationUpdateStatusError(f"Failed to update notification status: {e}")
         
     def get_all_notifications(self, bpn: str, status: Optional[NotificationStatus] = None, use_case: Optional[str] = None, offset: int = 0, limit: int = 100) -> List[NotificationEntity]:
         """
         Retrieve all notifications from the database, optionally filtered by BPN, status, and use_case, with pagination support.
         """
-        with RepositoryManagerFactory().create() as repos:
-            notifications = repos.notification_repository.find_by_bpn(bpn=bpn, status=status, use_case=use_case, offset=offset, limit=limit)
-            return notifications
+        try:
+            with RepositoryManagerFactory().create() as repos:
+                notifications = repos.notification_repository.find_by_bpn(bpn=bpn, status=status, use_case=use_case, offset=offset, limit=limit)
+                return notifications
+        except Exception as e:
+            logger.error(f"Error retrieving notifications: {e}")
+            raise NotificationRetrievalError(f"Failed to retrieve notifications: {e}")
         
     def delete_notification(self, message_id: UUID) -> bool:
         """
         Delete a notification from the database by its message_id.
         """
-        with RepositoryManagerFactory().create() as repos:
-            success = repos.notification_repository.delete_by_message_id(message_id=message_id)
-            return success
+        try:
+            with RepositoryManagerFactory().create() as repos:
+                success = repos.notification_repository.delete_by_message_id(message_id=message_id)
+                return success
+        except Exception as e:
+            logger.error(f"Error deleting notification: {e}")
+            raise NotificationDeleteError(f"Failed to delete notification: {e}")
 
     def send_notification(self, notification: Notification, endpoint_url: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> None:
         """
@@ -109,8 +125,9 @@ class NotificationsManagementService():
             logger.info(f"Notification sent with result: {result}")
             return result
 
-        except NotificationError:
-            raise
+        except NotificationError as ne:
+            logger.error(f"NotificationError sending notification: {ne}")
+            raise NotificationSendingError(f"NotificationError: {ne}")
         except Exception as e:
             logger.error(f"Error sending notification: {e}")
-            raise NotificationError(f"Failed to send notification: {e}")
+            raise NotificationSendingError(f"Failed to send notification: {e}")

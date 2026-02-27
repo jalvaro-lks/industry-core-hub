@@ -25,6 +25,7 @@ from tractusx_sdk.extensions.notification_api.models import Notification
 
 from managers.config.log_manager import LoggingManager
 from services.notifications.notifications_management_service import NotificationsManagementService
+from tools.exceptions import NotificationCreationError
 from models.metadata_database.notification.models import NotificationDirection, NotificationEntity
 from tools.constants import INDUSTRY_CORE_HUB
 
@@ -43,7 +44,11 @@ class DigitalTwinEventApiService():
         """
         # TODO: Implement the logic to handle the connection to the parent endpoint and process the received notification
         logger.info(f"Received connect to parent notification with ID: {notification.header.message_id}")
-        return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        try:
+            return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        except NotificationCreationError as e:
+            logger.error(f"Failed to create parent notification: {e}")
+            raise
 
     def receive_connect_to_child(self, notification: Notification, direction: NotificationDirection) -> NotificationEntity:
         """
@@ -51,7 +56,11 @@ class DigitalTwinEventApiService():
         """
         # TODO: Implement the logic to handle the connection to the child endpoint and process the received notification
         logger.info(f"Received connect to child notification with ID: {notification.header.message_id}")
-        return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        try:
+            return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        except NotificationCreationError as e:
+            logger.error(f"Failed to create child notification: {e}")
+            raise
 
     def receive_submodel_update(self, notification: Notification, direction: NotificationDirection) -> NotificationEntity:
         """
@@ -59,7 +68,11 @@ class DigitalTwinEventApiService():
         """
         # TODO: Implement the logic to handle the submodel update and process the received notification
         logger.info(f"Received submodel update notification with ID: {notification.header.message_id}")
-        return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        try:
+            return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        except NotificationCreationError as e:
+            logger.error(f"Failed to create submodel update notification: {e}")
+            raise
 
     def receive_feedback(self, notification: Notification, direction: NotificationDirection) -> NotificationEntity:
         """
@@ -67,4 +80,8 @@ class DigitalTwinEventApiService():
         """
         # TODO: Implement the logic to handle the feedback and process the received notification
         logger.info(f"Received feedback notification with ID: {notification.header.message_id}")
-        return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        try:
+            return self.notifications_management_service.create_notification(notification, direction, INDUSTRY_CORE_HUB)
+        except NotificationCreationError as e:
+            logger.error(f"Failed to create feedback notification: {e}")
+            raise

@@ -23,7 +23,7 @@
 
 from typing import List, Dict
 from fastapi import APIRouter, Depends
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 
 from tractusx_sdk.extensions.notification_api.models import (
     Notification)
@@ -31,6 +31,13 @@ from tractusx_sdk.extensions.notification_api.models import (
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from services.notifications.notifications_management_service import NotificationsManagementService
 from models.metadata_database.notification.models import NotificationStatus, NotificationDirection
+from tools.exceptions import (
+    NotificationCreationError,
+    NotificationUpdateStatusError,
+    NotificationRetrievalError,
+    NotificationDeleteError,
+    NotificationSendingError
+)
 
 
 notification_management_service = NotificationsManagementService()
@@ -43,29 +50,53 @@ router = APIRouter(
 
 @router.post("/notifications")
 async def get_all_notifications(bpn: str, status: NotificationStatus = None, offset: int = 0, limit: int = 10) -> List[Notification]:
-    return notification_management_service.get_all_notifications(bpn=bpn, status=status, offset=offset, limit=limit)
+    try:
+        return notification_management_service.get_all_notifications(bpn=bpn, status=status, offset=offset, limit=limit)
+    except NotificationRetrievalError as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
 
 @router.post("/notification")
-async def send_notification(notification: Notification, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
-    notification_management_service.create_notification(notification, direction=NotificationDirection.OUTGOING)
-    success = notification_management_service.send_notification(notification, endpoint_path, provider_bpn, provider_dsp_url, list_policies)
-    if success:
+async def create_notification(notification: Notification) -> Response:
+    """
+    Create a new notification (OUTGOING direction).
+    """
+    try:
+        notification_management_service.create_notification(notification, direction=NotificationDirection.OUTGOING)
         return Response(status_code=201)
-    else:
-        return Response(status_code=400)
+    except NotificationCreationError as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.post("/notification/send")
+async def send_notification(notification: Notification, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
+    """
+    Send an existing notification to the specified endpoint.
+    """
+    try:
+        notification_management_service.send_notification(notification, endpoint_path, provider_bpn, provider_dsp_url, list_policies)
+        return Response(status_code=200)
+    except NotificationSendingError as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.put("/notification/status")
 async def update_notification_status(message_id: str, status: NotificationStatus) -> Response:
-    success = notification_management_service.update_notification_status(message_id, status)
-    if success:
+    try:
+        notification_management_service.update_notification_status(message_id, status)
         return Response(status_code=200)
-    else:
-        return Response(status_code=404)
+    except NotificationUpdateStatusError as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.delete("/notification")
 async def delete_notification(message_id: str) -> Response:
-    success = notification_management_service.delete_notification(message_id)
-    if success:
+    try:
+        notification_management_service.delete_notification(message_id)
         return Response(status_code=204)
-    else:
-        return Response(status_code=404)
+    except NotificationDeleteError as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
