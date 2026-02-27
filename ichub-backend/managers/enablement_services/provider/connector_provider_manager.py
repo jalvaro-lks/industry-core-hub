@@ -376,7 +376,6 @@ class ConnectorProviderManager:
         self,
         digital_twin_event_url: str,
         digital_twin_event_policy_config: dict = None,
-        dct_type: str = "https://w3id.org/catenax/taxonomy#DigitalTwinEventAPI",
         existing_asset_id: str = None,
         version: str = "3.0",
         headers: dict = None
@@ -388,7 +387,6 @@ class ConnectorProviderManager:
         # Step 1: Create or get the digital twin event asset
         asset_id = self.get_or_create_digital_twin_event_asset(
             digital_twin_event_url=digital_twin_event_url,
-            dct_type=dct_type,
             existing_asset_id=existing_asset_id,
             version=version,
             headers=headers
@@ -406,7 +404,6 @@ class ConnectorProviderManager:
     def get_or_create_digital_twin_event_asset(
         self,
         digital_twin_event_url: str,
-        dct_type: str,
         existing_asset_id: str = None,
         headers: dict = None,
         version: str = "3.0"
@@ -426,7 +423,6 @@ class ConnectorProviderManager:
         asset = self.create_digital_twin_event_asset(
             asset_id=existing_asset_id,
             notification_endpoint_url=digital_twin_event_url,
-            dct_type=dct_type,
             version=version,
             headers=headers
         )
@@ -442,7 +438,6 @@ class ConnectorProviderManager:
         self,
         asset_id: str,
         notification_endpoint_url: str,
-        dct_type: str,
         version: str = "3.0",
         headers: dict = None
     ):
@@ -453,6 +448,5 @@ class ConnectorProviderManager:
             asset_id=asset_id,
             notification_endpoint_url=notification_endpoint_url,
             version=version,
-            dct_type=dct_type,
             headers=headers
         )
