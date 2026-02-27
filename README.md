@@ -203,15 +203,16 @@ The backend exposes a RESTful API (documented via Swagger/OpenAPI) that orchestr
 ```mermaid
 graph TB
     CLIENT["Frontend / API Client"]
+    JOBS["Background Jobs\n(asset_sync_job)"]
 
-    subgraph "Controllers (FastAPI)"
-        R_PROV["Provider Routers\n/parts /twins /submodels /sharing"]
-        R_CONS["Consumer Routers\n/discovery /consumption"]
-        R_AUTH["Authentication\nRouter"]
-        R_ADDON["Add-on Routers\n/addons"]
+    subgraph CTRL["Controllers — controllers/fastapi/routers/"]
+        R_PROV["Provider Routers\n/part-management /twin-management\n/submodel-dispatcher /share /partner-management"]
+        R_CONS["Consumer Routers\n/discover /connection"]
+        R_AUTH["Authentication Router"]
+        R_ADDON["Add-on Routers\n/addons/ecopass-kit"]
     end
 
-    subgraph "Services"
+    subgraph SVC["Services — services/provider/"]
         PS["PartManagementService"]
         TMS["TwinManagementService"]
         SMS["SubmodelDispatcherService"]
@@ -219,34 +220,75 @@ graph TB
         PMS["PartnerManagementService"]
     end
 
-    subgraph "Managers"
-        CM["ConnectorManager\n(EDC)"]
-        DM["DTRManager\n(Digital Twin Registry)"]
-        SVM["SubmodelServiceManager\n(Submodel Server)"]
-        DB_M["MetadataDatabase\nRepositories"]
+    subgraph MGR["Managers — managers/"]
+        subgraph PROV_MGR["enablement_services/provider/"]
+            CPM["ConnectorProviderManager\n(EDC asset & policy registration)"]
+            DPM["DtrProviderManager\n(AAS Shell registration)"]
+        end
+        subgraph CONS_MGR["enablement_services/consumer/"]
+            CCM["ConsumerConnectorManager\n(EDC contract negotiation)"]
+            DCM["DtrConsumerManager\n(AAS Shell discovery)"]
+        end
+        SVM["SubmodelServiceManager\n(FileSystem / HTTP adapter)"]
+        SDG["SubmodelDocumentGenerator\n(aspect model documents)"]
+        DB_M["RepositoryManager\n(SQLModel ORM)"]
+        ADDON_MGR["addons_service/ecopass_kit\n(EcoPass KIT managers)"]
     end
 
-    subgraph "External Systems"
-        EDC["EDC Connector"]
-        DTR["Digital Twin Registry"]
-        SS["Submodel Server"]
+    subgraph MODELS["Models — models/"]
+        SVC_M["services/ — Pydantic\n(provider & consumer DTOs)"]
+        DB_MDL["metadata_database/ — SQLModel\n(provider & consumer ORM models)"]
+    end
+
+    subgraph EXT["External Systems"]
+        EDC["EDC Connector\n(Tractus-X SDK)"]
+        DTR["Digital Twin Registry\n(Tractus-X SDK)"]
+        SS["Submodel Server\n(FileSystem or HTTP)"]
         PG[("PostgreSQL")]
     end
 
     CLIENT --> R_PROV & R_CONS & R_AUTH & R_ADDON
-    R_PROV & R_CONS & R_ADDON --> PS & TMS & SMS & SHS & PMS
-    PS & TMS & SMS & SHS & PMS --> CM & DM & SVM & DB_M
-    CM --> EDC
-    DM --> DTR
+    JOBS --> CPM & DPM & DB_M
+
+    %% Provider path: routers → services → managers
+    R_PROV --> PS & TMS & SMS & SHS & PMS
+    PS & TMS & SMS & SHS & PMS --> CPM & DPM & SVM & SDG & DB_M
+
+    %% Consumer path: routers call managers directly (no services/consumer/ layer)
+    R_CONS --> CCM & DCM
+
+    %% Add-on path: routers call addon managers directly (no services layer)
+    R_ADDON --> ADDON_MGR
+    ADDON_MGR --> SVM & DB_M
+
+    %% Background jobs also call managers directly (no services layer)
+    %% (see jobs/asset_sync_job.py)
+
+    %% Models used across layers
+    SVC_M -. "used by" .-> SVC
+    DB_MDL -. "used by" .-> MGR
+
+    CPM & DPM --> EDC & DTR
+    CCM & DCM --> EDC & DTR
     SVM --> SS
     DB_M --> PG
 ```
 
-The backend is organized into four layers:
-- **Controllers** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
-- **Services** — Business logic orchestrating the managers, independent of the exposing technology
-- **Managers** — Low-level wrappers around EDC, DTR, Submodel Server, and the metadata database
-- **Repositories** — SQLModel-based ORM access layer for PostgreSQL
+The backend is organized into the following packages:
+- **`controllers/`** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
+- **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers
+- **`managers/`** — Low-level wrappers around external systems and the metadata database:
+  - `enablement_services/provider/` — `ConnectorProviderManager` (EDC), `DtrProviderManager` (DTR)
+  - `enablement_services/consumer/` — `ConsumerConnectorManager`, `DtrConsumerManager`
+  - `submodels/` — `SubmodelDocumentGenerator` for building aspect model documents
+  - `metadata_database/` — `RepositoryManager` + SQLModel-based repositories (PostgreSQL)
+  - `addons_service/` — KIT-specific managers (e.g. EcoPass KIT)
+  - `config/` — `ConfigManager`, `LoggingManager`
+- **`models/`** — Pydantic service models and SQLModel ORM models (consumed across all layers)
+- **`jobs/`** — Background sync jobs (e.g. `asset_sync_job` for EDC asset synchronization)
+- **`tools/` / `utils/`** — Cross-cutting utilities (exceptions, env tools, async helpers)
+
+> **Note:** There is currently no `services/consumer/` layer — consumer routers call the consumer managers directly. Similarly, add-on routers bypass the provider services and call their own KIT-specific managers. Background jobs (`jobs/`) also call managers directly, without going through any service layer.
 
 See the [API Reference](./docs/api/openAPI.yaml) and [API Collection (Bruno)](./docs/api/bruno/) for details.
 
@@ -290,31 +332,60 @@ graph TB
 
 ### Data Provision Flow
 
-The following sequence diagram shows how the IC-Hub orchestrates the registration of a new digital twin with a submodel:
+The following sequence diagrams show how the IC-Hub orchestrates the two main data provision operations.
+
+**Step 1 — Register a Catalog Part** (metadata only, stored in PostgreSQL):
 
 ```mermaid
 sequenceDiagram
     actor User
     participant UI as IC-Hub UI
     participant API as IC-Hub API
-    participant DTR as Digital Twin Registry
-    participant EDC as EDC Connector
-    participant SS as Submodel Server
+    participant SVC as PartManagementService
+    participant DB as PostgreSQL
 
-    User->>UI: Create Part + attach Submodel
-    UI->>API: POST /provider/parts
-    API->>SS: Store submodel data
-    SS-->>API: Submodel URL
-    API->>DTR: Register AAS Shell (Digital Twin)
-    DTR-->>API: Shell ID
-    API->>DTR: Add Submodel Descriptor to Shell
-    DTR-->>API: OK
-    API->>EDC: Create EDC Asset for Submodel
-    EDC-->>API: Asset ID
-    API->>EDC: Create Access Policy + Contract Definition
-    EDC-->>API: Policy & Contract IDs
-    API-->>UI: Part registered ✓
-    UI-->>User: Success
+    User->>UI: Fill in part details
+    UI->>API: POST /provider/part-management/catalog-part
+    API->>SVC: create_catalog_part()
+    SVC->>DB: INSERT CatalogPart record
+    DB-->>SVC: OK
+    SVC-->>API: CatalogPartRead
+    API-->>UI: 201 Created
+    UI-->>User: Part created ✓
+```
+
+**Step 2 — Share a Catalog Part** (registers twin in DTR and creates EDC asset/policy):
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as IC-Hub UI
+    participant API as IC-Hub API
+    participant SHS as SharingService
+    participant SDG as SubmodelDocumentGenerator
+    participant SVM as SubmodelServiceManager
+    participant DTR as DtrProviderManager
+    participant EDC as ConnectorProviderManager
+    participant DB as PostgreSQL
+
+    User->>UI: Click "Share" for a catalog part
+    UI->>API: POST /provider/share/catalog-part
+    API->>SHS: share_catalog_part()
+    SHS->>DB: Load CatalogPart + BusinessPartner
+    DB-->>SHS: Part data
+    SHS->>SDG: generate_submodel_document()
+    SDG-->>SHS: Aspect model JSON (e.g. PartTypeInformation)
+    SHS->>SVM: store_submodel()
+    SVM-->>SHS: Submodel storage URL
+    SHS->>DTR: create_shell() + add_submodel_descriptor()
+    DTR-->>SHS: AAS Shell ID
+    SHS->>EDC: create_asset() + create_policy() + create_contract()
+    EDC-->>SHS: Asset & Contract IDs
+    SHS->>DB: UPDATE Twin / TwinAspect records
+    DB-->>SHS: OK
+    SHS-->>API: SharedPartBase
+    API-->>UI: 200 OK
+    UI-->>User: Part shared ✓ (twin + EDC asset registered)
 ```
 
 ---
