@@ -67,6 +67,9 @@ class AssetSyncJob:
             
             # Step 2: Sync all semantic assets from agreements configuration
             self._sync_semantic_assets()
+
+            # Step 3: Sync Digital Twin Event asset
+            self._sync_digital_twin_event_asset()
             
             logger.info("[AssetSyncJob] Asset synchronization completed successfully.")
             
@@ -126,7 +129,6 @@ class AssetSyncJob:
             dte_asset_id, _, _, _ = self.connector_provider_manager.register_digital_twin_event_offer(
                 digital_twin_event_url=dte_config.get("hostname"),
                 digital_twin_event_policy_config=dte_config.get("policy"),
-                dct_type=asset_config.get("dct_type", "https://w3id.org/catenax/taxonomy#DigitalTwinEventAPI"),
                 existing_asset_id=asset_config.get("existing_asset_id", None)
             )
             
