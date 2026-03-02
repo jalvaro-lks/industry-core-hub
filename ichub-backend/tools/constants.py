@@ -25,6 +25,7 @@
 TYPE = "@type"
 JSON_EXTENSION = ".json"
 INTERNAL_SERVER_ERROR = "Internal server error"
+SEM_ID_NOTIFICATION = "urn:samm:io.tractusx.industry-core-hub.notifications:1.0.0#Notification"
 
 # ================= CONTEXTS =========================
 ODRL_CONTEXT = "http://www.w3.org/ns/odrl/2/"

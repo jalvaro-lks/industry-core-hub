@@ -22,8 +22,6 @@
 #################################################################################
 
 from sqlmodel import SQLModel, Field
-from sqlalchemy import JSON
-from sqlmodel import Column
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
@@ -61,7 +59,7 @@ class NotificationEntity(SQLModel, table=True):
         description="Originating use case or category for the notification (e.g., 'CCM', 'TRACEABILITY', 'INDUSTRY CORE', 'PCF', etc.). Generic string for future extensibility."
     )
 
-    full_notification: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    location: str = Field(index=True, nullable=False)
 
     @classmethod
     def from_sdk(
@@ -69,7 +67,8 @@ class NotificationEntity(SQLModel, table=True):
         notification: Notification,
         direction: NotificationDirection = NotificationDirection.INCOMING,
         status: NotificationStatus = NotificationStatus.RECEIVED,
-        use_case: Optional[str] = None
+        use_case: Optional[str] = None,
+        location: str = ""
         ) -> "NotificationEntity":
         """
         Maps the nested SDK Notification to a flat, searchable Database Entity.
@@ -86,11 +85,11 @@ class NotificationEntity(SQLModel, table=True):
             direction=direction,
             status=status,
             use_case=use_case,
-            full_notification=notification.model_dump(mode="json")
+            location=location
         )
 
-    def to_sdk(self) -> Notification:
+    def to_sdk(self, payload: Dict[str, Any]) -> Notification:
         """
         Reconstructs the original SDK Notification object from the database record.
         """
-        return Notification.model_validate(self.full_notification)
+        return Notification.model_validate(payload)

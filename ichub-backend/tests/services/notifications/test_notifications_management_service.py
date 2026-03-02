@@ -49,6 +49,7 @@ class TestNotificationsManagementService:
     def setup_method(self):
         """Set up test fixtures before each test method."""
         self.service = NotificationsManagementService()
+        self.service.submodel_service_manager = Mock()
 
     @pytest.fixture
     def mock_repo_manager(self):
@@ -90,7 +91,7 @@ class TestNotificationsManagementService:
         entity.status = NotificationStatus.RECEIVED
         entity.created_at = datetime.now(timezone.utc)
         entity.use_case = "Industry Core Hub"
-        entity.full_notification = sample_notification_sdk.model_dump.return_value
+        entity.location = f"urn:samm:io.tractusx.industry-core-hub.notifications:1.0.0#Notification:{entity.message_id}"
         return entity
 
     def test_init(self):
@@ -110,6 +111,7 @@ class TestNotificationsManagementService:
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+        self.service.submodel_service_manager.upload_twin_aspect_document.return_value = None
         
         # Act
         result = self.service.create_notification(
@@ -124,6 +126,8 @@ class TestNotificationsManagementService:
         assert call_kwargs['notification'] == sample_notification_sdk
         assert call_kwargs['direction'] == NotificationDirection.INCOMING
         assert call_kwargs['status'] == NotificationStatus.RECEIVED
+        assert call_kwargs['location'] == f"urn:samm:io.tractusx.industry-core-hub.notifications:1.0.0#Notification:{sample_notification_sdk.header.message_id}"
+        self.service.submodel_service_manager.upload_twin_aspect_document.assert_called_once()
 
     @patch('services.notifications.notifications_management_service.RepositoryManagerFactory')
     def test_create_notification_outgoing_success(self, mock_repo_factory, sample_notification_sdk, sample_notification_entity):
@@ -136,6 +140,7 @@ class TestNotificationsManagementService:
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+        self.service.submodel_service_manager.upload_twin_aspect_document.return_value = None
         
         # Act
         result = self.service.create_notification(
@@ -150,6 +155,8 @@ class TestNotificationsManagementService:
         assert call_kwargs['direction'] == NotificationDirection.OUTGOING
         assert call_kwargs['status'] == NotificationStatus.PENDING
         assert call_kwargs['use_case'] == "Test Use Case"
+        assert call_kwargs['location'] == f"urn:samm:io.tractusx.industry-core-hub.notifications:1.0.0#Notification:{sample_notification_sdk.header.message_id}"
+        self.service.submodel_service_manager.upload_twin_aspect_document.assert_called_once()
 
     @patch('services.notifications.notifications_management_service.RepositoryManagerFactory')
     def test_create_notification_repository_error(self, mock_repo_factory, sample_notification_sdk):
@@ -160,6 +167,7 @@ class TestNotificationsManagementService:
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+        self.service.submodel_service_manager.upload_twin_aspect_document.return_value = None
         
         # Act & Assert
         with pytest.raises(NotificationCreationError) as exc_info:
@@ -244,6 +252,10 @@ class TestNotificationsManagementService:
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+        self.service.submodel_service_manager.get_twin_aspect_document.return_value = {
+            "header": {"message_id": str(sample_notification_entity.message_id)},
+            "content": {"test": "data"}
+        }
         
         # Act
         result = self.service.get_all_notifications(
@@ -274,6 +286,7 @@ class TestNotificationsManagementService:
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+        self.service.submodel_service_manager.get_twin_aspect_document.return_value = {}
         
         # Act
         result = self.service.get_all_notifications(bpn=bpn)
@@ -292,6 +305,10 @@ class TestNotificationsManagementService:
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+        self.service.submodel_service_manager.get_twin_aspect_document.return_value = {
+            "header": {"message_id": str(sample_notification_entity.message_id)},
+            "content": {"test": "data"}
+        }
         
         # Act
         result = self.service.get_all_notifications(

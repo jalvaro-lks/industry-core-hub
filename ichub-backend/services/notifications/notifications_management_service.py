@@ -30,9 +30,11 @@ from tractusx_sdk.dataspace.services.connector.base_connector_consumer import Ba
 
 from managers.config.log_manager import LoggingManager
 from managers.metadata_database.manager import RepositoryManagerFactory
+from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from models.metadata_database.notification.models import NotificationStatus, NotificationDirection, NotificationEntity
 from models.services.notification.responses import NotificationResponse
 from tools.exceptions import NotificationCreationError, NotificationUpdateStatusError, NotificationRetrievalError, NotificationDeleteError, NotificationSendingError
+from tools.constants import SEM_ID_NOTIFICATION
 
 from connector import connector_manager
 
@@ -45,6 +47,14 @@ class NotificationsManagementService():
 
     def __init__(self):
         self.connector_consumer_service: BaseConnectorConsumerService = connector_manager.consumer.connector_service
+        self.submodel_service_manager = SubmodelServiceManager()
+
+    @staticmethod
+    def _build_location(message_id: UUID) -> str:
+        """
+        Build a stable location reference for the stored notification payload.
+        """
+        return f"{SEM_ID_NOTIFICATION}:{message_id}"
 
     def create_notification(self, notification: Notification, direction: NotificationDirection, use_case: str = None) -> NotificationEntity:
         """
@@ -58,12 +68,21 @@ class NotificationsManagementService():
             elif direction == NotificationDirection.OUTGOING:
                 logger.info(f"Creating outgoing notification with ID: {notification.header.message_id}")
                 status = NotificationStatus.PENDING
+
+            payload = notification.model_dump(mode="json")
+            self.submodel_service_manager.upload_twin_aspect_document(
+                submodel_id=notification.header.message_id,
+                semantic_id=SEM_ID_NOTIFICATION,
+                payload=payload
+            )
+            location = self._build_location(notification.header.message_id)
             with RepositoryManagerFactory().create() as repos:
                 notification_data = repos.notification_repository.create_new(
                     notification=notification,
                     direction=direction,
                     status=status,
-                    use_case=use_case
+                    use_case=use_case,
+                    location=location
                 )
                 return notification_data
         except Exception as e:
@@ -89,7 +108,24 @@ class NotificationsManagementService():
         try:
             with RepositoryManagerFactory().create() as repos:
                 notifications = repos.notification_repository.find_by_bpn(bpn=bpn, status=status, use_case=use_case, offset=offset, limit=limit)
-                return [NotificationResponse.model_validate(notification) for notification in notifications]
+                responses: List[NotificationResponse] = []
+                for notification in notifications:
+                    payload = self.submodel_service_manager.get_twin_aspect_document(
+                        submodel_id=notification.message_id,
+                        semantic_id=SEM_ID_NOTIFICATION
+                    )
+                    responses.append(NotificationResponse(
+                        id=notification.id,
+                        created_at=notification.created_at,
+                        message_id=notification.message_id,
+                        sender_bpn=notification.sender_bpn,
+                        receiver_bpn=notification.receiver_bpn,
+                        direction=notification.direction,
+                        status=notification.status,
+                        use_case=notification.use_case,
+                        full_notification=payload
+                    ))
+                return responses
         except Exception as e:
             logger.error(f"Error retrieving notifications: {e}")
             raise NotificationRetrievalError(f"Failed to retrieve notifications: {e}")
@@ -130,7 +166,7 @@ class NotificationsManagementService():
                 endpoint_path=endpoint_url,
                 policies=list_policies
             )
-            repos.notification_repository.update_status(
+            self.update_notification_status(
                 message_id=notification.header.message_id,
                 new_status=NotificationStatus.SENT
             )

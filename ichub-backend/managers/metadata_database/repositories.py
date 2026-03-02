@@ -1,7 +1,7 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 LKS Next
+# Copyright (c) 2025,2026 LKS Next
 # Copyright (c) 2025 DRÄXLMAIER Group
 # (represented by Lisa Dräxlmaier GmbH)
 # Copyright (c) 2025 Contributors to the Eclipse Foundation
@@ -678,7 +678,8 @@ class NotificationRepository(BaseRepository[NotificationEntity]):
         notification: Notification, 
         direction: NotificationDirection,
         status: NotificationStatus = NotificationStatus.PENDING,
-        use_case: str = None
+        use_case: str = None,
+        location: str = ""
     ) -> NotificationEntity:
         """
         Creates a new NotificationEntity from an SDK model (passed as a dict),
@@ -688,7 +689,8 @@ class NotificationRepository(BaseRepository[NotificationEntity]):
             notification=notification, 
             direction=direction, 
             status=status,
-            use_case=use_case
+            use_case=use_case,
+            location=location
         )
         self.create(db_notification)
         return db_notification
