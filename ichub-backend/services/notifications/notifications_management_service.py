@@ -111,6 +111,13 @@ class NotificationsManagementService():
         Send a notification to the specified endpoint using the connector consumer service.
         """
         try:
+            with RepositoryManagerFactory().create() as repos:
+                db_notification = repos.notification_repository.find_by_message_id(
+                    message_id=notification.header.message_id
+                )
+                if not db_notification:
+                    raise NotificationSendingError("Notification not found")
+
             notification_service = NotificationConsumerService(
                 self.connector_consumer_service,
                 verbose=True
@@ -122,6 +129,10 @@ class NotificationsManagementService():
                 notification=notification,
                 endpoint_path=endpoint_url,
                 policies=list_policies
+            )
+            repos.notification_repository.update_status(
+                message_id=notification.header.message_id,
+                new_status=NotificationStatus.SENT
             )
             logger.info(f"Notification sent with result: {result}")
             return result
