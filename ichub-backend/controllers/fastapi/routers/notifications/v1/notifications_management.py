@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
+from uuid import UUID
 from typing import List, Dict
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response, JSONResponse
@@ -76,12 +77,12 @@ async def create_notification(notification: Notification) -> Response:
         return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.post("/notification/send")
-async def send_notification(notification: Notification, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
+async def send_notification(message_id: UUID, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
     """
     Send an existing notification to the specified endpoint.
     """
     try:
-        notification_management_service.send_notification(notification, endpoint_path, provider_bpn, provider_dsp_url, list_policies)
+        notification_management_service.send_notification(message_id, endpoint_path, provider_bpn, provider_dsp_url, list_policies)
         return Response(status_code=200)
     except NotificationSendingError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})

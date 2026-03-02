@@ -403,19 +403,24 @@ class TestNotificationsManagementService:
     def test_send_notification_success(self, mock_repo_factory, mock_notification_consumer_service):
         """Test successful notification sending."""
         # Arrange
-        notification = Mock(spec=Notification)
-        notification.header = Mock()
-        notification.header.message_id = uuid4()
+        message_id = uuid4()
         endpoint_url = "/test/endpoint"
         provider_bpn = "BPNL00000000024R"
         provider_dsp_url = "https://example.com/dsp"
         list_policies = [{"policy": "test"}]
 
+        mock_notification = Mock(spec=Notification)
+        mock_db_notification = Mock()
+        mock_db_notification.to_sdk.return_value = mock_notification
+
         mock_repo_manager = MagicMock()
-        mock_repo_manager.notification_repository.find_by_message_id.return_value = Mock()
+        mock_repo_manager.notification_repository.find_by_message_id.return_value = mock_db_notification
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
+
+        self.service.submodel_service_manager = Mock()
+        self.service.submodel_service_manager.get_twin_aspect_document.return_value = {"some": "payload"}
         
         mock_service_instance = Mock()
         mock_service_instance.send_notification.return_value = {"status": "sent"}
@@ -425,7 +430,7 @@ class TestNotificationsManagementService:
         
         # Act
         result = self.service.send_notification(
-            notification=notification,
+            message_id=message_id,
             endpoint_url=endpoint_url,
             provider_bpn=provider_bpn,
             provider_dsp_url=provider_dsp_url,
@@ -441,46 +446,50 @@ class TestNotificationsManagementService:
         mock_service_instance.send_notification.assert_called_once_with(
             provider_bpn=provider_bpn,
             provider_dsp_url=provider_dsp_url,
-            notification=notification,
+            notification=mock_notification,
             endpoint_path=endpoint_url,
             policies=list_policies
         )
         mock_repo_manager.notification_repository.update_status.assert_called_once_with(
-            message_id=notification.header.message_id,
+            message_id=message_id,
             new_status=NotificationStatus.SENT
         )
 
     @patch('services.notifications.notifications_management_service.NotificationConsumerService')
-    def test_send_notification_notification_error(self, mock_notification_consumer_service):
+    @patch('services.notifications.notifications_management_service.RepositoryManagerFactory')
+    def test_send_notification_notification_error(self, mock_repo_factory, mock_notification_consumer_service):
         """Test send_notification with NotificationError."""
         # Arrange
         from tractusx_sdk.extensions.notification_api import NotificationError
-        
-        notification = Mock(spec=Notification)
-        notification.header = Mock()
-        notification.header.message_id = uuid4()
+
+        message_id = uuid4()
         endpoint_url = "/test/endpoint"
         provider_bpn = "BPNL00000000024R"
         provider_dsp_url = "https://example.com/dsp"
         list_policies = [{"policy": "test"}]
+
+        mock_db_notification = Mock()
+        mock_db_notification.to_sdk.return_value = Mock(spec=Notification)
+
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.notification_repository.find_by_message_id.return_value = mock_db_notification
+        mock_repo_manager.__enter__.return_value = mock_repo_manager
+        mock_repo_manager.__exit__.return_value = None
+        mock_repo_factory.return_value.create.return_value = mock_repo_manager
+
+        self.service.submodel_service_manager = Mock()
+        self.service.submodel_service_manager.get_twin_aspect_document.return_value = {"some": "payload"}
         
         mock_service_instance = Mock()
         mock_service_instance.send_notification.side_effect = NotificationError("Send failed")
         mock_notification_consumer_service.return_value = mock_service_instance
-        
-        mock_repo_manager = MagicMock()
-        mock_repo_manager.notification_repository.find_by_message_id.return_value = Mock()
-        mock_repo_manager.__enter__.return_value = mock_repo_manager
-        mock_repo_manager.__exit__.return_value = None
-        with patch('services.notifications.notifications_management_service.RepositoryManagerFactory') as mock_repo_factory:
-            mock_repo_factory.return_value.create.return_value = mock_repo_manager
 
         self.service.connector_consumer_service = Mock()
         
         # Act & Assert
         with pytest.raises(NotificationSendingError) as exc_info:
             self.service.send_notification(
-                notification=notification,
+                message_id=message_id,
                 endpoint_url=endpoint_url,
                 provider_bpn=provider_bpn,
                 provider_dsp_url=provider_dsp_url,
@@ -490,34 +499,38 @@ class TestNotificationsManagementService:
         mock_repo_manager.notification_repository.update_status.assert_not_called()
 
     @patch('services.notifications.notifications_management_service.NotificationConsumerService')
-    def test_send_notification_generic_error(self, mock_notification_consumer_service):
+    @patch('services.notifications.notifications_management_service.RepositoryManagerFactory')
+    def test_send_notification_generic_error(self, mock_repo_factory, mock_notification_consumer_service):
         """Test send_notification with generic error."""
         # Arrange
-        notification = Mock(spec=Notification)
-        notification.header = Mock()
-        notification.header.message_id = uuid4()
+        message_id = uuid4()
         endpoint_url = "/test/endpoint"
         provider_bpn = "BPNL00000000024R"
         provider_dsp_url = "https://example.com/dsp"
         list_policies = [{"policy": "test"}]
+
+        mock_db_notification = Mock()
+        mock_db_notification.to_sdk.return_value = Mock(spec=Notification)
+
+        mock_repo_manager = MagicMock()
+        mock_repo_manager.notification_repository.find_by_message_id.return_value = mock_db_notification
+        mock_repo_manager.__enter__.return_value = mock_repo_manager
+        mock_repo_manager.__exit__.return_value = None
+        mock_repo_factory.return_value.create.return_value = mock_repo_manager
+
+        self.service.submodel_service_manager = Mock()
+        self.service.submodel_service_manager.get_twin_aspect_document.return_value = {"some": "payload"}
         
         mock_service_instance = Mock()
         mock_service_instance.send_notification.side_effect = Exception("Generic error")
         mock_notification_consumer_service.return_value = mock_service_instance
-        
-        mock_repo_manager = MagicMock()
-        mock_repo_manager.notification_repository.find_by_message_id.return_value = Mock()
-        mock_repo_manager.__enter__.return_value = mock_repo_manager
-        mock_repo_manager.__exit__.return_value = None
-        with patch('services.notifications.notifications_management_service.RepositoryManagerFactory') as mock_repo_factory:
-            mock_repo_factory.return_value.create.return_value = mock_repo_manager
 
         self.service.connector_consumer_service = Mock()
         
         # Act & Assert
         with pytest.raises(NotificationSendingError) as exc_info:
             self.service.send_notification(
-                notification=notification,
+                message_id=message_id,
                 endpoint_url=endpoint_url,
                 provider_bpn=provider_bpn,
                 provider_dsp_url=provider_dsp_url,

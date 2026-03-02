@@ -213,7 +213,7 @@ data:
         direction public.notification_direction NOT NULL,
         status public.notification_status DEFAULT 'pending'::public.notification_status NOT NULL,
         use_case VARCHAR(255),
-        full_notification jsonb NOT NULL
+        location character varying NOT NULL
     );
 
     ALTER TABLE public.batch ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -480,6 +480,7 @@ data:
     CREATE INDEX idx_notifications_receiver_bpn ON public.notifications USING btree (receiver_bpn);
     CREATE INDEX idx_notifications_status ON public.notifications USING btree (status);
     CREATE INDEX idx_notifications_direction ON public.notifications USING btree (direction);
+    CREATE INDEX idx_notifications_location ON public.notifications USING btree (location);
 
     ALTER TABLE ONLY public.batch
         ADD CONSTRAINT fk_batch_twin_id FOREIGN KEY (twin_id) REFERENCES public.twin(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
