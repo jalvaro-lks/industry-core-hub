@@ -40,6 +40,7 @@ from tools.exceptions import (
     NotificationDeleteError,
     NotificationSendingError
 )
+from tools.constants import SEM_ID_NOTIFICATION
 from tractusx_sdk.extensions.notification_api.models import Notification
 
 
@@ -351,6 +352,7 @@ class TestNotificationsManagementService:
         # Arrange
         message_id = uuid4()
         mock_repo_manager = MagicMock()
+        mock_repo_manager.notification_repository.find_by_message_id.return_value = Mock()
         mock_repo_manager.notification_repository.delete_by_message_id.return_value = True
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
@@ -361,6 +363,13 @@ class TestNotificationsManagementService:
         
         # Assert
         assert result is True
+        mock_repo_manager.notification_repository.find_by_message_id.assert_called_once_with(
+            message_id=message_id
+        )
+        self.service.submodel_service_manager.delete_twin_aspect_document.assert_called_once_with(
+            submodel_id=message_id,
+            semantic_id=SEM_ID_NOTIFICATION
+        )
         mock_repo_manager.notification_repository.delete_by_message_id.assert_called_once_with(
             message_id=message_id
         )
@@ -371,7 +380,7 @@ class TestNotificationsManagementService:
         # Arrange
         message_id = uuid4()
         mock_repo_manager = MagicMock()
-        mock_repo_manager.notification_repository.delete_by_message_id.return_value = False
+        mock_repo_manager.notification_repository.find_by_message_id.return_value = None
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager
@@ -381,6 +390,8 @@ class TestNotificationsManagementService:
         
         # Assert
         assert result is False
+        mock_repo_manager.notification_repository.delete_by_message_id.assert_not_called()
+        self.service.submodel_service_manager.delete_twin_aspect_document.assert_not_called()
 
     @patch('services.notifications.notifications_management_service.RepositoryManagerFactory')
     def test_delete_notification_error(self, mock_repo_factory):
@@ -388,7 +399,8 @@ class TestNotificationsManagementService:
         # Arrange
         message_id = uuid4()
         mock_repo_manager = MagicMock()
-        mock_repo_manager.notification_repository.delete_by_message_id.side_effect = Exception("Delete error")
+        mock_repo_manager.notification_repository.find_by_message_id.return_value = Mock()
+        self.service.submodel_service_manager.delete_twin_aspect_document.side_effect = Exception("Delete error")
         mock_repo_manager.__enter__.return_value = mock_repo_manager
         mock_repo_manager.__exit__.return_value = None
         mock_repo_factory.return_value.create.return_value = mock_repo_manager

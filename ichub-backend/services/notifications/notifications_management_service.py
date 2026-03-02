@@ -149,7 +149,19 @@ class NotificationsManagementService():
         """
         try:
             with RepositoryManagerFactory().create() as repos:
-                success = repos.notification_repository.delete_by_message_id(message_id=message_id)
+                db_notification = repos.notification_repository.find_by_message_id(
+                    message_id=message_id
+                )
+                if not db_notification:
+                    return False
+
+                self.submodel_service_manager.delete_twin_aspect_document(
+                    submodel_id=message_id,
+                    semantic_id=SEM_ID_NOTIFICATION
+                )
+                success = repos.notification_repository.delete_by_message_id(
+                    message_id=message_id
+                )
                 return success
         except Exception as e:
             logger.error(f"Error deleting notification: {e}")
