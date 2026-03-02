@@ -31,6 +31,7 @@ from tractusx_sdk.extensions.notification_api.models import (
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from services.notifications.notifications_management_service import NotificationsManagementService
 from models.metadata_database.notification.models import NotificationStatus, NotificationDirection
+from models.services.notification.responses import NotificationResponse
 from tools.exceptions import (
     NotificationCreationError,
     NotificationUpdateStatusError,
@@ -38,6 +39,7 @@ from tools.exceptions import (
     NotificationDeleteError,
     NotificationSendingError
 )
+from models.metadata_database.notification.models import NotificationEntity
 
 
 notification_management_service = NotificationsManagementService()
@@ -49,9 +51,10 @@ router = APIRouter(
 )
 
 @router.post("/notifications")
-async def get_all_notifications(bpn: str, status: NotificationStatus = None, offset: int = 0, limit: int = 10) -> List[Notification]:
+async def get_all_notifications(bpn: str, status: NotificationStatus = None, offset: int = 0, limit: int = 10) -> List[NotificationResponse]:
     try:
-        return notification_management_service.get_all_notifications(bpn=bpn, status=status, offset=offset, limit=limit)
+        notifications = notification_management_service.get_all_notifications(bpn=bpn, status=status, offset=offset, limit=limit)
+        return notifications
     except NotificationRetrievalError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
 

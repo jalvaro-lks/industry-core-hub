@@ -31,6 +31,7 @@ from tractusx_sdk.dataspace.services.connector.base_connector_consumer import Ba
 from managers.config.log_manager import LoggingManager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.notification.models import NotificationStatus, NotificationDirection, NotificationEntity
+from models.services.notification.responses import NotificationResponse
 from tools.exceptions import NotificationCreationError, NotificationUpdateStatusError, NotificationRetrievalError, NotificationDeleteError, NotificationSendingError
 
 from connector import connector_manager
@@ -81,14 +82,14 @@ class NotificationsManagementService():
             logger.error(f"Error updating notification status: {e}")
             raise NotificationUpdateStatusError(f"Failed to update notification status: {e}")
         
-    def get_all_notifications(self, bpn: str, status: Optional[NotificationStatus] = None, use_case: Optional[str] = None, offset: int = 0, limit: int = 100) -> List[NotificationEntity]:
+    def get_all_notifications(self, bpn: str, status: Optional[NotificationStatus] = None, use_case: Optional[str] = None, offset: int = 0, limit: int = 100) -> List[NotificationResponse]:
         """
         Retrieve all notifications from the database, optionally filtered by BPN, status, and use_case, with pagination support.
         """
         try:
             with RepositoryManagerFactory().create() as repos:
                 notifications = repos.notification_repository.find_by_bpn(bpn=bpn, status=status, use_case=use_case, offset=offset, limit=limit)
-                return notifications
+                return [NotificationResponse.model_validate(notification) for notification in notifications]
         except Exception as e:
             logger.error(f"Error retrieving notifications: {e}")
             raise NotificationRetrievalError(f"Failed to retrieve notifications: {e}")

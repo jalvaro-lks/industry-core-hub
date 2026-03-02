@@ -25,7 +25,7 @@ from sqlmodel import SQLModel, Field
 from sqlalchemy import JSON
 from sqlmodel import Column
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from uuid import UUID
 from enum import Enum
 from tractusx_sdk.extensions.notification_api.models import Notification
@@ -61,7 +61,7 @@ class NotificationEntity(SQLModel, table=True):
         description="Originating use case or category for the notification (e.g., 'CCM', 'TRACEABILITY', 'INDUSTRY CORE', 'PCF', etc.). Generic string for future extensibility."
     )
 
-    full_notification: Notification = Field(sa_column=Column(JSON, nullable=False))
+    full_notification: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
 
     @classmethod
     def from_sdk(
