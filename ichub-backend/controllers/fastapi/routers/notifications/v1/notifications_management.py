@@ -39,7 +39,10 @@ from tools.exceptions import (
     NotificationDeleteError,
     NotificationSendingError
 )
-from models.metadata_database.notification.models import NotificationEntity
+from tools.constants import INTERNAL_SERVER_ERROR
+from managers.config.log_manager import LoggingManager
+
+logger = LoggingManager.get_logger(__name__)
 
 
 notification_management_service = NotificationsManagementService()
@@ -69,7 +72,8 @@ async def create_notification(notification: Notification) -> Response:
     except NotificationCreationError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in create_notification endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.post("/notification/send")
 async def send_notification(notification: Notification, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
@@ -82,7 +86,8 @@ async def send_notification(notification: Notification, endpoint_path: str, prov
     except NotificationSendingError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in send_notification endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.put("/notification/status")
 async def update_notification_status(message_id: str, status: NotificationStatus) -> Response:
@@ -92,7 +97,8 @@ async def update_notification_status(message_id: str, status: NotificationStatus
     except NotificationUpdateStatusError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in update_notification_status endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.delete("/notification")
 async def delete_notification(message_id: str) -> Response:
@@ -102,4 +108,5 @@ async def delete_notification(message_id: str) -> Response:
     except NotificationDeleteError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in delete_notification endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})

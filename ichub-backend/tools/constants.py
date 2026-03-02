@@ -24,6 +24,7 @@
 # ================ CONSTANTS =========================
 TYPE = "@type"
 JSON_EXTENSION = ".json"
+INTERNAL_SERVER_ERROR = "Internal server error"
 
 # ================= CONTEXTS =========================
 ODRL_CONTEXT = "http://www.w3.org/ns/odrl/2/"

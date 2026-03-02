@@ -32,7 +32,11 @@ from controllers.fastapi.routers.authentication.auth_api import get_authenticati
 from services.notifications.notifications_management_service import NotificationsManagementService
 from services.notifications.digital_twin_event_api_service import DigitalTwinEventApiService
 from tools.exceptions import NotificationCreationError
+from tools.constants import INTERNAL_SERVER_ERROR
 from models.metadata_database.notification.models import NotificationDirection
+from managers.config.log_manager import LoggingManager
+
+logger = LoggingManager.get_logger(__name__)
 
 
 notification_management_service = NotificationsManagementService()
@@ -53,7 +57,8 @@ async def connect_to_parent(notification: Notification) -> Response:
     except NotificationCreationError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in connect_to_parent endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.post("/connect-to-child")
 async def connect_to_child(notification: Notification) -> Response:
@@ -64,7 +69,8 @@ async def connect_to_child(notification: Notification) -> Response:
     except NotificationCreationError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in connect_to_child endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.post("/submodel-update")
 async def submodel_update(notification: Notification) -> Response:
@@ -75,7 +81,8 @@ async def submodel_update(notification: Notification) -> Response:
     except NotificationCreationError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in submodel_update endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.post("/feedback")
 async def feedback(notification: Notification) -> Response:
@@ -86,4 +93,5 @@ async def feedback(notification: Notification) -> Response:
     except NotificationCreationError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        logger.exception("Unhandled error in feedback endpoint")
+        return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
