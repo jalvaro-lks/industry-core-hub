@@ -205,6 +205,7 @@ def custom_openapi():
                 "Open Connection Management",
                 "Part Discovery Management",
                 "Digital Twin Event Management",
+                "Notifications Management"
             ],
         },
         {
