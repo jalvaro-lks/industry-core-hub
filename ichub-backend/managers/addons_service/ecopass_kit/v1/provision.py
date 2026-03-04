@@ -46,6 +46,7 @@ from models.metadata_database.provider.models import (
     CatalogPart,
     SerializedPart,
     PartnerCatalogPart,
+    LegalEntity,
 )
 from tools.exceptions import DppNotFoundError, DppShareError
 
@@ -326,7 +327,8 @@ class ProvisionManager:
                     selectinload(TwinAspect.twin)  # type: ignore
                     .selectinload(Twin.serialized_part)
                     .selectinload(SerializedPart.partner_catalog_part)
-                    .selectinload(PartnerCatalogPart.catalog_part),
+                    .selectinload(PartnerCatalogPart.catalog_part)
+                    .selectinload(CatalogPart.legal_entity),
                     selectinload(TwinAspect.twin)  # type: ignore
                     .selectinload(Twin.serialized_part)
                     .selectinload(SerializedPart.partner_catalog_part)
@@ -404,8 +406,14 @@ class ProvisionManager:
 
         # Check if this matches the requested DPP ID
         if passport_id == dpp_id:
+            # manufacturer_id must be the legal entity BPNL (manufacturer), NOT the business partner BPNL (customer)
+            manufacturer_bpnl = partner_catalog_part.catalog_part.legal_entity.bpnl
+            logger.info(f"[SHARE DEBUG] Matched DPP! manufacturer_id={manufacturer_bpnl}, "
+                        f"partner_bpnl={partner_catalog_part.business_partner.bpnl}, "
+                        f"manufacturer_part_id={partner_catalog_part.catalog_part.manufacturer_part_id}, "
+                        f"part_instance_id={db_serialized_part.part_instance_id}")
             return {
-                "manufacturer_id": partner_catalog_part.business_partner.bpnl,
+                "manufacturer_id": manufacturer_bpnl,
                 "manufacturer_part_id": partner_catalog_part.catalog_part.manufacturer_part_id,
                 "part_instance_id": db_serialized_part.part_instance_id,
             }
