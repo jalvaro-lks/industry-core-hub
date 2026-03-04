@@ -1,7 +1,8 @@
 #################################################################################
 # Eclipse Tractus-X - Industry Core Hub Backend
 #
-# Copyright (c) 2025 Contributors to the Eclipse Foundation
+# Copyright (c) 2026 LKS Next
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
 #
 # See the NOTICE file(s) distributed with this work for additional
 # information regarding copyright ownership.
@@ -21,15 +22,18 @@
 #################################################################################
 
 from fastapi import APIRouter, Depends
+
+from .v1 import consumption, exchange, management, provision
+
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
-from .ecopass_kit import ecopass_kit
-from .pcf_kit import pcf_kit
 
 router = APIRouter(
-    prefix="/addons",
-    tags=["Add-Ons Microservices"],
+    prefix="/pcf-kit",
+    tags=["PCF KIT Microservices"],
     dependencies=[Depends(get_authentication_dependency())]
 )
 
-router.include_router(ecopass_kit.router)
-router.include_router(pcf_kit.router)
+router.include_router(consumption.router)
+router.include_router(provision.router)
+router.include_router(exchange.router)
+router.include_router(management.router)
