@@ -13,12 +13,12 @@
       "deleteSerializedPart": "Serialisiertes Teil löschen"
     },
     "messages": {
-      "twinRegistered": "Zwilling erfolgreich registriert!",
+      "twinRegistered": "Zwilling erfolgreich geteilt!",
       "twinShared": "Zwilling erfolgreich geteilt!",
       "twinUnshared": "Zwilling erfolgreich nicht mehr geteilt!",
       "partDeleted": "Serialisiertes Teil erfolgreich gelöscht!",
       "dataRefreshed": "Daten erfolgreich aktualisiert!",
-      "registerFailed": "Registrierung fehlgeschlagen",
+      "registerFailed": "Teilen fehlgeschlagen",
       "shareFailed": "Teilen fehlgeschlagen",
       "unshareFailed": "Aufheben der Freigabe fehlgeschlagen",
       "deleteFailed": "Löschen fehlgeschlagen",

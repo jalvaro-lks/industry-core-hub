@@ -56,6 +56,7 @@ import {
   Link as LinkIcon,
   Add,
   CloudUpload,
+  IosShare,
   Edit,
   Close,
   Visibility,
@@ -65,7 +66,7 @@ import { createTwinAspect } from '@/features/industry-core-kit/catalog-managemen
 import SubmodelCreator from '@/components/submodel-creation/SubmodelCreator';
 import { darkCardStyles } from '../styles/cardStyles';
 import { GenericPassportVisualization } from '../../passport-consumption/passport-types/generic/GenericPassportVisualization';
-import { fetchAllSerializedPartTwins, fetchAllSerializedParts, createSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
+import { fetchAllSerializedPartTwins, fetchAllSerializedParts, createSerializedPartTwin, shareSerializedPartTwin } from '@/features/industry-core-kit/serialized-parts/api';
 import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
 import { SerializedPartTwinRead } from '@/features/industry-core-kit/serialized-parts/types/twin-types';
 import { StatusVariants } from '@/features/industry-core-kit/catalog-management/types/types';
@@ -128,9 +129,9 @@ const PassportProvisionWizard: React.FC = () => {
         setError(t('wizard.errors.selectPart'));
         return;
       }
-      // Check if part is registered
+      // Check if part is registered/shared — for SerializedParts, registration already shares
       if (partRegistrationStatus !== StatusVariants.registered && partRegistrationStatus !== StatusVariants.shared) {
-        setError(t('wizard.errors.partMustBeRegistered'));
+        setError(t('wizard.errors.partMustBeShared'));
         return;
       }
       setActiveStep(2);
@@ -184,7 +185,8 @@ const PassportProvisionWizard: React.FC = () => {
           return {
             ...part,
             ...twin, // This adds globalId, dtrAasId, etc. if they exist
-            _registrationStatus: twin.dtrAasId && twin.globalId ? 'shared' : 'registered'
+            // For SerializedParts, registration already shares (partner BPN is in DTR shell descriptor)
+            _registrationStatus: 'shared'
           };
         }
         return {
@@ -222,9 +224,10 @@ const PassportProvisionWizard: React.FC = () => {
       // Check if the part already has the registration status from loadSerializedParts
       if ((part as any)._registrationStatus) {
         const status = (part as any)._registrationStatus;
+        // For SerializedParts, both 'registered' and 'shared' map to Shared
+        // because registration already makes the twin visible to the partner
         setPartRegistrationStatus(
-          status === 'shared' ? StatusVariants.shared : 
-          status === 'registered' ? StatusVariants.registered : 
+          (status === 'shared' || status === 'registered') ? StatusVariants.shared : 
           StatusVariants.draft
         );
       } else {
@@ -238,10 +241,9 @@ const PassportProvisionWizard: React.FC = () => {
 
         if (!twin) {
           setPartRegistrationStatus(StatusVariants.draft);
-        } else if (twin.dtrAasId && twin.globalId) {
-          setPartRegistrationStatus(StatusVariants.shared);
         } else {
-          setPartRegistrationStatus(StatusVariants.registered);
+          // For SerializedParts, any registered twin is effectively shared
+          setPartRegistrationStatus(StatusVariants.shared);
         }
       }
     } catch (err) {
@@ -259,14 +261,27 @@ const PassportProvisionWizard: React.FC = () => {
     setError(null);
 
     try {
+      // Step 1: Register the twin (this already makes it visible in DTR to the partner)
       await createSerializedPartTwin({
         manufacturerId: selectedPart.manufacturerId,
         manufacturerPartId: selectedPart.manufacturerPartId,
         partInstanceId: selectedPart.partInstanceId,
       });
 
-      // Show success message immediately after registration
-      setSuccessMessage(t('wizard.step2.twinRegisteredSuccess'));
+      // Step 2: Automatically create TwinExchange record so the DB state reflects the shared reality
+      try {
+        await shareSerializedPartTwin({
+          manufacturerId: selectedPart.manufacturerId,
+          manufacturerPartId: selectedPart.manufacturerPartId,
+          partInstanceId: selectedPart.partInstanceId,
+        });
+      } catch (shareErr) {
+        // Share may fail if TwinExchange already exists — not critical since DTR visibility is already set
+        console.warn('Auto-share after registration warning:', shareErr);
+      }
+
+      // Show success message immediately after sharing
+      setSuccessMessage(t('wizard.step2.twinSharedSuccess'));
       setTimeout(() => setSuccessMessage(null), 4000);
 
       // Reload the serialized parts list to get the updated twin data with globalId and dtrAasId
@@ -289,12 +304,12 @@ const PassportProvisionWizard: React.FC = () => {
         await checkPartRegistrationStatus(partWithTwinData || selectedPart);
       } catch (statusErr) {
         console.warn('Failed to check registration status after registration:', statusErr);
-        // Set status to registered manually since we know the registration succeeded
-        setPartRegistrationStatus(StatusVariants.registered);
+        // Set status to shared manually since registration already shares for SerializedParts
+        setPartRegistrationStatus(StatusVariants.shared);
       }
     } catch (err: any) {
-      console.error('Failed to register serialized part:', err);
-      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to register serialized part. Please try again.';
+      console.error('Failed to share serialized part:', err);
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to share serialized part. Please try again.';
       setError(errorMessage);
     } finally {
       setRegistering(false);
@@ -773,7 +788,7 @@ const PassportProvisionWizard: React.FC = () => {
                         <Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                              {t('wizard.step2.registrationStatus')}:
+                              {t('wizard.step2.sharingStatus')}:
                             </Typography>
                             <Chip
                               label={partRegistrationStatus}
@@ -799,14 +814,14 @@ const PassportProvisionWizard: React.FC = () => {
                                 mb: 2
                               }}
                             >
-                              {t('wizard.step2.mustBeRegisteredWarning')}
+                              {t('wizard.step2.mustBeSharedWarning')}
                             </Alert>
                           )}
                           {(partRegistrationStatus === StatusVariants.draft || partRegistrationStatus === StatusVariants.pending) && (
                             <Button
                               fullWidth
                               variant="contained"
-                              startIcon={registering ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+                              startIcon={registering ? <CircularProgress size={20} color="inherit" /> : <IosShare />}
                               onClick={handleRegisterPart}
                               disabled={registering}
                               sx={{
@@ -817,7 +832,7 @@ const PassportProvisionWizard: React.FC = () => {
                                 }
                               }}
                             >
-                              {registering ? t('wizard.step2.registering') : t('wizard.step2.registerSerializedPart')}
+                              {registering ? t('wizard.step2.sharing') : t('wizard.step2.shareSerializedPart')}
                             </Button>
                           )}
                         </Box>
@@ -1562,7 +1577,7 @@ const PassportProvisionWizard: React.FC = () => {
                     {t('wizard.publishing.currentStatus')}:
                   </Typography>
                   <Chip
-                    label={t('common:status.registered')}
+                    label={t('common:status.shared')}
                     size="small"
                     sx={{
                       bgcolor: 'rgba(16, 185, 129, 0.1)',
@@ -1573,27 +1588,20 @@ const PassportProvisionWizard: React.FC = () => {
                   />
                 </Box>
                 <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-                <Typography sx={{ color: 'rgba(255,255,255,0.7)', mb: 2, fontSize: '0.9rem' }}>
-                  {t('wizard.publishing.sharePrompt')}
-                </Typography>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<LinkIcon />}
-                  sx={{
-                    borderColor: 'rgba(139, 92, 246, 0.5)',
-                    color: '#a78bfa',
-                    textTransform: 'none',
-                    py: 1.2,
-                    '&:hover': {
-                      borderColor: '#8b5cf6',
-                      bgcolor: 'rgba(139, 92, 246, 0.1)',
-                      color: '#a78bfa',
-                    }
-                  }}
-                >
-                  {t('common:actions.share')} DPP
-                </Button>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1, 
+                  p: 1.5,
+                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: 1,
+                }}>
+                  <CheckCircle sx={{ color: '#10b981', fontSize: '1.2rem' }} />
+                  <Typography sx={{ color: '#10b981', fontSize: '0.9rem' }}>
+                    {t('wizard.publishing.alreadyShared')}
+                  </Typography>
+                </Box>
               </Box>
             </Box>
           ) : (
