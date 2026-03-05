@@ -43,6 +43,7 @@
 - [Installation](#installation)
   - [Quick Start (Local Development)](#quick-start-local-development)
   - [Kubernetes / Helm](#kubernetes--helm)
+  - [Local Umbrella (Tractus-X Components)](#local-umbrella-tractus-x-components)
 - [Documentation](#documentation)
 - [KIT Add-on Extensions](#kit-add-on-extensions)
   - [Available and Planned Add-ons](#available-and-planned-add-ons)
@@ -56,26 +57,25 @@
 
 ## What is the Industry Core Hub?
 
-The **Industry Core Hub (IC-Hub)** is an open-source reference implementation of the [Catena-X Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit). It acts as a **middleware orchestrator** that sits between your business applications and the underlying Catena-X dataspace components, eliminating the need for deep expertise in each individual component.
+The **Industry Core Hub (IC-Hub)** is an open-source reference implementation of the [Eclipse Tractus-X Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit). It acts as a **middleware orchestrator** that sits between your business applications/backend & legacy systems and the underlying Eclipse Tractus-X dataspace infrastructe, eliminating the need for deep expertise in each individual component.
 
 ### The Problem It Solves
 
-Adopting the Catena-X dataspace typically requires integrating multiple complex components:
+Adopting dataspace technologies from Eclipse Tractus-X (used for example in the Catena-X dataspace by service providers) typically requires integrating multiple complex components:
 
 - The **Eclipse Dataspace Connector (EDC)** for sovereign data exchange
 - The **Digital Twin Registry (DTR)** for managing Asset Administration Shell (AAS) digital twins
-- A **Submodel Server** for hosting and serving aspect model data
 - **Discovery Services** for finding business partners' endpoints
 
 Setting all of this up correctly — with the right policies, asset registrations, and data contracts — is a significant engineering effort that can take weeks or months, and requires specialist knowledge most companies don't have in-house.
 
 ### The Solution
 
-The IC-Hub abstracts all of this complexity behind a clean, unified API and an intuitive user interface. You interact with one system; the Hub orchestrates everything else for you:
+The IC-Hub abstracts all of this complexity behind a clean, unified API and an intuitive user interface. You interact with one system; the IC-Hub orchestrates everything else for you:
 
-- Register a **digital twin** for a part → the Hub creates the AAS shell in the DTR, registers the EDC asset, and sets up the access policies automatically.
-- Attach a **submodel** (e.g., a Digital Product Passport) → the Hub stores the data and exposes it as a standards-compliant EDC-protected endpoint.
-- **Consume data** from a business partner → the Hub discovers the partner's endpoints, negotiates the EDC data contract, and retrieves the submodel data — all transparently.
+- Register a **digital twin** for a part → the IC-Hub creates the AAS shell in the DTR, registers the EDC asset, and sets up the access policies automatically.
+- Attach a **submodel** (e.g., a Digital Product Passport) → the IC-Hub stores the data and exposes it as a standards-compliant EDC-protected endpoint.
+- **Consume data** from a business partner → the IC-Hub discovers the partner's endpoints, negotiates the EDC data contract, and retrieves the submodel data — all transparently.
 
 This dramatically reduces the onboarding effort for **SMEs and use case developers**, turning weeks of integration work into a matter of days.
 
@@ -87,7 +87,7 @@ This dramatically reduces the onboarding effort for **SMEs and use case develope
 | **Data Consumers** | Search, discover, and retrieve digital twin data from business partners without dealing with EDC negotiation complexity |
 | **Use Case Developers** | Build Catena-X use cases (e.g., DPP, Traceability) on top of a stable, pre-integrated foundation in days rather than months |
 | **SMEs** | Adopt the Catena-X dataspace with minimal IT investment and infrastructure knowledge |
-| **KIT Providers** | Extend the Hub with custom add-on views and features for specific use cases, distributable via the Catena-X marketplace |
+| **KIT Providers** | Extend the IC-Hub with custom add-on views and features for specific use cases, distributable via the Catena-X marketplace |
 
 ---
 
@@ -475,6 +475,17 @@ Deploy the IC-Hub in a **Kubernetes cluster** (via Helm) or run it **locally** f
 
 ### Quick Start (Local Development)
 
+**Database (PostgreSQL + pgAdmin)**
+
+A Docker Compose file is provided to spin up a local PostgreSQL instance and pgAdmin (in order to develop the backend in local)
+
+```sh
+cd deployment/local/docker-compose/
+docker compose up -d
+# PostgreSQL: localhost:5432 (user/password, db: ichub)
+# pgAdmin:    http://localhost:5050 (admin@admin.com / admin)
+```
+
 **Backend**
 ```sh
 cd ichub-backend/
@@ -502,7 +513,23 @@ helm repo update
 helm install ichub -f your-values.yaml tractusx-dev/industry-core-hub
 ```
 
-For the complete guide — including prerequisites, configuration reference, and the Umbrella test environment — see the **[Installation Guide](./INSTALL.md)**.
+### Local Umbrella (Tractus-X Components)
+
+To develop and test against real Catena-X components locally (EDC, DTR, Discovery Services, Portal, etc.), deploy the minimal Tractus-X Umbrella chart on a local Kubernetes cluster (e.g., Minikube):
+
+```sh
+# Prerequisites: kubectl, Helm v3.8+, Minikube (or Docker Desktop with K8s enabled)
+minikube start --cpus=4 --memory=8Gb
+
+helm repo add tractusx-dev https://eclipse-tractusx.github.io/charts/dev
+helm repo update tractusx-dev
+helm install -f docs/umbrella/minimal-values.yaml umbrella tractusx-dev/umbrella \
+  --namespace umbrella --version v2.6.0 --create-namespace
+```
+
+For the full step-by-step guide — including cluster setup, ingress configuration, and host mappings — see the **[Umbrella Deployment Guide](./docs/umbrella/umbrella-deployment-guide.md)**.
+
+For the complete installation guide — including prerequisites, configuration reference, and production deployment — see the **[Installation Guide](./INSTALL.md)**.
 
 ---
 
@@ -594,7 +621,9 @@ Please follow the [Security Issue Reporting Guidelines](https://eclipse-tractusx
 This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/legalcode).
 
 - SPDX-License-Identifier: CC-BY-4.0
-- SPDX-FileCopyrightText: 2025 Contributors to the Eclipse Foundation
+- SPDX-FileCopyrightText: 2026 Contributors to the Eclipse Foundation
+- SPDX-FileCopyrightText: 2026 LKS Next
+- SPDX-FileCopyrightText: 2026 Catena-X Automotive Network e.V.
 - Source URL: https://github.com/eclipse-tractusx/industry-core-hub
 
 [contributors-shield]: https://img.shields.io/github/contributors/eclipse-tractusx/industry-core-hub.svg?style=for-the-badge
