@@ -194,7 +194,7 @@ backend:
           retryDelay: 15
           backgroundRetryInterval: 60
     # -- Agreements define the ODRL policies for each semantic model (Saturn format).
-    agreements:
+      agreements:
       - semanticid: urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
         usage:
           context:
@@ -204,9 +204,16 @@ backend:
           permissions:
             - action: "use"
               constraint:
-                leftOperand: "UsagePurpose"
-                operator: "eq"
-                rightOperand: "cx.circular.dpp:1"
+                and:
+                  - leftOperand: "FrameworkAgreement"
+                    operator: "eq"
+                    rightOperand: "DataExchangeGovernance:1.0"
+                  - leftOperand: "Membership"
+                    operator: "eq"
+                    rightOperand: "active"
+                  - leftOperand: "UsagePurpose"
+                    operator: "isAnyOf"
+                    rightOperand: "cx.circular.dpp:1"
           prohibitions: []
           obligations: []
         access:
@@ -215,7 +222,7 @@ backend:
             - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
             - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
           permissions:
-            - action: "use"
+            - action: access
               constraint:
                 leftOperand: "Membership"
                 operator: "eq"
@@ -239,7 +246,7 @@ backend:
                     operator: "eq"
                     rightOperand: "active"
                   - leftOperand: "UsagePurpose"
-                    operator: "eq"
+                    operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
           prohibitions: []
           obligations: []
@@ -249,7 +256,7 @@ backend:
             - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
             - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
           permissions:
-            - action: "use"
+            - action: "access"
               constraint:
                 leftOperand: "Membership"
                 operator: "eq"
@@ -273,7 +280,7 @@ backend:
                     operator: "eq"
                     rightOperand: "active"
                   - leftOperand: "UsagePurpose"
-                    operator: "eq"
+                    operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
           prohibitions: []
           obligations: []
@@ -283,7 +290,7 @@ backend:
             - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
             - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
           permissions:
-            - action: "use"
+            - action: "access"
               constraint:
                 leftOperand: "Membership"
                 operator: "eq"
@@ -299,9 +306,16 @@ backend:
           permissions:
             - action: "use"
               constraint:
-                leftOperand: "UsagePurpose"
-                operator: "eq"
-                rightOperand: "cx.core.industrycore:1"
+                and:
+                  - leftOperand: "FrameworkAgreement"
+                    operator: "eq"
+                    rightOperand: "DataExchangeGovernance:1.0"
+                  - leftOperand: "Membership"
+                    operator: "eq"
+                    rightOperand: "active"
+                  - leftOperand: "UsagePurpose"
+                    operator: "isAnyOf"
+                    rightOperand: "cx.core.industrycore:1"
           prohibitions: []
           obligations: []
         access:
@@ -310,7 +324,7 @@ backend:
             - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
             - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
           permissions:
-            - action: "use"
+            - action: "access"
               constraint:
                 leftOperand: "Membership"
                 operator: "eq"
@@ -384,7 +398,7 @@ backend:
                       operator: "eq"
                       rightOperand: "active"
                     - leftOperand: "UsagePurpose"
-                      operator: "eq"
+                      operator: "isAnyOf"
                       rightOperand: "cx.core.digitalTwinRegistry:1"
             prohibitions: []
             obligations: []
@@ -394,7 +408,7 @@ backend:
               - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
               - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
             permissions:
-              - action: "use"
+              - action: "access"
                 constraint:
                   leftOperand: "Membership"
                   operator: "eq"
@@ -426,7 +440,7 @@ backend:
                       operator: "eq"
                       rightOperand: "active"
                     - leftOperand: "UsagePurpose"
-                      operator: "eq"
+                      operator: "isAnyOf"
                       rightOperand: "cx.core.industrycore:1"
             prohibitions: []
             obligations: []
@@ -436,7 +450,7 @@ backend:
               - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
               - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
             permissions:
-              - action: "use"
+              - action: "access"
                 constraint:
                   leftOperand: "Membership"
                   operator: "eq"
