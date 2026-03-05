@@ -116,6 +116,8 @@ The IC-Hub acts as the central orchestration layer between your applications and
 ```mermaid
 graph TB
     subgraph "Your Organization"
+        BACK["Company Backend/Legacy System"]
+        PIP["Integration Pipeline"]
         APP["Business Application UI"]
         ICH["Industry Core Hub"]
         DB[("PostgreSQLMetadata DB")]
@@ -149,6 +151,8 @@ graph TB
     ICH -- "EndpointDiscovery" --> DF
     DF --> BPND
     DF --> EDCD
+    BACK --> PIP
+    PIP --> ICH
     ICH -- "Auth" --> KC
     EDC <-- "Data ContractNegotiation" --> PEDC
     PEDC --> PDTR
