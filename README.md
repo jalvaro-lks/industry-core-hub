@@ -116,12 +116,12 @@ The IC-Hub acts as the central orchestration layer between your applications and
 ```mermaid
 graph TB
     subgraph "Your Organization"
-        BACK["Backend /<br/>Legacy System"]
-        PIP["Integration<br/>Pipeline"]
-        APP["Business<br/>Application UI"]
-        ICH["Industry<br/>Core Hub"]
-        DB[("PostgreSQL<br/>Metadata DB")]
-        KC["Keycloak<br/>IAM"]
+        BACK["Backend/>Legacy System"]
+        PIP["Integration Pipeline"]
+        APP["Business Application UI"]
+        ICH["Industry Core Hub"]
+        DB[("PostgreSQL Metadata DB")]
+        KC["Keycloak IAM"]
     end
 
     subgraph "Tractus-X Dataspace Components<br/>(Self hosted or as a Service)"
@@ -130,9 +130,9 @@ graph TB
     end
 
     subgraph "Tractus-X Discovery Services"
-        DF["Discovery<br/>Finder"]
-        BPND["BPN<br/>Discovery"]
-        EDCD["EDC<br/>Discovery"]
+        DF["Discovery Finder"]
+        BPND["BPN Discovery"]
+        EDCD["EDC Discovery"]
     end
 
     subgraph "Business Partner"
