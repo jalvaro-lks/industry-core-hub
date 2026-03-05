@@ -116,25 +116,24 @@ The IC-Hub acts as the central orchestration layer between your applications and
 ```mermaid
 graph TB
     subgraph "Your Organization"
-        BACK["Backend/Legacy System"]
-        PIP["Integration Pipeline"]
-        APP["Business Application UI"]
-        ICH["Industry Core Hub"]
-        DB[("PostgreSQLMetadata DB")]
-        KC["Keycloak / IAM"]
+        BACK["Backend /<br/>Legacy System"]
+        PIP["Integration<br/>Pipeline"]
+        APP["Business<br/>Application UI"]
+        ICH["Industry<br/>Core Hub"]
+        DB[("PostgreSQL<br/>Metadata DB")]
+        KC["Keycloak<br/>IAM"]
     end
 
-    subgraph "Tractus-X Dataspace Components \n (Self hosted or as a Service)"
+    subgraph "Tractus-X Dataspace Components<br/>(Self hosted or as a Service)"
         EDC["TX-EDC"]
         DTR["DTR"]
     end
 
     subgraph "Tractus-X Discovery Services"
-        DF["Discovery Finder"]
-        BPND["BPN Discovery"]
-        EDCD["EDC Discovery"]
+        DF["Discovery<br/>Finder"]
+        BPND["BPN<br/>Discovery"]
+        EDCD["EDC<br/>Discovery"]
     end
-
 
     subgraph "Business Partner"
         PEDC["EDC"]
@@ -143,16 +142,16 @@ graph TB
 
     APP -- "REST API / UI" --> ICH
     ICH --> DB
-    ICH -- "Asset & PolicyRegistration" --> EDC
-    ICH -- "AAS TwinRegistration" --> DTR
-    ICH -- "SubmodelData" --> ICH
-    ICH -- "EndpointDiscovery" --> DF
+    ICH -- "Asset & Policy<br/>Registration" --> EDC
+    ICH -- "AAS Twin<br/>Registration" --> DTR
+    ICH -- "Submodel Data" --> ICH
+    ICH -- "Endpoint Discovery" --> DF
     DF --> BPND
     DF --> EDCD
     BACK --> PIP
     PIP -- "REST API" --> ICH
     ICH -- "Auth" --> KC
-    EDC <-- "Data ContractNegotiation" --> PEDC
+    EDC <-- "Data Contract<br/>Negotiation" --> PEDC
     PEDC --> PDTR
 ```
 
