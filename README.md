@@ -170,21 +170,22 @@ The architecture follows a layered abstraction approach — each layer hides the
 
 ```mermaid
 graph TB
-    subgraph L4["Layer 4 — Use Case Add-ons <br/>(this project)"]
+    subgraph L4["Layer 4 — Use Case Add-ons (this project)"]
         UC1["DPP Add-on"]
         UC2["Certificate Management Add-on"]
         UC3["PCF Add-on"]
     end
-    subgraph L3["Layer 3 — Industry Core Hub <br/>(this project)"]
+    subgraph L3["Layer 3 — Industry Core Hub (this project)"]
         ICH["IC-Hub API & UI<br/>(Orchestration)"]
     end
     subgraph L2["Layer 2 — Tractus-X SDK"]
         SDK["tractusx-sdk<br/>(EDC & DTR client libraries)"]
     end
-    subgraph L1["Layer 1 — Dataspace Foundation"]
+    subgraph L1["Layer 1 — Dataspace Infrastructure"]
         EDC["EDC"]
         DTR["DTR"]
-        SS["Submodel Server"]
+        DS["Discovery Services"]
+        SS["Submodel Services"]
     end
 
     L4 --> L3
