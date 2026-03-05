@@ -45,6 +45,7 @@
   - [Kubernetes / Helm](#kubernetes--helm)
 - [Documentation](#documentation)
 - [KIT Add-on Extensions](#kit-add-on-extensions)
+  - [Available and Planned Add-ons](#available-and-planned-add-ons)
 - [How to Get Involved](#how-to-get-involved)
 - [Reporting a Bug or Sharing an Idea](#reporting-a-bug-or-sharing-an-idea)
 - [Reporting a Security Issue](#reporting-a-security-issue)
@@ -169,12 +170,12 @@ The architecture follows a layered abstraction approach — each layer hides the
 
 ```mermaid
 graph TB
-    subgraph L4["Layer 4 — Use Case Applications"]
-        UC1["DPP Use Case"]
-        UC2["Traceability Use Case"]
-        UC3["Quality Use Case"]
+    subgraph L4["Layer 4 — Use Case Add-ons <br/>(this project)"]
+        UC1["DPP Add-on"]
+        UC2["Certificate Management Add-on"]
+        UC3["PCF Add-on"]
     end
-    subgraph L3["Layer 3 — Industry Core Hub (this project)"]
+    subgraph L3["Layer 3 — Industry Core Hub <br/>(this project)"]
         ICH["IC-Hub API & UI<br/>(Orchestration)"]
     end
     subgraph L2["Layer 2 — Tractus-X SDK"]
