@@ -37,7 +37,6 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import AddIcon from '@mui/icons-material/Add';
 import ViewListIcon from '@mui/icons-material/ViewList';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import IosShare from '@mui/icons-material/IosShare';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -137,11 +136,9 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       return { status: StatusVariants.draft };
     }
 
-    if (twin.shares && twin.shares.length > 0) {
-      return { status: StatusVariants.shared, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
-    }
-
-    return { status: StatusVariants.registered, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
+    // For SerializedParts, registration already makes the twin visible to the partner
+    // (partner BPN is added to DTR shell descriptor), so both 'registered' and 'shared' are treated as 'shared'
+    return { status: StatusVariants.shared, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
   };
 
   useEffect(() => {
@@ -202,11 +199,24 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
     
     setTwinCreatingId(row.id);
     try {
+      // Step 1: Register the twin (this already makes it visible in DTR to the partner)
       await createSerializedPartTwin({
         manufacturerId: row.manufacturerId,
         manufacturerPartId: row.manufacturerPartId,
         partInstanceId: row.partInstanceId,
       });
+
+      // Step 2: Automatically create TwinExchange record so the DB state reflects the shared reality
+      try {
+        await shareSerializedPartTwin({
+          manufacturerId: row.manufacturerId,
+          manufacturerPartId: row.manufacturerPartId,
+          partInstanceId: row.partInstanceId,
+        });
+      } catch (shareErr) {
+        // Share may fail if TwinExchange already exists — not critical since DTR visibility is already set
+        console.warn('Auto-share after registration warning:', shareErr);
+      }
       
       // Refresh data after successful creation
       const [serializedParts, twins] = await Promise.all([
@@ -256,8 +266,8 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
             r.partInstanceId === row.partInstanceId
         );
 
-        if (updatedRow && updatedRow.twinStatus === StatusVariants.registered) {
-          showSuccess('Twin registered successfully!');
+        if (updatedRow && (updatedRow.twinStatus === StatusVariants.shared || updatedRow.twinStatus === StatusVariants.registered)) {
+          showSuccess('Twin shared successfully!');
           return; // suppress original error
         }
       } catch (recheckError) {
@@ -266,16 +276,16 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
       }
 
       // Extract meaningful error message if status remains draft
-      let errorMessage = 'Failed to register twin. Please try again.';
+      let errorMessage = 'Failed to share twin. Please try again.';
       
       if (error instanceof Error) {
-        errorMessage = `Registration failed: ${error.message}`;
+        errorMessage = `Sharing failed: ${error.message}`;
       } else if (typeof error === 'object' && error !== null && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
         if (axiosError.response?.data?.message) {
-          errorMessage = `Registration failed: ${axiosError.response.data.message}`;
+          errorMessage = `Sharing failed: ${axiosError.response.data.message}`;
         } else if (axiosError.response?.data?.error) {
-          errorMessage = `Registration failed: ${axiosError.response.data.error}`;
+          errorMessage = `Sharing failed: ${axiosError.response.data.error}`;
         }
       }
       
@@ -493,48 +503,11 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
 
         if (row.twinStatus === StatusVariants.draft) {
           actions.push(
-            <Tooltip title={t('common:tooltips.registerTwin')} key="register" arrow>
+            <Tooltip title={t('common:tooltips.shareTwin')} key="share" arrow>
               <IconButton
                 size="small"
                 onClick={() => handleCreateTwin(row)}
                 disabled={twinCreatingId === row.id}
-                sx={{
-                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                  color: '#1976d2',
-                  borderRadius: '8px',
-                  width: 36,
-                  height: 36,
-                  border: '1px solid rgba(25, 118, 210, 0.3)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.2)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
-                  },
-                  '&:disabled': {
-                    backgroundColor: 'rgba(248, 249, 250, 0.1)',
-                    color: 'rgba(248, 249, 250, 0.3)',
-                    border: '1px solid rgba(248, 249, 250, 0.1)',
-                  },
-                  transition: 'all 0.2s ease-in-out',
-                }}
-              >
-                {twinCreatingId === row.id ? (
-                  <CircularProgress size={16} sx={{ color: '#1976d2' }} />
-                ) : (
-                  <CloudUploadIcon fontSize="small" />
-                )}
-              </IconButton>
-            </Tooltip>
-          );
-        }
-
-        if (row.twinStatus === StatusVariants.registered) {
-          actions.push(
-            <Tooltip title={t('common:tooltips.shareTwin')} key="share" arrow>
-              <IconButton
-                size="small"
-                onClick={() => handleShareTwin(row)}
-                disabled={twinSharingId === row.id}
                 sx={{
                   backgroundColor: 'rgba(156, 39, 176, 0.1)',
                   color: '#9c27b0',
@@ -555,42 +528,11 @@ export default function InstanceProductsTable({ part, onAddClick }: Readonly<Ins
                   transition: 'all 0.2s ease-in-out',
                 }}
               >
-                <IosShare fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          );
-          
-          // Add delete button for registered twins
-          actions.push(
-            <Tooltip title={t('productDetail.instanceProductsTable.tooltips.deleteSerializedPart')} key="delete" arrow>
-              <IconButton
-                size="small"
-                onClick={() => {
-                  
-                  showDeleteConfirmation(row);
-                }}
-                disabled={partDeletingId === row.id}
-                sx={{
-                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                  color: '#f44336',
-                  borderRadius: '8px',
-                  width: 36,
-                  height: 36,
-                  border: '1px solid rgba(244, 67, 54, 0.3)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(244, 67, 54, 0.2)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)',
-                  },
-                  '&:disabled': {
-                    backgroundColor: 'rgba(248, 249, 250, 0.1)',
-                    color: 'rgba(248, 249, 250, 0.3)',
-                    border: '1px solid rgba(248, 249, 250, 0.1)',
-                  },
-                  transition: 'all 0.2s ease-in-out',
-                }}
-              >
-                <DeleteIcon fontSize="small" />
+                {twinCreatingId === row.id ? (
+                  <CircularProgress size={16} sx={{ color: '#9c27b0' }} />
+                ) : (
+                  <IosShare fontSize="small" />
+                )}
               </IconButton>
             </Tooltip>
           );

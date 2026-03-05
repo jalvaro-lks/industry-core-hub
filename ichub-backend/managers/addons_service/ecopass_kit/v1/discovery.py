@@ -327,6 +327,13 @@ class DiscoveryManager:
         """
         Discover BPN(s) using BPN Discovery service.
         
+        Uses a two-step process:
+        1. Query Discovery Finder to get BPN Discovery endpoint addresses
+        2. Query BPN Discovery endpoints to resolve manufacturer part IDs to BPNs
+        
+        Handles relative endpoint addresses returned by the Discovery Finder by
+        resolving them against the Discovery Finder's base URL.
+        
         Args:
             manufacturer_part_id: The manufacturer part ID to search for
             
@@ -346,20 +353,57 @@ class DiscoveryManager:
             if not discovery_finder_url:
                 raise ValueError("Discovery Finder URL not configured")
             
+            logger.debug(f"Discovery Finder URL from config: {discovery_finder_url}")
+            
             # Create Discovery Finder service
             discovery_finder = DiscoveryFinderService(
                 url=discovery_finder_url,
                 oauth=discovery_oauth
             )
             
-            # Create BPN Discovery service
-            bpn_discovery_service = BpnDiscoveryService(
-                oauth=discovery_oauth,
-                discovery_finder_service=discovery_finder
-            )
-            
             # Get the type identifier from configuration (default: "manufacturerPartId")
             bpn_type = ConfigManager.get_config("consumer.discovery.bpn_discovery.type", default="manufacturerPartId")
+            
+            # Pre-check: query Discovery Finder to inspect raw endpoint addresses
+            # and fix relative URLs before BpnDiscoveryService uses them
+            raw_endpoints = discovery_finder.find_discovery_urls(keys=[bpn_type])
+            logger.debug(f"Discovery Finder raw endpoints for '{bpn_type}': {raw_endpoints}")
+            
+            # Fix relative endpoint addresses by resolving against Discovery Finder base URL.
+            # Some deployments return relative paths (e.g., "/bpndiscovery") instead of
+            # absolute URLs (e.g., "https://host.com/bpndiscovery"). The SDK cannot
+            # handle relative URLs, so we resolve them here.
+            fixed = False
+            for key, endpoint_url in raw_endpoints.items():
+                if endpoint_url and not endpoint_url.startswith(("http://", "https://")):
+                    # Extract base URL (scheme + host) from the Discovery Finder URL
+                    from urllib.parse import urlparse
+                    parsed = urlparse(discovery_finder_url)
+                    base_url = f"{parsed.scheme}://{parsed.netloc}"
+                    resolved_url = f"{base_url}{endpoint_url}" if endpoint_url.startswith("/") else f"{base_url}/{endpoint_url}"
+                    logger.warning(
+                        f"Discovery Finder returned relative endpoint for '{key}': '{endpoint_url}'. "
+                        f"Resolved to absolute URL: '{resolved_url}'"
+                    )
+                    raw_endpoints[key] = resolved_url
+                    fixed = True
+            
+            if fixed:
+                # Create a patched DiscoveryFinderService that returns the fixed URLs
+                # by wrapping it so BpnDiscoveryService gets absolute URLs
+                patched_finder = _PatchedDiscoveryFinderService(
+                    original=discovery_finder,
+                    fixed_endpoints=raw_endpoints
+                )
+                bpn_discovery_service = BpnDiscoveryService(
+                    oauth=discovery_oauth,
+                    discovery_finder_service=patched_finder
+                )
+            else:
+                bpn_discovery_service = BpnDiscoveryService(
+                    oauth=discovery_oauth,
+                    discovery_finder_service=discovery_finder
+                )
             
             # Look up the BPN using the manufacturer part ID
             bpn_list = await asyncio.to_thread(
@@ -550,6 +594,43 @@ def extract_semantic_id(submodel: Dict[str, Any]) -> str:
         return semantic_id_obj
     
     return ""
+
+
+class _PatchedDiscoveryFinderService:
+    """
+    Wraps a DiscoveryFinderService to return pre-resolved absolute URLs.
+    
+    This is needed when the Discovery Finder returns relative endpoint addresses
+    (e.g., "/bpndiscovery" instead of "https://host.com/bpndiscovery").
+    The BpnDiscoveryService in the SDK expects absolute URLs, so this wrapper
+    intercepts the find_discovery_urls call and returns the fixed URLs.
+    """
+    
+    def __init__(self, original: DiscoveryFinderService, fixed_endpoints: Dict[str, str]) -> None:
+        """
+        Initialize with the original service and fixed endpoint mappings.
+        
+        Args:
+            original: The original DiscoveryFinderService instance
+            fixed_endpoints: Dict mapping endpoint types to absolute URLs
+        """
+        self._original = original
+        self._fixed_endpoints = fixed_endpoints
+        # Copy essential attributes from original so SDK code can access them
+        self.url = original.url
+        self.oauth = original.oauth
+    
+    def find_discovery_urls(self, keys: list = ["bpn"]) -> dict:
+        """
+        Return pre-resolved absolute URLs instead of querying the Discovery Finder again.
+        
+        Args:
+            keys: List of discovery type keys
+            
+        Returns:
+            Dict mapping types to their absolute endpoint URLs
+        """
+        return {k: v for k, v in self._fixed_endpoints.items() if k in keys or not keys}
 
 
 # Module-level singleton for convenience
