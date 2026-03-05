@@ -82,9 +82,13 @@ class ConnectorProviderManager:
         """
         if self.dataspace_version == DATASPACE_VERSION_SATURN:
             return {
-                "context": {
-                    "@vocab": EDC_VOCAB_NS
-                },
+                "context": [
+                    "https://w3id.org/catenax/2025/9/policy/odrl.jsonld",
+                    "https://w3id.org/catenax/2025/9/policy/context.jsonld",
+                    {
+                        "@vocab": EDC_VOCAB_NS
+                    },
+                ],
                 "permission": [],
                 "prohibition": [],
                 "obligation": []
@@ -95,9 +99,9 @@ class ConnectorProviderManager:
                 "odrl": ODRL_CONTEXT,
                 "cx-policy": CX_POLICY_CONTEXT
             },
-            "permission": [],
-            "prohibition": [],
-            "obligation": []
+            "odrl:permission": [],
+            "odrl:prohibition": [],
+            "odrl:obligation": []
         }
 
     
@@ -117,13 +121,14 @@ class ConnectorProviderManager:
 
         usage_policy_id, access_policy_id, contract_id = self.get_or_create_contract_with_policies(
             asset_id=asset_id,
-            policy_config=dtr_policy_config
+            policy_config=dtr_policy_config,
+            qualifier="dtr"
         )
         
         return asset_id, usage_policy_id, access_policy_id, contract_id
     
-    def get_or_create_contract_with_policies(self, asset_id:str, policy_config:dict) -> tuple[str, str, str]:
-        usage_policy_id, access_policy_id = self.get_or_create_usage_and_access_policies(policy_config=policy_config)
+    def get_or_create_contract_with_policies(self, asset_id:str, policy_config:dict, qualifier: str = "") -> tuple[str, str, str]:
+        usage_policy_id, access_policy_id = self.get_or_create_usage_and_access_policies(policy_config=policy_config, qualifier=qualifier)
         contract_id = self.get_or_create_contract(
             asset_id=asset_id,
             usage_policy_id=usage_policy_id,
@@ -131,13 +136,19 @@ class ConnectorProviderManager:
         )
         return usage_policy_id, access_policy_id, contract_id
     
-    def get_or_create_usage_and_access_policies(self, policy_config:dict) -> tuple[str, str]:
+    def get_or_create_usage_and_access_policies(self, policy_config:dict, qualifier: str = "") -> tuple[str, str]:
         """
         Creates or retrieves usage and access policies from the given policy config.
         
         The policy config is expected to contain 'usage' and 'access' sub-dicts with
-        'permission', 'prohibition', and 'obligation' arrays already in the native
-        ODRL format expected by the connector SDK for the configured dataspace version.
+        'permissions', 'prohibitions', and 'obligations' arrays (plural, as used in the
+        YAML configuration) in the native ODRL format expected by the connector SDK for
+        the configured dataspace version. Singular forms are accepted as a fallback for
+        backwards compatibility.
+        
+        An optional ``qualifier`` (e.g. ``"dtr"``) is forwarded to
+        :meth:`get_or_create_policy` so the generated IDs carry a meaningful
+        segment (e.g. ``ichub:policy:dtr:HASH``).
         
         For Jupiter: rules use ODRL prefixes (e.g. 'odrl:action', 'odrl:constraint',
         '@id' wrappers for operands).
@@ -146,24 +157,25 @@ class ConnectorProviderManager:
         usage_policy = policy_config.get("usage", self.empty_policy)
         access_policy = policy_config.get("access", self.empty_policy)
         
-        # Pass permission/prohibition/obligation through directly — the config
-        # (YAML) uses the singular form ("permission", "prohibition", "obligation")
-        # which is passed to the SDK's create_policy() using its plural keyword
-        # argument names.  Context falls back to the version-appropriate default
-        # from self.empty_policy when not supplied by the caller.
+        # The YAML config uses the plural form ("permissions", "prohibitions",
+        # "obligations"). Fall back to singular form for backwards compatibility.
+        # Context falls back to the version-appropriate default from self.empty_policy
+        # when not supplied by the caller.
         default_context = self.empty_policy.get("context")
         usage_policy_id = self.get_or_create_policy(
             usage_policy.get("context", default_context),
-            permissions=usage_policy.get("permission", []),
-            obligations=usage_policy.get("obligation", []),
-            prohibitions=usage_policy.get("prohibition", [])
+            permissions=usage_policy.get("permissions", usage_policy.get("permission", [])),
+            obligations=usage_policy.get("obligations", usage_policy.get("obligation", [])),
+            prohibitions=usage_policy.get("prohibitions", usage_policy.get("prohibition", [])),
+            qualifier=qualifier
         )
 
         access_policy_id = self.get_or_create_policy(
             access_policy.get("context", default_context),
-            permissions=access_policy.get("permission", []),
-            obligations=access_policy.get("obligation", []),
-            prohibitions=access_policy.get("prohibition", [])
+            permissions=access_policy.get("permissions", access_policy.get("permission", [])),
+            obligations=access_policy.get("obligations", access_policy.get("obligation", [])),
+            prohibitions=access_policy.get("prohibitions", access_policy.get("prohibition", [])),
+            qualifier=qualifier
         )
         
         return usage_policy_id, access_policy_id
@@ -197,35 +209,52 @@ class ConnectorProviderManager:
             logger.debug(f"Contract with ID {contract_id} already exists.")
             return contract_id
 
-        contract_response = self.connector_service.create_contract(
-            contract_id=contract_id,
-            usage_policy_id=usage_policy_id,
-            access_policy_id=access_policy_id,
-            asset_id=asset_id
-        )
+        try:
+            contract_response = self.connector_service.create_contract(
+                contract_id=contract_id,
+                usage_policy_id=usage_policy_id,
+                access_policy_id=access_policy_id,
+                asset_id=asset_id
+            )
+        except ValueError as e:
+            logger.error(
+                f"Failed to register contract with ID {contract_id} for asset '{asset_id}' "
+                f"(usage_policy='{usage_policy_id}', access_policy='{access_policy_id}'). "
+                f"Error: {e}"
+            )
+            raise
+        logger.info(f"Successfully registered contract with ID {contract_id} for asset '{asset_id}'.")
         return contract_response.get("@id", contract_id)
 
 
-    def generate_policy_id(self, context: dict | list[dict] = {}, permissions: dict | list[dict] = [], prohibitions: dict | list[dict] = [], obligations: dict | list[dict] = []) -> str:
-        """Generate a unique policy ID based on the provided context and rules."""
+    def generate_policy_id(self, context: dict | list[dict] = {}, permissions: dict | list[dict] = [], prohibitions: dict | list[dict] = [], obligations: dict | list[dict] = [], qualifier: str = "") -> str:
+        """Generate a unique policy ID based on the provided context and rules.
+        
+        An optional ``qualifier`` (e.g. ``"dtr"``) is inserted between the
+        ``ichub:policy:`` prefix and the content hash so that policies for
+        different asset types remain clearly distinguishable in the EDC catalog
+        (e.g. ``ichub:policy:dtr:HASH`` vs ``ichub:policy:HASH``).
+        """
         # Convert the context and rules to a JSON string
         context_str = json.dumps(context, sort_keys=True)
         permissions_str = json.dumps(permissions, sort_keys=True)
         prohibitions_str = json.dumps(prohibitions, sort_keys=True)
         obligations_str = json.dumps(obligations, sort_keys=True)
         
-        # Create a unique ID by hashing the concatenated strings
-        return "ichub:policy:"+blake2b_128bit(
+        # Build prefix: "ichub:policy:<qualifier>:" when qualifier is set
+        prefix = f"ichub:policy:{qualifier}:" if qualifier else "ichub:policy:"
+        return prefix + blake2b_128bit(
             context_str + permissions_str + prohibitions_str + obligations_str
         )
     
-    def get_or_create_policy(self, context: dict | list[dict] = {}, permissions: dict | list[dict] = [], prohibitions: dict | list[dict] = [], obligations: dict | list[dict] = []) -> str:
+    def get_or_create_policy(self, context: dict | list[dict] = {}, permissions: dict | list[dict] = [], prohibitions: dict | list[dict] = [], obligations: dict | list[dict] = [], qualifier: str = "") -> str:
         
         policy_id = self.generate_policy_id(
             context=context,
             permissions=permissions,
             prohibitions=prohibitions,
-            obligations=obligations
+            obligations=obligations,
+            qualifier=qualifier
         )
         
         """Get or create a policy in the EDC, returning the policy ID."""
@@ -235,13 +264,31 @@ class ConnectorProviderManager:
             logger.debug(f"Policy with ID {policy_id} already exists.")
             return policy_id
 
-        policy_response = self.connector_service.create_policy(
-            policy_id=policy_id,
-            context=context,
-            permissions=permissions,
-            prohibitions=prohibitions,
-            obligations=obligations
+        logger.debug(
+            f"[POLICY REQUEST] Registering policy '{policy_id}':\n"
+            + json.dumps({
+                "@context": context,
+                "permissions": permissions,
+                "prohibitions": prohibitions,
+                "obligations": obligations,
+            }, indent=2)
         )
+        try:
+            policy_response = self.connector_service.create_policy(
+                policy_id=policy_id,
+                context=context,
+                permissions=permissions,
+                prohibitions=prohibitions,
+                obligations=obligations
+            )
+        except ValueError as e:
+            logger.error(
+                f"Failed to register policy with ID {policy_id}. "
+                f"Permissions: {permissions}, Prohibitions: {prohibitions}, Obligations: {obligations}. "
+                f"Error: {e}"
+            )
+            raise
+        logger.info(f"Successfully registered policy with ID {policy_id}.")
         return policy_response.get("@id", policy_id)
     
     
@@ -259,7 +306,12 @@ class ConnectorProviderManager:
         
         # If it doesn't exist, create it
         logger.info(f"[DTR] Creating new asset with ID {existing_asset_id}.")
-        asset = self.create_dtr_asset(asset_id=existing_asset_id, dtr_url=dtr_url, dct_type=dct_type, version=version, headers=headers)
+        try:
+            asset = self.create_dtr_asset(asset_id=existing_asset_id, dtr_url=dtr_url, dct_type=dct_type, version=version, headers=headers)
+        except ValueError as e:
+            logger.error(f"[DTR] Failed to register asset with ID {existing_asset_id} for URL '{dtr_url}'. Error: {e}")
+            raise
+        logger.info(f"[DTR] Successfully registered asset with ID {existing_asset_id}.")
         return asset.get("@id", existing_asset_id)
     
     def get_or_create_circular_submodel_asset(self, semantic_id:str) -> str:
@@ -275,7 +327,12 @@ class ConnectorProviderManager:
         
         # If it doesn't exist, create it
         logger.info(f"Creating new asset with ID {standard_asset_id}.")
-        asset = self.create_circular_submodel_asset(semantic_id)
+        try:
+            asset = self.create_circular_submodel_asset(semantic_id)
+        except ValueError as e:
+            logger.error(f"Failed to register submodel bundle asset with ID {standard_asset_id} for semantic ID '{semantic_id}'. Error: {e}")
+            raise
+        logger.info(f"Successfully registered submodel bundle asset with ID {standard_asset_id}.")
         return asset.get("@id", standard_asset_id)
     
     def build_dispatcher_url(self, semantic_id: str):
@@ -381,12 +438,17 @@ class ConnectorProviderManager:
             return existing_asset_id
         # If it doesn't exist, create it
         logger.info(f"[DigitalTwinEvent] Creating new asset with ID {existing_asset_id}.")
-        asset = self.create_digital_twin_event_asset(
-            asset_id=existing_asset_id,
-            notification_endpoint_url=digital_twin_event_url,
-            version=version,
-            headers=headers
-        )
+        try:
+            asset = self.create_digital_twin_event_asset(
+                asset_id=existing_asset_id,
+                notification_endpoint_url=digital_twin_event_url,
+                version=version,
+                headers=headers
+            )
+        except ValueError as e:
+            logger.error(f"[DigitalTwinEvent] Failed to register asset with ID {existing_asset_id} for URL '{digital_twin_event_url}'. Error: {e}")
+            raise
+        logger.info(f"[DigitalTwinEvent] Successfully registered asset with ID {existing_asset_id}.")
         return asset.get("@id", existing_asset_id)
 
     def generate_digital_twin_event_asset_id(self, digital_twin_event_url: str) -> str:
