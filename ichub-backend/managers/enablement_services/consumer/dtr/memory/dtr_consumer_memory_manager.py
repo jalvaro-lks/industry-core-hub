@@ -395,9 +395,10 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 # automatically builds the correct version-aware CatalogModel
                 # (Jupiter: protocol="dataspace-protocol-http",
                 #  Saturn: protocol="dataspace-protocol-http:2025-1").
-                # The BPN is embedded as counterPartyId in every catalog request.
-                catalogs: dict = connector_service.get_catalogs_by_dct_type(
-                                        counter_party_id=bpn,
+                # Use _with_bpnl variant so Jupiter uses BPNL directly as counterPartyId
+                # while Saturn resolves the DID from the BPNL via Connector Discovery Service.
+                catalogs: dict = connector_service.get_catalogs_by_dct_type_with_bpnl(
+                                        bpnl=bpn,
                                         edcs=connectors,
                                         dct_type=self.dct_type,
                                         dct_type_key=self.dct_type_key,
@@ -613,8 +614,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         for attempt in range(max_retries + 1):
             try:
                 # Establish connection
-                dataplane_url, access_token = connector_service.do_dsp(
-                    counter_party_id=counter_party_id,
+                dataplane_url, access_token = connector_service.do_dsp_with_bpnl(
+                    bpnl=counter_party_id,
                     counter_party_address=connector_url,
                     policies=policies_to_use,
                     filter_expression=filter_expression
@@ -861,8 +862,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             
             try:
                 # Establish connection
-                dataplane_url, access_token = connector_service.do_dsp(
-                    counter_party_id=counter_party_id,
+                dataplane_url, access_token = connector_service.do_dsp_with_bpnl(
+                    bpnl=counter_party_id,
                     counter_party_address=connector_url,
                     policies=policies_to_use,
                     filter_expression=filter_expression
@@ -1027,8 +1028,8 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             
             try:
                 # Establish connection
-                dataplane_url, access_token = connector_service.do_dsp(
-                    counter_party_id=counter_party_id,
+                dataplane_url, access_token = connector_service.do_dsp_with_bpnl(
+                    bpnl=counter_party_id,
                     counter_party_address=connector_url,
                     policies=policies_to_use,
                     filter_expression=filter_expression
