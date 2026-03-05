@@ -257,7 +257,7 @@ backend:
             operandRight: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
       connector:
         dataspace:
-          version: "jupiter"
+          version: "saturn"
         controlplane:
           hostname: "https://<edc-consumer-control-hostname>"
           apiKeyHeader: "X-Api-Key"
@@ -269,7 +269,7 @@ backend:
     provider:
       connector:
         dataspace:
-          version: "jupiter"
+          version: "saturn"
         controlplane:
           hostname: "https://<edc-provider-control-hostname>"
           apiKeyHeader: "X-Api-Key"

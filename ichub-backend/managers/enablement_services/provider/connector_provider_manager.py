@@ -264,15 +264,6 @@ class ConnectorProviderManager:
             logger.debug(f"Policy with ID {policy_id} already exists.")
             return policy_id
 
-        logger.debug(
-            f"[POLICY REQUEST] Registering policy '{policy_id}':\n"
-            + json.dumps({
-                "@context": context,
-                "permissions": permissions,
-                "prohibitions": prohibitions,
-                "obligations": obligations,
-            }, indent=2)
-        )
         try:
             policy_response = self.connector_service.create_policy(
                 policy_id=policy_id,

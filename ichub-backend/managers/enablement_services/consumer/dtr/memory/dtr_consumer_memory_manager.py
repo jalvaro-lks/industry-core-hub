@@ -373,80 +373,81 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                     # Return list of DTR values
                     return [copy.deepcopy(dtr) for dtr in cached_dtrs_dict.values()]
         
+        
         # Cache is expired or doesn't exist, discover DTRs
         if(self.logger and self.verbose):
             self.logger.info(f"[DTR Manager] No cached DTRs were found, discovering DTRs for bpn [{bpn}]...")
             
-            # Get connectors from the connector manager
-            try:
-                connectors = self.connector_consumer_manager.get_connectors(bpn)
-                if not connectors or len(connectors) == 0:
-                    if(self.logger and self.verbose):
-                        self.logger.warning(f"[DTR Manager] [{bpn}] No connectors found for DTR discovery")
-                    return []
-                
+        # Get connectors from the connector manager
+        try:
+            connectors = self.connector_consumer_manager.get_connectors(bpn)
+            if not connectors or len(connectors) == 0:
                 if(self.logger and self.verbose):
-                    self.logger.debug(f"[DTR Manager] [{bpn}] Found {len(connectors)} connectors, searching for DTR assets")
-                
-                # Search for DTR assets in each connector's catalog
-                connector_service:BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
-                
-                # Delegate parallel catalog fetching to the SDK service, which
-                # automatically builds the correct version-aware CatalogModel
-                # (Jupiter: protocol="dataspace-protocol-http",
-                #  Saturn: protocol="dataspace-protocol-http:2025-1").
-                # Use _with_bpnl variant so Jupiter uses BPNL directly as counterPartyId
-                # while Saturn resolves the DID from the BPNL via Connector Discovery Service.
-                catalogs: dict = connector_service.get_catalogs_by_dct_type_with_bpnl(
-                                        bpnl=bpn,
-                                        edcs=connectors,
-                                        dct_type=self.dct_type,
-                                        dct_type_key=self.dct_type_key,
-                                        timeout=timeout
-                                        )
-            
-                # Iterate over catalogs and extract DTR information
-                for connector_url, catalog in catalogs.items():
-                    if catalog and not catalog.get("error"):
-                        # Get datasets from the catalog — supports both Jupiter
-                        # ("dcat:dataset") and Saturn ("dataset") key formats.
-                        datasets = self._get_catalog_datasets(catalog)
-                        
-                        for dataset in datasets:
-                            if self._is_dtr_asset(dataset):
-                                # Extract asset ID
-                                asset_id = dataset.get(self.ID_KEY, "")
-                                if not asset_id:
-                                    continue
-                                
-                                # Extract policies
-                                policies = self._extract_policies(dataset)
-                                
-                                # Create DTR data structure
-                                self.add_dtr(bpn=bpn, connector_url=connector_url, asset_id=asset_id, policies=policies)
-
-                                if(self.logger and self.verbose):
-                                    self.logger.info(f"[DTR Manager] [{bpn}] Found DTR asset [{asset_id}] in connector [{connector_url}] added to cache")
-                
-                # Return the cached DTRs for this BPN
-                if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
-                    cached_dtrs_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-                    if isinstance(cached_dtrs_dict, dict):
-                        cached_dtrs_list = list(cached_dtrs_dict.values())
-                        if(self.logger and self.verbose):
-                            self.logger.info(f"[DTR Manager] [{bpn}] Discovery complete. Found {len(cached_dtrs_list)} DTR(s) total")
-                        return [copy.deepcopy(dtr) for dtr in cached_dtrs_list]
-                    else:
-                        return []
-                else:
-                    if(self.logger and self.verbose):
-                        self.logger.info(f"[DTR Manager] [{bpn}] No DTR assets found in any connector catalogs")
-                    return []
-        
-            except Exception as e:
-                if(self.logger and self.verbose):
-                    self.logger.error(f"[DTR Manager] [{bpn}] Error discovering DTRs: {e}")
+                    self.logger.warning(f"[DTR Manager] [{bpn}] No connectors found for DTR discovery")
                 return []
+            
+            if(self.logger and self.verbose):
+                self.logger.debug(f"[DTR Manager] [{bpn}] Found {len(connectors)} connectors, searching for DTR assets")
+            
+            # Search for DTR assets in each connector's catalog
+            connector_service:BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
+            
+            # Delegate parallel catalog fetching to the SDK service, which
+            # automatically builds the correct version-aware CatalogModel
+            # (Jupiter: protocol="dataspace-protocol-http",
+            #  Saturn: protocol="dataspace-protocol-http:2025-1").
+            # Use _with_bpnl variant so Jupiter uses BPNL directly as counterPartyId
+            # while Saturn resolves the DID from the BPNL via Connector Discovery Service.
+            catalogs: dict = connector_service.get_catalogs_by_dct_type_with_bpnl(
+                                    bpnl=bpn,
+                                    edcs=connectors,
+                                    dct_type=self.dct_type,
+                                    dct_type_key=self.dct_type_key,
+                                    timeout=timeout
+                                    )
+        
+            # Iterate over catalogs and extract DTR information
+            for connector_url, catalog in catalogs.items():
+                if catalog and not catalog.get("error"):
+                    # Get datasets from the catalog — supports both Jupiter
+                    # ("dcat:dataset") and Saturn ("dataset") key formats.
+                    datasets = self._get_catalog_datasets(catalog)
+                    
+                    for dataset in datasets:
+                        if self._is_dtr_asset(dataset):
+                            # Extract asset ID
+                            asset_id = dataset.get(self.ID_KEY, "")
+                            if not asset_id:
+                                continue
+                            
+                            # Extract policies
+                            policies = self._extract_policies(dataset)
+                            
+                            # Create DTR data structure
+                            self.add_dtr(bpn=bpn, connector_url=connector_url, asset_id=asset_id, policies=policies)
+
+                            if(self.logger and self.verbose):
+                                self.logger.info(f"[DTR Manager] [{bpn}] Found DTR asset [{asset_id}] in connector [{connector_url}] added to cache")
+            
+            # Return the cached DTRs for this BPN
+            if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
+                cached_dtrs_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
+                if isinstance(cached_dtrs_dict, dict):
+                    cached_dtrs_list = list(cached_dtrs_dict.values())
+                    if(self.logger and self.verbose):
+                        self.logger.info(f"[DTR Manager] [{bpn}] Discovery complete. Found {len(cached_dtrs_list)} DTR(s) total")
+                    return [copy.deepcopy(dtr) for dtr in cached_dtrs_list]
+                else:
+                    return []
+            else:
+                if(self.logger and self.verbose):
+                    self.logger.info(f"[DTR Manager] [{bpn}] No DTR assets found in any connector catalogs")
+                return []
+    
+        except Exception as e:
+            if(self.logger and self.verbose):
+                self.logger.error(f"[DTR Manager] [{bpn}] Error discovering DTRs: {e}")
+            return []
 
     def discover_shells(self, counter_party_id: str, query_spec: List[Dict[str, str]], dtr_policies: Optional[List[Dict]] = None, limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict:
         """
@@ -807,7 +808,12 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         return []
 
     def _delete_connection(self, connector_service:BaseConnectorConsumerService, counter_party_id: str, connector_url: str, policies: List, filter_expression: Dict, bpn: str, asset_id: str):
-        """Delete failed connection for retry and remove DTR from known DTRs."""
+        """Delete a failed EDR connection so the next retry negotiates a fresh one.
+        
+        Only the connection/EDR is removed — the DTR cache entry is intentionally
+        kept because the DTR itself was validly discovered in the catalog. A
+        transient dataplane error (e.g. HTTP 500) does not mean the DTR is invalid.
+        """
         policies_checksum = hashlib.sha3_256(str(policies).encode('utf-8')).hexdigest()
         filter_checksum = hashlib.sha3_256(str(filter_expression).encode('utf-8')).hexdigest()
         connector_service.connection_manager.delete_connection(
@@ -816,18 +822,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
             query_checksum=filter_checksum,
             policy_checksum=policies_checksum
         )
-        
-        # Also remove the DTR from known_dtrs to avoid retrying problematic DTRs
-        self.logger.debug(f"[DTR Manager] [{threading.get_ident()}] Trying to acquire lock (_delete_connection)")
-        with self._dtrs_lock:
-            self.logger.debug(f"[DTR Manager] [{threading.get_ident()}] Acquired lock (_delete_connection)")
-            if bpn in self.known_dtrs and self.DTR_DATA_KEY in self.known_dtrs[bpn]:
-                dtr_dict = self.known_dtrs[bpn][self.DTR_DATA_KEY]
-                if isinstance(dtr_dict, dict) and asset_id in dtr_dict:
-                    del dtr_dict[asset_id]
-                    if self.logger and self.verbose:
-                        self.logger.info(f"[DTR Manager] [{bpn}] Removed failed DTR with asset ID [{asset_id}] from cache")
-        self.logger.debug(f"[DTR Manager] [{threading.get_ident()}] Released lock (_delete_connection)")
 
     def discover_shell(self, counter_party_id: str, id: str, dtr_policies: Optional[List[Dict]] = None) -> Dict:
         """
