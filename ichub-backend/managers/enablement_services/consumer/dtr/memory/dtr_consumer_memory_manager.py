@@ -39,8 +39,6 @@ from managers.enablement_services.consumer.base_dtr_consumer_manager import Base
 from managers.enablement_services.consumer.dtr.pagination_manager import PaginationManager, DtrPaginationState, PageState
 if TYPE_CHECKING:
     from managers.enablement_services.connector_manager import BaseConnectorConsumerManager
-from requests import Response
-from tractusx_sdk.dataspace.models.connector.base_catalog_model import BaseCatalogModel
 from tractusx_sdk.dataspace.tools import HttpTools
 
 class DtrConsumerMemoryManager(BaseDtrConsumerManager):
@@ -350,87 +348,6 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         
         return []
 
-    
-    def get_catalog(self,  connector_service:BaseConnectorConsumerService, counter_party_id: str = None, counter_party_address: str = None,
-                    request: BaseCatalogModel = None, timeout=60) -> dict | None:
-        """
-        Retrieves the EDC DCAT catalog. Allows to get the catalog without specifying the request, which can be overridden
-        
-        Parameters:
-        counter_party_address (str): The URL of the EDC provider.
-        request (BaseCatalogModel, optional): The request payload for the catalog API. If not provided, a default request will be used.
-
-        Returns:
-        dict | None: The EDC catalog as a dictionary, or None if the request fails.
-        """
-        ## Get EDC DCAT catalog
-
-        ## Get catalog with configurable timeout
-        response: Response = connector_service.catalogs.get_catalog(obj=request, timeout=timeout)
-    
-        ## In case the response code is not successfull or the response is null
-        if response is None or response.status_code != 200:
-            raise ConnectionError(
-                f"[EDC Service] It was not possible to get the catalog from the EDC provider! Response code: [{response.status_code}]")
-        return response.json()
-    
-        ## Get catalog request with filter
-    def get_catalog_with_filter(self,  connector_service:BaseConnectorConsumerService, counter_party_id: str, counter_party_address: str, filter_expression: list[dict],
-                                timeout: int = None) -> dict:
-        """
-        Retrieves a catalog from the EDC provider based on a specified filter.
-
-        Parameters:
-        counter_party_id (str): The identifier of the counterparty (Business Partner Number [BPN]).
-        counter_party_address (str): The URL of the EDC provider.
-        key (str): The key to filter the catalog entries by.
-        value (str): The value to filter the catalog entries by.
-        operator (str, optional): The comparison operator to use for filtering. Defaults to "=".
-
-        Returns:
-        dict: The catalog entries that match the specified filter.
-        """
-        return self.get_catalog(connector_service=connector_service, request=connector_service.get_catalog_request_with_filter(counter_party_id=counter_party_id,
-                                                                             counter_party_address=counter_party_address,
-                                                                             filter_expression=filter_expression),
-                                timeout=timeout)
-    
-    def get_catalog_with_filter_parallel(self, connector_service:BaseConnectorConsumerService, counter_party_id: str, counter_party_address: str,
-                                        filter_expression: list[dict], catalogs: dict = None,
-                                        timeout: int = None) -> None:
-        catalog = self.get_catalog_with_filter(connector_service=connector_service, counter_party_id=counter_party_id,
-                                                                    counter_party_address=counter_party_address,
-                                                                    filter_expression=filter_expression,
-                                                                    timeout=timeout)
-        catalogs[counter_party_address] = catalog
-        
-    def get_catalogs_by_filter_expression(self, connector_service:BaseConnectorConsumerService, counter_party_id: str, edcs: list, filter_expression: List[dict],
-                                 timeout: int = None):
-
-        ## Where the catalogs get stored
-        catalogs: dict = {}
-        threads: list[threading.Thread] = []
-        for connector_url in edcs:
-            thread = threading.Thread(target=self.get_catalog_with_filter_parallel, kwargs=
-            {
-                'connector_service': connector_service,
-                'counter_party_id': counter_party_id,
-                'counter_party_address': connector_url,
-                'filter_expression': filter_expression,
-                'timeout': timeout,
-                'catalogs': catalogs
-            }
-                                      )
-            thread.start()  ## Start thread
-            threads.append(thread)
-
-        ## Allow the threads to process
-        for thread in threads:
-            thread.join()  ## Waiting until they process
-
-        
-        return catalogs
-    
     def get_dtrs(self, bpn: str, timeout:int=30) -> List[Dict]:
         """
         Retrieve DTRs for a specific BPN, with automatic discovery if not cached.
@@ -474,26 +391,25 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
                 # Search for DTR assets in each connector's catalog
                 connector_service:BaseConnectorConsumerService = self.connector_consumer_manager.connector_service
                 
-                # Get catalogs in parallel from all the connectors 
-                catalogs:dict = self.get_catalogs_by_filter_expression(
-                                        connector_service=connector_service,
-                                        edcs=connectors,
+                # Delegate parallel catalog fetching to the SDK service, which
+                # automatically builds the correct version-aware CatalogModel
+                # (Jupiter: protocol="dataspace-protocol-http",
+                #  Saturn: protocol="dataspace-protocol-http:2025-1").
+                # The BPN is embedded as counterPartyId in every catalog request.
+                catalogs: dict = connector_service.get_catalogs_by_dct_type(
                                         counter_party_id=bpn,
-                                        filter_expression=connector_service.get_filter_expression(
-                                            key=self.dct_type_key,
-                                            operator=self.operator,
-                                            value=self.dct_type
-                                        ),
+                                        edcs=connectors,
+                                        dct_type=self.dct_type,
+                                        dct_type_key=self.dct_type_key,
                                         timeout=timeout
-                                        ) 
+                                        )
             
                 # Iterate over catalogs and extract DTR information
                 for connector_url, catalog in catalogs.items():
                     if catalog and not catalog.get("error"):
-                        # Get datasets from the catalog - using DCAT dataset key
-                        datasets = catalog.get(self.DCAT_DATASET_KEY, [])
-                        if not isinstance(datasets, list):
-                            datasets = [datasets] if datasets else []
+                        # Get datasets from the catalog — supports both Jupiter
+                        # ("dcat:dataset") and Saturn ("dataset") key formats.
+                        datasets = self._get_catalog_datasets(catalog)
                         
                         for dataset in datasets:
                             if self._is_dtr_asset(dataset):
@@ -1816,11 +1732,9 @@ class DtrConsumerMemoryManager(BaseDtrConsumerManager):
         """
         policies = []
         
-        # Extract policies from odrl:hasPolicy
-        has_policy = dataset.get(self.ODRL_HAS_POLICY_KEY, [])
-
-        if not isinstance(has_policy, list):
-            has_policy = [has_policy]
+        # Extract policies — supports both Jupiter ("odrl:hasPolicy") and
+        # Saturn ("hasPolicy") key formats via the base-class helper.
+        has_policy = self._get_dataset_policies(dataset)
 
         # Clean policies by removing @id and @type metadata
         for policy in has_policy:

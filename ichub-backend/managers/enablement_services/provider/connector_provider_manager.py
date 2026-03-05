@@ -26,7 +26,11 @@ from tractusx_sdk.dataspace.services.connector import BaseConnectorProviderServi
 from tractusx_sdk.extensions.notification_api import NotificationService
 from managers.config.log_manager import LoggingManager
 from tools.exceptions import NotFoundError
-from tools.constants import ODRL_CONTEXT, CX_POLICY_CONTEXT, TYPE
+from tools.constants import (
+    ODRL_CONTEXT, CX_POLICY_CONTEXT, TYPE,
+    SATURN_ODRL_CONTEXT_URL, SATURN_CX_CONTEXT_URL, EDC_VOCAB_NS,
+    DATASPACE_VERSION_JUPITER, DATASPACE_VERSION_SATURN,
+)
 import json
 
 from .dtr_provider_manager import DtrProviderManager
@@ -45,7 +49,8 @@ class ConnectorProviderManager:
                  path_submodel_dispatcher: str = "/submodel-dispatcher",
                  authorization: bool = False,
                  backend_api_key: str = "X-Api-Key",
-                 backend_api_key_value: str = ""):
+                 backend_api_key_value: str = "",
+                 dataspace_version: str = DATASPACE_VERSION_JUPITER):
 
         self.ichub_url = ichub_url  # for the circular submodel bundles.
         self.path_submodel_dispatcher = path_submodel_dispatcher
@@ -57,12 +62,34 @@ class ConnectorProviderManager:
         self.backend_api_key = backend_api_key
         self.backend_api_key_value = backend_api_key_value
 
+        # Track the active dataspace version ("jupiter" or "saturn") so that
+        # policy context defaults are generated in the correct format.
+        self.dataspace_version = dataspace_version
         self.empty_policy = self.get_empty_policy_config()
         self.connector_service = connector_provider_service
         self.notification_service = NotificationService(connector_provider_service)
 
     def get_empty_policy_config(self) -> dict:
-        """Returns an empty policy template."""
+        """
+        Returns an empty policy template whose context matches the active
+        dataspace version:
+
+        * **Jupiter** — uses prefixed ODRL keys (``odrl:`` / ``cx-policy:``
+          namespaces declared in the ``context`` dict).
+        * **Saturn** — uses unprefixed keys with ``@vocab`` pointing to the
+          EDC namespace; the SDK's PolicyModel auto-prepends the required
+          CX ODRL JSON-LD context URLs.
+        """
+        if self.dataspace_version == DATASPACE_VERSION_SATURN:
+            return {
+                "context": {
+                    "@vocab": EDC_VOCAB_NS
+                },
+                "permission": [],
+                "prohibition": [],
+                "obligation": []
+            }
+        # Default: Jupiter (legacy DSP HTTP)
         return {
             "context": {
                 "odrl": ODRL_CONTEXT,
@@ -71,83 +98,6 @@ class ConnectorProviderManager:
             "permission": [],
             "prohibition": [],
             "obligation": []
-        }
-        
-    @staticmethod
-    def build_rules(rules: list) -> list:
-        """
-        Converts a list of policy rules into ODRL-compliant format.
-
-        Each rule may contain constraints and a logical operator, and this method
-        wraps the constraints appropriately as either a single Constraint or a LogicalConstraint.
-        It also formats the ODRL action and constraint fields as required by the ODRL specification.
-        """
-        formatted = []
-        for rule in rules:
-            # Extract constraints and logical operator from the rule
-            constraints = rule.get("constraints", [])
-            if not constraints:
-                continue  # Skip rules with no constraints
-            logical_operator = str(rule.get("LogicalConstraint", "")).lower().replace("odrl:", "")
-            
-
-            # Determine how to wrap the constraints:
-            # - If no logical operator and only one constraint, use a simple Constraint.
-            # - Otherwise, use a LogicalConstraint and wrap constraints in the appropriate logic (and/or/xone).
-            if logical_operator == "" and len(constraints) == 1:
-                # Single constraint, wrap as a Constraint type
-                wrapped_constraints = {
-                    TYPE: "Constraint",
-                    # Format the leftOperand as an ODRL field with @id
-                    "odrl:leftOperand": {"@id": constraints[0]["leftOperand"]},
-                    # Format the operator as an ODRL field with @id
-                    "odrl:operator": {"@id": constraints[0]["operator"]},
-                    # Format the rightOperand as an ODRL field (literal value)
-                    "odrl:rightOperand": constraints[0]["rightOperand"]
-                }
-            else:
-                ## Here we have a logic operator and multiple constraints, but if the logic operator is not valid, we default to "and"
-                # If logical operator is not valid, default to "and" for multiple constraints, else empty
-                if logical_operator not in {"and", "or", "xone"}:
-                    logical_operator = "and" if len(constraints) > 1 else ""
-                # Wrap constraints as a LogicalConstraint with the specified logical operator
-                wrapped_constraints = {
-                    TYPE: "LogicalConstraint",
-                    f"odrl:{logical_operator}": [
-                        {
-                            TYPE: "Constraint",
-                            # Format the leftOperand as an ODRL field with @id
-                            "odrl:leftOperand": {"@id": c["leftOperand"]},
-                            # Format the operator as an ODRL field with @id
-                            "odrl:operator": {"@id": c["operator"]},
-                            # Format the rightOperand as an ODRL field (literal value)
-                            "odrl:rightOperand": c["rightOperand"]
-                        } for c in constraints
-                    ]
-                }
-            # Build the ODRL-compliant rule dict:
-            # - "odrl:action" is formatted as an ODRL action with @id.
-            # - "odrl:constraint" contains the wrapped constraints (Constraint or LogicalConstraint).
-            formatted.append({
-                "odrl:action": {"@id": rule.get("action")},
-                "odrl:constraint": wrapped_constraints
-            })
-        return formatted
-
-    def parse_policy_entry_to_odrl(self, entry: dict) -> dict:
-        """Parses a policy entry from configuration into ODRL-style format."""
-        return {
-            "@context": entry.get("context", {
-                "odrl": ODRL_CONTEXT,
-                "cx-policy": CX_POLICY_CONTEXT
-            }),
-            TYPE: "PolicyDefinitionRequestDto",
-            "policy": {
-                TYPE: "odrl:Set",
-                "odrl:permission": self.build_rules(entry.get("permission", [])),
-                "odrl:prohibition": self.build_rules(entry.get("prohibition", [])),
-                "odrl:obligation": self.build_rules(entry.get("obligation", []))
-            }
         }
 
     
@@ -182,28 +132,39 @@ class ConnectorProviderManager:
         return usage_policy_id, access_policy_id, contract_id
     
     def get_or_create_usage_and_access_policies(self, policy_config:dict) -> tuple[str, str]:
+        """
+        Creates or retrieves usage and access policies from the given policy config.
+        
+        The policy config is expected to contain 'usage' and 'access' sub-dicts with
+        'permission', 'prohibition', and 'obligation' arrays already in the native
+        ODRL format expected by the connector SDK for the configured dataspace version.
+        
+        For Jupiter: rules use ODRL prefixes (e.g. 'odrl:action', 'odrl:constraint',
+        '@id' wrappers for operands).
+        For Saturn: rules use plain keys (e.g. 'action', 'constraint', no '@id' wrappers).
+        """
         usage_policy = policy_config.get("usage", self.empty_policy)
         access_policy = policy_config.get("access", self.empty_policy)
         
-        usage_policy_id=self.get_or_create_policy(
-            usage_policy.get("context", {
-                "odrl": ODRL_CONTEXT,
-                "cx-policy": CX_POLICY_CONTEXT
-            }), 
-            permissions=self.build_rules(usage_policy.get("permission", [])),
-            obligations=self.build_rules(usage_policy.get("obligations", [])),
-            prohibitions=self.build_rules(usage_policy.get("prohibitions", []))
-            )
-        
+        # Pass permission/prohibition/obligation through directly — the config
+        # (YAML) uses the singular form ("permission", "prohibition", "obligation")
+        # which is passed to the SDK's create_policy() using its plural keyword
+        # argument names.  Context falls back to the version-appropriate default
+        # from self.empty_policy when not supplied by the caller.
+        default_context = self.empty_policy.get("context")
+        usage_policy_id = self.get_or_create_policy(
+            usage_policy.get("context", default_context),
+            permissions=usage_policy.get("permission", []),
+            obligations=usage_policy.get("obligation", []),
+            prohibitions=usage_policy.get("prohibition", [])
+        )
+
         access_policy_id = self.get_or_create_policy(
-            access_policy.get("context", {
-                "odrl": ODRL_CONTEXT,
-                "cx-policy": CX_POLICY_CONTEXT
-            }), 
-            permissions=self.build_rules(access_policy.get("permission", [])),
-            obligations=self.build_rules(access_policy.get("obligations", [])),
-            prohibitions=self.build_rules(access_policy.get("prohibitions", []))
-            )
+            access_policy.get("context", default_context),
+            permissions=access_policy.get("permission", []),
+            obligations=access_policy.get("obligation", []),
+            prohibitions=access_policy.get("prohibition", [])
+        )
         
         return usage_policy_id, access_policy_id
         

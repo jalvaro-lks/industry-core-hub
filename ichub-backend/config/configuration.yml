@@ -43,117 +43,130 @@ agreements:
   - semanticid: urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport
     usage:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:UsagePurpose
-              operator: odrl:eq
-              rightOperand: cx.circular.dpp:1
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      # context: # -- Jupiter dataspace version
+      #   - "https://w3id.org/tractusx/policy/v1.0.0"
+      #   - "http://www.w3.org/ns/odrl.jsonld"
+      #   - tx: "https://w3id.org/tractusx/v0.0.1/ns/"
+      #     "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            leftOperand: "UsagePurpose"
+            operator: "eq"
+            rightOperand: "cx.circular.dpp:1"
+      prohibitions: []
+      obligations: []
     access:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            leftOperand: "Membership"
+            operator: "eq"
+            rightOperand: "active"
+      prohibitions: []
+      obligations: []
   - semanticid: urn:samm:io.catenax.serial_part:3.0.0#SerialPart
     usage:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          LogicalConstraint: odrl:and
-          constraints:
-            - leftOperand: cx-policy:FrameworkAgreement
-              operator: odrl:eq
-              rightOperand: DataExchangeGovernance:1.0
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-            - leftOperand: cx-policy:UsagePurpose
-              operator: odrl:eq
-              rightOperand: cx.core.industrycore:1
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            and:
+              - leftOperand: "FrameworkAgreement"
+                operator: "eq"
+                rightOperand: "DataExchangeGovernance:1.0"
+              - leftOperand: "Membership"
+                operator: "eq"
+                rightOperand: "active"
+              - leftOperand: "UsagePurpose"
+                operator: "eq"
+                rightOperand: "cx.core.industrycore:1"
+      prohibitions: []
+      obligations: []
     access:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            leftOperand: "Membership"
+            operator: "eq"
+            rightOperand: "active"
+      prohibitions: []
+      obligations: []
   - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
     usage:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          LogicalConstraint: odrl:and
-          constraints:
-            - leftOperand: cx-policy:FrameworkAgreement
-              operator: odrl:eq
-              rightOperand: DataExchangeGovernance:1.0
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-            - leftOperand: cx-policy:UsagePurpose
-              operator: odrl:eq
-              rightOperand: cx.core.industrycore:1
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            and:
+              - leftOperand: "FrameworkAgreement"
+                operator: "eq"
+                rightOperand: "DataExchangeGovernance:1.0"
+              - leftOperand: "Membership"
+                operator: "eq"
+                rightOperand: "active"
+              - leftOperand: "UsagePurpose"
+                operator: "eq"
+                rightOperand: "cx.core.industrycore:1"
+      prohibitions: []
+      obligations: []
     access:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            leftOperand: "Membership"
+            operator: "eq"
+            rightOperand: "active"
+      prohibitions: []
+      obligations: []
   - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
     usage:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:UsagePurpose
-              operator: odrl:eq
-              rightOperand: cx.core.industrycore:1
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            leftOperand: "UsagePurpose"
+            operator: "eq"
+            rightOperand: "cx.core.industrycore:1"
+      prohibitions: []
+      obligations: []
     access:
       context:
-        odrl: http://www.w3.org/ns/odrl/2/
-        cx-policy: https://w3id.org/catenax/policy/
-      permission:
-        - action: odrl:use
-          constraints:
-            - leftOperand: cx-policy:Membership
-              operator: odrl:eq
-              rightOperand: active
-      prohibition: []
-      obligation: []
+        - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+        - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+        - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+      permissions:
+        - action: "use"
+          constraint:
+            leftOperand: "Membership"
+            operator: "eq"
+            rightOperand: "active"
+      prohibitions: []
+      obligations: []
 
 database:
   connection_string: "postgresql://user:password@localhost:5432/ichub"
@@ -199,7 +212,7 @@ consumer:
         operandRight: "https://w3id.org/catenax/taxonomy#DigitalTwinRegistry"
   connector:
     dataspace:
-      version: "jupiter"
+      version: "saturn" # -- Options: "jupiter" | "saturn"
     controlplane:
       hostname: "https://<control-plane-edc-consumer>"
       apiKeyHeader: X-Api-Key
@@ -211,7 +224,7 @@ consumer:
 provider:
   connector: 
     dataspace:
-      version: "jupiter"
+      version: "saturn" # -- Options: "jupiter" | "saturn"
     controlplane:
       hostname: "https://<provider-edc-control-plane>"
       apiKeyHeader: X-Api-Key
@@ -234,35 +247,42 @@ provider:
     policy:
       usage:
         context:
-          odrl: http://www.w3.org/ns/odrl/2/
-          cx-policy: https://w3id.org/catenax/policy/
-        permission:
-          - action: odrl:use
-            LogicalConstraint: odrl:and
-            constraints:
-              - leftOperand: cx-policy:FrameworkAgreement
-                operator: odrl:eq
-                rightOperand: DataExchangeGovernance:1.0
-              - leftOperand: cx-policy:Membership
-                operator: odrl:eq
-                rightOperand: active
-              - leftOperand: cx-policy:UsagePurpose
-                operator: odrl:eq
-                rightOperand: cx.core.digitalTwinRegistry:1
-        prohibition: []
-        obligation: []
+          - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+          - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+          - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        # context: # -- Jupiter dataspace version
+        #   - "https://w3id.org/tractusx/policy/v1.0.0"
+        #   - "http://www.w3.org/ns/odrl.jsonld"
+        #   - tx: "https://w3id.org/tractusx/v0.0.1/ns/"
+        #     "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        permissions:
+          - action: "use"
+            constraint:
+              and:
+                - leftOperand: "FrameworkAgreement"
+                  operator: "eq"
+                  rightOperand: "DataExchangeGovernance:1.0"
+                - leftOperand: "Membership"
+                  operator: "eq"
+                  rightOperand: "active"
+                - leftOperand: "UsagePurpose"
+                  operator: "eq"
+                  rightOperand: "cx.core.digitalTwinRegistry:1"
+        prohibitions: []
+        obligations: []
       access:
         context:
-          odrl: http://www.w3.org/ns/odrl/2/
-          cx-policy: https://w3id.org/catenax/policy/
-        permission:
-          - action: odrl:use
-            constraints:
-              - leftOperand: cx-policy:Membership
-                operator: odrl:eq
-                rightOperand: active
-        prohibition: []
-        obligation: []
+          - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+          - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+          - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        permissions:
+          - action: "use"
+            constraint:
+              leftOperand: "Membership"
+              operator: "eq"
+              rightOperand: "active"
+        prohibitions: []
+        obligations: []
 
   digitalTwinEventAPI:
     hostname: "https://<provider-digital-twin-event-api>"
@@ -276,35 +296,42 @@ provider:
     policy:
       usage:
         context:
-          odrl: http://www.w3.org/ns/odrl/2/
-          cx-policy: https://w3id.org/catenax/policy/
-        permission:
-          - action: odrl:use
-            LogicalConstraint: odrl:and
-            constraints:
-              - leftOperand: cx-policy:FrameworkAgreement
-                operator: odrl:eq
-                rightOperand: DataExchangeGovernance:1.0
-              - leftOperand: cx-policy:Membership
-                operator: odrl:eq
-                rightOperand: active
-              - leftOperand: cx-policy:UsagePurpose
-                operator: odrl:eq
-                rightOperand: cx.core.industrycore:1
-        prohibition: []
-        obligation: []
+          - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+          - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+          - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        # context: # -- Jupiter dataspace version
+        #   - "https://w3id.org/tractusx/policy/v1.0.0"
+        #   - "http://www.w3.org/ns/odrl.jsonld"
+        #   - tx: "https://w3id.org/tractusx/v0.0.1/ns/"
+        #     "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        permissions:
+          - action: "use"
+            constraint:
+              and:
+                - leftOperand: "FrameworkAgreement"
+                  operator: "eq"
+                  rightOperand: "DataExchangeGovernance:1.0"
+                - leftOperand: "Membership"
+                  operator: "eq"
+                  rightOperand: "active"
+                - leftOperand: "UsagePurpose"
+                  operator: "eq"
+                  rightOperand: "cx.core.industrycore:1"
+        prohibitions: []
+        obligations: []
       access:
         context:
-          odrl: http://www.w3.org/ns/odrl/2/
-          cx-policy: https://w3id.org/catenax/policy/
-        permission:
-          - action: odrl:use
-            constraints:
-              - leftOperand: cx-policy:Membership
-                operator: odrl:eq
-                rightOperand: active
-        prohibition: []
-        obligation: []
+          - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
+          - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
+          - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
+        permissions:
+          - action: "use"
+            constraint:
+              leftOperand: "Membership"
+              operator: "eq"
+              rightOperand: "active"
+        prohibitions: []
+        obligations: []
 
   submodel_dispatcher:
     # Mode selection: "filesystem" (local storage) or "http" (external service)
