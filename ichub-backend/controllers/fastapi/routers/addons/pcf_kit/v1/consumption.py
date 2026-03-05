@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
-from managers.addons_service.pcf_kit.v1 import management_manager
+from managers.addons_service.pcf_kit.v1 import consumption_manager
 from models.services.addons.pcf_kit.v1.management import SendPcfRequestModel
 
 
@@ -47,7 +47,7 @@ async def send_pcf_request(body: SendPcfRequestModel):
     manufacturerPartId or customerPartId must be provided.
     """
     try:
-        result = management_manager.send_pcf_request(
+        result = consumption_manager.send_pcf_request(
             manufacturer_part_id=body.manufacturer_part_id,
             customer_part_id=body.customer_part_id,
             requesting_bpn=body.requesting_bpn,

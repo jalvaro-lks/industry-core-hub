@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
-from managers.addons_service.pcf_kit.v1 import management_manager
+from managers.addons_service.pcf_kit.v1 import provision_manager
 from models.services.addons.pcf_kit.v1.management import SendOrUpdatePcfResponseModel
 
 
@@ -50,7 +50,7 @@ async def send_or_update_pcf_response(
     responses (201) and updates to previously shared data (200).
     """
     try:
-        result = management_manager.send_or_update_pcf_response(
+        result = provision_manager.send_or_update_pcf_response(
             request_id=request_id,
             pcf_data=body.pcf_data,
             responding_bpn=body.responding_bpn,
