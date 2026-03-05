@@ -174,7 +174,9 @@
     "guest": "Convidado",
     "language": "Idioma: {{language}}",
     "notificationsComingSoon": "Notificações em breve",
-    "policyComingSoon": "Configuração de Políticas/Governança em breve"
+    "policyComingSoon": "Configuração de Políticas/Governança em breve",
+    "openMessages": "Abrir mensagens",
+    "closeMessages": "Fechar mensagens"
   },
   "validation": {
     "required": "{{field}} é obrigatório",

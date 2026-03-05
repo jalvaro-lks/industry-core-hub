@@ -174,7 +174,9 @@
     "guest": "访客",
     "language": "语言：{{language}}",
     "notificationsComingSoon": "通知功能即将推出",
-    "policyComingSoon": "策略/治理配置即将推出"
+    "policyComingSoon": "策略/治理配置即将推出",
+    "openMessages": "打开消息",
+    "closeMessages": "关闭消息"
   },
   "validation": {
     "required": "{{field}}为必填项",

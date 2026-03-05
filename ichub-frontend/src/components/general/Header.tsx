@@ -333,19 +333,27 @@ export default function PrimarySearchAppBar() {
             </Typography>
           </Box>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
-            <Tooltip title="Notifications are coming soon" arrow>
+            <Tooltip title={isPanelOpen ? t('header.closeMessages') : t('header.openMessages')} arrow>
               <IconButton
                 ref={notificationButtonRef}
                 size="large"
-                aria-label="show 17 new notifications"
+                aria-label={`show ${unreadCount} new notifications`}
+                onClick={togglePanel}
                 sx={{
                   color: 'white',
+                  position: 'relative',
                   '&:hover': {
                     backgroundColor: 'rgba(25, 118, 210, 0.2)',
                     transform: 'translateY(-1px)',
                     boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
                   },
-                  transition: 'all 0.2s ease-in-out'
+                  transition: 'all 0.2s ease-in-out',
+                  ...(isPanelOpen && {
+                    backgroundColor: 'rgba(25, 118, 210, 0.3)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.4)',
+                    },
+                  }),
                 }}
               >
                 <Badge 

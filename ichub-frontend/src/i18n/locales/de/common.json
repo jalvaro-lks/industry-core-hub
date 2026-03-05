@@ -174,7 +174,9 @@
     "guest": "Gast",
     "language": "Sprache: {{language}}",
     "notificationsComingSoon": "Benachrichtigungen kommen bald",
-    "policyComingSoon": "Richtlinien-/Governance-Konfiguration kommt bald"
+    "policyComingSoon": "Richtlinien-/Governance-Konfiguration kommt bald",
+    "openMessages": "Nachrichten öffnen",
+    "closeMessages": "Nachrichten schließen"
   },
   "validation": {
     "required": "{{field}} ist erforderlich",
