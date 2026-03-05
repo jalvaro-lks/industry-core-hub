@@ -121,13 +121,12 @@ graph TB
         DB[("PostgreSQLMetadata DB")]
     end
 
-    subgraph "Catena-X Dataspace Components"
-        EDC["Eclipse DataspaceConnector (EDC)"]
-        DTR["Digital TwinRegistry (DTR)"]
-        SS["Submodel Server"]
+    subgraph "Tractus-X Dataspace Components"
+        EDC["TX-EDC"]
+        DTR["DTR"]
     end
 
-    subgraph "Discovery Services"
+    subgraph "Tractus-X Discovery Services"
         DF["Discovery Finder"]
         BPND["BPN Discovery"]
         EDCD["EDC Discovery"]
@@ -137,9 +136,9 @@ graph TB
         KC["Keycloak / IAM"]
     end
 
-    subgraph "Business Partner"
-        PEDC["Partner EDC"]
-        PDTR["Partner DTR"]
+    subgraph "Business Partner (Connected in Dataspace)"
+        PEDC["EDC"]
+        PDTR["DTR"]
     end
 
     APP -- "REST API / UI" --> ICH
