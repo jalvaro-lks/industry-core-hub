@@ -244,6 +244,13 @@ class DiscoveryManager:
             governance: Optional governance policies for submodel consumption
         """
         try:
+            # Convert policies from simplified format to ODRL format
+            odrl_dtr_policies = convert_policies_to_odrl(dtr_policies)
+            odrl_governance = convert_governance_to_odrl(governance)
+            
+            logger.debug(f"[Task {task_id}] Converted DTR policies: {odrl_dtr_policies}")
+            logger.debug(f"[Task {task_id}] Converted governance policies: {odrl_governance}")
+            
             # Step 1: Parse the ID
             logger.info(f"[Task {task_id}] Step 1: Parsing identifier: {id_str}")
             self.task_manager.update_task(task_id, "parsing", "Parsing identifier...", 10)
@@ -271,15 +278,13 @@ class DiscoveryManager:
             query_spec = self._build_query_spec(manufacturer_part_id, part_instance_id)
             
             # Query all BPNs in parallel to find shells with DPP submodels
-            shell_descriptor, matching_bpn = await self._query_bpns_for_shells(
-                task_id, bpn_list, query_spec, semantic_id, dtr_policies
+            shell_descriptor, matching_bpn, error_msg = await self._query_bpns_for_shells(
+                task_id, bpn_list, query_spec, semantic_id, odrl_dtr_policies
             )
             
             if not shell_descriptor:
                 raise ValueError(
-                    f"Digital twin shell with semanticId '{semantic_id}' not found for "
-                    f"manufacturerPartId: {manufacturer_part_id}, partInstanceId: {part_instance_id} "
-                    f"across {len(bpn_list)} BPN(s)"
+                    f"{error_msg} for manufacturerPartId: {manufacturer_part_id}, partInstanceId: {part_instance_id}"
                 )
             
             logger.info(f"[Task {task_id}] Retrieved digital twin shell with ID: {shell_descriptor.get('id')} from BPN: {matching_bpn}")
@@ -301,7 +306,7 @@ class DiscoveryManager:
             self.task_manager.update_task(task_id, "consuming_data", "Retrieving submodel data...", 85)
             
             submodel_data = await self._consume_submodel_data(
-                task_id, matching_bpn, shell_descriptor, submodel_id, dtr_policies, governance
+                task_id, matching_bpn, shell_descriptor, submodel_id, odrl_dtr_policies, odrl_governance
             )
             
             logger.info(f"[Task {task_id}] Successfully consumed submodel data")
@@ -433,7 +438,7 @@ class DiscoveryManager:
         """
         query_spec = [
             {
-                "key": "manufacturerPartId",
+                "name": "manufacturerPartId",
                 "value": manufacturer_part_id
             }
         ]
@@ -441,7 +446,7 @@ class DiscoveryManager:
         # Add partInstanceId if available (for serialized parts)
         if part_instance_id:
             query_spec.append({
-                "key": "partInstanceId",
+                "name": "partInstanceId",
                 "value": part_instance_id
             })
         
@@ -454,7 +459,7 @@ class DiscoveryManager:
         query_spec: List[Dict[str, str]],
         semantic_id: str,
         dtr_policies: Optional[List[Dict[str, Any]]] = None
-    ) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+    ) -> tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
         """
         Query all BPNs in parallel to find shells with matching DPP submodels.
         
@@ -466,7 +471,9 @@ class DiscoveryManager:
             dtr_policies: Optional policies to apply for DTR access
             
         Returns:
-            Tuple of (shell_descriptor, matching_bpn) or (None, None) if not found
+            Tuple of (shell_descriptor, matching_bpn, error_message).
+            If successful: (shell, bpn, None)
+            If failed: (None, None, error_message)
         """
         shell_tasks = [
             asyncio.to_thread(
@@ -480,25 +487,60 @@ class DiscoveryManager:
         
         shell_results = await asyncio.gather(*shell_tasks, return_exceptions=True)
         
+        # Track DTR access results for better error reporting
+        total_shells_found = 0
+        total_dtrs_failed = 0
+        dtr_errors = []
+        
         # Process results and find shells with matching semantic ID
         for bpn, result in zip(bpn_list, shell_results):
             if isinstance(result, Exception):
                 logger.warning(f"[Task {task_id}] Error querying BPN {bpn}: {str(result)}")
+                total_dtrs_failed += 1
+                dtr_errors.append(f"BPN {bpn}: {str(result)}")
                 continue
             
-            logger.info(f"[Task {task_id}] DTR discover_shells result for BPN {bpn}: found {result.get('shellsFound', 0)} shell(s)")
+            # Check for DTR-level errors
+            dtrs = result.get("dtrs", [])
+            for dtr_info in dtrs:
+                if dtr_info.get("status") == "failed":
+                    error_msg = dtr_info.get("error", "Unknown error")
+                    logger.warning(f"[Task {task_id}] DTR access failed for BPN {bpn}, asset {dtr_info.get('assetId')}: {error_msg}")
+                    total_dtrs_failed += 1
+                    dtr_errors.append(f"BPN {bpn} DTR {dtr_info.get('assetId')}: {error_msg}")
+            
+            shells_found = result.get('shellsFound', 0)
+            total_shells_found += shells_found
+            logger.info(f"[Task {task_id}] DTR discover_shells result for BPN {bpn}: found {shells_found} shell(s)")
             
             shell_descriptors = result.get("shellDescriptors", [])
             
             # Check each shell for matching semantic ID in submodels
             for shell in shell_descriptors:
-                for submodel in shell.get("submodelDescriptors", []):
+                logger.info(f"[Task {task_id}] Checking shell ID: {shell.get('id')}")
+                submodel_descriptors = shell.get("submodelDescriptors", [])
+                logger.info(f"[Task {task_id}] Shell has {len(submodel_descriptors)} submodel descriptor(s)")
+                
+                for submodel in submodel_descriptors:
                     submodel_semantic_id = extract_semantic_id(submodel)
+                    logger.info(f"[Task {task_id}] Submodel semantic ID: '{submodel_semantic_id}' vs requested: '{semantic_id}'")
                     if submodel_semantic_id == semantic_id:
                         logger.info(f"[Task {task_id}] Found matching shell with DPP submodel in BPN {bpn}, shell ID: {shell.get('id')}")
-                        return shell, bpn
+                        return shell, bpn, None  # No error
         
-        return None, None
+        # Build detailed error message based on what happened
+        if total_dtrs_failed > 0 and total_shells_found == 0:
+            # All DTR access attempts failed
+            error_details = "; ".join(dtr_errors[:3])  # Limit to first 3 errors
+            error_msg = f"DTR access failed for all {total_dtrs_failed} DTR(s). Errors: {error_details}"
+        elif total_shells_found == 0:
+            error_msg = f"No digital twin shells found for the given query across {len(bpn_list)} BPN(s)"
+        else:
+            error_msg = (
+                f"Found {total_shells_found} shell(s) but none contained a submodel with semanticId '{semantic_id}'"
+            )
+        
+        return None, None, error_msg
     
     def _find_matching_submodel(
         self,
@@ -561,6 +603,123 @@ class DiscoveryManager:
             logger.warning(f"[Task {task_id}] No submodel data retrieved. Submodel descriptor: {submodel_result.get('submodelDescriptor', {})}")
         
         return submodel_data
+
+
+def convert_simplified_policy_to_odrl(simplified_policy: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert a simplified policy format to full ODRL format.
+    
+    The frontend sends policies in a simplified format that needs to be converted
+    to the full ODRL format expected by the connector service.
+    
+    Simplified format:
+        {
+            "permission": [{"action": "odrl:use", "constraints": [...]}],
+            "prohibition": [],
+            "obligation": []
+        }
+    
+    ODRL format:
+        {
+            "odrl:permission": {"odrl:action": {"@id": "odrl:use"}, "odrl:constraint": {...}},
+            "odrl:prohibition": [],
+            "odrl:obligation": []
+        }
+    
+    Args:
+        simplified_policy: Policy in simplified format
+        
+    Returns:
+        Policy converted to ODRL format
+    """
+    # Check if it's already in ODRL format (has odrl: prefixed keys)
+    if any(key.startswith("odrl:") for key in simplified_policy.keys()):
+        return simplified_policy
+    
+    odrl_policy = {}
+    
+    # Convert permission
+    permissions = simplified_policy.get("permission", [])
+    if permissions:
+        # Take the first permission (typical case)
+        perm = permissions[0] if isinstance(permissions, list) else permissions
+        
+        odrl_permission = {
+            "odrl:action": {"@id": perm.get("action", "odrl:use")}
+        }
+        
+        # Convert constraints
+        constraints = perm.get("constraints", [])
+        if constraints:
+            logical_constraint = perm.get("LogicalConstraint", "odrl:and")
+            
+            odrl_constraints = []
+            for constraint in constraints:
+                odrl_constraint = {
+                    "odrl:leftOperand": {"@id": constraint.get("leftOperand", "")},
+                    "odrl:operator": {"@id": constraint.get("operator", "odrl:eq")},
+                    "odrl:rightOperand": constraint.get("rightOperand", "")
+                }
+                odrl_constraints.append(odrl_constraint)
+            
+            # Use the logical constraint (odrl:and or odrl:or)
+            if len(odrl_constraints) == 1:
+                odrl_permission["odrl:constraint"] = odrl_constraints[0]
+            else:
+                odrl_permission["odrl:constraint"] = {
+                    logical_constraint: odrl_constraints
+                }
+        
+        odrl_policy["odrl:permission"] = odrl_permission
+    
+    # Convert prohibition (usually empty)
+    odrl_policy["odrl:prohibition"] = simplified_policy.get("prohibition", [])
+    
+    # Convert obligation (usually empty)
+    odrl_policy["odrl:obligation"] = simplified_policy.get("obligation", [])
+    
+    return odrl_policy
+
+
+def convert_policies_to_odrl(policies: Optional[List[Dict[str, Any]]]) -> Optional[List[Dict[str, Any]]]:
+    """
+    Convert a list of simplified policies to ODRL format.
+    
+    Args:
+        policies: List of policies in simplified format
+        
+    Returns:
+        List of policies in ODRL format, or None if input is None
+    """
+    if not policies:
+        return policies
+    
+    return [convert_simplified_policy_to_odrl(policy) for policy in policies]
+
+
+def convert_governance_to_odrl(governance: Optional[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+    """
+    Convert governance object to ODRL policy list format.
+    
+    The governance object comes as:
+        {"policies": [{...}, {...}]}
+    
+    And needs to be converted to a list of ODRL policies.
+    
+    Args:
+        governance: Governance object with policies
+        
+    Returns:
+        List of ODRL policies, or None if input is None
+    """
+    if not governance:
+        return None
+    
+    policies = governance.get("policies", [])
+    if not policies:
+        return None
+    
+    return convert_policies_to_odrl(policies)
 
 
 def extract_semantic_id(submodel: Dict[str, Any]) -> str:
