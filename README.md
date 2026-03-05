@@ -13,16 +13,23 @@
 <h1 align="center">Industry Core Hub</h1>
 
 <p align="center">
-  A decentralized, lightweight <strong>plug-and-play data provision &amp; consumption orchestrator</strong> for the Catena-X dataspace.<br/>
-  Your <strong>DATASPACE KICKSTART</strong> — from onboarding to data exchange in days, not months.
+  A lightweight open-source <strong>data provision and consumption orchestrator</strong> for the Catena-X dataspace.<br/>
+  It helps teams go from onboarding to first data exchange in days, not months.
 </p>
 
 ---
 
 ## Table of Contents
 
+- [Table of Contents](#table-of-contents)
 - [What is the Industry Core Hub?](#what-is-the-industry-core-hub)
+  - [The Problem It Solves](#the-problem-it-solves)
+  - [The Solution](#the-solution)
+  - [Who is it for?](#who-is-it-for)
 - [Key Capabilities](#key-capabilities)
+  - [Data Provisioning](#data-provisioning)
+  - [Data Consumption](#data-consumption)
+  - [Platform \& Operations](#platform--operations)
 - [Architecture](#architecture)
   - [High-Level System Context](#high-level-system-context)
   - [Building Blocks](#building-blocks)
@@ -34,6 +41,8 @@
 - [Integrated Services](#integrated-services)
 - [Roadmap](#roadmap)
 - [Installation](#installation)
+  - [Quick Start (Local Development)](#quick-start-local-development)
+  - [Kubernetes / Helm](#kubernetes--helm)
 - [Documentation](#documentation)
 - [KIT Add-on Extensions](#kit-add-on-extensions)
 - [How to Get Involved](#how-to-get-involved)
@@ -48,7 +57,7 @@
 
 The **Industry Core Hub (IC-Hub)** is an open-source reference implementation of the [Catena-X Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit). It acts as a **middleware orchestrator** that sits between your business applications and the underlying Catena-X dataspace components, eliminating the need for deep expertise in each individual component.
 
-### The Problem it Solves
+### The Problem It Solves
 
 Adopting the Catena-X dataspace typically requires integrating multiple complex components:
 
@@ -116,7 +125,7 @@ The IC-Hub acts as the central orchestration layer between your applications and
 ```mermaid
 graph TB
     subgraph "Your Organization"
-        BACK["Backend/>Legacy System"]
+        BACK["Backend<br/>Legacy System"]
         PIP["Integration Pipeline"]
         APP["Business Application UI"]
         ICH["Industry Core Hub"]
@@ -124,9 +133,10 @@ graph TB
         KC["Keycloak IAM"]
     end
 
-    subgraph "Tractus-X Dataspace Components<br/>(Self hosted or as a Service)"
-        EDC["TX-EDC"]
+    subgraph "Tractus-X Dataspace Components<br/>(Self-hosted or as a Service)"
+        EDC["EDC"]
         DTR["DTR"]
+        SS["Submodel Server"]
     end
 
     subgraph "Tractus-X Discovery Services"
@@ -144,7 +154,7 @@ graph TB
     ICH --> DB
     ICH -- "Asset & Policy<br/>Registration" --> EDC
     ICH -- "AAS Twin<br/>Registration" --> DTR
-    ICH -- "Submodel Data" --> ICH
+    ICH -- "Submodel Read/Write" --> SS
     ICH -- "Endpoint Discovery" --> DF
     DF --> BPND
     DF --> EDCD
@@ -165,10 +175,10 @@ graph TB
         UC3["Quality Use Case"]
     end
     subgraph L3["Layer 3 — Industry Core Hub (this project)"]
-        ICH["IC-Hub API & UI(Orchestration)"]
+        ICH["IC-Hub API & UI<br/>(Orchestration)"]
     end
     subgraph L2["Layer 2 — Tractus-X SDK"]
-        SDK["tractusx-sdk(EDC & DTR client libraries)"]
+        SDK["tractusx-sdk<br/>(EDC & DTR client libraries)"]
     end
     subgraph L1["Layer 1 — Dataspace Foundation"]
         EDC["EDC"]
@@ -203,13 +213,13 @@ The backend exposes a RESTful API (documented via Swagger/OpenAPI) that orchestr
 ```mermaid
 graph TB
     CLIENT["Frontend / API Client"]
-    JOBS["Background Jobs(asset_sync_job)"]
+    JOBS["Background Jobs<br/>(asset_sync_job)"]
 
     subgraph CTRL["Controllers — controllers/fastapi/routers/"]
-        R_PROV["Provider Routerspart-management /twin-managementsubmodel-dispatcher /share /partner-management"]
-        R_CONS["Consumer Routersdiscover /connection"]
+        R_PROV["Provider Routers<br/>/part-management<br/>/twin-management<br/>/submodel-dispatcher<br/>/share<br/>/partner-management"]
+        R_CONS["Consumer Routers<br/>/discover<br/>/connection"]
         R_AUTH["Authentication Router"]
-        R_ADDON["Add-on Routersaddons/ecopass-kit"]
+        R_ADDON["Add-on Routers<br/>/addons/ecopass-kit"]
     end
 
     subgraph SVC["Services — services/provider/"]
@@ -222,28 +232,28 @@ graph TB
 
     subgraph MGR["Managers — managers/"]
         subgraph PROV_MGR["enablement_services/provider/"]
-            CPM["ConnectorProviderManager(EDC asset & policy registration)"]
-            DPM["DtrProviderManager(AAS Shell registration)"]
+            CPM["ConnectorProviderManager<br/>(EDC asset & policy registration)"]
+            DPM["DtrProviderManager<br/>(AAS Shell registration)"]
         end
         subgraph CONS_MGR["enablement_services/consumer/"]
-            CCM["ConsumerConnectorManager(EDC contract negotiation)"]
-            DCM["DtrConsumerManager(AAS Shell discovery)"]
+            CCM["ConsumerConnectorManager<br/>(EDC contract negotiation)"]
+            DCM["DtrConsumerManager<br/>(AAS Shell discovery)"]
         end
-        SVM["SubmodelServiceManager(FileSystem / HTTP adapter)"]
-        SDG["SubmodelDocumentGenerator(aspect model documents)"]
-        DB_M["RepositoryManager(SQLModel ORM)"]
-        ADDON_MGR["addons_service/ecopass_kit(EcoPass KIT managers)"]
+        SVM["SubmodelServiceManager<br/>(FileSystem / HTTP adapter)"]
+        SDG["SubmodelDocumentGenerator<br/>(aspect model documents)"]
+        DB_M["RepositoryManager<br/>(SQLModel ORM)"]
+        ADDON_MGR["addons_service/ecopass_kit<br/>(EcoPass KIT managers)"]
     end
 
     subgraph MODELS["Models — models/"]
-        SVC_M["services/ — Pydantic(provider & consumer DTOs)"]
-        DB_MDL["metadata_database/ — SQLModel(provider & consumer ORM models)"]
+        SVC_M["services/<br/>Pydantic DTOs (provider & consumer)"]
+        DB_MDL["metadata_database/<br/>SQLModel ORM models (provider & consumer)"]
     end
 
     subgraph EXT["External Systems"]
-        EDC["EDC Connector(Tractus-X SDK)"]
-        DTR["Digital Twin Registry(Tractus-X SDK)"]
-        SS["Submodel Server(FileSystem or HTTP)"]
+        EDC["EDC Connector<br/>(Tractus-X SDK)"]
+        DTR["Digital Twin Registry<br/>(Tractus-X SDK)"]
+        SS["Submodel Server<br/>(FileSystem or HTTP)"]
         PG[("PostgreSQL")]
     end
 
@@ -300,19 +310,19 @@ The frontend is a **React/TypeScript** Single Page Application built with **Mate
 graph TB
     subgraph "React SPA (ichub-frontend)"
         subgraph "Feature Modules"
-            ICK["industry-core-kit(Catalog Parts, Serialized Parts,Twins, Submodels)"]
-            EPK["eco-pass-kit(Digital Product Passport)"]
-            BPK["business-partner-kit(Partner Discovery)"]
+            ICK["industry-core-kit<br/>(Catalog Parts, Serialized Parts, Twins, Submodels)"]
+            EPK["eco-pass-kit<br/>(Digital Product Passport)"]
+            BPK["business-partner-kit<br/>(Partner Discovery)"]
         end
 
         subgraph "Shared Infrastructure"
-            CTX["React Contexts(Auth, Config, Notifications)"]
-            SVC["Services(HttpClient, AuthService,EnvironmentService)"]
-            CMP["Common Components(Layout, Navigation,Dialogs, Forms)"]
+            CTX["React Contexts<br/>(Auth, Config, Notifications)"]
+            SVC["Services<br/>(HttpClient, AuthService, EnvironmentService)"]
+            CMP["Common Components<br/>(Layout, Navigation, Dialogs, Forms)"]
         end
 
         subgraph "Routing"
-            RT["React Router v7+ FeatureRouteGuard(role-based access)"]
+            RT["React Router v7+<br/>FeatureRouteGuard<br/>(role-based access)"]
         end
     end
 
@@ -321,7 +331,7 @@ graph TB
     end
 
     subgraph "Backend"
-        API["IC-Hub REST API(FastAPI)"]
+        API["IC-Hub REST API<br/>(FastAPI)"]
     end
 
     ICK & EPK & BPK --> CTX & SVC & CMP
@@ -351,7 +361,7 @@ sequenceDiagram
     DB-->>SVC: OK
     SVC-->>API: CatalogPartRead
     API-->>UI: 201 Created
-    UI-->>User: Part created ✓
+    UI-->>User: Part created
 ```
 
 **Step 2 — Share a Catalog Part** (registers twin in DTR and creates EDC asset/policy):
@@ -385,7 +395,7 @@ sequenceDiagram
     DB-->>SHS: OK
     SHS-->>API: SharedPartBase
     API-->>UI: 200 OK
-    UI-->>User: Part shared ✓ (twin + EDC asset registered)
+    UI-->>User: Part shared (twin + EDC asset registered)
 ```
 
 ---
@@ -518,36 +528,30 @@ For the complete guide — including prerequisites, configuration reference, and
 
 ## KIT Add-on Extensions
 
-The IC-Hub is designed to be extended. It provides the same orchestration "engine" for an unlimited number of use-case-specific **KIT Add-ons**. Each add-on can:
+The IC-Hub is designed to be extended. It provides a reusable orchestration foundation for multiple use-case-specific **KIT Add-ons**. Each add-on can:
 
 - Contribute custom frontend views for specific data models (e.g., DPP, Traceability, Quality)
 - Add use-case-specific business logic to the backend
 - Be packaged and distributed independently via the Catena-X marketplace
 
-```mermaid
-graph TB
-    subgraph "IC-Hub Core (Open Source)"
-        CORE["Industry Core Kit(Catalog Parts, Serialized Parts,Batches, Digital Twins)"]
-        API["IC-Hub Backend API"]
-    end
 
-    subgraph "KIT Add-ons (Extensible)"
-        DPP["♻️ Eco Pass KIT(Digital Product Passport)"]
-        TRACE["🔗 Traceability KIT(BoM, Parts Relationships)"]
-        QUAL["✅ Quality KIT(Quality Notifications)"]
-        CUSTOM["⚙️ Custom KIT(Your Use Case)"]
-    end
-
-    subgraph "Catena-X Marketplace"
-        MKT["Marketplace Listing(Ready-to-use KIT box)"]
-    end
-
-    CORE --> DPP & TRACE & QUAL & CUSTOM
-    API --> DPP & TRACE & QUAL & CUSTOM
-    DPP & TRACE & QUAL & CUSTOM --> MKT
-```
 
 This means solution providers can build and sell ready-to-use KIT toolboxes on top of the open-source IC-Hub core.
+
+### Available and Planned Add-ons
+
+| KIT Add-on | Status | Description |
+|---|---|---|
+| **[Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit)** | Available | Core data provisioning and consumption — catalog part management, part discovery, digital twin registration, and serialized part handling |
+| **[EcoPass KIT](https://eclipse-tractusx.github.io/docs-kits/category/eco-pass-kit)** | Available | Digital Product Passport (DPP) provision and consumption — create, publish, and visualize product passports |
+| **[Business Partner KIT](https://eclipse-tractusx.github.io/docs-kits/category/business-partner-kit)** | Available | Business partner management — manage and resolve partner identities across the dataspace |
+| **[Certificate Management KIT](https://eclipse-tractusx.github.io/docs-kits/category/certificate-management-kit)** | Planned (next) | Company certificate management — publish and exchange official company certificates across the dataspace |
+| **[PCF Exchange KIT](https://eclipse-tractusx.github.io/docs-kits/category/pcf-exchange-kit)** | Planned (next) | Product Carbon Footprint exchange — share and consume PCF data across the supply chain |
+| **[Traceability KIT](https://eclipse-tractusx.github.io/docs-kits/category/traceability-kit)** | Planned | Supply chain traceability — track parts across the value chain with BoM lifecycle visibility |
+| **[Quality KIT](https://eclipse-tractusx.github.io/docs-kits/next/category/quality-kit)** | Planned | Quality management — exchange quality-related data (alerts, notifications, investigations) across partners |
+| **[Demand & Capacity KIT](https://eclipse-tractusx.github.io/docs-kits/category/demand-and-capacity-management-kit)** | Planned | Demand and capacity management — collaborative planning between suppliers and customers |
+
+> **Want to build your own KIT add-on?** The IC-Hub's extensible architecture makes it straightforward to contribute new add-ons. See the [Contributing Guide](./CONTRIBUTING.md) to get started.
 
 ---
 
@@ -562,11 +566,11 @@ This means solution providers can build and sell ready-to-use KIT toolboxes on t
 
 ## Reporting a Bug or Sharing an Idea
 
-👀 **Found a bug?** Create a new issue on our [GitHub Issues page](https://github.com/eclipse-tractusx/industry-core-hub/issues/new/choose). Before opening a new one, please search [existing issues](https://github.com/eclipse-tractusx/industry-core-hub/issues) first.
+**Found a bug?** Create a new issue on our [GitHub Issues page](https://github.com/eclipse-tractusx/industry-core-hub/issues/new/choose). Before opening a new one, please search [existing issues](https://github.com/eclipse-tractusx/industry-core-hub/issues) first.
 
-🙋 **Assign it to yourself** to let others know you're working on it — click the cog next to the Assignees section.
+**Assign it to yourself** to let others know you're working on it — click the cog next to the Assignees section.
 
-📣 **Have an idea?** Share it in our [Discussions](https://github.com/eclipse-tractusx/industry-core-hub/discussions) or [start a new discussion](https://github.com/eclipse-tractusx/industry-core-hub/discussions/new/choose).
+**Have an idea?** Share it in our [Discussions](https://github.com/eclipse-tractusx/industry-core-hub/discussions) or [start a new discussion](https://github.com/eclipse-tractusx/industry-core-hub/discussions/new/choose).
 
 ---
 
