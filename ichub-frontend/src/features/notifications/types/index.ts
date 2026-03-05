@@ -106,12 +106,12 @@ export interface ConnectToParentNotification {
 /**
  * Item Feedback Status
  */
-export type ItemFeedbackStatus = 'OK' | 'ERROR';
+export type ItemFeedbackStatus = 'OK' | 'ERROR' | 'PENDING';
 
 /**
  * Feedback Status for overall notification
  */
-export type FeedbackStatus = 'OK' | 'ERROR';
+export type FeedbackStatus = 'OK' | 'ERROR' | 'PENDING';
 
 /**
  * Individual Item Feedback

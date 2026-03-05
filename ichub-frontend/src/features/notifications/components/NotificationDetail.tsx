@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -37,6 +37,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -55,6 +57,8 @@ import {
   Close,
   Warning,
   PriorityHigh,
+  Search,
+  HourglassEmpty,
 } from '@mui/icons-material';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
@@ -67,6 +71,8 @@ import {
 } from '../types';
 import FeedbackForm from './FeedbackForm';
 import CreatePartnerDialog from '@/features/business-partner-kit/partner-management/components/general/CreatePartnerDialog';
+import { discoverSingleShell, SingleShellDiscoveryResponse } from '@/features/industry-core-kit/part-discovery/api';
+import { SingleTwinResult } from '@/features/industry-core-kit/part-discovery/components';
 
 /**
  * NotificationDetail component - displays full notification details and verification
@@ -90,8 +96,32 @@ const NotificationDetail: React.FC = () => {
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [showAddContactDialog, setShowAddContactDialog] = useState(false);
 
+  // Reset transient UI state when switching notifications
+  useEffect(() => {
+    setShowFeedbackForm(false);
+    setExpandedItems(new Set());
+  }, [selectedNotification?.id]);
+
+  // View Twin states
+  const [viewTwinItem, setViewTwinItem] = useState<ConnectToParentItem | null>(null);
+  const [viewTwinLoading, setViewTwinLoading] = useState(false);
+  const [viewTwinResult, setViewTwinResult] = useState<SingleShellDiscoveryResponse | null>(null);
+  const [viewTwinError, setViewTwinError] = useState<string | null>(null);
+
   // Determine layout mode
   const isCompact = panelSize === 'normal';
+
+  // Ref for scrollable content container (auto-scroll on expand)
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  /** Scrolls the content container so the given element is visible */
+  const scrollToElement = useCallback((el: HTMLElement) => {
+    if (!el) return;
+    // Wait for the Collapse animation to finish before scrolling
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 320);
+  }, []);
 
   if (!selectedNotification) return null;
 
@@ -215,6 +245,35 @@ const NotificationDetail: React.FC = () => {
     refreshPartners();
   };
 
+  /**
+   * Opens the View Twin dialog and triggers a discovery search for the digital twin
+   * through the dataspace, reusing the existing discoverSingleShell API.
+   */
+  const handleViewTwin = useCallback(async (item: ConnectToParentItem) => {
+    setViewTwinItem(item);
+    setViewTwinLoading(true);
+    setViewTwinResult(null);
+    setViewTwinError(null);
+
+    try {
+      const result = await discoverSingleShell(header.senderBpn, item.catenaXId);
+      setViewTwinResult(result);
+    } catch (err: unknown) {
+      const errorMessage = (err as { message?: string })?.message || 'Failed to discover digital twin';
+      setViewTwinError(errorMessage);
+    } finally {
+      setViewTwinLoading(false);
+    }
+  }, [header.senderBpn]);
+
+  /** Closes the View Twin dialog and resets all related state */
+  const handleCloseViewTwin = useCallback(() => {
+    setViewTwinItem(null);
+    setViewTwinResult(null);
+    setViewTwinError(null);
+    setViewTwinLoading(false);
+  }, []);
+
   const allVerified = verifiedItems.every(
     (vi) => vi.verificationStatus === 'accessible' || vi.verificationStatus === 'not-accessible'
   );
@@ -311,8 +370,14 @@ const NotificationDetail: React.FC = () => {
                   backgroundColor:
                     itemFeedback.status === 'OK'
                       ? 'rgba(76, 175, 80, 0.2)'
-                      : 'rgba(244, 67, 54, 0.2)',
-                  color: itemFeedback.status === 'OK' ? '#81c784' : '#ef5350',
+                      : itemFeedback.status === 'PENDING'
+                        ? 'rgba(255, 167, 38, 0.2)'
+                        : 'rgba(244, 67, 54, 0.2)',
+                  color: itemFeedback.status === 'OK' 
+                    ? '#81c784' 
+                    : itemFeedback.status === 'PENDING'
+                      ? '#ffa726'
+                      : '#ef5350',
                   fontSize: '0.55rem',
                   height: '16px',
                 }}
@@ -328,7 +393,7 @@ const NotificationDetail: React.FC = () => {
         </Box>
 
         {/* Expanded Details */}
-        <Collapse in={isExpanded}>
+        <Collapse in={isExpanded} onEntered={(node) => scrollToElement(node as HTMLElement)}>
           <Box
             sx={{
               padding: isCompact ? '8px 10px' : '12px',
@@ -398,6 +463,35 @@ const NotificationDetail: React.FC = () => {
                 Verify Access
               </Button>
             )}
+
+            {/* View Twin button - always visible to discover the twin through the dataspace */}
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Search sx={{ fontSize: '0.9rem' }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewTwin(item);
+              }}
+              sx={{
+                mt: 1,
+                ml: verificationStatus === 'not-verified' ? 1 : 0,
+                color: '#81c784',
+                borderColor: 'rgba(129, 199, 132, 0.5)',
+                fontSize: '0.7rem',
+                padding: '4px 10px',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  borderColor: '#81c784',
+                  backgroundColor: 'rgba(129, 199, 132, 0.2)',
+                  color: '#a5d6a7',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 8px rgba(129, 199, 132, 0.3)',
+                },
+              }}
+            >
+              View Twin
+            </Button>
           </Box>
         </Collapse>
       </Box>
@@ -678,9 +772,11 @@ const NotificationDetail: React.FC = () => {
 
       {/* Content */}
       <Box
+        ref={scrollContainerRef}
         sx={{
           flex: 1,
           overflow: 'auto',
+          scrollBehavior: 'smooth',
           padding: isCompact ? '12px' : '16px',
           '&::-webkit-scrollbar': {
             width: '5px',
@@ -794,7 +890,16 @@ const NotificationDetail: React.FC = () => {
                     variant="contained"
                     fullWidth
                     startIcon={<Send sx={{ fontSize: '1rem' }} />}
-                    onClick={() => setShowFeedbackForm(true)}
+                    onClick={() => {
+                      setShowFeedbackForm(true);
+                      // Scroll to bottom so the feedback form is visible
+                      setTimeout(() => {
+                        scrollContainerRef.current?.scrollTo({
+                          top: scrollContainerRef.current.scrollHeight,
+                          behavior: 'smooth',
+                        });
+                      }, 350);
+                    }}
                     disabled={!allVerified}
                     sx={{
                       backgroundColor: allVerified ? '#1976d2' : 'rgba(255, 255, 255, 0.1)',
@@ -842,6 +947,206 @@ const NotificationDetail: React.FC = () => {
         onSave={handleAddContactSuccess}
         partnerData={{ bpnl: header.senderBpn, name: '' }}
       />
+
+      {/* View Twin Dialog */}
+      <Dialog
+        maxWidth={false}
+        open={!!viewTwinItem}
+        onClose={handleCloseViewTwin}
+        PaperProps={{
+          sx: {
+            width: '92vw',
+            height: '88vh',
+            maxWidth: '92vw',
+            borderRadius: '16px',
+            backgroundColor: '#0a1628',
+            backgroundImage: 'linear-gradient(180deg, #0d1f3c 0%, #0a1628 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          },
+        }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backdropFilter: 'blur(6px)',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            },
+          },
+        }}
+      >
+        <AppBar
+          sx={{
+            position: 'relative',
+            backgroundColor: 'rgba(0, 42, 126, 0.98)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 2px 16px rgba(0, 0, 0, 0.3)',
+            borderRadius: '16px 16px 0 0',
+          }}
+        >
+          <Toolbar>
+            <Search sx={{ color: '#81c784', mr: 1.5 }} />
+            <Typography sx={{ flex: 1, fontWeight: 600, fontSize: '1.1rem' }}>
+              View Digital Twin
+            </Typography>
+            {viewTwinItem && (
+              <Chip
+                label={viewTwinItem.catenaXId}
+                size="small"
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  fontSize: '0.7rem',
+                  maxWidth: '300px',
+                  mr: 1.5,
+                  '& .MuiChip-label': {
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                }}
+              />
+            )}
+            <IconButton
+              edge="end"
+              onClick={handleCloseViewTwin}
+              aria-label="close"
+              sx={{
+                color: 'rgba(255, 255, 255, 0.85)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  color: '#ffffff',
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  transform: 'scale(1.05)',
+                },
+              }}
+            >
+              <Close />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+
+        <Box
+          sx={{
+            flex: 1,
+            overflow: 'auto',
+            padding: 3,
+          }}
+        >
+          {/* Loading state */}
+          {viewTwinLoading && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+                gap: 3,
+              }}
+            >
+              <CircularProgress
+                size={56}
+                sx={{
+                  color: '#42a5f5',
+                }}
+              />
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography
+                  sx={{
+                    color: '#ffffff',
+                    fontSize: '1.2rem',
+                    fontWeight: 600,
+                    mb: 1,
+                  }}
+                >
+                  Discovering Digital Twin
+                </Typography>
+                <Typography
+                  sx={{
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Searching through the dataspace for twin access...
+                </Typography>
+                {viewTwinItem && (
+                  <Typography
+                    sx={{
+                      color: 'rgba(100, 181, 246, 0.8)',
+                      fontSize: '0.75rem',
+                      mt: 1.5,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {viewTwinItem.catenaXId}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {/* Error state */}
+          {viewTwinError && !viewTwinLoading && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+                gap: 2,
+              }}
+            >
+              <Error sx={{ color: '#ef5350', fontSize: '3rem' }} />
+              <Typography
+                sx={{
+                  color: '#ffffff',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                }}
+              >
+                Discovery Failed
+              </Typography>
+              <Typography
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontSize: '0.9rem',
+                  textAlign: 'center',
+                  maxWidth: '500px',
+                }}
+              >
+                {viewTwinError}
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={() => viewTwinItem && handleViewTwin(viewTwinItem)}
+                sx={{
+                  mt: 2,
+                  color: '#64b5f6',
+                  borderColor: 'rgba(100, 181, 246, 0.5)',
+                  '&:hover': {
+                    borderColor: '#64b5f6',
+                    backgroundColor: 'rgba(100, 181, 246, 0.1)',
+                  },
+                }}
+              >
+                Retry
+              </Button>
+            </Box>
+          )}
+
+          {/* Success - show the discovered twin using SingleTwinResult */}
+          {viewTwinResult && !viewTwinLoading && (
+            <Box sx={{ width: '100%', maxWidth: '1400px', mx: 'auto' }}>
+              {/* Type assertion needed: SingleShellDiscoveryResponse has optional assetKind/assetType
+                 while SingleTwinResult props expect them as required. The API always returns them. */}
+              <SingleTwinResult
+                counterPartyId={header.senderBpn}
+                singleTwinResult={viewTwinResult as React.ComponentProps<typeof SingleTwinResult>['singleTwinResult']}
+              />
+            </Box>
+          )}
+        </Box>
+      </Dialog>
     </Box>
   );
 };
@@ -889,6 +1194,39 @@ const DetailRow: React.FC<{ label: string; value: string; copyable?: boolean; co
   </Box>
 );
 
+// Helper to get feedback status color for the FeedbackSentPanel
+const getFeedbackStatusColor = (status: string): string => {
+  switch (status) {
+    case 'OK': return '#81c784';
+    case 'PENDING': return '#ffa726';
+    default: return '#ef5350';
+  }
+};
+
+const getFeedbackStatusBg = (status: string): string => {
+  switch (status) {
+    case 'OK': return 'rgba(76, 175, 80, 0.1)';
+    case 'PENDING': return 'rgba(255, 167, 38, 0.1)';
+    default: return 'rgba(244, 67, 54, 0.1)';
+  }
+};
+
+const getFeedbackStatusHoverBg = (status: string): string => {
+  switch (status) {
+    case 'OK': return 'rgba(76, 175, 80, 0.15)';
+    case 'PENDING': return 'rgba(255, 167, 38, 0.15)';
+    default: return 'rgba(244, 67, 54, 0.15)';
+  }
+};
+
+const getFeedbackStatusIcon = (status: string, fontSize: string = '1rem') => {
+  switch (status) {
+    case 'OK': return <CheckCircle sx={{ color: '#81c784', fontSize }} />;
+    case 'PENDING': return <HourglassEmpty sx={{ color: '#ffa726', fontSize }} />;
+    default: return <Error sx={{ color: '#ef5350', fontSize }} />;
+  }
+};
+
 // Expandable Feedback Sent Panel
 const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ feedbackResponse }) => {
   const [expanded, setExpanded] = useState(false);
@@ -905,26 +1243,18 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 12px',
-          backgroundColor: feedbackResponse.status === 'OK'
-            ? 'rgba(76, 175, 80, 0.1)'
-            : 'rgba(244, 67, 54, 0.1)',
+          backgroundColor: getFeedbackStatusBg(feedbackResponse.status),
           borderRadius: expanded ? '8px 8px 0 0' : '8px',
-          borderLeft: feedbackResponse.status === 'OK' ? '3px solid #81c784' : '3px solid #ef5350',
+          borderLeft: `3px solid ${getFeedbackStatusColor(feedbackResponse.status)}`,
           cursor: 'pointer',
           transition: 'all 0.2s ease',
           '&:hover': {
-            backgroundColor: feedbackResponse.status === 'OK'
-              ? 'rgba(76, 175, 80, 0.15)'
-              : 'rgba(244, 67, 54, 0.15)',
+            backgroundColor: getFeedbackStatusHoverBg(feedbackResponse.status),
           },
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {feedbackResponse.status === 'OK' ? (
-            <CheckCircle sx={{ color: '#81c784', fontSize: '1rem' }} />
-          ) : (
-            <Error sx={{ color: '#ef5350', fontSize: '1rem' }} />
-          )}
+          {getFeedbackStatusIcon(feedbackResponse.status)}
           <Box>
             <Typography sx={{ color: '#ffffff', fontWeight: 600, fontSize: '0.8rem' }}>
               Feedback Sent
@@ -953,7 +1283,7 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
             backgroundColor: 'rgba(0, 0, 0, 0.2)',
             borderRadius: '0 0 8px 8px',
             padding: '12px',
-            borderLeft: feedbackResponse.status === 'OK' ? '3px solid #81c784' : '3px solid #ef5350',
+            borderLeft: `3px solid ${getFeedbackStatusColor(feedbackResponse.status)}`,
             borderTop: 'none',
           }}
         >
@@ -989,11 +1319,7 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
                       border: '1px solid rgba(255, 255, 255, 0.05)',
                     }}
                   >
-                    {item.status === 'OK' ? (
-                      <CheckCircle sx={{ color: '#81c784', fontSize: '0.9rem', mt: '2px' }} />
-                    ) : (
-                      <Error sx={{ color: '#ef5350', fontSize: '0.9rem', mt: '2px' }} />
-                    )}
+                    {getFeedbackStatusIcon(item.status, '0.9rem')}
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography 
                         sx={{ 
@@ -1016,8 +1342,8 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
                       label={item.status}
                       size="small"
                       sx={{
-                        backgroundColor: item.status === 'OK' ? 'rgba(129, 199, 132, 0.2)' : 'rgba(239, 83, 80, 0.2)',
-                        color: item.status === 'OK' ? '#81c784' : '#ef5350',
+                        backgroundColor: getFeedbackStatusBg(item.status),
+                        color: getFeedbackStatusColor(item.status),
                         fontSize: '0.55rem',
                         height: '18px',
                         fontWeight: 600,

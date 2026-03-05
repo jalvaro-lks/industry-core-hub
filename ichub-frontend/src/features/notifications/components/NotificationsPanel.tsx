@@ -68,7 +68,7 @@ const NotificationsPanel: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.3)',
-          zIndex: 1199,
+          zIndex: isExpanded ? 1299 : 1199,
           opacity: isPanelOpen ? 1 : 0,
           transition: 'opacity 0.3s ease-out',
           backdropFilter: 'blur(2px)',
@@ -79,21 +79,21 @@ const NotificationsPanel: React.FC = () => {
       <Box
         sx={{
           position: 'fixed',
-          top: '64px', // Below header
+          top: isExpanded ? 0 : '64px',
           right: 0,
           bottom: 0,
-          width: isExpanded ? 'calc(100% - 140px)' : '420px',
-          maxWidth: isExpanded ? 'calc(100% - 140px)' : '420px',
+          width: isExpanded ? '100vw' : '420px',
+          maxWidth: '100vw',
           backgroundColor: 'rgba(0, 42, 126, 0.98)',
           backdropFilter: 'blur(20px)',
           boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.4)',
-          zIndex: 1200,
+          zIndex: isExpanded ? 1300 : 1200,
           display: 'flex',
           flexDirection: 'row',
           overflow: 'hidden',
           animation: 'slideInFromRight 0.3s ease-out',
-          transition: 'width 0.3s ease-out, max-width 0.3s ease-out',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+          transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          borderLeft: isExpanded ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
           '@keyframes slideInFromRight': {
             from: {
               opacity: 0,

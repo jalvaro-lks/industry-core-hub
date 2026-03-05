@@ -46,6 +46,7 @@ import {
   Error,
   DeviceHub,
   ReplyAll,
+  HourglassEmpty,
 } from '@mui/icons-material';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
@@ -61,9 +62,55 @@ interface FeedbackFormProps {
 }
 
 // Default messages for each status
-const DEFAULT_MESSAGES = {
+const DEFAULT_MESSAGES: Record<FeedbackStatus, string> = {
   OK: 'Digital Twin accessible and processed successfully',
   ERROR: 'Digital Twin not accessible or processing failed',
+  PENDING: 'Verification pending - Digital Twin not yet processed',
+};
+
+/**
+ * Returns the color associated with a given feedback status.
+ * Used across the form for consistent status coloring.
+ */
+const getStatusColor = (status: FeedbackStatus): string => {
+  switch (status) {
+    case 'OK': return '#81c784';
+    case 'ERROR': return '#ef5350';
+    case 'PENDING': return '#ffa726';
+  }
+};
+
+/**
+ * Returns the background color (with alpha) for a given feedback status.
+ */
+const getStatusBgColor = (status: FeedbackStatus): string => {
+  switch (status) {
+    case 'OK': return 'rgba(129, 199, 132, 0.12)';
+    case 'ERROR': return 'rgba(239, 83, 80, 0.12)';
+    case 'PENDING': return 'rgba(255, 167, 38, 0.12)';
+  }
+};
+
+/**
+ * Returns the border color (with alpha) for a given feedback status.
+ */
+const getStatusBorderColor = (status: FeedbackStatus): string => {
+  switch (status) {
+    case 'OK': return 'rgba(129, 199, 132, 0.4)';
+    case 'ERROR': return 'rgba(239, 83, 80, 0.4)';
+    case 'PENDING': return 'rgba(255, 167, 38, 0.4)';
+  }
+};
+
+/**
+ * Returns the icon component for a given feedback status.
+ */
+const getStatusIcon = (status: FeedbackStatus, fontSize: string = '1.1rem') => {
+  switch (status) {
+    case 'OK': return <CheckCircle sx={{ color: '#81c784', fontSize }} />;
+    case 'ERROR': return <Error sx={{ color: '#ef5350', fontSize }} />;
+    case 'PENDING': return <HourglassEmpty sx={{ color: '#ffa726', fontSize }} />;
+  }
 };
 
 /**
@@ -168,6 +215,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
 
   const okCount = itemFeedbacks.filter((f) => f.status === 'OK').length;
   const errorCount = itemFeedbacks.filter((f) => f.status === 'ERROR').length;
+  const pendingCount = itemFeedbacks.filter((f) => f.status === 'PENDING').length;
 
   return (
     <Box
@@ -260,28 +308,24 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                   setOverallStatus(e.target.value as FeedbackStatus);
                 }}
                 sx={{
-                  backgroundColor: overallStatus === 'OK' 
-                    ? 'rgba(129, 199, 132, 0.12)' 
-                    : 'rgba(239, 83, 80, 0.12)',
-                  color: overallStatus === 'OK' ? '#81c784' : '#ef5350',
+                  backgroundColor: getStatusBgColor(overallStatus),
+                  color: getStatusColor(overallStatus),
                   fontSize: '0.85rem',
                   fontWeight: 600,
                   height: '40px',
                   borderRadius: '8px',
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: overallStatus === 'OK' 
-                      ? 'rgba(129, 199, 132, 0.4)' 
-                      : 'rgba(239, 83, 80, 0.4)',
+                    borderColor: getStatusBorderColor(overallStatus),
                   },
                   '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: overallStatus === 'OK' ? '#81c784' : '#ef5350',
+                    borderColor: getStatusColor(overallStatus),
                   },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: overallStatus === 'OK' ? '#81c784' : '#ef5350',
+                    borderColor: getStatusColor(overallStatus),
                     borderWidth: '2px',
                   },
                   '& .MuiSelect-icon': {
-                    color: overallStatus === 'OK' ? '#81c784' : '#ef5350',
+                    color: getStatusColor(overallStatus),
                   },
                 }}
                 MenuProps={{
@@ -318,6 +362,12 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                     <span style={{ fontWeight: 600 }}>ERROR</span>
                   </Box>
                 </MenuItem>
+                <MenuItem value="PENDING">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <HourglassEmpty sx={{ color: '#ffa726', fontSize: '1.1rem' }} />
+                    <span style={{ fontWeight: 600 }}>PENDING</span>
+                  </Box>
+                </MenuItem>
               </Select>
             </FormControl>
 
@@ -349,7 +399,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
         </Box>
 
         {/* Summary Chips */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2.5 }}>
+        <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
           <Chip
             icon={<CheckCircle sx={{ fontSize: '0.9rem !important' }} />}
             label={`${okCount} OK`}
@@ -380,6 +430,22 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
               }}
             />
           )}
+          {pendingCount > 0 && (
+            <Chip
+              icon={<HourglassEmpty sx={{ fontSize: '0.9rem !important' }} />}
+              label={`${pendingCount} Pending`}
+              size="small"
+              sx={{
+                backgroundColor: 'rgba(255, 167, 38, 0.15)',
+                color: '#ffa726',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                height: '26px',
+                borderRadius: '13px',
+                '& .MuiChip-icon': { color: '#ffa726' },
+              }}
+            />
+          )}
         </Box>
 
         {/* Per-Item Feedback */}
@@ -397,15 +463,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
             Item Details ({itemFeedbacks.length})
           </Typography>
 
-          <Box 
-            sx={{ 
-              maxHeight: isCompact ? '140px' : '180px', 
-              overflow: 'auto',
-              '&::-webkit-scrollbar': { width: '5px' },
-              '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(66, 165, 245, 0.05)', borderRadius: '3px' },
-              '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(66, 165, 245, 0.3)', borderRadius: '3px' },
-            }}
-          >
+          <Box>
             {itemFeedbacks.map((feedback) => {
               const item = getItemInfo(feedback.catenaXId);
               const isExpanded = expandedItems.has(feedback.catenaXId);
@@ -451,21 +509,18 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                       {item?.manufacturerPartId || 'Unknown Item'}
                     </Typography>
                     <Chip
-                      icon={feedback.status === 'OK' 
-                        ? <CheckCircle sx={{ fontSize: '0.75rem !important' }} /> 
-                        : <Error sx={{ fontSize: '0.75rem !important' }} />
-                      }
+                      icon={getStatusIcon(feedback.status as FeedbackStatus, '0.75rem')}
                       label={feedback.status}
                       size="small"
                       sx={{
-                        backgroundColor: feedback.status === 'OK' ? 'rgba(129, 199, 132, 0.2)' : 'rgba(239, 83, 80, 0.2)',
-                        color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                        backgroundColor: getStatusBgColor(feedback.status as FeedbackStatus),
+                        color: getStatusColor(feedback.status as FeedbackStatus),
                         fontSize: '0.65rem',
                         fontWeight: 600,
                         height: '22px',
                         mr: 1,
                         '& .MuiChip-icon': {
-                          color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                          color: getStatusColor(feedback.status as FeedbackStatus),
                         },
                       }}
                     />
@@ -477,7 +532,14 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                   </Box>
 
                   {/* Expanded Edit */}
-                  <Collapse in={isExpanded}>
+                  <Collapse
+                    in={isExpanded}
+                    onEntered={(node) => {
+                      setTimeout(() => {
+                        (node as HTMLElement).scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+                      }, 100);
+                    }}
+                  >
                     <Box
                       sx={{
                         padding: '12px 14px',
@@ -491,35 +553,31 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                           <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.75rem', fontWeight: 500, minWidth: '50px' }}>
                             Status
                           </Typography>
-                          <FormControl size="small" sx={{ flex: 1, maxWidth: 140 }}>
+                          <FormControl size="small" sx={{ flex: 1, maxWidth: 160 }}>
                             <Select
                               value={feedback.status}
                               onChange={(e: SelectChangeEvent<FeedbackStatus>) => {
                                 updateItemStatus(feedback.catenaXId, e.target.value as FeedbackStatus);
                               }}
                               sx={{
-                                backgroundColor: feedback.status === 'OK' 
-                                  ? 'rgba(129, 199, 132, 0.12)' 
-                                  : 'rgba(239, 83, 80, 0.12)',
-                                color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                                backgroundColor: getStatusBgColor(feedback.status as FeedbackStatus),
+                                color: getStatusColor(feedback.status as FeedbackStatus),
                                 fontSize: '0.8rem',
                                 fontWeight: 600,
                                 height: '34px',
                                 borderRadius: '8px',
                                 '& .MuiOutlinedInput-notchedOutline': { 
-                                  borderColor: feedback.status === 'OK' 
-                                    ? 'rgba(129, 199, 132, 0.4)' 
-                                    : 'rgba(239, 83, 80, 0.4)',
+                                  borderColor: getStatusBorderColor(feedback.status as FeedbackStatus),
                                 },
                                 '&:hover .MuiOutlinedInput-notchedOutline': { 
-                                  borderColor: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                                  borderColor: getStatusColor(feedback.status as FeedbackStatus),
                                 },
                                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
-                                  borderColor: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                                  borderColor: getStatusColor(feedback.status as FeedbackStatus),
                                   borderWidth: '2px',
                                 },
                                 '& .MuiSelect-icon': { 
-                                  color: feedback.status === 'OK' ? '#81c784' : '#ef5350',
+                                  color: getStatusColor(feedback.status as FeedbackStatus),
                                 },
                               }}
                               MenuProps={{
@@ -554,6 +612,12 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Error sx={{ color: '#ef5350', fontSize: '1rem' }} />
                                   <span style={{ fontWeight: 600 }}>ERROR</span>
+                                </Box>
+                              </MenuItem>
+                              <MenuItem value="PENDING">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <HourglassEmpty sx={{ color: '#ffa726', fontSize: '1rem' }} />
+                                  <span style={{ fontWeight: 600 }}>PENDING</span>
                                 </Box>
                               </MenuItem>
                             </Select>
