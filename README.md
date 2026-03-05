@@ -116,14 +116,14 @@ The IC-Hub acts as the central orchestration layer between your applications and
 ```mermaid
 graph TB
     subgraph "Your Organization"
-        APP["Business Application\n/ UI"]
-        ICH["🏭 Industry Core Hub\n(IC-Hub)"]
-        DB[("PostgreSQL\nMetadata DB")]
+        APP["Business Application UI"]
+        ICH["Industry Core Hub"]
+        DB[("PostgreSQLMetadata DB")]
     end
 
     subgraph "Catena-X Dataspace Components"
-        EDC["Eclipse Dataspace\nConnector (EDC)"]
-        DTR["Digital Twin\nRegistry (DTR)"]
+        EDC["Eclipse DataspaceConnector (EDC)"]
+        DTR["Digital TwinRegistry (DTR)"]
         SS["Submodel Server"]
     end
 
@@ -144,14 +144,14 @@ graph TB
 
     APP -- "REST API / UI" --> ICH
     ICH --> DB
-    ICH -- "Asset & Policy\nRegistration" --> EDC
-    ICH -- "AAS Twin\nRegistration" --> DTR
-    ICH -- "Submodel\nData" --> SS
-    ICH -- "Endpoint\nDiscovery" --> DF
+    ICH -- "Asset & PolicyRegistration" --> EDC
+    ICH -- "AAS TwinRegistration" --> DTR
+    ICH -- "SubmodelData" --> SS
+    ICH -- "EndpointDiscovery" --> DF
     DF --> BPND
     DF --> EDCD
     ICH -- "Auth" --> KC
-    EDC <-- "Data Contract\nNegotiation" --> PEDC
+    EDC <-- "Data ContractNegotiation" --> PEDC
     PEDC --> PDTR
 ```
 
@@ -165,10 +165,10 @@ graph TB
         UC3["Quality Use Case"]
     end
     subgraph L3["Layer 3 — Industry Core Hub (this project)"]
-        ICH["IC-Hub API & UI\n(Orchestration)"]
+        ICH["IC-Hub API & UI(Orchestration)"]
     end
     subgraph L2["Layer 2 — Tractus-X SDK"]
-        SDK["tractusx-sdk\n(EDC & DTR client libraries)"]
+        SDK["tractusx-sdk(EDC & DTR client libraries)"]
     end
     subgraph L1["Layer 1 — Dataspace Foundation"]
         EDC["EDC"]
@@ -203,13 +203,13 @@ The backend exposes a RESTful API (documented via Swagger/OpenAPI) that orchestr
 ```mermaid
 graph TB
     CLIENT["Frontend / API Client"]
-    JOBS["Background Jobs\n(asset_sync_job)"]
+    JOBS["Background Jobs(asset_sync_job)"]
 
     subgraph CTRL["Controllers — controllers/fastapi/routers/"]
-        R_PROV["Provider Routers\n/part-management /twin-management\n/submodel-dispatcher /share /partner-management"]
-        R_CONS["Consumer Routers\n/discover /connection"]
+        R_PROV["Provider Routerspart-management /twin-managementsubmodel-dispatcher /share /partner-management"]
+        R_CONS["Consumer Routersdiscover /connection"]
         R_AUTH["Authentication Router"]
-        R_ADDON["Add-on Routers\n/addons/ecopass-kit"]
+        R_ADDON["Add-on Routersaddons/ecopass-kit"]
     end
 
     subgraph SVC["Services — services/provider/"]
@@ -222,28 +222,28 @@ graph TB
 
     subgraph MGR["Managers — managers/"]
         subgraph PROV_MGR["enablement_services/provider/"]
-            CPM["ConnectorProviderManager\n(EDC asset & policy registration)"]
-            DPM["DtrProviderManager\n(AAS Shell registration)"]
+            CPM["ConnectorProviderManager(EDC asset & policy registration)"]
+            DPM["DtrProviderManager(AAS Shell registration)"]
         end
         subgraph CONS_MGR["enablement_services/consumer/"]
-            CCM["ConsumerConnectorManager\n(EDC contract negotiation)"]
-            DCM["DtrConsumerManager\n(AAS Shell discovery)"]
+            CCM["ConsumerConnectorManager(EDC contract negotiation)"]
+            DCM["DtrConsumerManager(AAS Shell discovery)"]
         end
-        SVM["SubmodelServiceManager\n(FileSystem / HTTP adapter)"]
-        SDG["SubmodelDocumentGenerator\n(aspect model documents)"]
-        DB_M["RepositoryManager\n(SQLModel ORM)"]
-        ADDON_MGR["addons_service/ecopass_kit\n(EcoPass KIT managers)"]
+        SVM["SubmodelServiceManager(FileSystem / HTTP adapter)"]
+        SDG["SubmodelDocumentGenerator(aspect model documents)"]
+        DB_M["RepositoryManager(SQLModel ORM)"]
+        ADDON_MGR["addons_service/ecopass_kit(EcoPass KIT managers)"]
     end
 
     subgraph MODELS["Models — models/"]
-        SVC_M["services/ — Pydantic\n(provider & consumer DTOs)"]
-        DB_MDL["metadata_database/ — SQLModel\n(provider & consumer ORM models)"]
+        SVC_M["services/ — Pydantic(provider & consumer DTOs)"]
+        DB_MDL["metadata_database/ — SQLModel(provider & consumer ORM models)"]
     end
 
     subgraph EXT["External Systems"]
-        EDC["EDC Connector\n(Tractus-X SDK)"]
-        DTR["Digital Twin Registry\n(Tractus-X SDK)"]
-        SS["Submodel Server\n(FileSystem or HTTP)"]
+        EDC["EDC Connector(Tractus-X SDK)"]
+        DTR["Digital Twin Registry(Tractus-X SDK)"]
+        SS["Submodel Server(FileSystem or HTTP)"]
         PG[("PostgreSQL")]
     end
 
@@ -300,19 +300,19 @@ The frontend is a **React/TypeScript** Single Page Application built with **Mate
 graph TB
     subgraph "React SPA (ichub-frontend)"
         subgraph "Feature Modules"
-            ICK["industry-core-kit\n(Catalog Parts, Serialized Parts,\nTwins, Submodels)"]
-            EPK["eco-pass-kit\n(Digital Product Passport)"]
-            BPK["business-partner-kit\n(Partner Discovery)"]
+            ICK["industry-core-kit(Catalog Parts, Serialized Parts,Twins, Submodels)"]
+            EPK["eco-pass-kit(Digital Product Passport)"]
+            BPK["business-partner-kit(Partner Discovery)"]
         end
 
         subgraph "Shared Infrastructure"
-            CTX["React Contexts\n(Auth, Config, Notifications)"]
-            SVC["Services\n(HttpClient, AuthService,\nEnvironmentService)"]
-            CMP["Common Components\n(Layout, Navigation,\nDialogs, Forms)"]
+            CTX["React Contexts(Auth, Config, Notifications)"]
+            SVC["Services(HttpClient, AuthService,EnvironmentService)"]
+            CMP["Common Components(Layout, Navigation,Dialogs, Forms)"]
         end
 
         subgraph "Routing"
-            RT["React Router v7\n+ FeatureRouteGuard\n(role-based access)"]
+            RT["React Router v7+ FeatureRouteGuard(role-based access)"]
         end
     end
 
@@ -321,7 +321,7 @@ graph TB
     end
 
     subgraph "Backend"
-        API["IC-Hub REST API\n(FastAPI)"]
+        API["IC-Hub REST API(FastAPI)"]
     end
 
     ICK & EPK & BPK --> CTX & SVC & CMP
@@ -527,19 +527,19 @@ The IC-Hub is designed to be extended. It provides the same orchestration "engin
 ```mermaid
 graph TB
     subgraph "IC-Hub Core (Open Source)"
-        CORE["Industry Core Kit\n(Catalog Parts, Serialized Parts,\nBatches, Digital Twins)"]
+        CORE["Industry Core Kit(Catalog Parts, Serialized Parts,Batches, Digital Twins)"]
         API["IC-Hub Backend API"]
     end
 
     subgraph "KIT Add-ons (Extensible)"
-        DPP["♻️ Eco Pass KIT\n(Digital Product Passport)"]
-        TRACE["🔗 Traceability KIT\n(BoM, Parts Relationships)"]
-        QUAL["✅ Quality KIT\n(Quality Notifications)"]
-        CUSTOM["⚙️ Custom KIT\n(Your Use Case)"]
+        DPP["♻️ Eco Pass KIT(Digital Product Passport)"]
+        TRACE["🔗 Traceability KIT(BoM, Parts Relationships)"]
+        QUAL["✅ Quality KIT(Quality Notifications)"]
+        CUSTOM["⚙️ Custom KIT(Your Use Case)"]
     end
 
     subgraph "Catena-X Marketplace"
-        MKT["Marketplace Listing\n(Ready-to-use KIT box)"]
+        MKT["Marketplace Listing(Ready-to-use KIT box)"]
     end
 
     CORE --> DPP & TRACE & QUAL & CUSTOM
