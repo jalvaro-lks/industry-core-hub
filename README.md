@@ -57,7 +57,7 @@
 
 ## What is the Industry Core Hub?
 
-The **Industry Core Hub (IC-Hub)** is an open-source reference implementation of the [Eclipse Tractus-X Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit). It acts as a **middleware orchestrator** that sits between your business applications/backend & legacy systems and the underlying Eclipse Tractus-X dataspace infrastructe, eliminating the need for deep expertise in each individual component.
+The **Industry Core Hub (IC-Hub)** is an open-source reference implementation of the [Eclipse Tractus-X Industry Core KIT](https://eclipse-tractusx.github.io/docs-kits/category/industry-core-kit). It acts as a **middleware orchestrator** that sits between your business applications/backend & legacy systems and the underlying Eclipse Tractus-X dataspace infrastructure, eliminating the need for deep expertise in each individual component.
 
 ### The Problem It Solves
 
@@ -74,7 +74,7 @@ Setting all of this up correctly — with the right policies, asset registration
 The IC-Hub abstracts all of this complexity behind a clean, unified API and an intuitive user interface. You interact with one system; the IC-Hub orchestrates everything else for you:
 
 - Register a **digital twin** for a part → the IC-Hub creates the AAS shell in the DTR, registers the EDC asset, and sets up the access policies automatically.
-- Attach a **submodel** (e.g., a Digital Product Passport) → the IC-Hub stores the data and exposes it as a standards-compliant EDC-protected endpoint.
+- Attach a **submodel** (e.g., a Digital Product Passport) → the IC-Hub stores the data and exposes it as a standard-compliant EDC-protected endpoint.
 - **Consume data** from a business partner → the IC-Hub discovers the partner's endpoints, negotiates the EDC data contract, and retrieves the submodel data — all transparently.
 
 This dramatically reduces the onboarding effort for **SMEs and use case developers**, turning weeks of integration work into a matter of days.
@@ -124,6 +124,7 @@ This dramatically reduces the onboarding effort for **SMEs and use case develope
 The IC-Hub acts as the central orchestration layer between your applications and the Catena-X dataspace components. Instead of integrating with each component individually, your application talks only to the IC-Hub.
 
 ```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
 graph TB
     subgraph "Your Organization"
         BACK["Backend<br/>Legacy System"]
@@ -135,18 +136,30 @@ graph TB
     end
 
     subgraph "Tractus-X Dataspace Components<br/>(Self-hosted or as a Service)"
+        direction TB
+        %% This creates an invisible spacer to push real nodes down
+        spacer1[" "]
+        style spacer1 fill:transparent,stroke:none,color:transparent,height:20px
         EDC["EDC"]
         DTR["DTR"]
         SS["Submodel Server"]
     end
 
     subgraph "Tractus-X Discovery Services"
+        direction TB
+        %% This creates an invisible spacer to push real nodes down
+        spacer1[" "]
+        style spacer1 fill:transparent,stroke:none,color:transparent,height:20px
         DF["Discovery Finder"]
         BPND["BPN Discovery"]
         EDCD["EDC Discovery"]
     end
 
     subgraph "Business Partner"
+        direction TB
+        %% This creates an invisible spacer to push real nodes down
+        spacer1[" "]
+        style spacer1 fill:transparent,stroke:none,color:transparent,height:20px
         PEDC["EDC"]
         PDTR["DTR"]
     end
@@ -169,6 +182,7 @@ graph TB
 The architecture follows a layered abstraction approach — each layer hides the complexity of the layer below it, so use-case developers only interact with high-level business concepts.
 
 ```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
 graph TB
     subgraph L4["Layer 4 — Use Case Add-ons"]
         UC1["DPP Add-on"]
@@ -213,6 +227,7 @@ The IC-Hub integrates with these core Catena-X / Tractus-X components:
 The backend exposes a RESTful API (documented via Swagger/OpenAPI) that orchestrates all interactions with the Catena-X components. It is built with **Python and FastAPI**, uses **SQLModel/PostgreSQL** for metadata persistence, and integrates with the [Tractus-X SDK](https://github.com/eclipse-tractusx/tractusx-sdk).
 
 ```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
 graph TB
     CLIENT["Frontend / API Client"]
     JOBS["Background Jobs<br/>(asset_sync_job)"]
@@ -309,6 +324,7 @@ See the [API Reference](./docs/api/openAPI.yaml) and [API Collection (Bruno)](./
 The frontend is a **React/TypeScript** Single Page Application built with **Material-UI (MUI)** components. It provides an intuitive dashboard for managing digital twins, submodels, and EDC assets.
 
 ```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
 graph TB
     subgraph "React SPA (ichub-frontend)"
         subgraph "Feature Modules"
