@@ -111,10 +111,6 @@
     "submodelId": "Submodel ID",
     "width": "Width"
   },
-  "notifications": {
-    "copiedToClipboard": "{{field}} copied to clipboard!",
-    "failedToCopy": "Failed to copy {{field}}"
-  },
   "tooltips": {
     "copyAasId": "Copy AAS ID",
     "copyShellId": "Copy Shell ID",

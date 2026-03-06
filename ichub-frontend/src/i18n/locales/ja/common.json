@@ -111,10 +111,6 @@
     "submodelId": "サブモデルID",
     "width": "幅"
   },
-  "notifications": {
-    "copiedToClipboard": "{{field}}をクリップボードにコピーしました！",
-    "failedToCopy": "{{field}}のコピーに失敗しました"
-  },
   "tooltips": {
     "copyAasId": "AAS IDをコピー",
     "copyShellId": "シェルIDをコピー",

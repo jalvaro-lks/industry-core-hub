@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -90,6 +91,8 @@ const NotificationDetail: React.FC = () => {
     verifyDigitalTwin,
     verifyAllDigitalTwins,
   } = useNotifications();
+
+  const { t } = useTranslation('common');
 
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -490,7 +493,7 @@ const NotificationDetail: React.FC = () => {
                 },
               }}
             >
-              View Twin
+              {t('notifications.detail.viewTwin')}
             </Button>
           </Box>
         </Collapse>
@@ -867,7 +870,7 @@ const NotificationDetail: React.FC = () => {
                 },
               }}
             >
-              Verify All
+              {t('notifications.detail.verifyAll')}
             </Button>
           )}
         </Box>
@@ -918,7 +921,7 @@ const NotificationDetail: React.FC = () => {
                       },
                     }}
                   >
-                    {allVerified ? 'Send Feedback' : 'Pending Verification'}
+                    {allVerified ? t('notifications.detail.sendFeedback') : t('notifications.detail.pendingVerification')}
                   </Button>
                 </span>
               </Tooltip>
@@ -984,8 +987,8 @@ const NotificationDetail: React.FC = () => {
         >
           <Toolbar>
             <Search sx={{ color: '#81c784', mr: 1.5 }} />
-            <Typography sx={{ flex: 1, fontWeight: 600, fontSize: '1.1rem' }}>
-              View Digital Twin
+            <Typography sx={{ flex: 1, fontWeight: 600, fontSize: '1.1rem', color: 'rgba(255, 255, 255, 0.95)' }}>
+              {t('notifications.detail.viewDigitalTwin')}
             </Typography>
             {viewTwinItem && (
               <Chip

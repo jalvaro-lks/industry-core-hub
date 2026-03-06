@@ -111,10 +111,6 @@
     "submodelId": "子模型ID",
     "width": "宽度"
   },
-  "notifications": {
-    "copiedToClipboard": "{{field}}已复制到剪贴板！",
-    "failedToCopy": "复制{{field}}失败"
-  },
   "tooltips": {
     "copyAasId": "复制AAS ID",
     "copyShellId": "复制Shell ID",

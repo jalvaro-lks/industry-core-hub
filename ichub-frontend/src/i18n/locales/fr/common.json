@@ -111,10 +111,6 @@
     "submodelId": "ID Sous-modèle",
     "width": "Largeur"
   },
-  "notifications": {
-    "copiedToClipboard": "{{field}} copié dans le presse-papiers !",
-    "failedToCopy": "Échec de la copie de {{field}}"
-  },
   "tooltips": {
     "copyAasId": "Copier l'ID AAS",
     "copyShellId": "Copier l'ID du Shell",

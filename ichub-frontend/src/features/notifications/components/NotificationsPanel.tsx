@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, IconButton, Typography, Tooltip } from '@mui/material';
 import {
   Close,
@@ -50,6 +51,8 @@ const NotificationsPanel: React.FC = () => {
     selectedNotification,
     getStats,
   } = useNotifications();
+
+  const { t } = useTranslation('notifications');
 
   if (!isPanelOpen) return null;
 
@@ -124,7 +127,7 @@ const NotificationsPanel: React.FC = () => {
           }}
           onClick={isExpanded ? collapsePanel : expandPanel}
         >
-          <Tooltip title={isExpanded ? 'Collapse panel' : 'Expand panel'} placement="right" arrow>
+          <Tooltip title={isExpanded ? t('panel.collapse') : t('panel.expand')} placement="right" arrow>
             <Box
               sx={{
                 display: 'flex',
@@ -195,7 +198,7 @@ const NotificationsPanel: React.FC = () => {
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Tooltip title={isExpanded ? 'Collapse panel' : 'Expand panel'} arrow>
+              <Tooltip title={isExpanded ? t('panel.collapse') : t('panel.expand')} arrow>
                 <IconButton
                   onClick={isExpanded ? collapsePanel : expandPanel}
                   sx={{
@@ -209,7 +212,7 @@ const NotificationsPanel: React.FC = () => {
                   {isExpanded ? <CloseFullscreen /> : <OpenInFull />}
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Close" arrow>
+              <Tooltip title={t('panel.close')} arrow>
                 <IconButton
                   onClick={closePanel}
                   sx={{

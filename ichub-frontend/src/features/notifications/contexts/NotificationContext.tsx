@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import {
   InboxNotification,
   NotificationPanelSize,
@@ -37,6 +37,10 @@ import {
   NotificationVerificationState,
 } from '../types';
 import { mockNotificationService } from '../services/mockNotificationService';
+import { notificationApiService } from '../services/notificationApiService';
+import { mapApiResponsesToNotifications } from '../services/notificationMapper';
+import { isNotificationsMockEnabled, getNotificationsPollInterval } from '@/services/EnvironmentService';
+import { getParticipantId } from '@/services/EnvironmentService';
 import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
 import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
 
@@ -184,22 +188,53 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  // Load initial data
+  // Track whether we are using mock mode
+  const useMock = useRef(isNotificationsMockEnabled());
+
+  // Fetch notifications from the real backend API
+  const fetchNotificationsFromApi = useCallback(async () => {
+    try {
+      const bpn = getParticipantId();
+      if (!bpn) {
+        console.warn('No BPN configured — cannot fetch notifications from API');
+        return;
+      }
+      const responses = await notificationApiService.fetchNotifications(bpn);
+      const mapped = mapApiResponsesToNotifications(responses);
+      setNotifications(mapped);
+    } catch (error) {
+      console.error('Failed to fetch notifications from API:', error);
+    }
+  }, []);
+
+  // Load initial data — mock or real API depending on config flag
   useEffect(() => {
-    const initialNotifications = mockNotificationService.getNotifications();
-    setNotifications(initialNotifications);
-    setContacts(mockNotificationService.getContacts());
+    if (useMock.current) {
+      // ---- Mock mode ----
+      const initialNotifications = mockNotificationService.getNotifications();
+      setNotifications(initialNotifications);
+      setContacts(mockNotificationService.getContacts());
+      refreshPartners();
 
-    // Load real partners from API
-    refreshPartners();
+      const unsubscribe = mockNotificationService.subscribe((newNotification) => {
+        setNotifications((prev) => [newNotification, ...prev]);
+      });
 
-    // Subscribe to new notifications
-    const unsubscribe = mockNotificationService.subscribe((newNotification) => {
-      setNotifications((prev) => [newNotification, ...prev]);
-    });
+      return unsubscribe;
+    } else {
+      // ---- Real API mode ----
+      refreshPartners();
+      fetchNotificationsFromApi();
 
-    return unsubscribe;
-  }, [refreshPartners]);
+      // Set up polling at the configured interval
+      const pollInterval = getNotificationsPollInterval();
+      const intervalId = setInterval(() => {
+        fetchNotificationsFromApi();
+      }, pollInterval);
+
+      return () => clearInterval(intervalId);
+    }
+  }, [refreshPartners, fetchNotificationsFromApi]);
 
   // Panel controls
   const togglePanel = useCallback(() => {
@@ -242,6 +277,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             : n
         )
       );
+      // Persist read status to backend in real mode
+      if (!useMock.current) {
+        notificationApiService
+          .updateNotificationStatus(notification.header.messageId, 'read')
+          .catch((err) => console.error('Failed to mark notification as read via API:', err));
+      }
     }
   }, []);
 
@@ -475,11 +516,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Mark as read
   const markAsRead = useCallback((notificationId: string) => {
     setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notificationId && n.status === 'unread'
-          ? { ...n, status: 'read', readAt: new Date() }
-          : n
-      )
+      prev.map((n) => {
+        if (n.id === notificationId && n.status === 'unread') {
+          // Persist to backend in real mode
+          if (!useMock.current) {
+            notificationApiService
+              .updateNotificationStatus(n.header.messageId, 'read')
+              .catch((err) => console.error('Failed to mark notification as read via API:', err));
+          }
+          return { ...n, status: 'read', readAt: new Date() };
+        }
+        return n;
+      })
     );
   }, []);
 
@@ -667,8 +715,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Send feedback
   const sendFeedback = useCallback(
     async (notificationId: string, feedback: FeedbackPayload) => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!useMock.current) {
+        // In real mode, find the notification to get its messageId, then update status
+        const notification = notifications.find((n) => n.id === notificationId);
+        if (notification) {
+          try {
+            await notificationApiService.updateNotificationStatus(
+              notification.header.messageId,
+              'sent',
+            );
+          } catch (error) {
+            console.error('Failed to send feedback status via API:', error);
+            throw error; // Propagate so UI can handle the error
+          }
+        }
+      } else {
+        // Simulate API call in mock mode
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
 
       setNotifications((prev) =>
         prev.map((n) =>
