@@ -135,7 +135,7 @@ flowchart TB
         KC["Keycloak IAM"]
     end
 
-    subgraph "Tractus-X&nbsp;Dataspace&nbsp;Components<br/>(Self-hosted&nbsp;or&nbsp;as&nbsp;a&nbsp;Service)"
+    subgraph "Tractus&#8209;X&nbsp;Dataspace&nbsp;Components<br/>(Self&#8209;hosted&nbsp;or&nbsp;as&nbsp;a&nbsp;Service)"
         direction TB
         %% This creates an invisible spacer to push real nodes down
         spacer1[" "]
@@ -147,7 +147,7 @@ flowchart TB
         SS["Submodel Server"]
     end
 
-    subgraph "Tractus-X&nbsp;Discovery&nbsp;Services"
+    subgraph "Tractus&#8209;X&nbsp;Discovery&nbsp;Services"
         direction TB
         %% This creates an invisible spacer to push real nodes down
         spacer1[" "]
