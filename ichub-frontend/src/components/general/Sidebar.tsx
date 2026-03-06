@@ -84,10 +84,10 @@ const Sidebar = ({ items: _items }: { items: SidebarItem[] }) => {
     e.preventDefault();
     
     if (isKitFeaturesActive) {
-      // Si ya estamos en KIT Features, volver a la página anterior
+      // If we're already in KIT Features, go back to the previous page
       navigate(previousPath.current);
     } else {
-      // Si no estamos en KIT Features, ir a KIT Features
+      // If we're not in KIT Features, go to KIT Features
       navigate(kitFeaturesConfig.navigationPath);
     }
     setActiveIndex(-1);
