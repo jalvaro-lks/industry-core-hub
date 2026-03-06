@@ -139,6 +139,8 @@ graph TB
         direction TB
         %% This creates an invisible spacer to push real nodes down
         spacer1[" "]
+        spacer1[" "]
+        spacer1[" "]
         style spacer1 fill:transparent,stroke:none,color:transparent,height:20px
         EDC["EDC"]
         DTR["DTR"]
@@ -182,8 +184,8 @@ graph TB
 The architecture follows a layered abstraction approach — each layer hides the complexity of the layer below it, so use-case developers only interact with high-level business concepts.
 
 ```mermaid
-%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12, "defaultRenderer": "elk"}}}}%%
-flowchart TB
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
+graph TB
     subgraph L4["Layer 4 — Use Case Add-ons"]
         UC1["DPP Add-on"]
         UC2["Certificate Management Add-on"]
