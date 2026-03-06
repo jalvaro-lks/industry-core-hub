@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   InboxNotification,
   NotificationPanelSize,
@@ -36,11 +36,9 @@ import {
   InboxFilterType,
   NotificationVerificationState,
 } from '../types';
-import { mockNotificationService } from '../services/mockNotificationService';
 import { notificationApiService } from '../services/notificationApiService';
 import { mapApiResponsesToNotifications } from '../services/notificationMapper';
-import { isNotificationsMockEnabled, getNotificationsPollInterval } from '@/services/EnvironmentService';
-import { getParticipantId } from '@/services/EnvironmentService';
+import { getNotificationsPollInterval, getParticipantId } from '@/services/EnvironmentService';
 import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
 import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
 
@@ -192,10 +190,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  // Track whether we are using mock mode
-  const useMock = useRef(isNotificationsMockEnabled());
-
-  // Fetch notifications from the real backend API
+  // Fetch notifications from the backend API
   const fetchNotificationsFromApi = useCallback(async () => {
     try {
       const bpn = getParticipantId();
@@ -211,33 +206,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
-  // Load initial data — mock or real API depending on config flag
+  // Load initial data from backend API
   useEffect(() => {
-    if (useMock.current) {
-      // ---- Mock mode ----
-      const initialNotifications = mockNotificationService.getNotifications();
-      setNotifications(initialNotifications);
-      setContacts(mockNotificationService.getContacts());
-      refreshPartners();
+    refreshPartners();
+    fetchNotificationsFromApi();
 
-      const unsubscribe = mockNotificationService.subscribe((newNotification) => {
-        setNotifications((prev) => [newNotification, ...prev]);
-      });
-
-      return unsubscribe;
-    } else {
-      // ---- Real API mode ----
-      refreshPartners();
+    // Set up polling at the configured interval
+    const pollInterval = getNotificationsPollInterval();
+    const intervalId = setInterval(() => {
       fetchNotificationsFromApi();
+    }, pollInterval);
 
-      // Set up polling at the configured interval
-      const pollInterval = getNotificationsPollInterval();
-      const intervalId = setInterval(() => {
-        fetchNotificationsFromApi();
-      }, pollInterval);
-
-      return () => clearInterval(intervalId);
-    }
+    return () => clearInterval(intervalId);
   }, [refreshPartners, fetchNotificationsFromApi]);
 
   // Panel controls
@@ -281,12 +261,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             : n
         )
       );
-      // Persist read status to backend in real mode
-      if (!useMock.current) {
-        notificationApiService
-          .updateNotificationStatus(notification.header.messageId, 'read')
-          .catch((err) => console.error('Failed to mark notification as read via API:', err));
-      }
+      // Persist read status to backend
+      notificationApiService
+        .updateNotificationStatus(notification.header.messageId, 'read')
+        .catch((err) => console.error('Failed to mark notification as read via API:', err));
     }
   }, []);
 
@@ -527,12 +505,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setNotifications((prev) =>
       prev.map((n) => {
         if (n.id === notificationId && n.status === 'unread') {
-          // Persist to backend in real mode
-          if (!useMock.current) {
-            notificationApiService
-              .updateNotificationStatus(n.header.messageId, 'read')
-              .catch((err) => console.error('Failed to mark notification as read via API:', err));
-          }
+          // Persist to backend
+          notificationApiService
+            .updateNotificationStatus(n.header.messageId, 'read')
+            .catch((err) => console.error('Failed to mark notification as read via API:', err));
           return { ...n, status: 'read', readAt: new Date() };
         }
         return n;
@@ -765,23 +741,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Send feedback
   const sendFeedback = useCallback(
     async (notificationId: string, feedback: FeedbackPayload) => {
-      if (!useMock.current) {
-        // In real mode, find the notification to get its messageId, then update status
-        const notification = notifications.find((n) => n.id === notificationId);
-        if (notification) {
-          try {
-            await notificationApiService.updateNotificationStatus(
-              notification.header.messageId,
-              'sent',
-            );
-          } catch (error) {
-            console.error('Failed to send feedback status via API:', error);
-            throw error; // Propagate so UI can handle the error
-          }
+      // Find the notification to get its messageId, then update status
+      const notification = notifications.find((n) => n.id === notificationId);
+      if (notification) {
+        try {
+          await notificationApiService.updateNotificationStatus(
+            notification.header.messageId,
+            'sent',
+          );
+        } catch (error) {
+          console.error('Failed to send feedback status via API:', error);
+          throw error; // Propagate so UI can handle the error
         }
-      } else {
-        // Simulate API call in mock mode
-        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       setNotifications((prev) =>

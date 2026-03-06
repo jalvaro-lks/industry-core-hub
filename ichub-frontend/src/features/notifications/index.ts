@@ -34,6 +34,5 @@ export { NotificationProvider, useNotifications } from './contexts/NotificationC
 export * from './types';
 
 // Export services
-export { mockNotificationService } from './services/mockNotificationService';
 export { notificationApiService } from './services/notificationApiService';
 export { mapApiResponseToInboxNotification, mapApiResponsesToNotifications } from './services/notificationMapper';
