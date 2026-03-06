@@ -106,6 +106,10 @@ interface NotificationContextType {
   unarchiveNotification: (notificationId: string) => void;
   archiveSelected: () => void;
   unarchiveSelected: () => void;
+  trashNotification: (notificationId: string) => void;
+  restoreFromTrash: (notificationId: string) => void;
+  trashSelected: () => void;
+  restoreSelectedFromTrash: () => void;
   verifyDigitalTwin: (notificationId: string, catenaXId: string) => Promise<void>;
   verifyAllDigitalTwins: (notificationId: string) => Promise<void>;
   sendFeedback: (notificationId: string, feedback: FeedbackPayload) => Promise<void>;
@@ -313,21 +317,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Filter notifications based on inbox filter and other criteria
   const filteredNotifications = React.useMemo(() => {
     return notifications.filter((notification) => {
-      // Inbox filter (archived vs non-archived and verification state)
+      // Inbox filter (archived, trash vs non-archived and verification state)
       const isArchived = notification.isArchived ?? false;
+      const isTrashed = notification.isTrashed ?? false;
       const verificationState = getVerificationState(notification);
       
       switch (inboxFilter) {
+        case 'trash':
+          if (!isTrashed) return false;
+          break;
         case 'archived':
-          if (!isArchived) return false;
+          if (!isArchived || isTrashed) return false;
           break;
         case 'all':
         case 'unread':
         case 'not-verified':
         case 'verified':
         case 'feedback-sent':
-          // Archived messages should not appear in non-archived lists
-          if (isArchived) return false;
+          // Archived and trashed messages should not appear in regular lists
+          if (isArchived || isTrashed) return false;
           break;
       }
 
@@ -497,14 +505,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Statistics
   const stats = React.useMemo((): NotificationStats => {
-    const nonArchived = notifications.filter((n) => !n.isArchived);
+    const nonArchivedNonTrashed = notifications.filter((n) => !n.isArchived && !n.isTrashed);
     return {
-      total: nonArchived.length,
-      unread: nonArchived.filter((n) => n.status === 'unread').length,
-      notVerified: nonArchived.filter((n) => getVerificationState(n) === 'not-verified').length,
-      verified: nonArchived.filter((n) => getVerificationState(n) === 'verified').length,
-      feedbackSent: nonArchived.filter((n) => getVerificationState(n) === 'feedback-sent').length,
-      archived: notifications.filter((n) => n.isArchived).length,
+      total: nonArchivedNonTrashed.length,
+      unread: nonArchivedNonTrashed.filter((n) => n.status === 'unread').length,
+      notVerified: nonArchivedNonTrashed.filter((n) => getVerificationState(n) === 'not-verified').length,
+      verified: nonArchivedNonTrashed.filter((n) => getVerificationState(n) === 'verified').length,
+      feedbackSent: nonArchivedNonTrashed.filter((n) => getVerificationState(n) === 'feedback-sent').length,
+      archived: notifications.filter((n) => n.isArchived && !n.isTrashed).length,
+      trash: notifications.filter((n) => n.isTrashed).length,
     };
   }, [notifications, getVerificationState]);
 
@@ -560,10 +569,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else {
         next.add(id);
       }
-      // If no items selected, exit selection mode
-      if (next.size === 0) {
-        setSelectionMode(false);
-      }
+      // Selection mode persists even with no items selected
+      // User must explicitly cancel via the Cancel button
       return next;
     });
   }, []);
@@ -638,6 +645,49 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       prev.map((n) =>
         selectedIds.has(n.id)
           ? { ...n, isArchived: false }
+          : n
+      )
+    );
+    clearSelection();
+  }, [selectedIds, clearSelection]);
+
+  // Trash functions
+  const trashNotification = useCallback((notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notificationId
+          ? { ...n, isTrashed: true }
+          : n
+      )
+    );
+  }, []);
+
+  const restoreFromTrash = useCallback((notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notificationId
+          ? { ...n, isTrashed: false }
+          : n
+      )
+    );
+  }, []);
+
+  const trashSelected = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        selectedIds.has(n.id)
+          ? { ...n, isTrashed: true }
+          : n
+      )
+    );
+    clearSelection();
+  }, [selectedIds, clearSelection]);
+
+  const restoreSelectedFromTrash = useCallback(() => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        selectedIds.has(n.id)
+          ? { ...n, isTrashed: false }
           : n
       )
     );
@@ -837,6 +887,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     unarchiveNotification,
     archiveSelected,
     unarchiveSelected,
+    trashNotification,
+    restoreFromTrash,
+    trashSelected,
+    restoreSelectedFromTrash,
     verifyDigitalTwin,
     verifyAllDigitalTwins,
     sendFeedback,

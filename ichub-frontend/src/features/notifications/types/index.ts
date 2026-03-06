@@ -196,15 +196,16 @@ export interface InboxNotification {
   threadId: string;
   isThreadStart: boolean;
   relatedNotifications: string[];
-  // New fields for archive and verification state
+  // New fields for archive, trash and verification state
   isArchived: boolean;
+  isTrashed: boolean;
   verificationState: NotificationVerificationState;
 }
 
 /**
  * Inbox filter type for different views
  */
-export type InboxFilterType = 'all' | 'unread' | 'not-verified' | 'verified' | 'feedback-sent' | 'archived';
+export type InboxFilterType = 'all' | 'unread' | 'not-verified' | 'verified' | 'feedback-sent' | 'archived' | 'trash';
 
 /**
  * Contact/Sender information
@@ -269,6 +270,7 @@ export interface NotificationStats {
   verified: number;
   feedbackSent: number;
   archived: number;
+  trash: number;
 }
 
 /**

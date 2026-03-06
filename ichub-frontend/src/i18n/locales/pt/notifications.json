@@ -21,6 +21,10 @@
     "markAllAsRead": "Marcar todas como lidas",
     "archive": "Arquivar",
     "unarchive": "Desarquivar",
+    "moveToTrash": "Mover para lixeira",
+    "restore": "Restaurar",
+    "selectionMode": "Modo seleção",
+    "trash": "Lixeira",
     "select": "Selecionar",
     "listView": "Vista de lista",
     "groupBySender": "Agrupar por remetente",
@@ -40,6 +44,17 @@
     "digitalTwinCount": "{{count}} Gêmeo Digital",
     "digitalTwinsCount": "{{count}} Gêmeos Digitais",
     "noContactsWithNotifications": "Nenhum contato com notificações"
+  },
+  "snackbar": {
+    "archived": "Mensagem arquivada",
+    "archivedMultiple": "{{count}} mensagens arquivadas",
+    "unarchived": "Mensagem desarquivada",
+    "unarchivedMultiple": "{{count}} mensagens desarquivadas",
+    "movedToTrash": "Mensagem movida para lixeira",
+    "movedToTrashMultiple": "{{count}} mensagens movidas para lixeira",
+    "restored": "Mensagem restaurada",
+    "restoredMultiple": "{{count}} mensagens restauradas",
+    "undo": "Desfazer"
   },
   "time": {
     "minutesAgo": "{{count}}m atrás",

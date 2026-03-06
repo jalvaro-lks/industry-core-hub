@@ -14,6 +14,7 @@
     "verified": "Verified",
     "feedbackSent": "Feedback Sent",
     "archived": "Archived",
+    "trash": "Trash",
     "noNotificationsFound": "No notifications found",
     "noContactsWithNotifications": "No contacts with notifications",
     "searchPlaceholder": "Search contacts, messages...",
@@ -22,6 +23,9 @@
     "markAllAsRead": "Mark all as read",
     "archive": "Archive",
     "unarchive": "Unarchive",
+    "moveToTrash": "Move to trash",
+    "restore": "Restore",
+    "selectionMode": "Selection mode",
     "select": "Select",
     "listView": "List view",
     "groupBySender": "Group by sender",
@@ -40,6 +44,17 @@
     "digitalTwins": "Digital Twins",
     "digitalTwinCount": "{{count}} Digital Twin",
     "digitalTwinsCount": "{{count}} Digital Twins"
+  },
+  "snackbar": {
+    "archived": "Message archived",
+    "archivedMultiple": "{{count}} messages archived",
+    "unarchived": "Message unarchived",
+    "unarchivedMultiple": "{{count}} messages unarchived",
+    "movedToTrash": "Message moved to trash",
+    "movedToTrashMultiple": "{{count}} messages moved to trash",
+    "restored": "Message restored",
+    "restoredMultiple": "{{count}} messages restored",
+    "undo": "Undo"
   },
   "time": {
     "minutesAgo": "{{count}}m ago",

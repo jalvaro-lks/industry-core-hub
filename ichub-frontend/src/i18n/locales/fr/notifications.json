@@ -21,6 +21,10 @@
     "markAllAsRead": "Marquer tout comme lu",
     "archive": "Archiver",
     "unarchive": "Désarchiver",
+    "moveToTrash": "Mettre à la corbeille",
+    "restore": "Restaurer",
+    "selectionMode": "Mode sélection",
+    "trash": "Corbeille",
     "select": "Sélectionner",
     "listView": "Vue liste",
     "groupBySender": "Grouper par expéditeur",
@@ -40,6 +44,17 @@
     "digitalTwinCount": "{{count}} Jumeau Numérique",
     "digitalTwinsCount": "{{count}} Jumeaux Numériques",
     "noContactsWithNotifications": "Aucun contact avec notifications"
+  },
+  "snackbar": {
+    "archived": "Message archivé",
+    "archivedMultiple": "{{count}} messages archivés",
+    "unarchived": "Message désarchivé",
+    "unarchivedMultiple": "{{count}} messages désarchivés",
+    "movedToTrash": "Message mis à la corbeille",
+    "movedToTrashMultiple": "{{count}} messages mis à la corbeille",
+    "restored": "Message restauré",
+    "restoredMultiple": "{{count}} messages restaurés",
+    "undo": "Annuler"
   },
   "time": {
     "minutesAgo": "il y a {{count}}m",

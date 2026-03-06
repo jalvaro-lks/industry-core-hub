@@ -21,6 +21,10 @@
     "markAllAsRead": "全部标记为已读",
     "archive": "归档",
     "unarchive": "取消归档",
+    "moveToTrash": "移至回收站",
+    "restore": "恢复",
+    "selectionMode": "选择模式",
+    "trash": "回收站",
     "select": "选择",
     "listView": "列表视图",
     "groupBySender": "按发送者分组",
@@ -40,6 +44,17 @@
     "digitalTwinCount": "{{count}} 个数字孪生",
     "digitalTwinsCount": "{{count}} 个数字孪生",
     "noContactsWithNotifications": "没有带通知的联系人"
+  },
+  "snackbar": {
+    "archived": "消息已归档",
+    "archivedMultiple": "{{count}} 条消息已归档",
+    "unarchived": "消息已取消归档",
+    "unarchivedMultiple": "{{count}} 条消息已取消归档",
+    "movedToTrash": "消息已移至回收站",
+    "movedToTrashMultiple": "{{count}} 条消息已移至回收站",
+    "restored": "消息已恢复",
+    "restoredMultiple": "{{count}} 条消息已恢复",
+    "undo": "撤销"
   },
   "time": {
     "minutesAgo": "{{count}}分钟前",

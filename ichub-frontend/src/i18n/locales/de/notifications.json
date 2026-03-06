@@ -22,6 +22,10 @@
     "markAllAsRead": "Alle als gelesen markieren",
     "archive": "Archivieren",
     "unarchive": "Dearchivieren",
+    "moveToTrash": "In den Papierkorb",
+    "restore": "Wiederherstellen",
+    "selectionMode": "Auswahlmodus",
+    "trash": "Papierkorb",
     "select": "Auswählen",
     "listView": "Listenansicht",
     "groupBySender": "Nach Absender gruppieren",
@@ -40,6 +44,17 @@
     "digitalTwins": "Digital Twins",
     "digitalTwinCount": "{{count}} Digital Twin",
     "digitalTwinsCount": "{{count}} Digital Twins"
+  },
+  "snackbar": {
+    "archived": "Nachricht archiviert",
+    "archivedMultiple": "{{count}} Nachrichten archiviert",
+    "unarchived": "Nachricht dearchiviert",
+    "unarchivedMultiple": "{{count}} Nachrichten dearchiviert",
+    "movedToTrash": "Nachricht in Papierkorb verschoben",
+    "movedToTrashMultiple": "{{count}} Nachrichten in Papierkorb verschoben",
+    "restored": "Nachricht wiederhergestellt",
+    "restoredMultiple": "{{count}} Nachrichten wiederhergestellt",
+    "undo": "Rückgängig"
   },
   "time": {
     "minutesAgo": "vor {{count}}m",

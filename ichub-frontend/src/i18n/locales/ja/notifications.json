@@ -21,6 +21,10 @@
     "markAllAsRead": "すべて既読にする",
     "archive": "アーカイブ",
     "unarchive": "アーカイブ解除",
+    "moveToTrash": "ゴミ箱に移動",
+    "restore": "復元",
+    "selectionMode": "選択モード",
+    "trash": "ゴミ箱",
     "select": "選択",
     "listView": "リスト表示",
     "groupBySender": "送信者でグループ化",
@@ -40,6 +44,17 @@
     "digitalTwinCount": "{{count}}件のデジタルツイン",
     "digitalTwinsCount": "{{count}}件のデジタルツイン",
     "noContactsWithNotifications": "通知のある連絡先はありません"
+  },
+  "snackbar": {
+    "archived": "メッセージをアーカイブしました",
+    "archivedMultiple": "{{count}}件のメッセージをアーカイブしました",
+    "unarchived": "メッセージのアーカイブを解除しました",
+    "unarchivedMultiple": "{{count}}件のメッセージのアーカイブを解除しました",
+    "movedToTrash": "メッセージをゴミ箱に移動しました",
+    "movedToTrashMultiple": "{{count}}件のメッセージをゴミ箱に移動しました",
+    "restored": "メッセージを復元しました",
+    "restoredMultiple": "{{count}}件のメッセージを復元しました",
+    "undo": "元に戻す"
   },
   "time": {
     "minutesAgo": "{{count}}分前",

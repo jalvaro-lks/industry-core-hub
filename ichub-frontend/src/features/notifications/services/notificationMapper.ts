@@ -273,6 +273,7 @@ export const mapApiResponseToInboxNotification = (
     isThreadStart: !header.relatedMessageId,
     relatedNotifications: [],
     isArchived: false,
+    isTrashed: false,
     verificationState,
   };
 };

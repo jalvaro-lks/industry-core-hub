@@ -192,6 +192,7 @@ class MockNotificationService {
       isThreadStart: true,
       relatedNotifications: [],
       isArchived: false,
+      isTrashed: false,
       verificationState: 'not-verified',
     };
   }

@@ -14,6 +14,7 @@
     "verified": "Verificadas",
     "feedbackSent": "Feedback enviado",
     "archived": "Archivadas",
+    "trash": "Papelera",
     "noNotificationsFound": "No se encontraron notificaciones",
     "noContactsWithNotifications": "No hay contactos con notificaciones",
     "searchPlaceholder": "Buscar contactos, mensajes...",
@@ -22,6 +23,9 @@
     "markAllAsRead": "Marcar todas como leídas",
     "archive": "Archivar",
     "unarchive": "Desarchivar",
+    "moveToTrash": "Mover a papelera",
+    "restore": "Restaurar",
+    "selectionMode": "Modo selección",
     "select": "Seleccionar",
     "listView": "Vista de lista",
     "groupBySender": "Agrupar por remitente",
@@ -40,6 +44,17 @@
     "digitalTwins": "Gemelos Digitales",
     "digitalTwinCount": "{{count}} Gemelo Digital",
     "digitalTwinsCount": "{{count}} Gemelos Digitales"
+  },
+  "snackbar": {
+    "archived": "Mensaje archivado",
+    "archivedMultiple": "{{count}} mensajes archivados",
+    "unarchived": "Mensaje desarchivado",
+    "unarchivedMultiple": "{{count}} mensajes desarchivados",
+    "movedToTrash": "Mensaje movido a papelera",
+    "movedToTrashMultiple": "{{count}} mensajes movidos a papelera",
+    "restored": "Mensaje restaurado",
+    "restoredMultiple": "{{count}} mensajes restaurados",
+    "undo": "Deshacer"
   },
   "time": {
     "minutesAgo": "hace {{count}}m",

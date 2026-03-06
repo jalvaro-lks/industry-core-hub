@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -32,8 +32,6 @@ import {
   Tooltip,
   Chip,
   Badge,
-  ToggleButton,
-  ToggleButtonGroup,
   Avatar,
   Divider,
   Select,
@@ -44,12 +42,11 @@ import {
   ListItemText,
   Checkbox,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search,
   DoneAll,
-  ViewList,
-  People,
   DeviceHub,
   KeyboardArrowRight,
   KeyboardArrowLeft,
@@ -67,6 +64,10 @@ import {
   Unarchive,
   Schedule,
   Close,
+  Delete,
+  RestoreFromTrash,
+  Tune,
+  People,
 } from '@mui/icons-material';
 import { useNotifications } from '../contexts/NotificationContext';
 import { InboxNotification, SenderGroup, NotificationSortBy, InboxFilterType } from '../types';
@@ -108,10 +109,14 @@ const NotificationInbox: React.FC = () => {
     markSelectedAsUnread,
     archiveSelected,
     unarchiveSelected,
+    trashSelected,
+    restoreSelectedFromTrash,
     markAsRead,
     markAsUnread,
     archiveNotification,
     unarchiveNotification,
+    trashNotification,
+    restoreFromTrash,
     // Pagination
     currentPage,
     setCurrentPage,
@@ -139,6 +144,104 @@ const NotificationInbox: React.FC = () => {
     open: boolean;
     bpn: string;
   }>({ open: false, bpn: '' });
+
+  // State for undo snackbars (supports stacking)
+  interface UndoSnackbarItem {
+    id: string;
+    message: string;
+    action: 'archive' | 'trash' | 'unarchive' | 'restore';
+    targetIds: string[];
+    createdAt: number;
+  }
+  const [undoSnackbars, setUndoSnackbars] = useState<UndoSnackbarItem[]>([]);
+  const snackbarTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Auto-remove snackbars after 5 seconds
+  useEffect(() => {
+    undoSnackbars.forEach((snackbar) => {
+      if (!snackbarTimersRef.current.has(snackbar.id)) {
+        const timer = setTimeout(() => {
+          setUndoSnackbars((prev) => prev.filter((s) => s.id !== snackbar.id));
+          snackbarTimersRef.current.delete(snackbar.id);
+        }, 5000);
+        snackbarTimersRef.current.set(snackbar.id, timer);
+      }
+    });
+    return () => {
+      // Cleanup on unmount
+    };
+  }, [undoSnackbars]);
+
+  // Handle undo action for a specific snackbar
+  const handleUndo = (snackbarId: string) => {
+    const snackbar = undoSnackbars.find((s) => s.id === snackbarId);
+    if (!snackbar) return;
+    
+    snackbar.targetIds.forEach((id) => {
+      switch (snackbar.action) {
+        case 'archive':
+          unarchiveNotification(id);
+          break;
+        case 'trash':
+          restoreFromTrash(id);
+          break;
+        case 'unarchive':
+          archiveNotification(id);
+          break;
+        case 'restore':
+          trashNotification(id);
+          break;
+      }
+    });
+    // Remove this snackbar
+    setUndoSnackbars((prev) => prev.filter((s) => s.id !== snackbarId));
+    const timer = snackbarTimersRef.current.get(snackbarId);
+    if (timer) {
+      clearTimeout(timer);
+      snackbarTimersRef.current.delete(snackbarId);
+    }
+  };
+
+  // Dismiss a snackbar
+  const dismissSnackbar = (snackbarId: string) => {
+    setUndoSnackbars((prev) => prev.filter((s) => s.id !== snackbarId));
+    const timer = snackbarTimersRef.current.get(snackbarId);
+    if (timer) {
+      clearTimeout(timer);
+      snackbarTimersRef.current.delete(snackbarId);
+    }
+  };
+
+  // Show undo snackbar helper
+  const showUndoSnackbar = (
+    action: 'archive' | 'trash' | 'unarchive' | 'restore',
+    targetIds: string[]
+  ) => {
+    const count = targetIds.length;
+    let message = '';
+    switch (action) {
+      case 'archive':
+        message = count === 1 ? t('snackbar.archived') : t('snackbar.archivedMultiple', { count });
+        break;
+      case 'trash':
+        message = count === 1 ? t('snackbar.movedToTrash') : t('snackbar.movedToTrashMultiple', { count });
+        break;
+      case 'unarchive':
+        message = count === 1 ? t('snackbar.unarchived') : t('snackbar.unarchivedMultiple', { count });
+        break;
+      case 'restore':
+        message = count === 1 ? t('snackbar.restored') : t('snackbar.restoredMultiple', { count });
+        break;
+    }
+    const newSnackbar: UndoSnackbarItem = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      message,
+      action,
+      targetIds,
+      createdAt: Date.now(),
+    };
+    setUndoSnackbars((prev) => [...prev, newSnackbar]);
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters({ ...filters, search: e.target.value });
@@ -262,6 +365,7 @@ const NotificationInbox: React.FC = () => {
       case 'verified': return t('inbox.verified');
       case 'feedback-sent': return t('inbox.feedbackSent');
       case 'archived': return t('inbox.archived');
+      case 'trash': return t('inbox.trash');
       default: return t('inbox.title');
     }
   };
@@ -275,6 +379,7 @@ const NotificationInbox: React.FC = () => {
       case 'verified': return stats.verified;
       case 'feedback-sent': return stats.feedbackSent;
       case 'archived': return stats.archived;
+      case 'trash': return stats.trash;
       default: return 0;
     }
   };
@@ -337,13 +442,43 @@ const NotificationInbox: React.FC = () => {
           </IconButton>
         </Tooltip>
 
-        <Tooltip title={inboxFilter === 'archived' ? t('inbox.unarchive') : t('inbox.archive')} arrow>
+        {inboxFilter !== 'trash' && (
+          <Tooltip title={inboxFilter === 'archived' ? t('inbox.unarchive') : t('inbox.archive')} arrow>
+            <IconButton
+              size="small"
+              onClick={() => {
+                const ids = Array.from(selectedIds);
+                if (inboxFilter === 'archived') {
+                  unarchiveSelected();
+                  showUndoSnackbar('unarchive', ids);
+                } else {
+                  archiveSelected();
+                  showUndoSnackbar('archive', ids);
+                }
+              }}
+              sx={{ color: 'rgba(255, 255, 255, 0.8)' }}
+            >
+              {inboxFilter === 'archived' ? <Unarchive sx={{ fontSize: '1.1rem' }} /> : <Archive sx={{ fontSize: '1.1rem' }} />}
+            </IconButton>
+          </Tooltip>
+        )}
+
+        <Tooltip title={inboxFilter === 'trash' ? t('inbox.restore') : t('inbox.moveToTrash')} arrow>
           <IconButton
             size="small"
-            onClick={inboxFilter === 'archived' ? unarchiveSelected : archiveSelected}
-            sx={{ color: 'rgba(255, 255, 255, 0.8)' }}
+            onClick={() => {
+              const ids = Array.from(selectedIds);
+              if (inboxFilter === 'trash') {
+                restoreSelectedFromTrash();
+                showUndoSnackbar('restore', ids);
+              } else {
+                trashSelected();
+                showUndoSnackbar('trash', ids);
+              }
+            }}
+            sx={{ color: inboxFilter === 'trash' ? 'rgba(129, 199, 132, 0.9)' : 'rgba(239, 83, 80, 0.9)' }}
           >
-            {inboxFilter === 'archived' ? <Unarchive sx={{ fontSize: '1.1rem' }} /> : <Archive sx={{ fontSize: '1.1rem' }} />}
+            {inboxFilter === 'trash' ? <RestoreFromTrash sx={{ fontSize: '1.1rem' }} /> : <Delete sx={{ fontSize: '1.1rem' }} />}
           </IconButton>
         </Tooltip>
 
@@ -807,6 +942,7 @@ const NotificationInbox: React.FC = () => {
     const notification = contextMenu.notification;
     const isRead = notification.status !== 'unread';
     const isArchived = notification.isArchived ?? false;
+    const isTrashed = notification.isTrashed ?? false;
 
     return (
       <Menu
@@ -826,13 +962,11 @@ const NotificationInbox: React.FC = () => {
           },
         }}
       >
+        {/* 1. Select */}
         <MenuItem
           onClick={() => {
-            if (isArchived) {
-              unarchiveNotification(notification.id);
-            } else {
-              archiveNotification(notification.id);
-            }
+            setSelectionMode(true);
+            toggleSelection(notification.id);
             handleContextMenuClose();
           }}
           sx={{ 
@@ -845,11 +979,12 @@ const NotificationInbox: React.FC = () => {
             },
           }}
         >
-          <ListItemIcon sx={{ color: '#64b5f6', minWidth: 36 }}>
-            {isArchived ? <Unarchive fontSize="small" /> : <Archive fontSize="small" />}
+          <ListItemIcon sx={{ color: '#90caf9', minWidth: 36 }}>
+            <CheckBox fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary={isArchived ? t('inbox.unarchive') : t('inbox.archive')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.select')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
         </MenuItem>
+        {/* 2. Mark as Read/Unread */}
         <MenuItem
           onClick={() => {
             if (isRead) {
@@ -875,10 +1010,45 @@ const NotificationInbox: React.FC = () => {
           <ListItemText primary={isRead ? t('inbox.markAsUnread') : t('inbox.markAsRead')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
         </MenuItem>
         <Divider sx={{ borderColor: 'rgba(66, 165, 245, 0.15)', my: 0.5 }} />
+        {/* 3. Archive/Unarchive */}
+        {!isTrashed && (
+          <MenuItem
+            onClick={() => {
+              if (isArchived) {
+                unarchiveNotification(notification.id);
+                showUndoSnackbar('unarchive', [notification.id]);
+              } else {
+                archiveNotification(notification.id);
+                showUndoSnackbar('archive', [notification.id]);
+              }
+              handleContextMenuClose();
+            }}
+            sx={{ 
+              color: '#ffffff', 
+              fontSize: '0.85rem',
+              padding: '10px 16px',
+              transition: 'all 0.15s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(66, 165, 245, 0.15)',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: '#64b5f6', minWidth: 36 }}>
+              {isArchived ? <Unarchive fontSize="small" /> : <Archive fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText primary={isArchived ? t('inbox.unarchive') : t('inbox.archive')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          </MenuItem>
+        )}
+        {/* 4. Move to Trash/Restore */}
         <MenuItem
           onClick={() => {
-            setSelectionMode(true);
-            toggleSelection(notification.id);
+            if (isTrashed) {
+              restoreFromTrash(notification.id);
+              showUndoSnackbar('restore', [notification.id]);
+            } else {
+              trashNotification(notification.id);
+              showUndoSnackbar('trash', [notification.id]);
+            }
             handleContextMenuClose();
           }}
           sx={{ 
@@ -887,14 +1057,14 @@ const NotificationInbox: React.FC = () => {
             padding: '10px 16px',
             transition: 'all 0.15s ease',
             '&:hover': {
-              backgroundColor: 'rgba(66, 165, 245, 0.15)',
+              backgroundColor: isTrashed ? 'rgba(129, 199, 132, 0.15)' : 'rgba(239, 83, 80, 0.15)',
             },
           }}
         >
-          <ListItemIcon sx={{ color: '#90caf9', minWidth: 36 }}>
-            <CheckBox fontSize="small" />
+          <ListItemIcon sx={{ color: isTrashed ? '#81c784' : '#ef5350', minWidth: 36 }}>
+            {isTrashed ? <RestoreFromTrash fontSize="small" /> : <Delete fontSize="small" />}
           </ListItemIcon>
-          <ListItemText primary={t('inbox.select')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={isTrashed ? t('inbox.restore') : t('inbox.moveToTrash')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
         </MenuItem>
       </Menu>
     );
@@ -969,36 +1139,22 @@ const NotificationInbox: React.FC = () => {
               </span>
             </Tooltip>
 
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={(_, value) => value && setViewMode(value)}
-              size="small"
-              sx={{
-                '& .MuiToggleButton-root': {
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  borderColor: 'rgba(255, 255, 255, 0.15)',
-                  padding: '4px 6px',
-                  '&.Mui-selected': {
+            <Tooltip title={t('inbox.selectionMode')} arrow>
+              <IconButton
+                size="small"
+                onClick={() => setSelectionMode(!isSelectionMode)}
+                sx={{
+                  color: isSelectionMode ? '#42a5f5' : 'rgba(255, 255, 255, 0.7)',
+                  backgroundColor: isSelectionMode ? 'rgba(66, 165, 245, 0.2)' : 'transparent',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(66, 165, 245, 0.15)',
                     color: '#ffffff',
-                    backgroundColor: 'rgba(66, 165, 245, 0.25)',
-                    '&:hover': { backgroundColor: 'rgba(66, 165, 245, 0.35)' },
                   },
-                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.08)' },
-                },
-              }}
-            >
-              <ToggleButton value="list">
-                <Tooltip title={t('inbox.listView')} arrow>
-                  <ViewList sx={{ fontSize: '0.95rem' }} />
-                </Tooltip>
-              </ToggleButton>
-              <ToggleButton value="grouped">
-                <Tooltip title={t('inbox.groupBySender')} arrow>
-                  <People sx={{ fontSize: '0.95rem' }} />
-                </Tooltip>
-              </ToggleButton>
-            </ToggleButtonGroup>
+                }}
+              >
+                <Tune sx={{ fontSize: '1rem' }} />
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
 
@@ -1360,6 +1516,24 @@ const NotificationInbox: React.FC = () => {
           <ListItemText primary={t('inbox.archived')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.archived} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(158, 158, 158, 0.2)', color: '#9e9e9e' }} />
         </MenuItem>
+        <MenuItem
+          onClick={() => handleFilterSelect('trash')}
+          selected={inboxFilter === 'trash'}
+          sx={{ 
+            color: '#ffffff', 
+            fontSize: '0.85rem',
+            padding: '10px 16px',
+            transition: 'all 0.15s ease',
+            '&:hover': { backgroundColor: 'rgba(239, 83, 80, 0.1)' },
+            '&.Mui-selected': { backgroundColor: 'rgba(239, 83, 80, 0.15)', '&:hover': { backgroundColor: 'rgba(239, 83, 80, 0.2)' } },
+          }}
+        >
+          <ListItemIcon sx={{ color: '#ef5350', minWidth: 36 }}>
+            <Delete fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t('inbox.trash')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <Chip label={stats.trash} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(239, 83, 80, 0.2)', color: '#ef5350' }} />
+        </MenuItem>
       </Menu>
 
       {/* Context menu */}
@@ -1374,6 +1548,140 @@ const NotificationInbox: React.FC = () => {
           partnerData={{ bpnl: addContactDialog.bpn, name: '' }}
         />
       )}
+
+      {/* Stacking Undo Snackbars */}
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          left: 16,
+          display: 'flex',
+          flexDirection: 'column-reverse',
+          gap: 1,
+          zIndex: 1400,
+          pointerEvents: 'none',
+        }}
+      >
+        {undoSnackbars.map((snackbar) => (
+          <UndoSnackbarItem
+            key={snackbar.id}
+            snackbar={snackbar}
+            onUndo={handleUndo}
+            onDismiss={dismissSnackbar}
+            undoLabel={t('snackbar.undo')}
+          />
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
+// Separate component for each snackbar with its own countdown timer
+interface UndoSnackbarItemProps {
+  snackbar: {
+    id: string;
+    message: string;
+    action: 'archive' | 'trash' | 'unarchive' | 'restore';
+    targetIds: string[];
+    createdAt: number;
+  };
+  onUndo: (id: string) => void;
+  onDismiss: (id: string) => void;
+  undoLabel: string;
+}
+
+const UndoSnackbarItem: React.FC<UndoSnackbarItemProps> = ({ snackbar, onUndo, onDismiss, undoLabel }) => {
+  const [progress, setProgress] = useState(100);
+  const DURATION = 5000;
+
+  useEffect(() => {
+    const startTime = snackbar.createdAt;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / DURATION) * 100);
+      setProgress(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, [snackbar.createdAt]);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        backgroundColor: 'rgba(20, 25, 35, 0.95)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(66, 165, 245, 0.2)',
+        borderRadius: '8px',
+        padding: '8px 12px',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+        pointerEvents: 'auto',
+        whiteSpace: 'nowrap',
+        animation: 'slideIn 0.2s ease-out',
+        '@keyframes slideIn': {
+          from: { opacity: 0, transform: 'translateX(-20px)' },
+          to: { opacity: 1, transform: 'translateX(0)' },
+        },
+      }}
+    >
+      <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20 }}>
+        <CircularProgress
+          variant="determinate"
+          value={progress}
+          size={18}
+          thickness={5}
+          sx={{
+            color: '#42a5f5',
+            '& .MuiCircularProgress-circle': {
+              strokeLinecap: 'round',
+            },
+          }}
+        />
+      </Box>
+      <Typography
+        sx={{
+          color: '#ffffff',
+          fontSize: '0.8rem',
+          fontWeight: 500,
+        }}
+      >
+        {snackbar.message}
+      </Typography>
+      <Button
+        size="small"
+        onClick={() => onUndo(snackbar.id)}
+        sx={{
+          color: '#42a5f5',
+          fontWeight: 600,
+          fontSize: '0.75rem',
+          textTransform: 'none',
+          minWidth: 'auto',
+          padding: '2px 8px',
+          '&:hover': {
+            backgroundColor: 'rgba(66, 165, 245, 0.15)',
+          },
+        }}
+      >
+        {undoLabel}
+      </Button>
+      <IconButton
+        size="small"
+        onClick={() => onDismiss(snackbar.id)}
+        sx={{
+          color: 'rgba(255, 255, 255, 0.5)',
+          padding: '2px',
+          '&:hover': {
+            color: '#ffffff',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          },
+        }}
+      >
+        <Close sx={{ fontSize: '0.9rem' }} />
+      </IconButton>
     </Box>
   );
 };
