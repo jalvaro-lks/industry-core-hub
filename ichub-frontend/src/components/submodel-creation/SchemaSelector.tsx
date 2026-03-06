@@ -306,13 +306,13 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                         {(() => {
                                                             const desc = schema.metadata.description || '';
                                                             const lines = desc.split(/\r?\n/);
-                                                            const isLong = lines.length > 5 || desc.length > 500;
+                                                            const isLong = lines.length > 3 || desc.length > 150;
                                                             const expanded = !!expandedMap[schemaKey];
 
                                                             // Fallback preview: first 5 newline lines if present, otherwise slice chars
                                                             const preview = lines.length > 1
-                                                                ? lines.slice(0, 5).join('\n')
-                                                                : desc.slice(0, 500).trim();
+                                                                ? lines.slice(0, 3).join('\n')
+                                                                : desc.slice(0, 150).trim();
 
                                                             return (
                                                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -331,7 +331,7 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                                             // multiline clamp when collapsed (5 lines)
                                                                             display: !expanded ? '-webkit-box' : 'block',
                                                                             WebkitBoxOrient: !expanded ? 'vertical' : undefined,
-                                                                            WebkitLineClamp: !expanded ? 5 : undefined,
+                                                                            WebkitLineClamp: !expanded ? 3 : undefined,
                                                                             // subtle custom scrollbar (no visible track background)
                                                                             '&::-webkit-scrollbar': {
                                                                                 width: '8px'

@@ -22,7 +22,7 @@
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
+import {
   Assignment,
   Hub,
   Recycling,
@@ -37,7 +37,8 @@ import {
   GroupAdd,
   Badge,
   Policy,
-  PostAdd
+  PostAdd,
+  BarChart
 } from '@mui/icons-material';
 import { KitFeature } from '@/features/kit-features/types';
 import { FeatureConfig } from '@/types/routing';
@@ -59,6 +60,8 @@ import { partnerManagementFeature } from '@/features/business-partner-kit/partne
 import { serializedPartsFeature } from '@/features/industry-core-kit/serialized-parts/routes';
 import { passportConsumptionFeature } from '@/features/eco-pass-kit/passport-consumption/routes';
 import { passportProvisionFeature } from '@/features/eco-pass-kit/passport-provision/routes';
+import { pcfProvisionFeature } from '@/features/pcf-kit/pcf-provision/routes';
+import { pcfConsumptionFeature } from '@/features/pcf-kit/pcf-consumption/routes';
 
 /**
  * Hook that returns translated KIT configurations.
@@ -182,12 +185,33 @@ export const useTranslatedKits = (): KitFeature[] => {
       id: 'pcf',
       name: t('items.pcf.name'),
       description: t('items.pcf.description'),
-      status: 'coming-soon',
+      status: 'available',
       icon: <EnergySavingsLeaf />,
       image: PcfKitImage,
-      features: [],
+      features: [
+        {
+          module: pcfProvisionFeature,
+          id: 'pcf-provision',
+          name: t('items.pcf.features.pcfProvision.name'),
+          description: t('items.pcf.features.pcfProvision.description'),
+          icon: <PostAdd />,
+          enabled: false,
+          default: false
+        },
+        {
+          module: pcfConsumptionFeature,
+          id: 'pcf-consumption',
+          name: t('items.pcf.features.pcfConsumption.name'),
+          description: t('items.pcf.features.pcfConsumption.description'),
+          icon: <BarChart />,
+          enabled: false,
+          default: false
+        }
+      ],
       domain: 'sustainability',
-      version: '0.0.0',
+      version: '1.0.0',
+      createdAt: '2026-03-06',
+      lastUpdated: '2026-03-06',
       documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/product-carbon-footprint-exchange-kit/adoption-view'
     },
     {

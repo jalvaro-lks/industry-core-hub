@@ -70,7 +70,17 @@
     },
     "pcf": {
       "name": "PCF KIT",
-      "description": "Cálculo de la Huella de Carbono del Producto y herramientas de evaluación del ciclo de vida."
+      "description": "Cálculo de la Huella de Carbono del Producto y herramientas de evaluación del ciclo de vida.",
+      "features": {
+        "pcfProvision": {
+          "name": "Provisión y Gestión de PCF",
+          "description": "Crear, gestionar y compartir declaraciones de Huella de Carbono del Producto con socios del dataspace."
+        },
+        "pcfConsumption": {
+          "name": "Consumo y Visualización de PCF",
+          "description": "Recuperar y visualizar datos de PCF de socios del dataspace, agregar datos de huella y generar informes."
+        }
+      }
     },
     "dataChain": {
       "name": "Data Chain KIT",

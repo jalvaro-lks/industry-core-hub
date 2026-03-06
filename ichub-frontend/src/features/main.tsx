@@ -36,7 +36,8 @@ import {
   GroupAdd,
   Badge,
   Policy,
-  PostAdd
+  PostAdd,
+  BarChart
 } from '@mui/icons-material';
 import { kitFeaturesFeature } from './kit-features/routes';
 import { FeatureConfig, NavigationItem } from '@/types/routing';
@@ -59,6 +60,8 @@ import { partnerManagementFeature } from './business-partner-kit/partner-managem
 import { serializedPartsFeature } from './industry-core-kit/serialized-parts/routes';
 import { passportConsumptionFeature } from './eco-pass-kit/passport-consumption/routes';
 import { passportProvisionFeature } from './eco-pass-kit/passport-provision/routes';
+import { pcfProvisionFeature } from './pcf-kit/pcf-provision/routes';
+import { pcfConsumptionFeature } from './pcf-kit/pcf-consumption/routes';
 
 // KIT configurations with feature toggles
 export const kits: KitFeature[] = [
@@ -176,12 +179,33 @@ export const kits: KitFeature[] = [
     id: 'pcf',
     name: i18n.t('pcf.name', { ns: 'kits' }),
     description: i18n.t('pcf.description', { ns: 'kits' }),
-    status: 'coming-soon',
+    status: 'available',
     icon: <EnergySavingsLeaf />,
     image: PcfKitImage,
-    features: [],
+    features: [
+      {
+        module: pcfProvisionFeature,
+        id: 'pcf-provision',
+        name: i18n.t('pcf.features.pcfProvision.name', { ns: 'kits' }),
+        description: i18n.t('pcf.features.pcfProvision.description', { ns: 'kits' }),
+        icon: <PostAdd />,
+        enabled: false,
+        default: false
+      },
+      {
+        module: pcfConsumptionFeature,
+        id: 'pcf-consumption',
+        name: i18n.t('pcf.features.pcfConsumption.name', { ns: 'kits' }),
+        description: i18n.t('pcf.features.pcfConsumption.description', { ns: 'kits' }),
+        icon: <BarChart />,
+        enabled: false,
+        default: false
+      }
+    ],
     domain: 'sustainability',
-    version: '0.0.0',
+    version: '1.0.0',
+    createdAt: '2026-03-06',
+    lastUpdated: '2026-03-06',
     documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/product-carbon-footprint-exchange-kit/adoption-view'
   },
   {

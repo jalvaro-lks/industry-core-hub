@@ -34,6 +34,7 @@
 import { loadSchemas } from './schemaLoader';
 import digitalProductPassportSchema from './DigitalProductPassport-schema.json';
 import UsTariffInformationSchema from './UsTariffInformation-schema.json';
+import PcfSchema from './Pcf-schema.json';
 import { JSONSchema } from './json-schema-interpreter';
 
 export interface SchemaMetadata {
@@ -66,7 +67,8 @@ export interface SchemaDefinition<T = any> {
  */
 const schemasToLoad = [
   digitalProductPassportSchema as JSONSchema,
-  UsTariffInformationSchema as JSONSchema
+  UsTariffInformationSchema as JSONSchema,
+  PcfSchema as JSONSchema
   // Add more schemas here:
   // serialPartSchema as JSONSchema,
   // batchSchema as JSONSchema,
