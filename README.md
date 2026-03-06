@@ -303,6 +303,37 @@ graph TB
     DB_M --> PG
 ```
 
+For better readability, the backend architecture can be split into focused diagrams.
+
+**Focused View — Controllers and Their External Relations**
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
+flowchart LR
+    CLIENT["Frontend / API Client"]
+
+    subgraph CTRL_FOCUS["Controllers — controllers/fastapi/routers/"]
+        R_PROV_F["Provider Routers"]
+        R_CONS_F["Consumer Routers"]
+        R_AUTH_F["Authentication Router"]
+        R_ADDON_F["Add-on Routers"]
+    end
+
+    subgraph SVC_FOCUS["Services — services/provider/"]
+        SVC_PROVIDER_F["Provider Services"]
+    end
+
+    subgraph MGR_FOCUS["Managers — managers/"]
+        MGR_CONS_F["Consumer Managers"]
+        MGR_ADDON_F["Add-on Managers"]
+    end
+
+    CLIENT --> R_PROV_F & R_CONS_F & R_AUTH_F & R_ADDON_F
+    R_PROV_F --> SVC_PROVIDER_F
+    R_CONS_F --> MGR_CONS_F
+    R_ADDON_F --> MGR_ADDON_F
+```
+
 The backend is organized into the following packages:
 - **`controllers/`** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
 - **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers
