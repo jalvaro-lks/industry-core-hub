@@ -124,8 +124,8 @@ This dramatically reduces the onboarding effort for **SMEs and use case develope
 The IC-Hub acts as the central orchestration layer between your applications and the Catena-X dataspace components. Instead of integrating with each component individually, your application talks only to the IC-Hub.
 
 ```mermaid
-%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
-graph TB
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12, "defaultRenderer": "elk"}}}}%%
+flowchart TB
     subgraph "Your Organization"
         BACK["Backend<br/>Legacy System"]
         PIP["Integration Pipeline"]
@@ -652,3 +652,4 @@ This work is licensed under the [CC-BY-4.0](https://creativecommons.org/licenses
 [license-url-non-code]: https://github.com/eclipse-tractusx/industry-core-hub/blob/main/LICENSE_non-code
 [release-shield]: https://img.shields.io/github/v/release/eclipse-tractusx/industry-core-hub.svg?style=for-the-badge
 [release-url]: https://github.com/eclipse-tractusx/industry-core-hub/releases
+
