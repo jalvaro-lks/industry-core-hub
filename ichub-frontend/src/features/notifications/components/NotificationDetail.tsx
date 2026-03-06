@@ -92,7 +92,7 @@ const NotificationDetail: React.FC = () => {
     verifyAllDigitalTwins,
   } = useNotifications();
 
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('notifications');
 
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
@@ -146,9 +146,9 @@ const NotificationDetail: React.FC = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMs < 0) return 'Overdue';
-    if (diffHours < 24) return `${diffHours} hours remaining`;
-    return `${diffDays} days remaining`;
+    if (diffMs < 0) return t('detail.overdue');
+    if (diffHours < 24) return t('time.hoursRemaining', { count: diffHours });
+    return t('time.daysRemaining', { count: diffDays });
   };
 
   const getPriorityDisplay = () => {
@@ -205,15 +205,15 @@ const NotificationDetail: React.FC = () => {
   const getVerificationLabel = (vStatus: DigitalTwinVerificationStatus): string => {
     switch (vStatus) {
       case 'accessible':
-        return 'Accessible';
+        return t('verification.accessible');
       case 'not-accessible':
-        return 'Not Accessible';
+        return t('verification.notAccessible');
       case 'verifying':
-        return 'Verifying...';
+        return t('verification.verifying');
       case 'error':
-        return 'Error';
+        return t('verification.error');
       default:
-        return 'Not Verified';
+        return t('verification.notVerified');
     }
   };
 
@@ -230,10 +230,10 @@ const NotificationDetail: React.FC = () => {
   };
 
   const getItemType = (item: ConnectToParentItem): string => {
-    if ('partInstanceId' in item) return 'Serialized Part';
-    if ('batchId' in item) return 'Batch';
-    if ('jisNumber' in item) return 'JIS Part';
-    return 'Part';
+    if ('partInstanceId' in item) return t('itemTypes.serializedPart');
+    if ('batchId' in item) return t('itemTypes.batch');
+    if ('jisNumber' in item) return t('itemTypes.jisPart');
+    return t('itemTypes.part');
   };
 
   const getItemIdentifier = (item: ConnectToParentItem): string => {
@@ -262,7 +262,7 @@ const NotificationDetail: React.FC = () => {
       const result = await discoverSingleShell(header.senderBpn, item.catenaXId);
       setViewTwinResult(result);
     } catch (err: unknown) {
-      const errorMessage = (err as { message?: string })?.message || 'Failed to discover digital twin';
+      const errorMessage = (err as { message?: string })?.message || t('detail.failedToDiscoverTwin');
       setViewTwinError(errorMessage);
     } finally {
       setViewTwinLoading(false);
@@ -405,21 +405,21 @@ const NotificationDetail: React.FC = () => {
             }}
           >
             <Box sx={{ display: 'grid', gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr', gap: 1 }}>
-              <DetailRow label="Catena-X ID" value={item.catenaXId} copyable compact={isCompact} />
-              <DetailRow label="Manufacturer ID" value={item.manufacturerId} copyable compact={isCompact} />
-              <DetailRow label="Manufacturer Part ID" value={item.manufacturerPartId} compact={isCompact} />
+              <DetailRow label={t('detail.catenaXId')} value={item.catenaXId} copyable compact={isCompact} t={t} />
+              <DetailRow label={t('fields.manufacturerId')} value={item.manufacturerId} copyable compact={isCompact} t={t} />
+              <DetailRow label={t('fields.manufacturerPartId')} value={item.manufacturerPartId} compact={isCompact} t={t} />
               {item.customerPartId && (
-                <DetailRow label="Customer Part ID" value={item.customerPartId} compact={isCompact} />
+                <DetailRow label={t('fields.customerPartId')} value={item.customerPartId} compact={isCompact} t={t} />
               )}
               {'partInstanceId' in item && (
-                <DetailRow label="Serial Number" value={item.partInstanceId} compact={isCompact} />
+                <DetailRow label={t('fields.serialNumber')} value={item.partInstanceId} compact={isCompact} t={t} />
               )}
-              {'batchId' in item && <DetailRow label="Batch ID" value={item.batchId} compact={isCompact} />}
+              {'batchId' in item && <DetailRow label={t('fields.batchId')} value={item.batchId} compact={isCompact} t={t} />}
               {'jisNumber' in item && (
                 <>
-                  <DetailRow label="JIS Number" value={item.jisNumber} compact={isCompact} />
+                  <DetailRow label={t('fields.jisNumber')} value={item.jisNumber} compact={isCompact} t={t} />
                   {'jisCallDate' in item && item.jisCallDate && (
-                    <DetailRow label="JIS Call Date" value={item.jisCallDate} compact={isCompact} />
+                    <DetailRow label={t('fields.jisCallDate')} value={item.jisCallDate} compact={isCompact} t={t} />
                   )}
                 </>
               )}
@@ -463,7 +463,7 @@ const NotificationDetail: React.FC = () => {
                   },
                 }}
               >
-                Verify Access
+                {t('detail.verifyAccess')}
               </Button>
             )}
 
@@ -493,7 +493,7 @@ const NotificationDetail: React.FC = () => {
                 },
               }}
             >
-              {t('notifications.detail.viewTwin')}
+              {t('detail.viewTwin')}
             </Button>
           </Box>
         </Collapse>
@@ -531,7 +531,7 @@ const NotificationDetail: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Info sx={{ color: '#64b5f6', fontSize: '1.4rem' }} />
           <Typography sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#ffffff' }}>
-            Technical Details
+            {t('detail.technicalDetails')}
           </Typography>
         </Box>
         <IconButton 
@@ -562,14 +562,14 @@ const NotificationDetail: React.FC = () => {
                 mb: 1.5,
               }}
             >
-              Message Information
+              {t('detail.messageInformation')}
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, rowGap: 2.5 }}>
-              <DetailRow label="Message ID" value={header.messageId} copyable />
-              <DetailRow label="Context" value={header.context} />
-              <DetailRow label="Version" value={header.version} />
+              <DetailRow label={t('detail.messageId')} value={header.messageId} copyable t={t} />
+              <DetailRow label={t('detail.context')} value={header.context} t={t} />
+              <DetailRow label={t('detail.version')} value={header.version} t={t} />
               {header.relatedMessageId && (
-                <DetailRow label="Related Message" value={header.relatedMessageId} copyable />
+                <DetailRow label={t('detail.relatedMessage')} value={header.relatedMessageId} copyable t={t} />
               )}
             </Box>
           </Box>
@@ -588,11 +588,11 @@ const NotificationDetail: React.FC = () => {
                 mb: 1.5,
               }}
             >
-              Business Partners
+              {t('detail.businessPartners')}
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, rowGap: 2.5 }}>
-              <DetailRow label="Sender BPN" value={header.senderBpn} copyable />
-              <DetailRow label="Receiver BPN" value={header.receiverBpn} copyable />
+              <DetailRow label={t('detail.senderBpn')} value={header.senderBpn} copyable t={t} />
+              <DetailRow label={t('detail.receiverBpn')} value={header.receiverBpn} copyable t={t} />
             </Box>
           </Box>
 
@@ -610,12 +610,12 @@ const NotificationDetail: React.FC = () => {
                 mb: 1.5,
               }}
             >
-              Timestamps
+              {t('detail.timestamps')}
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, rowGap: 2.5 }}>
-              <DetailRow label="Sent Date/Time" value={formatDate(header.sentDateTime)} />
+              <DetailRow label={t('detail.sentDateTime')} value={formatDate(header.sentDateTime)} t={t} />
               {header.expectedResponseBy ? (
-                <DetailRow label="Expected Response" value={formatDate(header.expectedResponseBy)} />
+                <DetailRow label={t('detail.expectedResponse')} value={formatDate(header.expectedResponseBy)} t={t} />
               ) : (
                 <Box />
               )}
@@ -645,7 +645,7 @@ const NotificationDetail: React.FC = () => {
             },
           }}
         >
-          Close
+          {t('detail.close')}
         </Button>
       </DialogActions>
     </Dialog>
@@ -706,11 +706,11 @@ const NotificationDetail: React.FC = () => {
               {senderName}
             </Typography>
             {isKnown ? (
-              <Tooltip title="Known contact" arrow>
+              <Tooltip title={t('detail.knownContact')} arrow>
                 <CheckCircle sx={{ fontSize: '0.85rem', color: '#81c784' }} />
               </Tooltip>
             ) : (
-              <Tooltip title="Add to contacts" arrow>
+              <Tooltip title={t('detail.addToContacts')} arrow>
                 <IconButton
                   size="small"
                   onClick={() => setShowAddContactDialog(true)}
@@ -741,7 +741,7 @@ const NotificationDetail: React.FC = () => {
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {/* Technical Details Info Icon */}
-          <Tooltip title="View technical details" arrow>
+          <Tooltip title={t('detail.viewTechnicalDetails')} arrow>
             <IconButton
               onClick={() => setShowTechnicalDetails(true)}
               sx={{
@@ -761,7 +761,7 @@ const NotificationDetail: React.FC = () => {
           {status === 'feedback-sent' && (
             <Chip
               icon={<CheckCircle sx={{ fontSize: '0.8rem !important' }} />}
-              label={isCompact ? 'Sent' : 'Feedback Sent'}
+              label={isCompact ? t('detail.sent') : t('detail.feedbackSent')}
               size="small"
               sx={{
                 backgroundColor: 'rgba(76, 175, 80, 0.2)',
@@ -850,7 +850,7 @@ const NotificationDetail: React.FC = () => {
               textTransform: 'uppercase',
             }}
           >
-            Digital Twins ({content.listOfItems.length})
+            {t('detail.digitalTwinsCount', { count: content.listOfItems.length })}
           </Typography>
 
           {!allVerified && !anyVerifying && (
@@ -870,7 +870,7 @@ const NotificationDetail: React.FC = () => {
                 },
               }}
             >
-              {t('notifications.detail.verifyAll')}
+              {t('detail.verifyAll')}
             </Button>
           )}
         </Box>
@@ -884,7 +884,7 @@ const NotificationDetail: React.FC = () => {
 
             {!showFeedbackForm ? (
               <Tooltip 
-                title={!allVerified ? "Click 'Verify All' above or verify each Digital Twin individually before sending feedback" : ""}
+                title={!allVerified ? t('detail.verifyAllTooltip') : ""}
                 arrow
                 placement="top"
               >
@@ -921,7 +921,7 @@ const NotificationDetail: React.FC = () => {
                       },
                     }}
                   >
-                    {allVerified ? t('notifications.detail.sendFeedback') : t('notifications.detail.pendingVerification')}
+                    {allVerified ? t('detail.sendFeedback') : t('detail.pendingVerification')}
                   </Button>
                 </span>
               </Tooltip>
@@ -936,7 +936,7 @@ const NotificationDetail: React.FC = () => {
 
         {/* Feedback Response if already sent */}
         {feedbackResponse && (
-          <FeedbackSentPanel feedbackResponse={feedbackResponse} />
+          <FeedbackSentPanel feedbackResponse={feedbackResponse} t={t} />
         )}
       </Box>
 
@@ -988,7 +988,7 @@ const NotificationDetail: React.FC = () => {
           <Toolbar>
             <Search sx={{ color: '#81c784', mr: 1.5 }} />
             <Typography sx={{ flex: 1, fontWeight: 600, fontSize: '1.1rem', color: 'rgba(255, 255, 255, 0.95)' }}>
-              {t('notifications.detail.viewDigitalTwin')}
+              {t('detail.viewDigitalTwin')}
             </Typography>
             {viewTwinItem && (
               <Chip
@@ -1060,7 +1060,7 @@ const NotificationDetail: React.FC = () => {
                     mb: 1,
                   }}
                 >
-                  Discovering Digital Twin
+                  {t('detail.discoveringTwin')}
                 </Typography>
                 <Typography
                   sx={{
@@ -1068,7 +1068,7 @@ const NotificationDetail: React.FC = () => {
                     fontSize: '0.9rem',
                   }}
                 >
-                  Searching through the dataspace for twin access...
+                  {t('detail.searchingDataspace')}
                 </Typography>
                 {viewTwinItem && (
                   <Typography
@@ -1106,7 +1106,7 @@ const NotificationDetail: React.FC = () => {
                   fontWeight: 600,
                 }}
               >
-                Discovery Failed
+                {t('detail.discoveryFailed')}
               </Typography>
               <Typography
                 sx={{
@@ -1132,7 +1132,7 @@ const NotificationDetail: React.FC = () => {
                   },
                 }}
               >
-                Retry
+                {t('detail.retry')}
               </Button>
             </Box>
           )}
@@ -1155,11 +1155,12 @@ const NotificationDetail: React.FC = () => {
 };
 
 // Helper component for detail rows
-const DetailRow: React.FC<{ label: string; value: string; copyable?: boolean; compact?: boolean }> = ({
+const DetailRow: React.FC<{ label: string; value: string; copyable?: boolean; compact?: boolean; t?: (key: string) => string }> = ({
   label,
   value,
   copyable,
   compact = false,
+  t,
 }) => (
   <Box>
     <Typography sx={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: compact ? '0.6rem' : '0.65rem', mb: 0.25 }}>
@@ -1176,7 +1177,7 @@ const DetailRow: React.FC<{ label: string; value: string; copyable?: boolean; co
         {value}
       </Typography>
       {copyable && (
-        <Tooltip title="Copy" arrow>
+        <Tooltip title={t ? t('detail.copy') : 'Copy'} arrow>
           <IconButton
             size="small"
             onClick={(e) => {
@@ -1231,7 +1232,7 @@ const getFeedbackStatusIcon = (status: string, fontSize: string = '1rem') => {
 };
 
 // Expandable Feedback Sent Panel
-const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ feedbackResponse }) => {
+const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload; t: (key: string, params?: Record<string, unknown>) => string }> = ({ feedbackResponse, t }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -1260,10 +1261,10 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
           {getFeedbackStatusIcon(feedbackResponse.status)}
           <Box>
             <Typography sx={{ color: '#ffffff', fontWeight: 600, fontSize: '0.8rem' }}>
-              Feedback Sent
+              {t('detail.feedbackSent')}
             </Typography>
             <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.65rem' }}>
-              Status: {feedbackResponse.status} • {feedbackResponse.listOfItems?.length || 0} items
+              {t('detail.statusItems', { status: feedbackResponse.status, count: feedbackResponse.listOfItems?.length || 0 })}
             </Typography>
           </Box>
         </Box>
@@ -1294,7 +1295,7 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
           {feedbackResponse.statusMessage && (
             <Box sx={{ mb: 1.5 }}>
               <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.6rem', textTransform: 'uppercase', mb: 0.5 }}>
-                Message
+                {t('detail.message')}
               </Typography>
               <Typography sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.75rem', textAlign: 'center', fontStyle: 'italic' }}>
                 "{feedbackResponse.statusMessage}"
@@ -1306,7 +1307,7 @@ const FeedbackSentPanel: React.FC<{ feedbackResponse: FeedbackPayload }> = ({ fe
           {feedbackResponse.listOfItems && feedbackResponse.listOfItems.length > 0 && (
             <Box>
               <Typography sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.6rem', textTransform: 'uppercase', mb: 0.75 }}>
-                Item Responses
+                {t('detail.itemResponses')}
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
                 {feedbackResponse.listOfItems.map((item: ItemFeedback, idx: number) => (

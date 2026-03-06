@@ -462,7 +462,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
               mb: 1,
             }}
           >
-            {t('notifications.feedback.itemDetails')} ({itemFeedbacks.length})
+            {t('feedback.itemDetails')} ({itemFeedbacks.length})
           </Typography>
 
           <Box>
@@ -508,7 +508,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {item?.manufacturerPartId || t('notifications.itemTypes.unknownItem')}
+                      {item?.manufacturerPartId || t('itemTypes.unknownItem')}
                     </Typography>
                     <Chip
                       icon={getStatusIcon(feedback.status as FeedbackStatus, '0.75rem')}
@@ -553,7 +553,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                         {/* Status selector row */}
                         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                           <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.75rem', fontWeight: 500, minWidth: '50px' }}>
-                            {t('notifications.feedback.status')}
+                            {t('feedback.status')}
                           </Typography>
                           <FormControl size="small" sx={{ flex: 1, maxWidth: 160 }}>
                             <Select
@@ -607,19 +607,19 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                               <MenuItem value="OK">
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <CheckCircle sx={{ color: '#81c784', fontSize: '1rem' }} />
-                                  <span style={{ fontWeight: 600 }}>{t('notifications.feedback.ok')}</span>
+                                  <span style={{ fontWeight: 600 }}>{t('feedback.ok')}</span>
                                 </Box>
                               </MenuItem>
                               <MenuItem value="ERROR">
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <Error sx={{ color: '#ef5350', fontSize: '1rem' }} />
-                                  <span style={{ fontWeight: 600 }}>{t('notifications.feedback.error')}</span>
+                                  <span style={{ fontWeight: 600 }}>{t('feedback.error')}</span>
                                 </Box>
                               </MenuItem>
                               <MenuItem value="PENDING">
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <HourglassEmpty sx={{ color: '#ffa726', fontSize: '1rem' }} />
-                                  <span style={{ fontWeight: 600 }}>{t('notifications.feedback.pending')}</span>
+                                  <span style={{ fontWeight: 600 }}>{t('feedback.pending')}</span>
                                 </Box>
                               </MenuItem>
                             </Select>
@@ -629,7 +629,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
                         {/* Message input */}
                         <Box>
                           <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.75rem', fontWeight: 500, mb: 0.75 }}>
-                            {t('notifications.feedback.message')}
+                            {t('feedback.message')}
                           </Typography>
                           <TextField
                             fullWidth
@@ -720,7 +720,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ notification, onCancel }) =
               },
             }}
           >
-            {sending ? t('notifications.feedback.sending') : t('notifications.feedback.title')}
+            {sending ? t('feedback.sending') : t('feedback.title')}
           </Button>
         </Box>
       </Box>

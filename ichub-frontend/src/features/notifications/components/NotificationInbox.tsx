@@ -119,7 +119,7 @@ const NotificationInbox: React.FC = () => {
     pageSize,
   } = useNotifications();
 
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('notifications');
 
   // Determine if we're in compact (mobile) mode
   const isCompact = panelSize === 'normal';
@@ -151,11 +151,11 @@ const NotificationInbox: React.FC = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return t('notifications.inbox.now');
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diffMins < 1) return t('inbox.now');
+    if (diffMins < 60) return t('time.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('time.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('time.daysAgo', { count: diffDays });
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   const getAvatarColor = (bpn: string): string => {
@@ -179,12 +179,12 @@ const NotificationInbox: React.FC = () => {
     const state = getVerificationState(notification);
     switch (state) {
       case 'feedback-sent':
-        return { color: 'rgba(129, 199, 132, 0.8)', tooltip: t('notifications.inbox.feedbackSent') };
+        return { color: 'rgba(129, 199, 132, 0.8)', tooltip: t('inbox.feedbackSent') };
       case 'verified':
-        return { color: 'rgba(255, 183, 77, 0.8)', tooltip: t('notifications.inbox.verified') };
+        return { color: 'rgba(255, 183, 77, 0.8)', tooltip: t('inbox.verified') };
       case 'not-verified':
       default:
-        return { color: 'rgba(239, 83, 80, 0.7)', tooltip: t('notifications.inbox.notVerified') };
+        return { color: 'rgba(239, 83, 80, 0.7)', tooltip: t('inbox.notVerified') };
     }
   };
 
@@ -200,18 +200,18 @@ const NotificationInbox: React.FC = () => {
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMs < 0) {
-      return { label: t('notifications.detail.overdue'), color: '#ef5350', bgColor: 'rgba(239, 83, 80, 0.2)' };
+      return { label: t('detail.overdue'), color: '#ef5350', bgColor: 'rgba(239, 83, 80, 0.2)' };
     }
     if (diffHours < 24) {
-      return { label: `${diffHours}h left`, color: '#ef5350', bgColor: 'rgba(239, 83, 80, 0.2)' };
+      return { label: t('time.hoursLeft', { count: diffHours }), color: '#ef5350', bgColor: 'rgba(239, 83, 80, 0.2)' };
     }
     if (diffDays <= 3) {
-      return { label: `${diffDays}d left`, color: '#ffb74d', bgColor: 'rgba(255, 183, 77, 0.2)' };
+      return { label: t('time.daysLeft', { count: diffDays }), color: '#ffb74d', bgColor: 'rgba(255, 183, 77, 0.2)' };
     }
     if (diffDays <= 7) {
-      return { label: `${diffDays}d left`, color: '#81c784', bgColor: 'rgba(129, 199, 132, 0.2)' };
+      return { label: t('time.daysLeft', { count: diffDays }), color: '#81c784', bgColor: 'rgba(129, 199, 132, 0.2)' };
     }
-    return { label: `${diffDays}d`, color: 'rgba(255, 255, 255, 0.6)', bgColor: 'rgba(255, 255, 255, 0.1)' };
+    return { label: t('time.days', { count: diffDays }), color: 'rgba(255, 255, 255, 0.6)', bgColor: 'rgba(255, 255, 255, 0.1)' };
   };
 
   // Handle filter menu
@@ -256,13 +256,13 @@ const NotificationInbox: React.FC = () => {
   // Get filter label
   const getFilterLabel = (filter: InboxFilterType): string => {
     switch (filter) {
-      case 'all': return t('notifications.inbox.title');
-      case 'unread': return t('notifications.inbox.unread');
-      case 'not-verified': return t('notifications.inbox.notVerified');
-      case 'verified': return t('notifications.inbox.verified');
-      case 'feedback-sent': return t('notifications.inbox.feedbackSent');
-      case 'archived': return t('notifications.inbox.archived');
-      default: return t('notifications.inbox.title');
+      case 'all': return t('inbox.title');
+      case 'unread': return t('inbox.unread');
+      case 'not-verified': return t('inbox.notVerified');
+      case 'verified': return t('inbox.verified');
+      case 'feedback-sent': return t('inbox.feedbackSent');
+      case 'archived': return t('inbox.archived');
+      default: return t('inbox.title');
     }
   };
 
@@ -324,10 +324,10 @@ const NotificationInbox: React.FC = () => {
         </IconButton>
 
         <Typography sx={{ color: '#ffffff', fontSize: '0.8rem', flex: 1 }}>
-          {selectedCount} selected
+          {t('inbox.selected', { count: selectedCount })}
         </Typography>
 
-        <Tooltip title={showMarkAsRead ? t('notifications.inbox.markAsRead') : t('notifications.inbox.markAsUnread')} arrow>
+        <Tooltip title={showMarkAsRead ? t('inbox.markAsRead') : t('inbox.markAsUnread')} arrow>
           <IconButton
             size="small"
             onClick={showMarkAsRead ? markSelectedAsRead : markSelectedAsUnread}
@@ -337,7 +337,7 @@ const NotificationInbox: React.FC = () => {
           </IconButton>
         </Tooltip>
 
-        <Tooltip title={inboxFilter === 'archived' ? t('notifications.inbox.unarchive') : t('notifications.inbox.archive')} arrow>
+        <Tooltip title={inboxFilter === 'archived' ? t('inbox.unarchive') : t('inbox.archive')} arrow>
           <IconButton
             size="small"
             onClick={inboxFilter === 'archived' ? unarchiveSelected : archiveSelected}
@@ -365,7 +365,7 @@ const NotificationInbox: React.FC = () => {
             },
           }}
         >
-          Cancel
+          {t('inbox.cancel')}
         </Button>
       </Box>
     );
@@ -454,7 +454,7 @@ const NotificationInbox: React.FC = () => {
               {senderName}
             </Typography>
             {!isKnown && (
-              <Tooltip title="Add to contacts" arrow>
+              <Tooltip title={t('inbox.addToContacts')} arrow>
                 <IconButton
                   size="small"
                   onClick={(e) => handleAddContactClick(senderBpn, e)}
@@ -602,7 +602,7 @@ const NotificationInbox: React.FC = () => {
               {senderName}
             </Typography>
             {!isKnown && (
-              <Tooltip title="Add to contacts" arrow>
+              <Tooltip title={t('inbox.addToContacts')} arrow>
                 <IconButton
                   size="small"
                   onClick={(e) => handleAddContactClick(senderBpn, e)}
@@ -628,7 +628,7 @@ const NotificationInbox: React.FC = () => {
               mb: 1,
             }}
           >
-            {notification.content.information || t('notifications.inbox.digitalTwinNotificationReceived')}
+            {notification.content.information || t('inbox.digitalTwinNotificationReceived')}
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -760,7 +760,7 @@ const NotificationInbox: React.FC = () => {
                 {group.sender.name}
               </Typography>
               {!isKnown && (
-                <Tooltip title="Add to contacts" arrow>
+                <Tooltip title={t('inbox.addToContacts')} arrow>
                   <IconButton
                     size="small"
                     onClick={(e) => handleAddContactClick(group.sender.bpnl, e)}
@@ -781,7 +781,7 @@ const NotificationInbox: React.FC = () => {
                 fontSize: isCompact ? '0.7rem' : '0.75rem',
               }}
             >
-              {group.notifications.length} notification{group.notifications.length > 1 ? 's' : ''}
+              {group.notifications.length} {group.notifications.length > 1 ? t('inbox.notifications') : t('inbox.notification')}
             </Typography>
           </Box>
 
@@ -848,7 +848,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#64b5f6', minWidth: 36 }}>
             {isArchived ? <Unarchive fontSize="small" /> : <Archive fontSize="small" />}
           </ListItemIcon>
-          <ListItemText primary={isArchived ? t('notifications.inbox.unarchive') : t('notifications.inbox.archive')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={isArchived ? t('inbox.unarchive') : t('inbox.archive')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -872,7 +872,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: isRead ? '#ffb74d' : '#81c784', minWidth: 36 }}>
             {isRead ? <MarkEmailUnread fontSize="small" /> : <MarkEmailRead fontSize="small" />}
           </ListItemIcon>
-          <ListItemText primary={isRead ? t('notifications.inbox.markAsUnread') : t('notifications.inbox.markAsRead')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={isRead ? t('inbox.markAsUnread') : t('inbox.markAsRead')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
         </MenuItem>
         <Divider sx={{ borderColor: 'rgba(66, 165, 245, 0.15)', my: 0.5 }} />
         <MenuItem
@@ -894,7 +894,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#90caf9', minWidth: 36 }}>
             <CheckBox fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary={t('notifications.inbox.select')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.select')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
         </MenuItem>
       </Menu>
     );
@@ -949,7 +949,7 @@ const NotificationInbox: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title={t('notifications.inbox.markAllAsRead')} arrow>
+            <Tooltip title={t('inbox.markAllAsRead')} arrow>
               <span>
                 <IconButton
                   size="small"
@@ -989,12 +989,12 @@ const NotificationInbox: React.FC = () => {
               }}
             >
               <ToggleButton value="list">
-                <Tooltip title={t('notifications.inbox.listView')} arrow>
+                <Tooltip title={t('inbox.listView')} arrow>
                   <ViewList sx={{ fontSize: '0.95rem' }} />
                 </Tooltip>
               </ToggleButton>
               <ToggleButton value="grouped">
-                <Tooltip title={t('notifications.inbox.groupBySender')} arrow>
+                <Tooltip title={t('inbox.groupBySender')} arrow>
                   <People sx={{ fontSize: '0.95rem' }} />
                 </Tooltip>
               </ToggleButton>
@@ -1006,7 +1006,7 @@ const NotificationInbox: React.FC = () => {
         <Box sx={{ display: 'flex', gap: 1 }}>
           <TextField
             fullWidth
-            placeholder={t('notifications.inbox.searchPlaceholder')}
+            placeholder={t('inbox.searchPlaceholder')}
             value={filters.search}
             onChange={handleSearchChange}
             size="small"
@@ -1041,9 +1041,9 @@ const NotificationInbox: React.FC = () => {
                   <SortByAlpha sx={{ fontSize: isCompact ? '0.85rem' : '0.95rem', color: 'rgba(255, 255, 255, 0.6)' }} />
                   {!isCompact && (
                     <Typography sx={{ fontSize: '0.75rem', color: '#ffffff' }}>
-                      {value === 'receivedAt' && t('notifications.sorting.date')}
-                      {value === 'expectedResponseBy' && t('notifications.sorting.deadline')}
-                      {value === 'priority' && t('notifications.sorting.priority')}
+                      {value === 'receivedAt' && t('sorting.date')}
+                      {value === 'expectedResponseBy' && t('sorting.deadline')}
+                      {value === 'priority' && t('sorting.priority')}
                     </Typography>
                   )}
                 </Box>
@@ -1092,9 +1092,9 @@ const NotificationInbox: React.FC = () => {
                 },
               }}
             >
-              <MenuItem value="receivedAt">{t('notifications.sorting.dateReceived')}</MenuItem>
-              <MenuItem value="expectedResponseBy">{t('notifications.sorting.responseDeadline')}</MenuItem>
-              <MenuItem value="priority">{t('notifications.sorting.priority')}</MenuItem>
+              <MenuItem value="receivedAt">{t('sorting.dateReceived')}</MenuItem>
+              <MenuItem value="expectedResponseBy">{t('sorting.responseDeadline')}</MenuItem>
+              <MenuItem value="priority">{t('sorting.priority')}</MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -1156,7 +1156,7 @@ const NotificationInbox: React.FC = () => {
               }}
             >
               <DeviceHub sx={{ fontSize: '2.5rem', mb: 1, opacity: 0.7 }} />
-              <Typography sx={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.9)', fontWeight: 500 }}>{t('notifications.inbox.noNotificationsFound')}</Typography>
+              <Typography sx={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.9)', fontWeight: 500 }}>{t('inbox.noNotificationsFound')}</Typography>
             </Box>
           )
         ) : senderGroups.length > 0 ? (
@@ -1173,7 +1173,7 @@ const NotificationInbox: React.FC = () => {
             }}
           >
             <People sx={{ fontSize: '2.5rem', mb: 1, opacity: 0.5 }} />
-            <Typography sx={{ fontSize: '0.85rem' }}>No contacts with notifications</Typography>
+            <Typography sx={{ fontSize: '0.85rem' }}>{t('inbox.noContactsWithNotifications')}</Typography>
           </Box>
         )}
       </Box>
@@ -1207,7 +1207,7 @@ const NotificationInbox: React.FC = () => {
             <KeyboardArrowLeft sx={{ fontSize: '1.2rem' }} />
           </IconButton>
           <Typography sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.75rem', minWidth: '100px', textAlign: 'center' }}>
-            {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, filteredNotifications.length)} of {filteredNotifications.length}
+            {t('pagination.rangeOf', { start: ((currentPage - 1) * pageSize) + 1, end: Math.min(currentPage * pageSize, filteredNotifications.length), total: filteredNotifications.length })}
           </Typography>
           <IconButton
             size="small"
@@ -1247,7 +1247,7 @@ const NotificationInbox: React.FC = () => {
       >
         <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(66, 165, 245, 0.1)' }}>
           <Typography sx={{ color: '#64b5f6', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Filter Messages
+            {t('inbox.filterMessages')}
           </Typography>
         </Box>
         <MenuItem
@@ -1265,7 +1265,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#90caf9', minWidth: 36 }}>
             <Inbox fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Inbox" primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.title')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.total} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(144, 202, 249, 0.2)', color: '#90caf9' }} />
         </MenuItem>
         <MenuItem
@@ -1283,7 +1283,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#42a5f5', minWidth: 36 }}>
             <Markunread fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Unread" primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.unread')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.unread} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(66, 165, 245, 0.2)', color: '#42a5f5' }} />
         </MenuItem>
         <Divider sx={{ borderColor: 'rgba(66, 165, 245, 0.1)', my: 0.5 }} />
@@ -1302,7 +1302,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#ef5350', minWidth: 36 }}>
             <Box sx={{ width: 18, height: 18, backgroundColor: 'rgba(239, 83, 80, 0.8)', borderRadius: '4px' }} />
           </ListItemIcon>
-          <ListItemText primary="Not Verified" primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.notVerified')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.notVerified} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(239, 83, 80, 0.2)', color: '#ef5350' }} />
         </MenuItem>
         <MenuItem
@@ -1320,7 +1320,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#ffb74d', minWidth: 36 }}>
             <Box sx={{ width: 18, height: 18, backgroundColor: 'rgba(255, 183, 77, 0.8)', borderRadius: '4px' }} />
           </ListItemIcon>
-          <ListItemText primary="Verified" primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.verified')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.verified} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(255, 183, 77, 0.2)', color: '#ffb74d' }} />
         </MenuItem>
         <MenuItem
@@ -1338,7 +1338,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#81c784', minWidth: 36 }}>
             <Box sx={{ width: 18, height: 18, backgroundColor: 'rgba(129, 199, 132, 0.8)', borderRadius: '4px' }} />
           </ListItemIcon>
-          <ListItemText primary="Feedback Sent" primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.feedbackSent')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.feedbackSent} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(129, 199, 132, 0.2)', color: '#81c784' }} />
         </MenuItem>
         <Divider sx={{ borderColor: 'rgba(66, 165, 245, 0.1)', my: 0.5 }} />
@@ -1357,7 +1357,7 @@ const NotificationInbox: React.FC = () => {
           <ListItemIcon sx={{ color: '#9e9e9e', minWidth: 36 }}>
             <Archive fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary="Archived" primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
+          <ListItemText primary={t('inbox.archived')} primaryTypographyProps={{ sx: { color: '#ffffff', fontSize: '0.85rem' } }} />
           <Chip label={stats.archived} size="small" sx={{ height: '20px', fontSize: '0.7rem', backgroundColor: 'rgba(158, 158, 158, 0.2)', color: '#9e9e9e' }} />
         </MenuItem>
       </Menu>

@@ -177,7 +177,7 @@ const NotificationsPanel: React.FC = () => {
                   fontSize: '1.1rem',
                 }}
               >
-                Notifications
+                {t('panel.title')}
               </Typography>
               {stats.unread > 0 && (
                 <Box
