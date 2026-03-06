@@ -43,6 +43,7 @@ class RepositoryManager:
         self._twin_exchange_repository = None
         self._twin_registration_repository = None
         self._notification_repository = None
+        self._pcf_repository = None
 
     # Context Manager Methods
     def __enter__(self):
@@ -180,6 +181,14 @@ class RepositoryManager:
             from managers.metadata_database.repositories import NotificationRepository
             self._notification_repository = NotificationRepository(self._session)
         return self._notification_repository
+
+    @property
+    def pcf_repository(self):
+        """Lazy initialization of the PCF repository."""
+        if self._pcf_repository is None:
+            from managers.metadata_database.repositories import PCFRepository
+            self._pcf_repository = PCFRepository(self._session)
+        return self._pcf_repository
 
 class RepositoryManagerFactory:
     """Factory class for creating repository managers."""

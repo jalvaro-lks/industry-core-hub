@@ -31,9 +31,19 @@ Reference:
 
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+from uuid import UUID, uuid4
+from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
+from tractusx_sdk.extensions.notification_api.models import Notification, NotificationHeader, NotificationContent
 
 from managers.config.log_manager import LoggingManager
+from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
+from managers.metadata_database.manager import RepositoryManagerFactory
+from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
+from models.metadata_database.notification.models import NotificationDirection
+from services.notifications.notifications_management_service import NotificationsManagementService
+from tools.constants import PCF
+from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -46,9 +56,17 @@ class PcfExchangeManager:
     between business partners via EDC.
     """
 
-    def __init__(self, submodel_service: Optional[SubmodelServiceManager] = None) -> None:
-        """Initialize the exchange manager with submodel service."""
+    def __init__(
+        self,
+        submodel_service: Optional[SubmodelServiceManager] = None,
+        notification_service: Optional[NotificationsManagementService] = None
+    ) -> None:
+        """Initialize the exchange manager with submodel and notification services."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
+        self._notification_service = notification_service or NotificationsManagementService()
+        self._own_bpn = ConfigManager.get_config("bpn", default=None)
+
+
 
     def request_pcf(
         self,
@@ -65,14 +83,11 @@ class PcfExchangeManager:
         of a serialized part. The edc_bpn is automatically set by EDC during
         the data transfer.
         
-        TODO: Implement Production Flow:
-            1. Create a notification informing about the incoming PCF request
-            2. Check if the requesting participant (edc_bpn) is already allowed
-               to consume this PCF data
-            3. If allowed: automatically send the PCF response back to consumer
-            4. If not allowed: wait for admin decision via the notification system (Another endpoint will handle this)
-               - Admin can approve/reject the request
-               - On approval, send PCF response to consumer
+        Flow:
+            1. Validate input parameters
+            2. Store PCF request record in database with PENDING status
+            3. Create a notification informing about the incoming PCF request
+            4. Return confirmation (actual PCF data exchange happens asynchronously)
         
         Args:
             request_id: Unique identifier for the PCF request
@@ -86,44 +101,58 @@ class PcfExchangeManager:
             
         Raises:
             ValueError: If neither manufacturerPartId nor customerPartId is provided
+            ValueError: If storing the request fails
         """
         if not manufacturer_part_id and not customer_part_id:
             raise ValueError("At least one of manufacturerPartId or customerPartId must be provided")
         
         logger.info(f"Processing PCF request {request_id} from BPN {edc_bpn}")
         
-        # Create request record
-        request_data = {
-            "requestId": request_id,
-            "manufacturerPartId": manufacturer_part_id,
-            "customerPartId": customer_part_id,
-            "requestingBpn": edc_bpn,
-            "status": "pending",
-            "createdAt": datetime.now(timezone.utc).isoformat(),
-            "message": message
-        }
+        try:
+            # Store PCF request in database
+            with RepositoryManagerFactory.create() as repo_manager:
+                # Create new PCF exchange record with PENDING status
+                pcf_exchange = repo_manager.pcf_repository.create_new(
+                    request_id=UUID(request_id),
+                    direction=PcfExchangeDirection.INCOMING,
+                    status=PcfExchangeStatus.PENDING,
+                    requesting_bpn=edc_bpn,
+                    responding_bpn=self._own_bpn,
+                    manufacturer_part_id=manufacturer_part_id,
+                    customer_part_id=customer_part_id,
+                    message=message
+                )
+                logger.info(f"Created PCF exchange record for request {request_id} with status PENDING")
+                
+        except Exception as e:
+            logger.error(f"Failed to store PCF request {request_id}: {str(e)}")
+            raise ValueError(f"Failed to store PCF request: {str(e)}")
         
-        # TODO: Store request in submodel service
-        # self._submodel_service.upload_twin_aspect_document(
-        #     submodel_id=uuid.UUID(request_id),
-        #     semantic_id="urn:samm:io.catenax.pcf:request",
-        #     payload=request_data
-        # )
-        
-        # TODO: Production implementation should:
-        # 1. Create notification for the incoming PCF request
-        # 2. Check if edc_bpn is pre-approved for this data
-        # 3. If approved: fetch PCF data and send response automatically
-        # 4. If not approved: await admin decision via notification
+        # Create notification for the incoming PCF request
+        if self._own_bpn:
+            self._create_pcf_notification(
+                sender_bpn=edc_bpn,
+                receiver_bpn=self._own_bpn,
+                notification_type="PCF_REQUEST_RECEIVED",
+                request_id=request_id,
+                manufacturer_part_id=manufacturer_part_id,
+                customer_part_id=customer_part_id,
+                message=message or f"PCF data request received from {edc_bpn}"
+            )
+        else:
+            logger.warning(
+                f"Cannot create notification for PCF request {request_id}: "
+                "bpn not configured in configuration.yml"
+            )
         
         logger.info(f"PCF request {request_id} created successfully")
         
         return {
-            "status": "PCF request initiated",
+            "status": "PCF request received",
             "requestId": request_id,
             "manufacturerPartId": manufacturer_part_id,
             "customerPartId": customer_part_id,
-            "message": "Request will be processed asynchronously via EDC"
+            "message": "Request stored. PCF data will be provided after approval."
         }
 
     def submit_pcf_response(
@@ -141,7 +170,7 @@ class PcfExchangeManager:
         a response to an existing request or as an update to previously shared
         data. The edc_bpn is automatically set by EDC during the data transfer.
         
-        TODO: Implement Production Flow:
+        Implement Production Flow:
             1. Validate PCF data against Catena-X schema
             2. Store PCF data in database
             3. Update request status
@@ -172,39 +201,63 @@ class PcfExchangeManager:
         if not pcf_data:
             raise ValueError("PCF data cannot be empty")
         
-        # Production implementation should:
-        # 1. Validate PCF data against Catena-X schema
-        # 2. Store PCF data in database
-        # 3. Update request status
-        # 4. Trigger notifications if needed
-        # 5. Log data exchange for compliance
+        try:
+            # submodel_schema_finder returns {'status': ..., 'schema': <actual_schema>}
+            pcf_schema_result = submodel_schema_finder("urn:samm:io.catenax.pcf:9.0.0#Pcf")
+            # Use draft-aware validator (PCF schema uses Draft-04, not Draft-07)
+            json_validator_draft_aware(pcf_schema_result['schema'], pcf_data)
+            logger.info(f"PCF data for request {request_id} validated successfully against schema")
+        except Exception as e:
+            logger.error(f"PCF data validation failed for request {request_id}: {str(e)}")
+            raise ValueError(f"PCF data validation failed: {str(e)}")
         
-        # Store response in mock storage
-        response_data = {
-            "requestId": request_id,
-            "pcfData": pcf_data,
-            "respondingBpn": edc_bpn,
-            "isUpdate": is_update,
-            "message": message,
-            "receivedAt": datetime.now(timezone.utc).isoformat()
-        }
+
+        try:
+            # Store PCF data in database (placeholder - implement actual DB storage)
+            logger.info(f"Storing PCF data for request {request_id} in database (placeholder)")
+            pcf_semantic_id = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+            self._submodel_service.upload_twin_aspect_document(
+                submodel_id=UUID(request_id),
+                semantic_id=pcf_semantic_id,
+                payload=pcf_data
+            )
+
+            with RepositoryManagerFactory.create() as repo_manager:
+                if is_update:
+                    repo_manager.pcf_repository.update_status(request_id, PcfExchangeStatus.UPDATED)
+                    logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
+                else:
+                    pcf_location = f"submodel://{pcf_semantic_id}/{request_id}"
+                    repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location)
+                    logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
+                    repo_manager.pcf_repository.update_status(request_id, PcfExchangeStatus.DELIVERED)
+                    logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
+            raise ValueError(f"Failed to store PCF data: {str(e)}")
         
-        # TODO: Store response in submodel service
-        # self._submodel_service.upload_twin_aspect_document(
-        #     submodel_id=uuid.UUID(request_id),
-        #     semantic_id="urn:samm:io.catenax.pcf:response",
-        #     payload=response_data
-        # )
-        
-        # TODO: Update request status if exists (via submodel service)
-        # try:
-        #     request_data = self._submodel_service.get_twin_aspect_document(...)
-        #     request_data["status"] = "completed"
-        #     self._submodel_service.upload_twin_aspect_document(...)
-        #     logger.info(f"Updated request {request_id} status to completed")
-        # except NotFoundError:
-        #     pass
-        
+        # Create notification for the received PCF data
+        if self._own_bpn:
+            notification_type = "PCF_DATA_UPDATE_RECEIVED" if is_update else "PCF_RESPONSE_RECEIVED"
+            notification_message = (
+                f"PCF data update received from {edc_bpn}" if is_update 
+                else f"PCF data response received from {edc_bpn}"
+            )
+            self._create_pcf_notification(
+                sender_bpn=edc_bpn,
+                receiver_bpn=self._own_bpn,
+                notification_type=notification_type,
+                request_id=request_id,
+                message=message or notification_message,
+                is_update=is_update
+            )
+        else:
+            logger.warning(
+                f"Cannot create notification for PCF response {request_id}: "
+                "bpn not configured in configuration.yml"
+            )
+
         logger.info(f"PCF data for request {request_id} processed successfully")
         
         return {
@@ -212,6 +265,70 @@ class PcfExchangeManager:
             "requestId": request_id,
             "isUpdate": is_update
         }
+
+    def _create_pcf_notification(
+        self,
+        sender_bpn: str,
+        receiver_bpn: str,
+        notification_type: str,
+        request_id: str,
+        manufacturer_part_id: Optional[str] = None,
+        customer_part_id: Optional[str] = None,
+        message: Optional[str] = None,
+        is_update: bool = False
+    ) -> None:
+        """
+        Create a notification for PCF exchange events.
+        
+        Args:
+            sender_bpn: BPN of the party sending the notification
+            receiver_bpn: BPN of the party receiving the notification
+            notification_type: Type of notification (e.g., 'PCF_REQUEST', 'PCF_RESPONSE')
+            request_id: The PCF request ID
+            manufacturer_part_id: Optional manufacturer part ID
+            customer_part_id: Optional customer part ID
+            message: Optional message accompanying the notification
+            is_update: Whether this is an update notification
+        """
+        try:
+            # Build notification header with required fields per io.catenax.shared.message_header_3.0.0
+            # Context format: <domain>-<subdomain>-<object>:<version>
+            context = f"IndustryCore-PCF-{notification_type}:1.0.0"
+            
+            header = NotificationHeader(
+                message_id=uuid4(),
+                context=context,
+                sender_bpn=sender_bpn,
+                receiver_bpn=receiver_bpn
+            )
+            
+            # Build notification content with PCF-specific data
+            content_data = {
+                "notificationType": notification_type,
+                "requestId": request_id,
+                "manufacturerPartId": manufacturer_part_id,
+                "customerPartId": customer_part_id,
+                "message": message,
+                "isUpdate": is_update,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            content = NotificationContent(**content_data)
+            
+            # Create the notification
+            notification = Notification(header=header, content=content)
+            
+            # Store notification via the service
+            self._notification_service.create_notification(
+                notification=notification,
+                direction=NotificationDirection.INCOMING,
+                use_case=PCF
+            )
+            
+            logger.info(f"Created PCF notification for request {request_id}: type={notification_type}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create PCF notification for request {request_id}: {str(e)}")
+            # Don't raise - notification creation failure shouldn't block the main flow
 
 # Module-level singleton for convenience
 exchange_manager = PcfExchangeManager()
