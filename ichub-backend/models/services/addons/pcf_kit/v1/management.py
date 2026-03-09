@@ -24,7 +24,7 @@
 """Pydantic models for PCF Kit management API endpoints."""
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
 
@@ -80,4 +80,12 @@ class SendOrUpdatePcfResponseModel(BaseModel):
     message: Optional[str] = Field(
         default=None,
         description="Optional message to include with the response."
+    )
+
+
+class UploadPcfDataModel(BaseModel):
+    """Model for uploading or updating PCF data for a product."""
+    pcf_data: Dict[str, Any] = Field(
+        alias="pcfData",
+        description="The PCF payload conforming to the Catena-X PCF 9.0.0 schema."
     )

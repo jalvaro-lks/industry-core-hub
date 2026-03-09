@@ -34,6 +34,8 @@ from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus
+from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
+from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -549,6 +551,144 @@ class PcfManagementManager:
         except Exception as e:
             logger.error(f"Error deleting PCF exchange {request_id}: {str(e)}")
             raise
+
+    def upload_pcf_data(
+        self,
+        manufacturer_part_id: str,
+        pcf_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Upload a PCF payload for a product.
+
+        Validates the payload against the Catena-X PCF 9.0.0 schema and stores
+        it in the submodel service keyed by ``manufacturerPartId``.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID for the product.
+            pcf_data: The PCF payload to store.
+
+        Returns:
+            Dictionary with upload confirmation details.
+
+        Raises:
+            ValueError: If the PCF data fails schema validation.
+        """
+        logger.info(f"Uploading PCF data for manufacturerPartId={manufacturer_part_id}")
+
+        self._validate_pcf_schema(pcf_data)
+
+        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+        pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
+
+        self._submodel_service.upload_twin_aspect_document(
+            submodel_id=submodel_id,
+            semantic_id=PCF_SEMANTIC_ID,
+            payload=pcf_data,
+        )
+
+        shared_bpns = self._get_shared_bpns(manufacturer_part_id)
+
+        logger.info(
+            f"PCF data uploaded for manufacturerPartId={manufacturer_part_id} "
+            f"(submodel_id={submodel_id})"
+        )
+
+        return {
+            "manufacturerPartId": manufacturer_part_id,
+            "pcfLocation": pcf_location,
+            "status": "uploaded",
+            "sharedWithBpns": shared_bpns,
+        }
+
+    def update_pcf_data(
+        self,
+        manufacturer_part_id: str,
+        pcf_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Update an existing PCF payload for a product.
+
+        Validates the payload against the Catena-X PCF 9.0.0 schema and
+        overwrites the existing data in the submodel service.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID for the product.
+            pcf_data: The updated PCF payload.
+
+        Returns:
+            Dictionary with update confirmation details.
+
+        Raises:
+            ValueError: If the PCF data fails schema validation or no
+                        existing data is found.
+        """
+        logger.info(f"Updating PCF data for manufacturerPartId={manufacturer_part_id}")
+
+        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+
+        # Verify that existing data is present
+        existing = self._submodel_service.get_twin_aspect_document(
+            submodel_id=submodel_id,
+            semantic_id=PCF_SEMANTIC_ID,
+        )
+        if not existing:
+            raise ValueError(
+                f"No existing PCF data found for manufacturerPartId={manufacturer_part_id}. "
+                "Use upload to create new data."
+            )
+
+        self._validate_pcf_schema(pcf_data)
+
+        pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
+
+        self._submodel_service.upload_twin_aspect_document(
+            submodel_id=submodel_id,
+            semantic_id=PCF_SEMANTIC_ID,
+            payload=pcf_data,
+        )
+
+        shared_bpns = self._get_shared_bpns(manufacturer_part_id)
+
+        logger.info(
+            f"PCF data updated for manufacturerPartId={manufacturer_part_id} "
+            f"(submodel_id={submodel_id})"
+        )
+
+        return {
+            "manufacturerPartId": manufacturer_part_id,
+            "pcfLocation": pcf_location,
+            "status": "updated",
+            "sharedWithBpns": shared_bpns,
+        }
+
+    def _get_shared_bpns(self, manufacturer_part_id: str) -> List[str]:
+        """Return deduplicated BPNs that have received this PCF data.
+
+        Looks up INCOMING exchanges (i.e. requests others made to us) for the
+        given ``manufacturer_part_id`` that reached DELIVERED or UPDATED status,
+        and collects the requesting BPNs.
+        """
+        with RepositoryManagerFactory.create() as repo_manager:
+            entities = repo_manager.pcf_repository.find_by_part_id(
+                manufacturer_part_id=manufacturer_part_id,
+            )
+
+        delivered_statuses = {PcfExchangeStatus.DELIVERED, PcfExchangeStatus.UPDATED}
+        bpns: set[str] = set()
+        for entity in entities:
+            if entity.status in delivered_statuses and entity.requesting_bpn:
+                bpns.add(entity.requesting_bpn)
+
+        return sorted(bpns)
+
+    def _validate_pcf_schema(self, pcf_data: Dict[str, Any]) -> None:
+        """Validate PCF data against the Catena-X PCF 9.0.0 JSON schema.
+
+        Raises:
+            ValueError: If the data does not conform to the schema.
+        """
+        pcf_schema_result = submodel_schema_finder(PCF_SEMANTIC_ID)
+        json_validator_draft_aware(pcf_schema_result["schema"], pcf_data)
 
     def get_pending_incoming_count(self) -> int:
         """

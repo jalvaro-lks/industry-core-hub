@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import management_manager
+from models.services.addons.pcf_kit.v1.management import UploadPcfDataModel
 
 
 router = APIRouter(
@@ -119,3 +120,37 @@ async def get_pcf_exchange_thread(request_id: str = Path(..., alias="requestId")
         return management_manager.get_exchange_thread(request_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange thread: {str(e)}")
+
+
+@router.post("/management/pcf/{manufacturerPartId}", status_code=201)
+async def upload_pcf_data(
+    body: UploadPcfDataModel,
+    manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
+):
+    """Upload PCF data for a product identified by manufacturerPartId."""
+    try:
+        return management_manager.upload_pcf_data(
+            manufacturer_part_id=manufacturer_part_id,
+            pcf_data=body.pcf_data,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading PCF data: {str(e)}")
+
+
+@router.put("/management/pcf/{manufacturerPartId}")
+async def update_pcf_data(
+    body: UploadPcfDataModel,
+    manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
+):
+    """Update existing PCF data for a product identified by manufacturerPartId."""
+    try:
+        return management_manager.update_pcf_data(
+            manufacturer_part_id=manufacturer_part_id,
+            pcf_data=body.pcf_data,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating PCF data: {str(e)}")
