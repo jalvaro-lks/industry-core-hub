@@ -59,5 +59,7 @@ async def send_or_update_pcf_response(
         )
         status_code = 200 if result.get("isUpdate") else 201
         return JSONResponse(status_code=status_code, content=result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error sending/updating PCF response: {str(e)}")

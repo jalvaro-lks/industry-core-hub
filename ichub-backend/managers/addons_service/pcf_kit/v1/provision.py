@@ -29,25 +29,77 @@ Reference:
     - CX-0002 Digital Twins in Catena-X
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
+from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
+from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
+from tractusx_sdk.extensions.notification_api.models import Notification, NotificationHeader, NotificationContent
+
 from managers.config.log_manager import LoggingManager
+from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
+from managers.metadata_database.manager import RepositoryManagerFactory
+from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
+from models.metadata_database.notification.models import NotificationDirection
+from services.notifications.notifications_management_service import NotificationsManagementService
+from tools.constants import PCF
+from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
+
+# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0)
+PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+
+# Asset type used to identify PCF exchange assets in EDC catalogs (CX-0136)
+PCF_EXCHANGE_ASSET_TYPE = "https://w3id.org/catenax/taxonomy#PcfExchange"
 
 
 class PcfProvisionManager:
     """
     Manages PCF provision operations for data providers.
 
-    This manager handles sending PCF responses to data consumers.
+    This manager handles:
+    - Validating PCF data against the Catena-X schema
+    - Storing PCF payloads in the submodel service
+    - Tracking exchange status in the metadata database
+    - Creating notifications for PCF response events
+    - Sending PCF data to the requesting party via EDC (discovery, negotiation, transfer)
+
+    PCF Response Flow (CX-0136):
+        1. Data consumer sends a PCF request (handled by exchange manager)
+        2. Data provider reviews the incoming request (via management endpoints)
+        3. Data provider responds with PCF data via this provision manager
+        4. The response is validated, stored locally, and sent via EDC
+        5. The exchange status is updated in the database
+
+    EDC Data Exchange Flow:
+        1. Discover connector endpoints for the requesting BPN
+        2. For each connector, the SDK's ``do_put()`` with a dct_type filter handles
+           catalog filtering, contract negotiation, and PUT in a single call
+        3. The PCF data is sent via EDC data plane PUT to ``/{requestId}``
+
+    PCF Update Flow:
+        Updates are ONLY feasible for PCF responses that have been previously
+        delivered at least once. Proactive updates without a prior request are
+        NOT achievable with the current Catena-X PCF specification version.
     """
 
-    def __init__(self, submodel_service: Optional[SubmodelServiceManager] = None) -> None:
-        """Initialize the provision manager with submodel service."""
+    def __init__(
+        self,
+        submodel_service: Optional[SubmodelServiceManager] = None,
+        notification_service: Optional[NotificationsManagementService] = None,
+    ) -> None:
+        """Initialize the provision manager with submodel and notification services."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
+        self._notification_service = notification_service or NotificationsManagementService()
+        self._own_bpn = ConfigManager.get_config("bpn", default=None)
+
+        # EDC connector services are imported lazily from the connector module
+        # to avoid circular imports at module load time.
+        self._connector_consumer_manager = None
+        self._consumer_connector_service: Optional[BaseConnectorConsumerService] = None
 
     def send_or_update_pcf_response(
         self,
@@ -60,20 +112,11 @@ class PcfProvisionManager:
         """
         Send or update a PCF response for a given request.
 
-        If a response for the request_id already exists, it will be updated.
-        Otherwise, a new response will be created.
-
-        TODO: Implement PCF Response Flow (CX-0136):
-            1. Receive PCF request from data consumer via EDC (footprintExchange endpoint)
-            2. Data provider processes the request and prepares PCF data
-            3. Send PCF response back to the consumer via EDC
-
-        TODO: Implement PCF Update Flow:
-            - Updates are ONLY feasible for PCF responses that have been previously
-              requested at least once (see PCF Request flow)
-            - Proactive updates without a prior request are NOT achievable with the
-              current Catena-X PCF specification version
-            - The update flag indicates this is a modification to previously shared data
+        If the exchange record already has delivered/updated status, this is treated
+        as an update. Otherwise, it is a first-time delivery. The PCF data is validated
+        against the Catena-X schema, stored in the submodel service, sent to the
+        requesting party via EDC data exchange, and the exchange record in the
+        database is updated accordingly.
 
         For synchronous data exchange (data pull), see PCF Standard CX-0136, chapter 5.2.
 
@@ -86,50 +129,352 @@ class PcfProvisionManager:
 
         Returns:
             Dictionary with the response details and whether it was created or updated.
+
+        Raises:
+            ValueError: If PCF data validation fails or the request is not found.
         """
-        # TODO: Check if response exists in submodel service
-        # try:
-        #     existing = self._submodel_service.get_twin_aspect_document(...)
-        #     is_update = True
-        # except NotFoundError:
-        #     is_update = False
-        is_update = False
-        now = datetime.now(timezone.utc).isoformat()
+        logger.info(f"Processing PCF provision response for request {request_id}")
 
-        if is_update:
-            logger.info(f"Updating PCF response for request {request_id}")
-            # TODO: Update response in submodel service
-            response_data = {
-                "requestId": request_id,
-                "pcfData": pcf_data,
-                "respondingBpn": responding_bpn,
-                "status": status,
-                "message": message,
-                "updatedAt": now,
-            }
+        # Validate PCF data against the Catena-X schema
+        self._validate_pcf_data(request_id, pcf_data)
+
+        # Retrieve the exchange record to get the requesting BPN and determine if update
+        exchange_entity = self._get_exchange_entity(request_id)
+        is_update = exchange_entity is not None and exchange_entity.status in (
+            PcfExchangeStatus.DELIVERED,
+            PcfExchangeStatus.UPDATED,
+        )
+
+        # Store PCF data in the submodel service
+        self._store_pcf_data(request_id, pcf_data)
+
+        # Send the PCF data to the requesting party via EDC data plane
+        if exchange_entity and exchange_entity.requesting_bpn:
+            self._send_pcf_via_edc(
+                request_id=request_id,
+                requesting_bpn=exchange_entity.requesting_bpn,
+                pcf_data=pcf_data,
+                is_update=is_update,
+            )
         else:
-            logger.info(f"Creating PCF response for request {request_id}")
-            response_data = {
-                "requestId": request_id,
-                "pcfData": pcf_data,
-                "respondingBpn": responding_bpn,
-                "status": status,
-                "message": message,
-                "createdAt": now,
-                "updatedAt": now,
-            }
-            # TODO: Store response in submodel service
-            # self._submodel_service.upload_twin_aspect_document(...)
+            logger.warning(
+                f"No requesting BPN found for request {request_id}. "
+                "Skipping EDC data exchange — PCF data stored locally only."
+            )
 
-        # TODO: Update associated request status to completed if exists
-        # Use submodel service to update the request status
+        # Create notification for the PCF response
+        self._notify_pcf_response(request_id, responding_bpn, is_update, message)
 
-        logger.info(f"PCF response for request {request_id} {'updated' if is_update else 'created'} successfully")
-
-        return {
-            **response_data,
+        now = datetime.now(timezone.utc).isoformat()
+        response_data = {
+            "requestId": request_id,
+            "respondingBpn": responding_bpn,
+            "status": PcfExchangeStatus.UPDATED.value if is_update else PcfExchangeStatus.DELIVERED.value,
+            "message": message,
             "isUpdate": is_update,
+            "updatedAt": now,
         }
 
+        logger.info(
+            f"PCF response for request {request_id} "
+            f"{'updated' if is_update else 'delivered'} successfully"
+        )
 
+        return response_data
+
+    def _validate_pcf_data(self, request_id: str, pcf_data: Dict[str, Any]) -> None:
+        """
+        Validate PCF data against the Catena-X PCF aspect model schema.
+
+        Args:
+            request_id: The request ID (for logging purposes).
+            pcf_data: PCF data payload to validate.
+
+        Raises:
+            ValueError: If the data is empty or fails schema validation.
+        """
+        if not pcf_data:
+            raise ValueError("PCF data cannot be empty")
+
+        try:
+            pcf_schema_result = submodel_schema_finder(PCF_SEMANTIC_ID)
+            # PCF schema uses Draft-04; the draft-aware validator handles this correctly
+            json_validator_draft_aware(pcf_schema_result["schema"], pcf_data)
+            logger.info(f"PCF data for request {request_id} validated successfully against schema")
+        except Exception as e:
+            logger.error(f"PCF data validation failed for request {request_id}: {str(e)}")
+            raise ValueError(f"PCF data validation failed: {str(e)}")
+
+    def _get_exchange_entity(self, request_id: str):
+        """
+        Retrieve the PCF exchange entity from the database.
+
+        Args:
+            request_id: The request ID to look up.
+
+        Returns:
+            The PcfExchangeEntity if found, otherwise None.
+        """
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                return repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+        except Exception as e:
+            logger.debug(f"Could not retrieve exchange record for request {request_id}: {str(e)}")
+        return None
+
+    # ------------------------------------------------------------------ #
+    #  EDC Data Exchange (discovery → do_put with dct_type filter)        #
+    # ------------------------------------------------------------------ #
+
+    def _get_connector_services(self):
+        """
+        Lazily import connector services to avoid circular imports at module load.
+
+        Returns:
+            Tuple of (connector_consumer_manager, consumer_connector_service).
+        """
+        if self._connector_consumer_manager is None:
+            from connector import connector_consumer_manager, consumer_connector_service
+            self._connector_consumer_manager = connector_consumer_manager
+            self._consumer_connector_service = consumer_connector_service
+        return self._connector_consumer_manager, self._consumer_connector_service
+
+    def _send_pcf_via_edc(
+        self,
+        request_id: str,
+        requesting_bpn: str,
+        pcf_data: Dict[str, Any],
+        is_update: bool = False,
+    ) -> None:
+        """
+        Send PCF data to the requesting party through the EDC dataspace connector.
+
+        Uses the SDK's ``do_put()`` with a ``PcfExchange`` dct_type filter
+        expression, which handles the full EDC flow (catalog filtering →
+        contract negotiation → EDR → HTTP PUT) in a single call.
+        Each discovered connector is tried until one succeeds.
+
+        Args:
+            request_id: The PCF request ID (used as the PUT path).
+            requesting_bpn: BPN of the party that requested the PCF data.
+            pcf_data: The validated PCF payload to send.
+            is_update: Whether this is an update to a previously delivered response.
+
+        Raises:
+            ValueError: If no connectors are found or the data transfer fails
+                        on all discovered connectors.
+        """
+        connector_consumer_manager, consumer_connector_service = self._get_connector_services()
+
+        if not connector_consumer_manager or not consumer_connector_service:
+            raise ValueError(
+                "EDC connector services are not available. "
+                "Cannot send PCF data via dataspace."
+            )
+
+        # Step 1: Discover connector endpoints for the requesting BPN
+        logger.info(f"[PCF Provision] Discovering connectors for BPN [{requesting_bpn}]")
+        connectors: List[str] = connector_consumer_manager.get_connectors(requesting_bpn)
+        if not connectors:
+            raise ValueError(
+                f"No connector endpoints found for BPN [{requesting_bpn}]. "
+                "Cannot send PCF data via EDC."
+            )
+        logger.info(
+            f"[PCF Provision] Found {len(connectors)} connector(s) for BPN [{requesting_bpn}]"
+        )
+
+        # Build the filter expression for PcfExchange asset type
+        filter_expression = [
+            consumer_connector_service.get_filter_expression(
+                key=consumer_connector_service.DEFAULT_DCT_TYPE_KEY,
+                operator="=",
+                value=PCF_EXCHANGE_ASSET_TYPE,
+            )
+        ]
+
+        put_path = f"/{request_id}"
+        if is_update:
+            put_path += "?update=true"
+
+        # Step 2: Try each connector — do_put handles catalog filtering,
+        #         contract negotiation, and PUT in a single call
+        last_error: Optional[Exception] = None
+        for connector_url in connectors:
+            try:
+                logger.info(
+                    f"[PCF Provision] Attempting do_put on "
+                    f"[{connector_url}] path=[{put_path}]"
+                )
+                response = consumer_connector_service.do_put(
+                    counter_party_id=requesting_bpn,
+                    counter_party_address=connector_url,
+                    filter_expression=filter_expression,
+                    path=put_path,
+                    json=pcf_data,
+                )
+
+                if response.status_code in (200, 201, 204):
+                    logger.info(
+                        f"[PCF Provision] PCF data sent successfully via EDC "
+                        f"for request [{request_id}] (HTTP {response.status_code})"
+                    )
+                    self._update_exchange_record(request_id, is_update)
+                    return
+
+                logger.warning(
+                    f"[PCF Provision] EDC PUT returned status "
+                    f"{response.status_code} on [{connector_url}]: {response.text}"
+                )
+                last_error = ValueError(
+                    f"EDC data transfer failed with status {response.status_code}"
+                )
+
+            except Exception as e:
+                logger.warning(
+                    f"[PCF Provision] Failed on connector [{connector_url}]: {e}"
+                )
+                last_error = e
+
+        raise ValueError(
+            f"Failed to send PCF data via EDC to any connector for "
+            f"BPN [{requesting_bpn}]: {last_error}"
+        )
+
+    def _store_pcf_data(self, request_id: str, pcf_data: Dict[str, Any]) -> None:
+        """
+        Store or overwrite PCF data in the submodel service.
+
+        Args:
+            request_id: The request ID used as the submodel document ID.
+            pcf_data: The PCF payload to store.
+
+        Raises:
+            ValueError: If storing the data fails.
+        """
+        try:
+            self._submodel_service.upload_twin_aspect_document(
+                submodel_id=UUID(request_id),
+                semantic_id=PCF_SEMANTIC_ID,
+                payload=pcf_data,
+            )
+            logger.info(f"PCF data stored in submodel service for request {request_id}")
+        except Exception as e:
+            logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
+            raise ValueError(f"Failed to store PCF data: {str(e)}")
+
+    def _update_exchange_record(
+        self,
+        request_id: str,
+        is_update: bool,
+        message: Optional[str] = None,
+    ) -> None:
+        """
+        Update the PCF exchange record in the metadata database.
+
+        For first-time deliveries, the PCF location and DELIVERED status are set.
+        For updates, only the status is changed to UPDATED.
+
+        Args:
+            request_id: The request ID of the exchange.
+            is_update: Whether this is an update to a previously delivered response.
+            message: Optional message for the exchange record.
+
+        Raises:
+            ValueError: If the exchange record is not found or the update fails.
+        """
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+
+                if not entity:
+                    logger.warning(
+                        f"No exchange record found for request {request_id}. "
+                        "The request may not have been received through the exchange endpoint."
+                    )
+                    return
+
+                if is_update:
+                    repo_manager.pcf_repository.update_status(
+                        UUID(request_id), PcfExchangeStatus.UPDATED, message
+                    )
+                    logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
+                else:
+                    pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{request_id}"
+                    repo_manager.pcf_repository.update_pcf_location(UUID(request_id), pcf_location)
+                    repo_manager.pcf_repository.update_status(
+                        UUID(request_id), PcfExchangeStatus.DELIVERED, message
+                    )
+                    logger.info(
+                        f"PCF exchange {request_id} marked as DELIVERED "
+                        f"with location: {pcf_location}"
+                    )
+
+        except Exception as e:
+            logger.error(f"Failed to update exchange record for request {request_id}: {str(e)}")
+            raise ValueError(f"Failed to update exchange record: {str(e)}")
+
+    def _notify_pcf_response(
+        self,
+        request_id: str,
+        responding_bpn: str,
+        is_update: bool,
+        message: Optional[str] = None,
+    ) -> None:
+        """
+        Create a notification for the PCF response event.
+
+        Args:
+            request_id: The request ID being responded to.
+            responding_bpn: BPN of the responding party.
+            is_update: Whether this is an update notification.
+            message: Optional message for the notification.
+        """
+        if not self._own_bpn:
+            logger.warning(
+                f"Cannot create notification for PCF response {request_id}: "
+                "bpn not configured in configuration.yml"
+            )
+            return
+
+        try:
+            notification_type = "PCF_RESPONSE_SENT" if not is_update else "PCF_UPDATE_SENT"
+            default_message = (
+                f"PCF data update sent by {responding_bpn}" if is_update
+                else f"PCF data response sent by {responding_bpn}"
+            )
+            context = f"IndustryCore-PCF-{notification_type}:1.0.0"
+
+            header = NotificationHeader(
+                message_id=uuid4(),
+                context=context,
+                sender_bpn=self._own_bpn,
+                receiver_bpn=self._own_bpn,
+            )
+
+            content_data = {
+                "notificationType": notification_type,
+                "requestId": request_id,
+                "respondingBpn": responding_bpn,
+                "isUpdate": is_update,
+                "message": message or default_message,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            content = NotificationContent(**content_data)
+
+            notification = Notification(header=header, content=content)
+            self._notification_service.create_notification(
+                notification=notification,
+                direction=NotificationDirection.OUTGOING,
+                use_case=PCF,
+            )
+
+            logger.info(f"Created PCF notification for response {request_id}: type={notification_type}")
+
+        except Exception as e:
+            # Notification creation failure should not block the main flow
+            logger.error(f"Failed to create PCF notification for response {request_id}: {str(e)}")
+
+
+# Module-level singleton for convenience
 provision_manager = PcfProvisionManager()
