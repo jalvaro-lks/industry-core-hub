@@ -334,7 +334,7 @@ provider:
     # -- Storage mode: "filesystem" (local storage) or "http" (external service)
     mode: "filesystem"
     # -- Local filesystem path for submodels (used when mode=filesystem)
-    path: "/industry-core-hub/data/submodels"
+    path: "industry-core-hub/data/submodels"
     apiPath: "/submodel-dispatcher"
     # -- External HTTP submodel service configuration (used when mode=http)
     http:
