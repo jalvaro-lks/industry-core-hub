@@ -27,7 +27,7 @@ PCF Management Manager - Administrative operations for PCF data.
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, NAMESPACE_URL, uuid5
 
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
@@ -39,6 +39,11 @@ logger = LoggingManager.get_logger(__name__)
 
 # PCF semantic ID constant
 PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+
+
+def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
+    """Derive a deterministic UUID for a manufacturer part ID."""
+    return uuid5(NAMESPACE_URL, manufacturer_part_id)
 
 
 class PcfManagementManager:
@@ -75,6 +80,9 @@ class PcfManagementManager:
         """
         Retrieve a PCF exchange by ID.
         
+        The actual PCF payload is looked up by ``manufacturer_part_id``
+        (product-scoped storage).
+
         Args:
             request_id: The unique request identifier (UUID string).
             
@@ -94,8 +102,15 @@ class PcfManagementManager:
                 
                 # Try to retrieve the actual PCF data payload
                 try:
+                    if not entity.manufacturer_part_id:
+                        logger.warning(
+                            f"No manufacturerPartId for exchange {request_id}. "
+                            "Cannot retrieve PCF data."
+                        )
+                        return exchange_dict
+                    submodel_id = _pcf_submodel_id(entity.manufacturer_part_id)
                     pcf_data = self._submodel_service.get_twin_aspect_document(
-                        submodel_id=UUID(request_id),
+                        submodel_id=submodel_id,
                         semantic_id=PCF_SEMANTIC_ID
                     )
                     if pcf_data:
@@ -114,7 +129,10 @@ class PcfManagementManager:
     def get_pcf_data(self, request_id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieve the PCF data payload for a request.
-        
+
+        The payload is looked up by ``manufacturer_part_id`` (product-scoped
+        storage).
+
         Args:
             request_id: The unique request identifier (UUID string).
             
@@ -124,8 +142,19 @@ class PcfManagementManager:
         logger.info(f"Retrieving PCF data for request {request_id}")
         
         try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+
+            if not entity or not entity.manufacturer_part_id:
+                logger.warning(
+                    f"No manufacturerPartId for request {request_id}. "
+                    "Cannot retrieve PCF data."
+                )
+                return None
+
+            submodel_id = _pcf_submodel_id(entity.manufacturer_part_id)
             pcf_data = self._submodel_service.get_twin_aspect_document(
-                submodel_id=UUID(request_id),
+                submodel_id=submodel_id,
                 semantic_id=PCF_SEMANTIC_ID
             )
             return pcf_data

@@ -24,7 +24,7 @@
 """Pydantic models for PCF Kit management API endpoints."""
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -63,11 +63,12 @@ class SendPcfRequestModel(BaseModel):
 
 
 class SendOrUpdatePcfResponseModel(BaseModel):
-    """Model for sending or updating a PCF response as a data provider."""
-    pcf_data: Dict[str, Any] = Field(
-        alias="pcfData",
-        description="The Product Carbon Footprint data payload."
-    )
+    """Model for sending or updating a PCF response as a data provider.
+
+    The PCF payload is always retrieved from the product-scoped store keyed
+    by ``manufacturerPartId``.  The provider only needs to specify which
+    request to respond to and their BPN.
+    """
     responding_bpn: str = Field(
         alias="respondingBpn",
         description="Business Partner Number of the responding party (data provider)."

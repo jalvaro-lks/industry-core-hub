@@ -31,7 +31,7 @@ Reference:
 
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 from tractusx_sdk.extensions.notification_api.models import Notification, NotificationHeader, NotificationContent
 
@@ -46,6 +46,18 @@ from tools.constants import PCF
 from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
+
+# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0)
+PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+
+
+def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
+    """Derive a deterministic UUID for a manufacturer part ID.
+
+    Uses UUID5 with NAMESPACE_URL so the same part always maps to the
+    same submodel document in the submodel service.
+    """
+    return uuid5(NAMESPACE_URL, manufacturer_part_id)
 
 
 class PcfExchangeManager:
@@ -213,26 +225,7 @@ class PcfExchangeManager:
         
 
         try:
-            # Store PCF data in database (placeholder - implement actual DB storage)
-            logger.info(f"Storing PCF data for request {request_id} in database (placeholder)")
-            pcf_semantic_id = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
-            self._submodel_service.upload_twin_aspect_document(
-                submodel_id=UUID(request_id),
-                semantic_id=pcf_semantic_id,
-                payload=pcf_data
-            )
-
-            with RepositoryManagerFactory.create() as repo_manager:
-                if is_update:
-                    repo_manager.pcf_repository.update_status(request_id, PcfExchangeStatus.UPDATED)
-                    logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
-                else:
-                    pcf_location = f"submodel://{pcf_semantic_id}/{request_id}"
-                    repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location)
-                    logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
-                    repo_manager.pcf_repository.update_status(request_id, PcfExchangeStatus.DELIVERED)
-                    logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
-
+            self._store_and_update_pcf(request_id, pcf_data, is_update)
         except Exception as e:
             logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to store PCF data: {str(e)}")
@@ -265,6 +258,60 @@ class PcfExchangeManager:
             "requestId": request_id,
             "isUpdate": is_update
         }
+
+    def _store_and_update_pcf(
+        self,
+        request_id: str,
+        pcf_data: Dict[str, Any],
+        is_update: bool,
+    ) -> None:
+        """
+        Store the PCF payload in the submodel service and update the exchange
+        record status.
+
+        The payload is keyed by ``manufacturer_part_id`` (product-scoped).
+
+        Args:
+            request_id: The PCF request ID.
+            pcf_data: The validated PCF payload.
+            is_update: Whether this is an update to previously shared data.
+        """
+        with RepositoryManagerFactory.create() as repo_manager:
+            entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+
+        if not entity or not entity.manufacturer_part_id:
+            raise ValueError(
+                f"No manufacturerPartId found for request {request_id}. "
+                "Cannot store PCF data without a part identifier."
+            )
+
+        manufacturer_part_id = entity.manufacturer_part_id
+        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+        pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
+
+        logger.info(
+            f"Storing PCF data for request {request_id} "
+            f"(submodel_id={submodel_id})"
+        )
+        self._submodel_service.upload_twin_aspect_document(
+            submodel_id=submodel_id,
+            semantic_id=PCF_SEMANTIC_ID,
+            payload=pcf_data,
+        )
+
+        with RepositoryManagerFactory.create() as repo_manager:
+            if is_update:
+                repo_manager.pcf_repository.update_status(
+                    request_id, PcfExchangeStatus.UPDATED
+                )
+                logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
+            else:
+                repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location)
+                logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
+                repo_manager.pcf_repository.update_status(
+                    request_id, PcfExchangeStatus.DELIVERED
+                )
+                logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
 
     def _create_pcf_notification(
         self,

@@ -30,11 +30,10 @@ Reference:
 """
 
 from typing import Dict, Any, List, Optional
-from uuid import UUID, uuid4
+from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
 from datetime import datetime, timezone
 
 from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
-from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 from tractusx_sdk.extensions.notification_api.models import Notification, NotificationHeader, NotificationContent
 
 from managers.config.log_manager import LoggingManager
@@ -45,7 +44,6 @@ from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
 from models.metadata_database.notification.models import NotificationDirection
 from services.notifications.notifications_management_service import NotificationsManagementService
 from tools.constants import PCF
-from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -54,6 +52,15 @@ PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
 
 # Asset type used to identify PCF exchange assets in EDC catalogs (CX-0136)
 PCF_EXCHANGE_ASSET_TYPE = "https://w3id.org/catenax/taxonomy#PcfExchange"
+
+
+def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
+    """Derive a deterministic UUID for a manufacturer part ID.
+
+    Uses UUID5 with NAMESPACE_URL so the same part always maps to the
+    same submodel document in the submodel service.
+    """
+    return uuid5(NAMESPACE_URL, manufacturer_part_id)
 
 
 class PcfProvisionManager:
@@ -104,7 +111,6 @@ class PcfProvisionManager:
     def send_or_update_pcf_response(
         self,
         request_id: str,
-        pcf_data: Dict[str, Any],
         responding_bpn: str,
         status: str = "delivered",
         message: Optional[str] = None,
@@ -113,16 +119,16 @@ class PcfProvisionManager:
         Send or update a PCF response for a given request.
 
         If the exchange record already has delivered/updated status, this is treated
-        as an update. Otherwise, it is a first-time delivery. The PCF data is validated
-        against the Catena-X schema, stored in the submodel service, sent to the
-        requesting party via EDC data exchange, and the exchange record in the
-        database is updated accordingly.
+        as an update. Otherwise, it is a first-time delivery.
+
+        The PCF payload is always retrieved from the product-scoped store keyed
+        by ``manufacturerPartId``.  This means the PCF document must have been
+        uploaded beforehand (e.g. via the PCF store endpoint).
 
         For synchronous data exchange (data pull), see PCF Standard CX-0136, chapter 5.2.
 
         Args:
             request_id: The ID of the PCF request being responded to.
-            pcf_data: PCF data payload matching the Catena-X PCF aspect model.
             responding_bpn: Business Partner Number of the responding party.
             status: Status of the response (default: delivered).
             message: Optional message accompanying the response.
@@ -131,22 +137,37 @@ class PcfProvisionManager:
             Dictionary with the response details and whether it was created or updated.
 
         Raises:
-            ValueError: If PCF data validation fails or the request is not found.
+            ValueError: If the request is not found, no manufacturerPartId is
+                        associated, or no PCF data exists for the product.
         """
         logger.info(f"Processing PCF provision response for request {request_id}")
 
-        # Validate PCF data against the Catena-X schema
-        self._validate_pcf_data(request_id, pcf_data)
-
-        # Retrieve the exchange record to get the requesting BPN and determine if update
+        # Retrieve the exchange record to get the requesting BPN and manufacturer part ID
         exchange_entity = self._get_exchange_entity(request_id)
         is_update = exchange_entity is not None and exchange_entity.status in (
             PcfExchangeStatus.DELIVERED,
             PcfExchangeStatus.UPDATED,
         )
 
-        # Store PCF data in the submodel service
-        self._store_pcf_data(request_id, pcf_data)
+        manufacturer_part_id = (
+            exchange_entity.manufacturer_part_id if exchange_entity else None
+        )
+        if not manufacturer_part_id:
+            raise ValueError(
+                f"No manufacturerPartId associated with request {request_id}. "
+                "Cannot retrieve PCF data without a part identifier."
+            )
+
+        # Retrieve the PCF payload from the product-scoped store
+        pcf_data = self._retrieve_pcf_data(manufacturer_part_id)
+        if not pcf_data:
+            raise ValueError(
+                f"No PCF data found for manufacturerPartId [{manufacturer_part_id}]. "
+                "Ensure a PCF has been stored before responding to a request."
+            )
+        logger.info(
+            f"Retrieved PCF data for manufacturerPartId [{manufacturer_part_id}]"
+        )
 
         # Send the PCF data to the requesting party via EDC data plane
         if exchange_entity and exchange_entity.requesting_bpn:
@@ -155,6 +176,7 @@ class PcfProvisionManager:
                 requesting_bpn=exchange_entity.requesting_bpn,
                 pcf_data=pcf_data,
                 is_update=is_update,
+                manufacturer_part_id=manufacturer_part_id,
             )
         else:
             logger.warning(
@@ -172,6 +194,7 @@ class PcfProvisionManager:
             "status": PcfExchangeStatus.UPDATED.value if is_update else PcfExchangeStatus.DELIVERED.value,
             "message": message,
             "isUpdate": is_update,
+            "manufacturerPartId": manufacturer_part_id,
             "updatedAt": now,
         }
 
@@ -181,29 +204,6 @@ class PcfProvisionManager:
         )
 
         return response_data
-
-    def _validate_pcf_data(self, request_id: str, pcf_data: Dict[str, Any]) -> None:
-        """
-        Validate PCF data against the Catena-X PCF aspect model schema.
-
-        Args:
-            request_id: The request ID (for logging purposes).
-            pcf_data: PCF data payload to validate.
-
-        Raises:
-            ValueError: If the data is empty or fails schema validation.
-        """
-        if not pcf_data:
-            raise ValueError("PCF data cannot be empty")
-
-        try:
-            pcf_schema_result = submodel_schema_finder(PCF_SEMANTIC_ID)
-            # PCF schema uses Draft-04; the draft-aware validator handles this correctly
-            json_validator_draft_aware(pcf_schema_result["schema"], pcf_data)
-            logger.info(f"PCF data for request {request_id} validated successfully against schema")
-        except Exception as e:
-            logger.error(f"PCF data validation failed for request {request_id}: {str(e)}")
-            raise ValueError(f"PCF data validation failed: {str(e)}")
 
     def _get_exchange_entity(self, request_id: str):
         """
@@ -222,9 +222,28 @@ class PcfProvisionManager:
             logger.debug(f"Could not retrieve exchange record for request {request_id}: {str(e)}")
         return None
 
-    # ------------------------------------------------------------------ #
-    #  EDC Data Exchange (discovery → do_put with dct_type filter)        #
-    # ------------------------------------------------------------------ #
+    def _retrieve_pcf_data(self, manufacturer_part_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a previously stored PCF document for a given manufacturer part.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID.
+
+        Returns:
+            The PCF payload if found, otherwise None.
+        """
+        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+        try:
+            return self._submodel_service.get_twin_aspect_document(
+                submodel_id=submodel_id,
+                semantic_id=PCF_SEMANTIC_ID,
+            )
+        except Exception as e:
+            logger.debug(
+                f"No existing PCF found for manufacturerPartId "
+                f"[{manufacturer_part_id}]: {e}"
+            )
+            return None
 
     def _get_connector_services(self):
         """
@@ -245,6 +264,7 @@ class PcfProvisionManager:
         requesting_bpn: str,
         pcf_data: Dict[str, Any],
         is_update: bool = False,
+        manufacturer_part_id: Optional[str] = None,
     ) -> None:
         """
         Send PCF data to the requesting party through the EDC dataspace connector.
@@ -259,6 +279,7 @@ class PcfProvisionManager:
             requesting_bpn: BPN of the party that requested the PCF data.
             pcf_data: The validated PCF payload to send.
             is_update: Whether this is an update to a previously delivered response.
+            manufacturer_part_id: The manufacturer part ID (used for pcf_location).
 
         Raises:
             ValueError: If no connectors are found or the data transfer fails
@@ -319,7 +340,9 @@ class PcfProvisionManager:
                         f"[PCF Provision] PCF data sent successfully via EDC "
                         f"for request [{request_id}] (HTTP {response.status_code})"
                     )
-                    self._update_exchange_record(request_id, is_update)
+                    self._update_exchange_record(
+                        request_id, is_update, manufacturer_part_id=manufacturer_part_id
+                    )
                     return
 
                 logger.warning(
@@ -341,44 +364,27 @@ class PcfProvisionManager:
             f"BPN [{requesting_bpn}]: {last_error}"
         )
 
-    def _store_pcf_data(self, request_id: str, pcf_data: Dict[str, Any]) -> None:
-        """
-        Store or overwrite PCF data in the submodel service.
-
-        Args:
-            request_id: The request ID used as the submodel document ID.
-            pcf_data: The PCF payload to store.
-
-        Raises:
-            ValueError: If storing the data fails.
-        """
-        try:
-            self._submodel_service.upload_twin_aspect_document(
-                submodel_id=UUID(request_id),
-                semantic_id=PCF_SEMANTIC_ID,
-                payload=pcf_data,
-            )
-            logger.info(f"PCF data stored in submodel service for request {request_id}")
-        except Exception as e:
-            logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
-            raise ValueError(f"Failed to store PCF data: {str(e)}")
-
     def _update_exchange_record(
         self,
         request_id: str,
         is_update: bool,
         message: Optional[str] = None,
+        manufacturer_part_id: Optional[str] = None,
     ) -> None:
         """
         Update the PCF exchange record in the metadata database.
 
         For first-time deliveries, the PCF location and DELIVERED status are set.
+        The ``pcf_location`` points to the submodel document keyed by
+        ``manufacturer_part_id`` so that all exchanges for the same product
+        share the same PCF payload reference.
         For updates, only the status is changed to UPDATED.
 
         Args:
             request_id: The request ID of the exchange.
             is_update: Whether this is an update to a previously delivered response.
             message: Optional message for the exchange record.
+            manufacturer_part_id: The manufacturer part ID (used in pcf_location).
 
         Raises:
             ValueError: If the exchange record is not found or the update fails.
@@ -400,7 +406,7 @@ class PcfProvisionManager:
                     )
                     logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
                 else:
-                    pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{request_id}"
+                    pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
                     repo_manager.pcf_repository.update_pcf_location(UUID(request_id), pcf_location)
                     repo_manager.pcf_repository.update_status(
                         UUID(request_id), PcfExchangeStatus.DELIVERED, message

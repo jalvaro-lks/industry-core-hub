@@ -52,7 +52,6 @@ async def send_or_update_pcf_response(
     try:
         result = provision_manager.send_or_update_pcf_response(
             request_id=request_id,
-            pcf_data=body.pcf_data,
             responding_bpn=body.responding_bpn,
             status=body.status.value if body.status else "delivered",
             message=body.message,
