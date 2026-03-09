@@ -35,63 +35,87 @@ router = APIRouter(
 )
 
 
-@router.get("/management/requests")
-async def get_all_pcf_requests(
-    status: Optional[str] = Query(None, description="Filter by request status (e.g., pending, completed)"),
+@router.get("/management/incoming")
+async def get_all_incoming_exchanges(
+    status: Optional[str] = Query(None, description="Filter by exchange status (e.g., PENDING, DELIVERED)"),
     manufacturer_part_id: Optional[str] = Query(None, alias="manufacturerPartId", description="Filter by manufacturer part ID"),
     customer_part_id: Optional[str] = Query(None, alias="customerPartId", description="Filter by customer part ID"),
-    requesting_bpn: Optional[str] = Query(None, alias="requestingBpn", description="Filter by requesting BPN"),
+    requesting_bpn: Optional[str] = Query(None, alias="requestingBpn", description="Filter by the BPN of the party requesting data from us"),
+    limit: int = Query(100, description="Maximum number of results to return"),
+    offset: int = Query(0, description="Number of results to skip"),
 ):
-    """Retrieve all PCF requests from the management service with optional filters."""
+    """Retrieve all incoming PCF exchanges (requests received from other parties)."""
     try:
-        return management_manager.get_all_requests(
+        return management_manager.get_all_incoming(
             status=status,
             manufacturer_part_id=manufacturer_part_id,
             customer_part_id=customer_part_id,
             requesting_bpn=requesting_bpn,
+            limit=limit,
+            offset=offset,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving PCF requests: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving incoming PCF exchanges: {str(e)}")
 
 
-@router.get("/management/responses")
-async def get_all_pcf_responses(
-    status: Optional[str] = Query(None, description="Filter by response status"),
-    request_id: Optional[str] = Query(None, alias="requestId", description="Filter by associated request ID"),
+@router.get("/management/outgoing")
+async def get_all_outgoing_exchanges(
+    status: Optional[str] = Query(None, description="Filter by exchange status (e.g., PENDING, DELIVERED)"),
+    manufacturer_part_id: Optional[str] = Query(None, alias="manufacturerPartId", description="Filter by manufacturer part ID"),
+    customer_part_id: Optional[str] = Query(None, alias="customerPartId", description="Filter by customer part ID"),
+    responding_bpn: Optional[str] = Query(None, alias="respondingBpn", description="Filter by the BPN of the party we requested data from"),
+    limit: int = Query(100, description="Maximum number of results to return"),
+    offset: int = Query(0, description="Number of results to skip"),
 ):
-    """Retrieve all PCF responses from the management service with optional filters."""
+    """Retrieve all outgoing PCF exchanges (requests we sent to other parties)."""
     try:
-        return management_manager.get_all_responses(
+        return management_manager.get_all_outgoing(
             status=status,
-            request_id=request_id,
+            manufacturer_part_id=manufacturer_part_id,
+            customer_part_id=customer_part_id,
+            responding_bpn=responding_bpn,
+            limit=limit,
+            offset=offset,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving PCF responses: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving outgoing PCF exchanges: {str(e)}")
 
 
-@router.get("/management/requests/{requestId}")
-async def get_pcf_request_by_id(request_id: str = Path(..., alias="requestId")):
-    """Retrieve a single PCF request by ID from the management service."""
+@router.get("/management/threads")
+async def get_all_exchange_threads(
+    status: Optional[str] = Query(None, description="Filter threads containing exchanges with this status"),
+    limit: int = Query(100, description="Maximum number of threads to return"),
+    offset: int = Query(0, description="Number of threads to skip"),
+):
+    """Retrieve all PCF exchange threads grouped by correlation_id, ordered by most recent activity."""
     try:
-        request_data = management_manager.get_pcf_request(request_id)
-        if not request_data:
-            raise HTTPException(status_code=404, detail=f"PCF request '{request_id}' not found")
-        return request_data
+        return management_manager.get_all_exchange_threads(
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange threads: {str(e)}")
+
+
+@router.get("/management/exchanges/{requestId}")
+async def get_pcf_exchange_by_id(request_id: str = Path(..., alias="requestId")):
+    """Retrieve a single PCF exchange by ID, including PCF data if available."""
+    try:
+        exchange_data = management_manager.get_pcf_exchange(request_id)
+        if not exchange_data:
+            raise HTTPException(status_code=404, detail=f"PCF exchange '{request_id}' not found")
+        return exchange_data
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving PCF request: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange: {str(e)}")
 
 
-@router.get("/management/responses/{requestId}")
-async def get_pcf_response_by_id(request_id: str = Path(..., alias="requestId")):
-    """Retrieve a single PCF response by request ID from the management service."""
+@router.get("/management/exchanges/{requestId}/thread")
+async def get_pcf_exchange_thread(request_id: str = Path(..., alias="requestId")):
+    """Retrieve all related PCF exchanges grouped by direction (incoming/outgoing) for a given request ID."""
     try:
-        response_data = management_manager.get_pcf_response(request_id)
-        if not response_data:
-            raise HTTPException(status_code=404, detail=f"PCF response for '{request_id}' not found")
-        return response_data
-    except HTTPException:
-        raise
+        return management_manager.get_exchange_thread(request_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving PCF response: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange thread: {str(e)}")

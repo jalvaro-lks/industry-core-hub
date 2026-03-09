@@ -25,13 +25,20 @@
 PCF Management Manager - Administrative operations for PCF data.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
+from uuid import UUID
 
 from managers.config.log_manager import LoggingManager
+from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
+from managers.metadata_database.manager import RepositoryManagerFactory
+from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus
 
 logger = LoggingManager.get_logger(__name__)
+
+# PCF semantic ID constant
+PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
 
 
 class PcfManagementManager:
@@ -45,112 +52,489 @@ class PcfManagementManager:
     def __init__(self, submodel_service: Optional[SubmodelServiceManager] = None) -> None:
         """Initialize the management manager with submodel service."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
+        self._own_bpn = ConfigManager.get_config("bpn", default=None)
 
-    def get_pcf_request(self, request_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a PCF request by ID."""
-        # TODO: Use submodel service to retrieve request
-        # return self._submodel_service.get_twin_aspect_document(...)
-        return None
+    def _entity_to_dict(self, entity: PcfExchangeEntity) -> Dict[str, Any]:
+        """Convert a PcfExchangeEntity to a dictionary representation."""
+        return {
+            "requestId": str(entity.request_id),
+            "requestingBpn": entity.requesting_bpn,
+            "respondingBpn": entity.responding_bpn,
+            "direction": entity.direction.value if entity.direction else None,
+            "status": entity.status.value if entity.status else None,
+            "manufacturerPartId": entity.manufacturer_part_id,
+            "customerPartId": entity.customer_part_id,
+            "message": entity.message,
+            "pcfLocation": entity.pcf_location,
+            "correlationId": entity.correlation_id,
+            "createdAt": entity.created_at.isoformat() if entity.created_at else None,
+            "updatedAt": entity.updated_at.isoformat() if entity.updated_at else None,
+        }
 
-    def get_pcf_response(self, request_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a PCF response by request ID."""
-        # TODO: Use submodel service to retrieve response
-        # return self._submodel_service.get_twin_aspect_document(...)
-        return None
+    def get_pcf_exchange(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a PCF exchange by ID.
+        
+        Args:
+            request_id: The unique request identifier (UUID string).
+            
+        Returns:
+            Dictionary with exchange metadata and PCF data if available, or None if not found.
+        """
+        logger.info(f"Retrieving PCF exchange {request_id}")
+        
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+                if not entity:
+                    logger.warning(f"PCF exchange {request_id} not found")
+                    return None
+                
+                exchange_dict = self._entity_to_dict(entity)
+                
+                # Try to retrieve the actual PCF data payload
+                try:
+                    pcf_data = self._submodel_service.get_twin_aspect_document(
+                        submodel_id=UUID(request_id),
+                        semantic_id=PCF_SEMANTIC_ID
+                    )
+                    if pcf_data:
+                        exchange_dict["pcfData"] = pcf_data
+                except Exception as e:
+                    logger.warning(f"Could not retrieve PCF data for exchange {request_id}: {str(e)}")
+                
+                return exchange_dict
+        except ValueError as e:
+            logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving PCF exchange {request_id}: {str(e)}")
+            raise
 
-    def get_all_requests(
+    def get_pcf_data(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve the PCF data payload for a request.
+        
+        Args:
+            request_id: The unique request identifier (UUID string).
+            
+        Returns:
+            The PCF data payload, or None if not found.
+        """
+        logger.info(f"Retrieving PCF data for request {request_id}")
+        
+        try:
+            pcf_data = self._submodel_service.get_twin_aspect_document(
+                submodel_id=UUID(request_id),
+                semantic_id=PCF_SEMANTIC_ID
+            )
+            return pcf_data
+        except Exception as e:
+            logger.warning(f"PCF data not found for request {request_id}: {str(e)}")
+            return None
+
+    def get_all_incoming(
         self,
         status: Optional[str] = None,
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
         requesting_bpn: Optional[str] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
         """
-        Retrieve all PCF requests with optional filtering.
+        Retrieve all incoming PCF exchanges (requests received from other parties).
 
         Args:
-            status: Filter by request status.
+            status: Filter by exchange status (PENDING, APPROVED, REJECTED, DELIVERED, UPDATED, ERROR).
             manufacturer_part_id: Filter by manufacturer part ID.
             customer_part_id: Filter by customer part ID.
-            requesting_bpn: Filter by requesting BPN.
+            requesting_bpn: Filter by the BPN of the party requesting data from us.
+            limit: Maximum number of results (default 100).
+            offset: Number of results to skip (default 0).
 
         Returns:
-            Dictionary of PCF requests matching the filter criteria.
+            List of incoming PCF exchange dictionaries.
         """
-        # TODO: Implement listing/filtering with submodel service
-        # This may require a database query or file system scan
-        result: Dict[str, Dict[str, Any]] = {}
-        return result
+        logger.info(f"Listing incoming PCF exchanges with filters: status={status}, "
+                   f"manufacturer_part_id={manufacturer_part_id}, requesting_bpn={requesting_bpn}")
+        
+        try:
+            status_enum = None
+            if status:
+                try:
+                    status_enum = PcfExchangeStatus(status.upper())
+                except ValueError:
+                    logger.warning(f"Invalid status filter: {status}")
+            
+            with RepositoryManagerFactory.create() as repo_manager:
+                if requesting_bpn:
+                    entities = repo_manager.pcf_repository.find_by_bpn(
+                        bpn=requesting_bpn,
+                        direction=PcfExchangeDirection.INCOMING,
+                        status=status_enum,
+                        manufacturer_part_id=manufacturer_part_id,
+                        customer_part_id=customer_part_id,
+                        limit=limit,
+                        offset=offset,
+                    )
+                else:
+                    entities = repo_manager.pcf_repository.find_by_bpn(
+                        bpn=self._own_bpn,
+                        direction=PcfExchangeDirection.INCOMING,
+                        status=status_enum,
+                        manufacturer_part_id=manufacturer_part_id,
+                        customer_part_id=customer_part_id,
+                        limit=limit,
+                        offset=offset,
+                    )
+                
+                return [self._entity_to_dict(entity) for entity in entities]
+                
+        except Exception as e:
+            logger.error(f"Error listing incoming PCF exchanges: {str(e)}")
+            raise
 
-    def get_all_responses(
+    def get_all_outgoing(
         self,
-        status: Optional[str] = None,
-        request_id: Optional[str] = None,
-    ) -> Dict[str, Dict[str, Any]]:
-        """
-        Retrieve all PCF responses with optional filtering.
-
-        Args:
-            status: Filter by response status.
-            request_id: Filter by associated request ID.
-
-        Returns:
-            Dictionary of PCF responses matching the filter criteria.
-        """
-        # TODO: Implement listing/filtering with submodel service
-        # This may require a database query or file system scan
-        result: Dict[str, Dict[str, Any]] = {}
-        return result
-
-    def update_pcf_request(
-        self,
-        request_id: str,
         status: Optional[str] = None,
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
+        responding_bpn: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all outgoing PCF exchanges (requests we sent to other parties).
+
+        Args:
+            status: Filter by exchange status (PENDING, APPROVED, REJECTED, DELIVERED, UPDATED, ERROR).
+            manufacturer_part_id: Filter by manufacturer part ID.
+            customer_part_id: Filter by customer part ID.
+            responding_bpn: Filter by the BPN of the party we requested data from.
+            limit: Maximum number of results (default 100).
+            offset: Number of results to skip (default 0).
+
+        Returns:
+            List of outgoing PCF exchange dictionaries.
+        """
+        logger.info(f"Listing outgoing PCF exchanges with filters: status={status}, "
+                   f"manufacturer_part_id={manufacturer_part_id}, responding_bpn={responding_bpn}")
+        
+        try:
+            status_enum = None
+            if status:
+                try:
+                    status_enum = PcfExchangeStatus(status.upper())
+                except ValueError:
+                    logger.warning(f"Invalid status filter: {status}")
+            
+            with RepositoryManagerFactory.create() as repo_manager:
+                if responding_bpn:
+                    entities = repo_manager.pcf_repository.find_by_bpn(
+                        bpn=responding_bpn,
+                        direction=PcfExchangeDirection.OUTGOING,
+                        status=status_enum,
+                        manufacturer_part_id=manufacturer_part_id,
+                        customer_part_id=customer_part_id,
+                        limit=limit,
+                        offset=offset,
+                    )
+                else:
+                    entities = repo_manager.pcf_repository.find_by_bpn(
+                        bpn=self._own_bpn,
+                        direction=PcfExchangeDirection.OUTGOING,
+                        status=status_enum,
+                        manufacturer_part_id=manufacturer_part_id,
+                        customer_part_id=customer_part_id,
+                        limit=limit,
+                        offset=offset,
+                    )
+                
+                return [self._entity_to_dict(entity) for entity in entities]
+                
+        except Exception as e:
+            logger.error(f"Error listing outgoing PCF exchanges: {str(e)}")
+            raise
+
+    def get_exchange_thread(
+        self,
+        request_id: str,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all PCF exchanges related to a request ID, ordered chronologically.
+        
+        This returns all incoming and outgoing exchanges that share the same
+        correlation_id or request_id, representing the full conversation thread.
+        Each exchange includes its direction (INCOMING/OUTGOING).
+
+        Args:
+            request_id: The request ID to find related exchanges for.
+
+        Returns:
+            List of related exchanges ordered chronologically (oldest first).
+        """
+        logger.info(f"Retrieving PCF exchange thread for request {request_id}")
+        
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                # First, get the original exchange to find its correlation_id
+                original = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+                if not original:
+                    return []
+                
+                # Use correlation_id if available, otherwise use request_id
+                correlation_id = original.correlation_id or str(original.request_id)
+                
+                # Find all exchanges with matching correlation_id or request_id
+                all_incoming = repo_manager.pcf_repository.find_by_bpn(
+                    bpn=self._own_bpn,
+                    direction=PcfExchangeDirection.INCOMING,
+                    limit=1000,
+                )
+                all_outgoing = repo_manager.pcf_repository.find_by_bpn(
+                    bpn=self._own_bpn,
+                    direction=PcfExchangeDirection.OUTGOING,
+                    limit=1000,
+                )
+                
+                # Filter by correlation_id or request_id and collect all related exchanges
+                related_exchanges = []
+                
+                for entity in all_incoming:
+                    if entity.correlation_id == correlation_id or str(entity.request_id) == request_id:
+                        related_exchanges.append(entity)
+                
+                for entity in all_outgoing:
+                    if entity.correlation_id == correlation_id or str(entity.request_id) == request_id:
+                        related_exchanges.append(entity)
+                
+                # Sort chronologically (oldest first)
+                related_exchanges.sort(key=lambda e: e.created_at or datetime.min.replace(tzinfo=timezone.utc))
+                
+                # Convert to dict representation
+                return [self._entity_to_dict(e) for e in related_exchanges]
+                
+        except ValueError as e:
+            logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Error retrieving PCF exchange thread: {str(e)}")
+            raise
+
+    def get_all_exchange_threads(
+        self,
+        status: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[List[Dict[str, Any]]]:
+        """
+        Retrieve all PCF exchange threads, grouped by correlation_id.
+        
+        Each thread is a list of related exchanges (incoming and outgoing)
+        ordered chronologically. Threads are ordered by the most recent activity.
+
+        Args:
+            status: Filter threads that contain exchanges with this status.
+            limit: Maximum number of threads to return (default 100).
+            offset: Number of threads to skip (default 0).
+
+        Returns:
+            List of threads, where each thread is a chronologically ordered list of exchanges.
+        """
+        logger.info(f"Retrieving all PCF exchange threads with filters: status={status}")
+        
+        try:
+            status_enum = None
+            if status:
+                try:
+                    status_enum = PcfExchangeStatus(status.upper())
+                except ValueError:
+                    logger.warning(f"Invalid status filter: {status}")
+            
+            with RepositoryManagerFactory.create() as repo_manager:
+                # Get all exchanges
+                all_incoming = repo_manager.pcf_repository.find_by_bpn(
+                    bpn=self._own_bpn,
+                    direction=PcfExchangeDirection.INCOMING,
+                    status=status_enum,
+                    limit=10000,
+                )
+                all_outgoing = repo_manager.pcf_repository.find_by_bpn(
+                    bpn=self._own_bpn,
+                    direction=PcfExchangeDirection.OUTGOING,
+                    status=status_enum,
+                    limit=10000,
+                )
+                
+                # Combine all exchanges
+                all_exchanges = list(all_incoming) + list(all_outgoing)
+                
+                # Group by correlation_id (or request_id if no correlation_id)
+                threads_map: Dict[str, List[PcfExchangeEntity]] = {}
+                for entity in all_exchanges:
+                    thread_key = entity.correlation_id or str(entity.request_id)
+                    if thread_key not in threads_map:
+                        threads_map[thread_key] = []
+                    threads_map[thread_key].append(entity)
+                
+                # Sort each thread chronologically and convert to dicts
+                threads = []
+                for thread_key, entities in threads_map.items():
+                    entities.sort(key=lambda e: e.created_at or datetime.min.replace(tzinfo=timezone.utc))
+                    threads.append([self._entity_to_dict(e) for e in entities])
+                
+                # Sort threads by most recent activity (newest thread first)
+                threads.sort(
+                    key=lambda t: t[-1].get("createdAt", "") if t else "",
+                    reverse=True
+                )
+                
+                # Apply pagination
+                return threads[offset:offset + limit]
+                
+        except Exception as e:
+            logger.error(f"Error retrieving PCF exchange threads: {str(e)}")
+            raise
+
+    def update_pcf_exchange_status(
+        self,
+        request_id: str,
+        new_status: str,
         message: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Update an existing PCF request.
+        Update the status of an existing PCF exchange.
 
         Args:
-            request_id: The ID of the request to update.
-            status: New status for the request.
-            manufacturer_part_id: Updated manufacturer's part identifier.
-            customer_part_id: Updated customer's part identifier.
-            message: Updated message for the request.
+            request_id: The ID of the exchange to update.
+            new_status: New status (PENDING, APPROVED, REJECTED, DELIVERED, UPDATED, ERROR).
+            message: Optional message (e.g., rejection reason or error details).
 
         Returns:
-            Updated request data, or None if request not found.
+            Updated exchange data, or None if not found.
+            
+        Raises:
+            ValueError: If the status value is invalid.
         """
-        # TODO: Use submodel service to retrieve and update request
-        # try:
-        #     request_data = self._submodel_service.get_twin_aspect_document(...)
-        # except NotFoundError:
-        #     return None
-        request_data: Dict[str, Any] = {}  # Placeholder until submodel service is implemented
-        if not request_data:
-            return None
-
-        logger.info(f"Updating PCF request {request_id}")
-
-        if status is not None:
-            request_data["status"] = status
-        if manufacturer_part_id is not None:
-            request_data["manufacturerPartId"] = manufacturer_part_id
-        if customer_part_id is not None:
-            request_data["customerPartId"] = customer_part_id
-        if message is not None:
-            request_data["message"] = message
-
-        request_data["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        logger.info(f"Updating PCF exchange {request_id} status to {new_status}")
         
-        # TODO: Update request in submodel service
-        # self._submodel_service.upload_twin_aspect_document(...)
+        try:
+            status_enum = PcfExchangeStatus(new_status.upper())
+        except ValueError:
+            raise ValueError(f"Invalid status: {new_status}. Valid values: {[s.value for s in PcfExchangeStatus]}")
         
-        logger.info(f"PCF request {request_id} updated successfully")
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                entity = repo_manager.pcf_repository.update_status(
+                    request_id=UUID(request_id),
+                    new_status=status_enum,
+                    message=message,
+                )
+                
+                if not entity:
+                    logger.warning(f"PCF exchange {request_id} not found for status update")
+                    return None
+                
+                logger.info(f"PCF exchange {request_id} status updated to {new_status}")
+                return self._entity_to_dict(entity)
+                
+        except ValueError as e:
+            logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error updating PCF exchange {request_id}: {str(e)}")
+            raise
 
-        return request_data
+    def approve_pcf_exchange(self, request_id: str, message: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Approve a pending PCF exchange.
+        
+        Args:
+            request_id: The ID of the exchange to approve.
+            message: Optional approval message.
+            
+        Returns:
+            Updated exchange data, or None if not found.
+        """
+        return self.update_pcf_exchange_status(
+            request_id=request_id,
+            new_status=PcfExchangeStatus.APPROVED.value,
+            message=message or "Exchange approved"
+        )
+
+    def reject_pcf_exchange(self, request_id: str, reason: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Reject a pending PCF exchange.
+        
+        Args:
+            request_id: The ID of the exchange to reject.
+            reason: Optional rejection reason.
+            
+        Returns:
+            Updated exchange data, or None if not found.
+        """
+        return self.update_pcf_exchange_status(
+            request_id=request_id,
+            new_status=PcfExchangeStatus.REJECTED.value,
+            message=reason or "Exchange rejected"
+        )
+
+    def delete_pcf_exchange(self, request_id: str) -> bool:
+        """
+        Delete a PCF exchange and its associated data.
+        
+        Args:
+            request_id: The ID of the exchange to delete.
+            
+        Returns:
+            True if deleted successfully, False if not found.
+        """
+        logger.info(f"Deleting PCF exchange {request_id}")
+        
+        try:
+            # Delete PCF data from submodel service (if exists)
+            try:
+                self._submodel_service.delete_twin_aspect_document(
+                    submodel_id=UUID(request_id),
+                    semantic_id=PCF_SEMANTIC_ID
+                )
+                logger.info(f"Deleted PCF data for exchange {request_id}")
+            except Exception as e:
+                logger.warning(f"Could not delete PCF data for exchange {request_id} (may not exist): {str(e)}")
+            
+            # Delete the database record
+            with RepositoryManagerFactory.create() as repo_manager:
+                deleted = repo_manager.pcf_repository.delete_by_request_id(UUID(request_id))
+                
+                if deleted:
+                    logger.info(f"PCF exchange {request_id} deleted successfully")
+                else:
+                    logger.warning(f"PCF exchange {request_id} not found for deletion")
+                    
+                return deleted
+                
+        except ValueError as e:
+            logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting PCF exchange {request_id}: {str(e)}")
+            raise
+
+    def get_pending_incoming_count(self) -> int:
+        """
+        Get the count of pending incoming PCF exchanges.
+        
+        Returns:
+            Number of pending incoming exchanges.
+        """
+        try:
+            exchanges = self.get_all_incoming(status=PcfExchangeStatus.PENDING.value)
+            return len(exchanges)
+        except Exception as e:
+            logger.error(f"Error counting pending incoming exchanges: {str(e)}")
+            return 0
 
 
+# Module-level singleton for convenience
 management_manager = PcfManagementManager()
