@@ -170,18 +170,6 @@ export const useTranslatedKits = (): KitFeature[] => {
       documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/eco-pass-kit/adoption-view'
     },
     {
-      id: 'data-governance',
-      name: t('items.dataGovernance.name'),
-      description: t('items.dataGovernance.description'),
-      status: 'coming-soon',
-      icon: <Policy />,
-      image: DataGovernanceKitImage,
-      features: [],
-      domain: 'dataspace-foundation' as const,
-      version: '0.0.0',
-      documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/data-governance-kit/adoption-view'
-    },
-    {
       id: 'pcf',
       name: t('items.pcf.name'),
       description: t('items.pcf.description'),
@@ -213,6 +201,18 @@ export const useTranslatedKits = (): KitFeature[] => {
       createdAt: '2026-03-06',
       lastUpdated: '2026-03-06',
       documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/product-carbon-footprint-exchange-kit/adoption-view'
+    },
+    {
+      id: 'data-governance',
+      name: t('items.dataGovernance.name'),
+      description: t('items.dataGovernance.description'),
+      status: 'coming-soon',
+      icon: <Policy />,
+      image: DataGovernanceKitImage,
+      features: [],
+      domain: 'dataspace-foundation' as const,
+      version: '0.0.0',
+      documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/data-governance-kit/adoption-view'
     },
     {
       id: 'data-chain',
