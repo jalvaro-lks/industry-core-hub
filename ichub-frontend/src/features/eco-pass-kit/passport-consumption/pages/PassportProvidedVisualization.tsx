@@ -60,13 +60,12 @@ const PassportProvidedVisualization: React.FC = () => {
         // Use the discovery API with real backend polling
         const semanticId = 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport';
         
-        // Retrieve DTR and governance policies from configuration
-        const dtrPolicies = getDtrPoliciesConfig();
-        const governanceConfigs = getGovernanceConfig();
+        // Retrieve DTR and governance policies from configuration (Saturn format)
+        const dtrPolicy = getDtrPoliciesConfig();
+        const agreements = getGovernanceConfig();
         
-        // Find the governance config that matches the semantic ID
-        const matchingGovernance = governanceConfigs.find(gc => gc.semanticid === semanticId);
-        const governancePolicies = matchingGovernance ? { policies: matchingGovernance.policies } : undefined;
+        // Find the agreement config that matches the semantic ID
+        const matchingAgreement = agreements.find(gc => gc.semanticid === semanticId);
         
         const response = await discoverPassport(
           passportId,
@@ -82,8 +81,8 @@ const PassportProvidedVisualization: React.FC = () => {
               setErrorStep(stepIndex);
             }
           },
-          dtrPolicies,
-          governancePolicies
+          dtrPolicy as unknown as Record<string, unknown>,
+          matchingAgreement as unknown as Record<string, unknown>
         );
         
         setPassportData(response);
