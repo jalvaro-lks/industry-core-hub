@@ -24,7 +24,7 @@
 """Pydantic models for PCF Kit management API endpoints."""
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -60,6 +60,11 @@ class SendPcfRequestModel(BaseModel):
         default=None,
         description="Optional message to include with the request."
     )
+    list_policies: Optional[List[Dict]] = Field(
+        alias="listPolicies",
+        default=None,
+        description="List of allowed policies for contract negotiation."
+    )
 
 
 class SendOrUpdatePcfResponseModel(BaseModel):
@@ -80,6 +85,11 @@ class SendOrUpdatePcfResponseModel(BaseModel):
     message: Optional[str] = Field(
         default=None,
         description="Optional message to include with the response."
+    )
+    list_policies: Optional[List[Dict]] = Field(
+        alias="listPolicies",
+        default=None,
+        description="List of allowed policies for contract negotiation."
     )
 
 

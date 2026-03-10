@@ -55,6 +55,7 @@ async def send_or_update_pcf_response(
             responding_bpn=body.responding_bpn,
             status=body.status.value if body.status else "delivered",
             message=body.message,
+            list_policies=body.list_policies,
         )
         status_code = 200 if result.get("isUpdate") else 201
         return JSONResponse(status_code=status_code, content=result)

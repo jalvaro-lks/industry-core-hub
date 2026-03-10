@@ -53,6 +53,7 @@ async def send_pcf_request(body: SendPcfRequestModel):
             requesting_bpn=body.requesting_bpn,
             target_bpn=body.target_bpn,
             message=body.message,
+            list_policies=body.list_policies,
         )
         return JSONResponse(status_code=201, content=result)
     except ValueError as e:

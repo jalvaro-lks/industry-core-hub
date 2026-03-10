@@ -91,6 +91,7 @@ class PcfConsumptionManager:
         requesting_bpn: str = "",
         target_bpn: Optional[str] = None,
         message: Optional[str] = None,
+        list_policies: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
         """
         Create and send a new PCF request to a data provider.
@@ -143,6 +144,7 @@ class PcfConsumptionManager:
             manufacturer_part_id=manufacturer_part_id,
             customer_part_id=customer_part_id,
             message=message,
+            list_policies=list_policies,
         )
 
         # Create notification for the outgoing PCF request
@@ -228,6 +230,7 @@ class PcfConsumptionManager:
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
         message: Optional[str] = None,
+        list_policies: Optional[List[Dict]] = None,
     ) -> None:
         """
         Send a PCF request to the data provider through the EDC dataspace connector.
@@ -291,6 +294,7 @@ class PcfConsumptionManager:
                     counter_party_id=target_bpn,
                     counter_party_address=connector_url,
                     dct_type=PCF_EXCHANGE_ASSET_TYPE,
+                    policies=list_policies,
                     path=get_path,
                     params=params if params else None,
                 )

@@ -114,6 +114,7 @@ class PcfProvisionManager:
         responding_bpn: str,
         status: str = "delivered",
         message: Optional[str] = None,
+        list_policies: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
         """
         Send or update a PCF response for a given request.
@@ -177,6 +178,7 @@ class PcfProvisionManager:
                 pcf_data=pcf_data,
                 is_update=is_update,
                 manufacturer_part_id=manufacturer_part_id,
+                list_policies=list_policies,
             )
         else:
             logger.warning(
@@ -265,6 +267,7 @@ class PcfProvisionManager:
         pcf_data: Dict[str, Any],
         is_update: bool = False,
         manufacturer_part_id: Optional[str] = None,
+        list_policies: Optional[List[Dict]] = None,
     ) -> None:
         """
         Send PCF data to the requesting party through the EDC dataspace connector.
@@ -333,6 +336,7 @@ class PcfProvisionManager:
                     filter_expression=filter_expression,
                     path=put_path,
                     json=pcf_data,
+                    policies=list_policies,
                 )
 
                 if response.status_code in (200, 201, 204):

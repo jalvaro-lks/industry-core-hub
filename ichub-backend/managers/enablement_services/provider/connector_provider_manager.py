@@ -524,6 +524,6 @@ class ConnectorProviderManager:
                 "proxyBody": "true",
                 "contentType": "application/json"
             },
-            context=context,
+            #context=context,
             private_properties=private_properties
         )
