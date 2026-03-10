@@ -318,7 +318,7 @@ export const getDtrPoliciesConfig = (): DtrPolicyConfig => {
   return parseConfig<DtrPolicyConfig>(
     'DTR_POLICIES_CONFIG',
     'VITE_DTR_POLICIES_CONFIG',
-    { usage: {}, access: {} }
+    []
   );
 };
 

@@ -79,6 +79,8 @@ const generateGovernancePoliciesWithPermutations = async (semanticId: string, co
  */
 const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
   const currentConfig = partDiscoveryConfig.governance.getDtrPoliciesConfig();
+  console.debug('[ICHUB] getDtrPoliciesConfig raw:', import.meta.env.VITE_DTR_POLICIES_CONFIG);
+  console.debug('[ICHUB] getDtrPoliciesConfig parsed:', currentConfig);
   const currentHash = await generateConfigHash(currentConfig);
 
   // Check if cache is valid
@@ -86,8 +88,11 @@ const getCachedDtrGovernancePolicies = async (): Promise<OdrlPolicy[]> => {
     return dtrGovernancePoliciesCache.policies;
   }
 
+  // Ensure currentConfig is a valid array before calling flatMap
+  const configArray = Array.isArray(currentConfig) ? currentConfig : [];
   // Generate and flatten permutations for every DTR policy definition
-  const newPolicies = currentConfig.flatMap(def => generatePoliciesFromDefinition(def));
+  const newPolicies = configArray.flatMap(def => generatePoliciesFromDefinition(def));
+  console.debug('[ICHUB] dtrGovernance policies generated:', newPolicies.length);
 
   dtrGovernancePoliciesCache = {
     configHash: currentHash,
@@ -110,9 +115,9 @@ const getCachedGovernancePolicies = async (semanticId: string): Promise<OdrlPoli
     return cached.policies;
   }
   
-  // Cache is invalid or doesn't exist, regenerate
-  
+  // Cache miss — regenerate
   const newPolicies = await generateGovernancePoliciesWithPermutations(semanticId, currentConfig);
+  console.debug('[ICHUB] governanceConfig for', semanticId, ':', newPolicies.length, 'policies');
   
   governancePoliciesCache.set(semanticId, {
     configHash: currentHash,
