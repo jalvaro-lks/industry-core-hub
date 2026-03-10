@@ -44,6 +44,7 @@ from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
 from models.metadata_database.notification.models import NotificationDirection
 from services.notifications.notifications_management_service import NotificationsManagementService
 from tools.constants import PCF
+from tools.edr_tools import remove_existing_edr
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -298,6 +299,10 @@ class PcfProvisionManager:
 
         # Step 1: Discover connector endpoints for the requesting BPN
         logger.info(f"[PCF Provision] Discovering connectors for BPN [{requesting_bpn}]")
+
+        with RepositoryManagerFactory.create() as repos:
+            remove_existing_edr(repos, requesting_bpn, "ichub:asset:pcf-exchange:%")
+
         connectors: List[str] = connector_consumer_manager.get_connectors(requesting_bpn)
         if not connectors:
             raise ValueError(
