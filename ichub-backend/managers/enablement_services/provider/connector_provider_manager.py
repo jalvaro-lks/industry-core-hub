@@ -384,6 +384,12 @@ class ConnectorProviderManager:
         Register a digital twin event asset, create policies and contract for it.
         Returns a tuple: (asset_id, usage_policy_id, access_policy_id, contract_id)
         """
+        # In case the authorization is enabled, we need to add the backend API key to the headers
+        if(self.authorization):
+            headers = {
+                self.backend_api_key: self.backend_api_key_value
+            }
+
         # Step 1: Create or get the digital twin event asset
         asset_id = self.get_or_create_digital_twin_event_asset(
             digital_twin_event_url=digital_twin_event_url,
@@ -463,6 +469,12 @@ class ConnectorProviderManager:
         if not base_url:
             base_url = self.ichub_url
         pcf_exchange_url = base_url + api_path
+
+        # In case the authorization is enabled, we need to add the backend API key to the headers
+        if(self.authorization):
+            headers = {
+                self.backend_api_key: self.backend_api_key_value
+            }
 
         asset_id = self.get_or_create_pcf_exchange_asset(pcf_exchange_url=pcf_exchange_url, dct_type=dct_type, existing_asset_id=existing_asset_id, version=version, headers=headers)
 
