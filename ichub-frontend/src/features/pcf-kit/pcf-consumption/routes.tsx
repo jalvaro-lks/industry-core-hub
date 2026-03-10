@@ -20,18 +20,22 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { BarChart } from '@mui/icons-material';
+import { Insights } from '@mui/icons-material';
 import { FeatureConfig } from '@/types/routing';
 import PcfConsumptionPage from './pages/PcfConsumptionPage';
 
 export const pcfConsumptionFeature: FeatureConfig = {
   name: 'PCF Consumption & Visualization',
-  icon: <BarChart />,
-  navigationPath: '/pcf/consumption',
+  icon: <Insights />,
+  navigationPath: '/pcf/consume',
   disabled: false,
   routes: [
     {
-      path: '/pcf/consumption',
+      path: '/pcf/consume',
+      element: <PcfConsumptionPage />
+    },
+    {
+      path: '/pcf/consume/:id',
       element: <PcfConsumptionPage />
     }
   ]

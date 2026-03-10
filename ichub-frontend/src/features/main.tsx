@@ -37,7 +37,9 @@ import {
   Badge,
   Policy,
   PostAdd,
-  BarChart
+  BarChart,
+  Co2,
+  Insights
 } from '@mui/icons-material';
 import { kitFeaturesFeature } from './kit-features/routes';
 import { FeatureConfig, NavigationItem } from '@/types/routing';
@@ -176,7 +178,7 @@ export const kits: KitFeature[] = [
         id: 'pcf-provision',
         name: i18n.t('pcf.features.pcfProvision.name', { ns: 'kits' }),
         description: i18n.t('pcf.features.pcfProvision.description', { ns: 'kits' }),
-        icon: <PostAdd />,
+        icon: <Co2 />,
         enabled: false,
         default: false
       },
@@ -185,7 +187,7 @@ export const kits: KitFeature[] = [
         id: 'pcf-consumption',
         name: i18n.t('pcf.features.pcfConsumption.name', { ns: 'kits' }),
         description: i18n.t('pcf.features.pcfConsumption.description', { ns: 'kits' }),
-        icon: <BarChart />,
+        icon: <Insights />,
         enabled: false,
         default: false
       }

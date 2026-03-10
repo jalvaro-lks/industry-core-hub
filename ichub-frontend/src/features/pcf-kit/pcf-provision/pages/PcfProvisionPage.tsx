@@ -21,51 +21,14 @@
  ********************************************************************************/
 
 import React from 'react';
-import { Box, Typography, Paper, Container, Chip } from '@mui/material';
-import { Construction as ConstructionIcon } from '@mui/icons-material';
+import PcfProvisionList from './PcfProvisionList';
 
 /**
- * Placeholder page for PCF Provision feature.
- * This page will be implemented with full functionality in a future release.
+ * PCF Provision main page component.
+ * Displays the list of user's PCF declarations with management capabilities.
  */
 const PcfProvisionPage: React.FC = () => {
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: 6,
-          textAlign: 'center',
-          borderRadius: 3,
-          border: '2px dashed',
-          borderColor: 'divider',
-          backgroundColor: 'background.paper'
-        }}
-      >
-        <ConstructionIcon 
-          sx={{ 
-            fontSize: 80, 
-            color: 'warning.main',
-            mb: 3 
-          }} 
-        />
-        <Typography variant="h4" gutterBottom fontWeight={600}>
-          PCF Provision & Management
-        </Typography>
-        <Chip 
-          label="Coming Soon" 
-          color="warning" 
-          size="small" 
-          sx={{ mb: 3 }} 
-        />
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
-          This feature will allow you to create, manage, and share Product Carbon Footprint (PCF) 
-          declarations with your dataspace partners. Track emissions data across your product 
-          lifecycle and contribute to sustainability reporting.
-        </Typography>
-      </Paper>
-    </Container>
-  );
+  return <PcfProvisionList />;
 };
 
 export default PcfProvisionPage;

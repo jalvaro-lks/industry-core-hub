@@ -21,51 +21,14 @@
  ********************************************************************************/
 
 import React from 'react';
-import { Box, Typography, Paper, Container, Chip } from '@mui/material';
-import { Construction as ConstructionIcon } from '@mui/icons-material';
+import PcfConsumption from './PcfConsumption';
 
 /**
- * Placeholder page for PCF Consumption feature.
- * This page will be implemented with full functionality in a future release.
+ * PCF Consumption main page component.
+ * Allows searching and visualizing PCF data from dataspace partners.
  */
 const PcfConsumptionPage: React.FC = () => {
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Paper
-        elevation={0}
-        sx={{
-          p: 6,
-          textAlign: 'center',
-          borderRadius: 3,
-          border: '2px dashed',
-          borderColor: 'divider',
-          backgroundColor: 'background.paper'
-        }}
-      >
-        <ConstructionIcon 
-          sx={{ 
-            fontSize: 80, 
-            color: 'warning.main',
-            mb: 3 
-          }} 
-        />
-        <Typography variant="h4" gutterBottom fontWeight={600}>
-          PCF Consumption & Visualization
-        </Typography>
-        <Chip 
-          label="Coming Soon" 
-          color="warning" 
-          size="small" 
-          sx={{ mb: 3 }} 
-        />
-        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
-          This feature will allow you to retrieve and visualize Product Carbon Footprint (PCF) 
-          data from your dataspace partners. Analyze supplier emissions, aggregate footprint 
-          data, and generate sustainability reports.
-        </Typography>
-      </Paper>
-    </Container>
-  );
+  return <PcfConsumption />;
 };
 
 export default PcfConsumptionPage;

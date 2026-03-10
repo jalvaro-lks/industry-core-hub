@@ -38,7 +38,9 @@ import {
   Badge,
   Policy,
   PostAdd,
-  BarChart
+  BarChart,
+  Co2,
+  Insights
 } from '@mui/icons-material';
 import { KitFeature } from '@/features/kit-features/types';
 import { FeatureConfig } from '@/types/routing';
@@ -182,7 +184,7 @@ export const useTranslatedKits = (): KitFeature[] => {
           id: 'pcf-provision',
           name: t('items.pcf.features.pcfProvision.name'),
           description: t('items.pcf.features.pcfProvision.description'),
-          icon: <PostAdd />,
+          icon: <Co2 />,
           enabled: false,
           default: false
         },
@@ -191,7 +193,7 @@ export const useTranslatedKits = (): KitFeature[] => {
           id: 'pcf-consumption',
           name: t('items.pcf.features.pcfConsumption.name'),
           description: t('items.pcf.features.pcfConsumption.description'),
-          icon: <BarChart />,
+          icon: <Insights />,
           enabled: false,
           default: false
         }
