@@ -40,7 +40,7 @@ from tools.json_validator import json_validator_draft_aware
 logger = LoggingManager.get_logger(__name__)
 
 # PCF semantic ID constant
-PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
 
 
 def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
@@ -162,6 +162,42 @@ class PcfManagementManager:
             return pcf_data
         except Exception as e:
             logger.warning(f"PCF data not found for request {request_id}: {str(e)}")
+            return None
+        
+    def get_pcf_data_by_manufacturer_part_id(self, manufacturer_part_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve the PCF data payload for a request.
+
+        The payload is looked up by ``manufacturer_part_id`` (product-scoped
+        storage).
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID.
+            
+        Returns:
+            The PCF data payload, or None if not found.
+        """
+        logger.info(f"Retrieving PCF data for manufacturer part ID {manufacturer_part_id}")
+        
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                entity = repo_manager.pcf_repository.find_by_part_id(manufacturer_part_id)
+
+            if not entity or not entity[0].manufacturer_part_id:
+                logger.warning(
+                    f"No manufacturerPartId for manufacturer part ID {manufacturer_part_id}. "
+                    "Cannot retrieve PCF data."
+                )
+                return None
+
+            submodel_id = _pcf_submodel_id(entity[0].manufacturer_part_id)
+            pcf_data = self._submodel_service.get_twin_aspect_document(
+                submodel_id=submodel_id,
+                semantic_id=PCF_SEMANTIC_ID
+            )
+            return pcf_data
+        except Exception as e:
+            logger.warning(f"PCF data not found for manufacturer part ID {manufacturer_part_id}: {str(e)}")
             return None
 
     def get_all_incoming(

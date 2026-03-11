@@ -31,18 +31,15 @@ Reference:
 
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
-from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
+from uuid import UUID, NAMESPACE_URL, uuid5
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
-from tractusx_sdk.extensions.notification_api.models import Notification, NotificationHeader, NotificationContent
 
+from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
-from models.metadata_database.notification.models import NotificationDirection
-from services.notifications.notifications_management_service import NotificationsManagementService
-from tools.constants import PCF
 from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
@@ -70,12 +67,10 @@ class PcfExchangeManager:
 
     def __init__(
         self,
-        submodel_service: Optional[SubmodelServiceManager] = None,
-        notification_service: Optional[NotificationsManagementService] = None
+        submodel_service: Optional[SubmodelServiceManager] = None
     ) -> None:
-        """Initialize the exchange manager with submodel and notification services."""
+        """Initialize the exchange manager with the submodel service."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
-        self._notification_service = notification_service or NotificationsManagementService()
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
 
 
@@ -124,7 +119,7 @@ class PcfExchangeManager:
             # Store PCF request in database
             with RepositoryManagerFactory.create() as repo_manager:
                 # Create new PCF exchange record with PENDING status
-                pcf_exchange = repo_manager.pcf_repository.create_new(
+                repo_manager.pcf_repository.create_new(
                     request_id=UUID(request_id),
                     direction=PcfExchangeDirection.INCOMING,
                     status=PcfExchangeStatus.PENDING,
@@ -142,7 +137,7 @@ class PcfExchangeManager:
         
         # Create notification for the incoming PCF request
         if self._own_bpn:
-            self._create_pcf_notification(
+            pcf_notification_manager.create_pcf_notification(
                 sender_bpn=edc_bpn,
                 receiver_bpn=self._own_bpn,
                 notification_type="PCF_REQUEST_RECEIVED",
@@ -237,7 +232,7 @@ class PcfExchangeManager:
                 f"PCF data update received from {edc_bpn}" if is_update 
                 else f"PCF data response received from {edc_bpn}"
             )
-            self._create_pcf_notification(
+            pcf_notification_manager.create_pcf_notification(
                 sender_bpn=edc_bpn,
                 receiver_bpn=self._own_bpn,
                 notification_type=notification_type,
@@ -313,69 +308,6 @@ class PcfExchangeManager:
                 )
                 logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
 
-    def _create_pcf_notification(
-        self,
-        sender_bpn: str,
-        receiver_bpn: str,
-        notification_type: str,
-        request_id: str,
-        manufacturer_part_id: Optional[str] = None,
-        customer_part_id: Optional[str] = None,
-        message: Optional[str] = None,
-        is_update: bool = False
-    ) -> None:
-        """
-        Create a notification for PCF exchange events.
-        
-        Args:
-            sender_bpn: BPN of the party sending the notification
-            receiver_bpn: BPN of the party receiving the notification
-            notification_type: Type of notification (e.g., 'PCF_REQUEST', 'PCF_RESPONSE')
-            request_id: The PCF request ID
-            manufacturer_part_id: Optional manufacturer part ID
-            customer_part_id: Optional customer part ID
-            message: Optional message accompanying the notification
-            is_update: Whether this is an update notification
-        """
-        try:
-            # Build notification header with required fields per io.catenax.shared.message_header_3.0.0
-            # Context format: <domain>-<subdomain>-<object>:<version>
-            context = f"IndustryCore-PCF-{notification_type}:1.0.0"
-            
-            header = NotificationHeader(
-                message_id=uuid4(),
-                context=context,
-                sender_bpn=sender_bpn,
-                receiver_bpn=receiver_bpn
-            )
-            
-            # Build notification content with PCF-specific data
-            content_data = {
-                "notificationType": notification_type,
-                "requestId": request_id,
-                "manufacturerPartId": manufacturer_part_id,
-                "customerPartId": customer_part_id,
-                "message": message,
-                "isUpdate": is_update,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
-            content = NotificationContent(**content_data)
-            
-            # Create the notification
-            notification = Notification(header=header, content=content)
-            
-            # Store notification via the service
-            self._notification_service.create_notification(
-                notification=notification,
-                direction=NotificationDirection.INCOMING,
-                use_case=PCF
-            )
-            
-            logger.info(f"Created PCF notification for request {request_id}: type={notification_type}")
-            
-        except Exception as e:
-            logger.error(f"Failed to create PCF notification for request {request_id}: {str(e)}")
-            # Don't raise - notification creation failure shouldn't block the main flow
 
 # Module-level singleton for convenience
 exchange_manager = PcfExchangeManager()
