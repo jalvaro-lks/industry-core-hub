@@ -25,4 +25,6 @@ from .models import (
     PcfExchangeEntity,
     PcfExchangeDirection,
     PcfExchangeStatus,
+    PcfExchangeType,
+    PcfRelationshipEntity
 )

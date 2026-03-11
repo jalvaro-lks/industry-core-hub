@@ -52,7 +52,9 @@ from models.metadata_database.notification.models import (
 from models.metadata_database.pcf.models import (
     PcfExchangeEntity,
     PcfExchangeDirection,
-    PcfExchangeStatus
+    PcfExchangeStatus,
+    PcfExchangeType,
+    PcfRelationshipEntity
 )
 from tractusx_sdk.extensions.notification_api.models import Notification
 
@@ -778,6 +780,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
         status: PcfExchangeStatus = PcfExchangeStatus.PENDING,
+        type: PcfExchangeType,
         message: Optional[str] = None,
         pcf_location: Optional[str] = None,
         correlation_id: Optional[str] = None,
@@ -808,6 +811,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
             responding_bpn=responding_bpn,
             direction=direction,
             status=status,
+            type=type,
             manufacturer_part_id=manufacturer_part_id,
             customer_part_id=customer_part_id,
             message=message,
@@ -997,3 +1001,35 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
 
         self.delete_obj(db_obj)
         return True
+
+class PCFRelationshipRepository(BaseRepository[PcfRelationshipEntity]):
+    """
+    Repository for managing relationships between our PCF and other entities.
+    """
+
+    def create_new(
+        self,
+        main_manufacturer_part_id: str,
+        list_sub_manufacturer_part_ids: List[str]
+    ) -> PcfRelationshipEntity:
+        pcf_relationship = PcfRelationshipEntity(
+            main_manufacturer_part_id=main_manufacturer_part_id,
+            list_sub_manufacturer_part_id=list_sub_manufacturer_part_ids
+        )
+        self.create(pcf_relationship)
+        return pcf_relationship
+    
+    def find_by_main_manufacturer_part_id(self, main_manufacturer_part_id: str) -> Optional[PcfRelationshipEntity]:
+        stmt = select(PcfRelationshipEntity).where(
+            PcfRelationshipEntity.main_manufacturer_part_id == main_manufacturer_part_id
+        )
+        return self._session.scalars(stmt).first()
+    
+    def add_sub_manufacturer_part_id(self, main_manufacturer_part_id: str, sub_manufacturer_part_id: str) -> Optional[PcfRelationshipEntity]:
+        """Add a sub manufacturer part ID to the list for a given main manufacturer part ID."""
+        relationship = self.find_by_main_manufacturer_part_id(main_manufacturer_part_id)
+        if relationship and sub_manufacturer_part_id not in relationship.list_sub_manufacturer_part_id:
+            relationship.list_sub_manufacturer_part_id.append(sub_manufacturer_part_id)
+            self._session.add(relationship)
+            return relationship
+        return None

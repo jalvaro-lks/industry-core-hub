@@ -51,6 +51,11 @@ class PcfExchangeStatus(str, Enum):
     FAILED = "failed"            # Exchange failed due to error
     CANCELLED = "cancelled"      # Exchange was cancelled
 
+class PcfExchangeType(str, Enum):
+    """Type of PCF exchange."""
+    REQUEST = "request"          # Initial request for PCF data
+    RESPONSE = "response"        # Response containing PCF data
+
 
 class PcfExchangeEntity(SQLModel, table=True):
     """
@@ -104,6 +109,11 @@ class PcfExchangeEntity(SQLModel, table=True):
         index=True,
         description="Current status of the PCF exchange"
     )
+    type: PcfExchangeType = Field(
+        default=PcfExchangeType.REQUEST,
+        index=True,
+        description="Type of PCF exchange (request or response)"
+    )
 
     # Business Partner information
     requesting_bpn: str = Field(
@@ -141,9 +151,18 @@ class PcfExchangeEntity(SQLModel, table=True):
         default=None,
         index=True,
         description="Optional ID to correlate with external systems"
-    )
+    ) 
 
-    def update_status(self, new_status: PcfExchangeStatus) -> None:
-        """Update the exchange status and timestamp."""
-        self.status = new_status
-        self.updated_at = datetime.now(timezone.utc)
+class PcfRelationshipEntity(SQLModel, table=True):
+
+    __tablename__ = "pcf_relationships"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    main_manufacturer_part_id: str = Field(
+        index=True,
+        description="Manufacturer's part identifier for the main part"
+    )
+    list_sub_manufacturer_part_id: list[str] = Field(
+        default_factory=list,
+        description="List of manufacturer part identifiers for subparts related to the main part"
+    )
