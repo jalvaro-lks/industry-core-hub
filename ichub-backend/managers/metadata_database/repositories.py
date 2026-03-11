@@ -776,11 +776,11 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         self,
         requesting_bpn: str,
         direction: PcfExchangeDirection,
+        type: PcfExchangeType,
         responding_bpn: Optional[str] = None,
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
         status: PcfExchangeStatus = PcfExchangeStatus.PENDING,
-        type: PcfExchangeType,
         message: Optional[str] = None,
         pcf_location: Optional[str] = None,
         correlation_id: Optional[str] = None,
@@ -823,11 +823,13 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         self.create(pcf_exchange)
         return pcf_exchange
 
-    def find_by_request_id(self, request_id: UUID) -> Optional[PcfExchangeEntity]:
+    def find_by_request_id(self, request_id: UUID, type: Optional[PcfExchangeType] = None) -> Optional[PcfExchangeEntity]:
         """Find a PCF exchange by its unique request ID."""
         stmt = select(PcfExchangeEntity).where(
             PcfExchangeEntity.request_id == request_id
         )
+        if type:
+            stmt = stmt.where(PcfExchangeEntity.type == type)
         return self._session.scalars(stmt).first()
 
     def find_by_bpn(
@@ -837,6 +839,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         status: Optional[PcfExchangeStatus] = None,
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
+        type: Optional[PcfExchangeType] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> List[PcfExchangeEntity]:
@@ -849,6 +852,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
             status: Filter by exchange status (optional).
             manufacturer_part_id: Filter by manufacturer part ID (optional).
             customer_part_id: Filter by customer part ID (optional).
+            type: Filter by exchange type (optional).
             limit: Maximum number of results.
             offset: Number of results to skip.
 
@@ -882,6 +886,9 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
 
         if customer_part_id:
             stmt = stmt.where(PcfExchangeEntity.customer_part_id == customer_part_id)
+
+        if type:
+            stmt = stmt.where(PcfExchangeEntity.type == type)
 
         # Order by newest first
         stmt = stmt.order_by(desc(PcfExchangeEntity.created_at)).offset(offset).limit(limit)

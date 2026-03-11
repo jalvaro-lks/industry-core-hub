@@ -68,6 +68,7 @@ class PcfNotificationManager:
         manufacturer_part_id: Optional[str] = None,
         customer_part_id: Optional[str] = None,
         requesting_bpn: Optional[str] = None,
+        responding_bpn: Optional[str] = None,
         target_bpn: Optional[str] = None,
         message: Optional[str] = None,
         is_update: Optional[bool] = False,
@@ -89,6 +90,7 @@ class PcfNotificationManager:
             manufacturer_part_id: Optional manufacturer part ID
             customer_part_id: Optional customer part ID
             requesting_bpn: Optional requesting BPN (outgoing request notifications)
+            responding_bpn: Optional responding BPN (outgoing response notifications)
             target_bpn: Optional target BPN (outgoing request notifications)
             message: Optional message accompanying the notification
             is_update: Whether this is an update notification
@@ -121,6 +123,8 @@ class PcfNotificationManager:
                 content_data["customerPartId"] = customer_part_id
             if requesting_bpn is not None:
                 content_data["requestingBpn"] = requesting_bpn
+            if responding_bpn is not None:
+                content_data["respondingBpn"] = responding_bpn
             if target_bpn is not None:
                 content_data["targetBpn"] = target_bpn
             if is_update is not None:

@@ -30,9 +30,10 @@ enabling tracking of PCF data exchanges between business partners.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID, uuid4
 
+from sqlalchemy import Column, JSON
 from sqlmodel import SQLModel, Field
 
 
@@ -162,7 +163,8 @@ class PcfRelationshipEntity(SQLModel, table=True):
         index=True,
         description="Manufacturer's part identifier for the main part"
     )
-    list_sub_manufacturer_part_id: list[str] = Field(
+    list_sub_manufacturer_part_id: List[str] = Field(
         default_factory=list,
+        sa_column=Column(JSON),
         description="List of manufacturer part identifiers for subparts related to the main part"
     )

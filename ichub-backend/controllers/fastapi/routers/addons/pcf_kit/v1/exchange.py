@@ -29,12 +29,17 @@ from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import exchange_manager
+from managers.config.log_manager import LoggingManager
+
+logger = LoggingManager.get_logger(__name__)
 
 router = APIRouter(
     prefix="/footprintExchange",
     tags=["PCF KIT Microservices"],
     dependencies=[Depends(get_authentication_dependency())]
 )
+
+logger.info("[PCF Exchange] Router initialized")
 
 
 EDC_BPN_DESCRIPTION = "The caller's Catena-X BusinessPartnerNumber"
@@ -45,7 +50,7 @@ MESSAGE_DESCRIPTION = "URL encoded, max 250 chars"
 async def put_pcf_with_path_id(
     body: dict,
     request_id: str = Path(..., alias="requestId"),
-    edc_bpn: str = Header(..., description=EDC_BPN_DESCRIPTION),
+    edc_bpn: Optional[str] = Header(None, alias="edc-bpn", description=EDC_BPN_DESCRIPTION),
     message: Optional[str] = Query(None, description=MESSAGE_DESCRIPTION),
     update: bool = Query(False, description="Whether this is an update to an existing request")
 ):
@@ -69,7 +74,19 @@ async def put_pcf_with_path_id(
     Raises:
         HTTPException: 400 for bad request
     """
+    # Log incoming request
+    logger.info(f"[PCF Exchange PUT] Incoming request: request_id={request_id}, edc_bpn={edc_bpn}, update={update}, message={message}")
+    
+    # Validate edc_bpn header
+    if not edc_bpn:
+        logger.error("[PCF Exchange PUT] Missing edc-bpn header")
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required header: edc-bpn"
+        )
+    
     try:
+        logger.debug(f"[PCF Exchange PUT] Delegating to exchange_manager.submit_pcf_response()")
         # Delegate to manager to handle PCF response/update
         result = exchange_manager.submit_pcf_response(
             request_id=request_id,
@@ -79,20 +96,23 @@ async def put_pcf_with_path_id(
             message=message
         )
         
+        logger.info(f"[PCF Exchange PUT] Response processed successfully: request_id={request_id}")
         return JSONResponse(
             status_code=200,
             content=result
         )
     except ValueError as e:
+        logger.error(f"[PCF Exchange PUT] ValueError: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
+        logger.error(f"[PCF Exchange PUT] Unexpected exception: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 @router.get("/{requestId}")
 async def request_pcf(
     request_id: str = Path(..., alias="requestId"),
-    edc_bpn: str = Header(..., description=EDC_BPN_DESCRIPTION),
+    edc_bpn: Optional[str] = Header(None, alias="edc-bpn", description=EDC_BPN_DESCRIPTION),
     manufacturer_part_id: Optional[str] = Query(None, description="Manufacturer part ID"),
     customer_part_id: Optional[str] = Query(None, description="Customer part ID"),
     message: Optional[str] = Query(None, description=MESSAGE_DESCRIPTION)
@@ -117,14 +137,27 @@ async def request_pcf(
     Raises:
         HTTPException: 400 if both IDs are missing, 404 if request not found
     """
+    # Log incoming request
+    logger.info(f"[PCF Exchange GET] Incoming request: request_id={request_id}, edc_bpn={edc_bpn}, manufacturerPartId={manufacturer_part_id}, customerPartId={customer_part_id}, message={message}")
+    
+    # Validate edc_bpn header
+    if not edc_bpn:
+        logger.error("[PCF Exchange GET] Missing edc-bpn header")
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required header: edc-bpn"
+        )
+    
     # Validate that at least one part ID is provided
     if not manufacturer_part_id and not customer_part_id:
+        logger.warning(f"[PCF Exchange GET] Missing part IDs: manufacturerPartId={manufacturer_part_id}, customerPartId={customer_part_id}")
         raise HTTPException(
             status_code=400,
             detail="At least one of manufacturerPartId or customerPartId must be provided"
         )
 
     try:
+        logger.debug(f"[PCF Exchange GET] Delegating to exchange_manager.request_pcf()")
         # Delegate to manager to handle PCF request
         result = exchange_manager.request_pcf(
             request_id=request_id,
@@ -134,11 +167,14 @@ async def request_pcf(
             message=message
         )
         
+        logger.info(f"[PCF Exchange GET] Request processed successfully: request_id={request_id}")
         return JSONResponse(
             status_code=202,
             content=result
         )
     except ValueError as e:
+        logger.error(f"[PCF Exchange GET] ValueError: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
+        logger.error(f"[PCF Exchange GET] Unexpected exception: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")

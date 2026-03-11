@@ -35,11 +35,12 @@ from uuid import UUID, NAMESPACE_URL, uuid5
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 
 from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
+from managers.addons_service.pcf_kit.v1.management import management_manager
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from managers.metadata_database.manager import RepositoryManagerFactory
-from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
+from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
@@ -122,14 +123,29 @@ class PcfExchangeManager:
                 repo_manager.pcf_repository.create_new(
                     request_id=UUID(request_id),
                     direction=PcfExchangeDirection.INCOMING,
-                    status=PcfExchangeStatus.PENDING,
+                    status=PcfExchangeStatus.DELIVERED,
+                    type=PcfExchangeType.REQUEST,
                     requesting_bpn=edc_bpn,
                     responding_bpn=self._own_bpn,
                     manufacturer_part_id=manufacturer_part_id,
                     customer_part_id=customer_part_id,
                     message=message
                 )
-                logger.info(f"Created PCF exchange record for request {request_id} with status PENDING")
+                logger.info(f"Created PCF exchange record for request {request_id} with status DELIVERED")
+                pcf_location = management_manager.get_pcf_location(manufacturer_part_id) if manufacturer_part_id else None
+                repo_manager.pcf_repository.create_new(
+                    request_id=UUID(request_id),
+                    direction=PcfExchangeDirection.OUTGOING,
+                    status=PcfExchangeStatus.PENDING,
+                    type=PcfExchangeType.RESPONSE,
+                    requesting_bpn=self._own_bpn,
+                    responding_bpn=edc_bpn,
+                    manufacturer_part_id=manufacturer_part_id,
+                    customer_part_id=customer_part_id,
+                    message=message,
+                    pcf_location=pcf_location
+                )
+                logger.info(f"Created PCF exchange record for response to request {request_id} with status PENDING")
                 
         except Exception as e:
             logger.error(f"Failed to store PCF request {request_id}: {str(e)}")
@@ -281,31 +297,17 @@ class PcfExchangeManager:
             )
 
         manufacturer_part_id = entity.manufacturer_part_id
-        submodel_id = _pcf_submodel_id(manufacturer_part_id)
-        pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
-
-        logger.info(
-            f"Storing PCF data for request {request_id} "
-            f"(submodel_id={submodel_id})"
-        )
-        self._submodel_service.upload_twin_aspect_document(
-            submodel_id=submodel_id,
-            semantic_id=PCF_SEMANTIC_ID,
-            payload=pcf_data,
-        )
+        management_manager.upload_pcf_data(manufacturer_part_id, pcf_data)
 
         with RepositoryManagerFactory.create() as repo_manager:
             if is_update:
-                repo_manager.pcf_repository.update_status(
-                    request_id, PcfExchangeStatus.UPDATED
-                )
+                management_manager._update_status_to_delivered(request_id, PcfExchangeStatus.UPDATED)
                 logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
             else:
+                pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
                 repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location)
                 logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
-                repo_manager.pcf_repository.update_status(
-                    request_id, PcfExchangeStatus.DELIVERED
-                )
+                management_manager._update_status_to_delivered(request_id, PcfExchangeStatus.DELIVERED)
                 logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
 
 
