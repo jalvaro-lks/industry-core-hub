@@ -36,7 +36,7 @@ router = APIRouter(
 )
 
 
-@router.get("/management/incoming")
+@router.get("/management/incoming", deprecated=True)
 async def get_all_incoming_exchanges(
     status: Optional[str] = Query(None, description="Filter by exchange status (e.g., PENDING, DELIVERED)"),
     manufacturer_part_id: Optional[str] = Query(None, alias="manufacturerPartId", description="Filter by manufacturer part ID"),
@@ -59,7 +59,7 @@ async def get_all_incoming_exchanges(
         raise HTTPException(status_code=500, detail=f"Error retrieving incoming PCF exchanges: {str(e)}")
 
 
-@router.get("/management/outgoing")
+@router.get("/management/outgoing", deprecated=True)
 async def get_all_outgoing_exchanges(
     status: Optional[str] = Query(None, description="Filter by exchange status (e.g., PENDING, DELIVERED)"),
     manufacturer_part_id: Optional[str] = Query(None, alias="manufacturerPartId", description="Filter by manufacturer part ID"),
@@ -82,7 +82,7 @@ async def get_all_outgoing_exchanges(
         raise HTTPException(status_code=500, detail=f"Error retrieving outgoing PCF exchanges: {str(e)}")
 
 
-@router.get("/management/threads")
+@router.get("/management/threads", deprecated=True)
 async def get_all_exchange_threads(
     status: Optional[str] = Query(None, description="Filter threads containing exchanges with this status"),
     limit: int = Query(100, description="Maximum number of threads to return"),
@@ -99,7 +99,7 @@ async def get_all_exchange_threads(
         raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange threads: {str(e)}")
 
 
-@router.get("/management/exchanges/{requestId}")
+@router.get("/management/exchanges/{requestId}", deprecated=True)
 async def get_pcf_exchange_by_id(request_id: str = Path(..., alias="requestId")):
     """Retrieve a single PCF exchange by ID, including PCF data if available."""
     try:
@@ -113,7 +113,7 @@ async def get_pcf_exchange_by_id(request_id: str = Path(..., alias="requestId"))
         raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange: {str(e)}")
 
 
-@router.get("/management/exchanges/{requestId}/thread")
+@router.get("/management/exchanges/{requestId}/thread", deprecated=True)
 async def get_pcf_exchange_thread(request_id: str = Path(..., alias="requestId")):
     """Retrieve all related PCF exchanges grouped by direction (incoming/outgoing) for a given request ID."""
     try:
@@ -122,7 +122,7 @@ async def get_pcf_exchange_thread(request_id: str = Path(..., alias="requestId")
         raise HTTPException(status_code=500, detail=f"Error retrieving PCF exchange thread: {str(e)}")
 
 
-@router.post("/management/pcf/{manufacturerPartId}", status_code=201)
+@router.post("/management/pcf/{manufacturerPartId}", status_code=201, deprecated=True)
 async def upload_pcf_data(
     body: UploadPcfDataModel,
     manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
@@ -139,7 +139,7 @@ async def upload_pcf_data(
         raise HTTPException(status_code=500, detail=f"Error uploading PCF data: {str(e)}")
 
 
-@router.put("/management/pcf/{manufacturerPartId}")
+@router.put("/management/pcf/{manufacturerPartId}", deprecated=True)
 async def update_pcf_data(
     body: UploadPcfDataModel,
     manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),

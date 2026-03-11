@@ -30,19 +30,20 @@ Reference:
 """
 
 from typing import Dict, Any, List, Optional
-from uuid import UUID, NAMESPACE_URL, uuid4, uuid5
+from uuid import UUID, NAMESPACE_URL, uuid5
 from datetime import datetime, timezone
 
 from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
-from tractusx_sdk.extensions.notification_api.models import Notification, NotificationHeader, NotificationContent
 
+from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
+from managers.addons_service.pcf_kit.v1.management import PcfManagementManager
 from managers.metadata_database.manager import RepositoryManagerFactory
-from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
+from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
+from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
 from models.metadata_database.notification.models import NotificationDirection
-from services.notifications.notifications_management_service import NotificationsManagementService
 from tools.constants import PCF
 from tools.edr_tools import remove_existing_edr
 
@@ -97,12 +98,13 @@ class PcfProvisionManager:
     def __init__(
         self,
         submodel_service: Optional[SubmodelServiceManager] = None,
-        notification_service: Optional[NotificationsManagementService] = None,
     ) -> None:
-        """Initialize the provision manager with submodel and notification services."""
+        """Initialize the provision manager with the submodel service."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
-        self._notification_service = notification_service or NotificationsManagementService()
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
+        if self._own_bpn == None:
+            logger.warning("BPN not configured in configuration.yml.")
+            raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
 
         # EDC connector services are imported lazily from the connector module
         # to avoid circular imports at module load time.
@@ -187,8 +189,12 @@ class PcfProvisionManager:
                 "Skipping EDC data exchange — PCF data stored locally only."
             )
 
-        # Create notification for the PCF response
-        self._notify_pcf_response(request_id, responding_bpn, is_update, message)
+        self._notify_pcf_response(
+            request_id=request_id,
+            responding_bpn=responding_bpn,
+            is_update=is_update,
+            message=message,
+        )
 
         now = datetime.now(timezone.utc).isoformat()
         response_data = {
@@ -257,6 +263,7 @@ class PcfProvisionManager:
         """
         if self._connector_consumer_manager is None:
             from connector import connector_consumer_manager, consumer_connector_service
+
             self._connector_consumer_manager = connector_consumer_manager
             self._consumer_connector_service = consumer_connector_service
         return self._connector_consumer_manager, self._consumer_connector_service
@@ -274,8 +281,8 @@ class PcfProvisionManager:
         Send PCF data to the requesting party through the EDC dataspace connector.
 
         Uses the SDK's ``do_put()`` with a ``PcfExchange`` dct_type filter
-        expression, which handles the full EDC flow (catalog filtering →
-        contract negotiation → EDR → HTTP PUT) in a single call.
+        expression, which handles the full EDC flow (catalog filtering ->
+        contract negotiation -> EDR -> HTTP PUT) in a single call.
         Each discovered connector is tried until one succeeds.
 
         Args:
@@ -287,7 +294,7 @@ class PcfProvisionManager:
 
         Raises:
             ValueError: If no connectors are found or the data transfer fails
-                        on all discovered connectors.
+                on all discovered connectors.
         """
         connector_consumer_manager, consumer_connector_service = self._get_connector_services()
 
@@ -297,7 +304,6 @@ class PcfProvisionManager:
                 "Cannot send PCF data via dataspace."
             )
 
-        # Step 1: Discover connector endpoints for the requesting BPN
         logger.info(f"[PCF Provision] Discovering connectors for BPN [{requesting_bpn}]")
 
         with RepositoryManagerFactory.create() as repos:
@@ -313,7 +319,6 @@ class PcfProvisionManager:
             f"[PCF Provision] Found {len(connectors)} connector(s) for BPN [{requesting_bpn}]"
         )
 
-        # Build the filter expression for PcfExchange asset type
         filter_expression = [
             consumer_connector_service.get_filter_expression(
                 key=consumer_connector_service.DEFAULT_DCT_TYPE_KEY,
@@ -326,8 +331,6 @@ class PcfProvisionManager:
         if is_update:
             put_path += "?update=true"
 
-        # Step 2: Try each connector — do_put handles catalog filtering,
-        #         contract negotiation, and PUT in a single call
         last_error: Optional[Exception] = None
         for connector_url in connectors:
             try:
@@ -436,15 +439,7 @@ class PcfProvisionManager:
         is_update: bool,
         message: Optional[str] = None,
     ) -> None:
-        """
-        Create a notification for the PCF response event.
-
-        Args:
-            request_id: The request ID being responded to.
-            responding_bpn: BPN of the responding party.
-            is_update: Whether this is an update notification.
-            message: Optional message for the notification.
-        """
+        """Create an outgoing notification for a PCF response or update."""
         if not self._own_bpn:
             logger.warning(
                 f"Cannot create notification for PCF response {request_id}: "
@@ -452,44 +447,228 @@ class PcfProvisionManager:
             )
             return
 
+        notification_type = "PCF_UPDATE_SENT" if is_update else "PCF_RESPONSE_SENT"
+        default_message = (
+            f"PCF data update sent by {responding_bpn}"
+            if is_update
+            else f"PCF data response sent by {responding_bpn}"
+        )
+
+        pcf_notification_manager.create_pcf_notification(
+            sender_bpn=self._own_bpn,
+            receiver_bpn=self._own_bpn,
+            notification_type=notification_type,
+            request_id=request_id,
+            responding_bpn=responding_bpn,
+            message=message or default_message,
+            is_update=is_update,
+            direction=NotificationDirection.OUTGOING,
+        )
+
+    def upload_new_pcf(
+            self,
+            manufacturer_part_id: str,
+            pcf_data: Dict[str, Any]
+    ) -> None:
+        """
+        Upload a new PCF document to the submodel service for a given manufacturer part ID.
+
+        This is a helper method to store PCF data before responding to requests.
+        It can be used by external processes that generate PCF data and want to
+        make it available for exchange.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID to associate with the PCF data.
+            pcf_data: The PCF payload to store.
+        Raises:
+            ValueError: If there is an error during upload to the submodel service.
+        """
         try:
-            notification_type = "PCF_RESPONSE_SENT" if not is_update else "PCF_UPDATE_SENT"
-            default_message = (
-                f"PCF data update sent by {responding_bpn}" if is_update
-                else f"PCF data response sent by {responding_bpn}"
+            if pcf_data is None:
+                raise ValueError("PCF data payload is required for upload.")
+
+            PcfManagementManager.upload_pcf_data(
+                manufacturer_part_id=manufacturer_part_id,
+                pcf_data=pcf_data
             )
-            context = f"IndustryCore-PCF-{notification_type}:1.0.0"
-
-            header = NotificationHeader(
-                message_id=uuid4(),
-                context=context,
-                sender_bpn=self._own_bpn,
-                receiver_bpn=self._own_bpn,
-            )
-
-            content_data = {
-                "notificationType": notification_type,
-                "requestId": request_id,
-                "respondingBpn": responding_bpn,
-                "isUpdate": is_update,
-                "message": message or default_message,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            content = NotificationContent(**content_data)
-
-            notification = Notification(header=header, content=content)
-            self._notification_service.create_notification(
-                notification=notification,
-                direction=NotificationDirection.OUTGOING,
-                use_case=PCF,
-            )
-
-            logger.info(f"Created PCF notification for response {request_id}: type={notification_type}")
-
         except Exception as e:
-            # Notification creation failure should not block the main flow
-            logger.error(f"Failed to create PCF notification for response {request_id}: {str(e)}")
+            logger.error(f"Failed to upload PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            raise ValueError(f"Failed to upload PCF data: {str(e)}")
 
+
+    def view_existing_pcf(
+            self,
+            manufacturer_part_id: str
+    ) -> Dict[str, Any]:
+        """
+        View an existing PCF document from the submodel service for a given manufacturer part ID.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID to retrieve the PCF data for.
+        Raises:
+            ValueError: If there is an error during retrieval from the submodel service.
+        """
+        try:
+            result = PcfManagementManager.get_pcf_data(
+                manufacturer_part_id=manufacturer_part_id
+            )
+            return result.model_dump()
+        except Exception as e:
+            logger.error(f"Failed to retrieve PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            raise ValueError(f"Failed to retrieve PCF data: {str(e)}")
+        
+    def update_pcf_and_get_participants(            
+            self,
+            manufacturer_part_id: str,
+            pcf_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        try:
+            if pcf_data is None:
+                raise ValueError("PCF data payload is required for update.")
+            
+            result = PcfManagementManager.update_pcf_data(
+                manufacturer_part_id=manufacturer_part_id,
+                pcf_data=pcf_data
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Failed to update PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            raise ValueError(f"Failed to update PCF data: {str(e)}")
+
+    def confirm_and_send_update_to_participants(
+            self,
+            manufacturer_part_id: str,
+            list_bpns: List[str],
+            list_policies: Optional[List[Dict]] = None
+    ) -> Dict[str, Any]:
+        """
+        Confirm the update of a PCF document and proactively send the updated data to participants.
+
+        This method is intended to be called after a PCF document has been updated. It will send the updated PCF data to all participants that have previously received the PCF for the same manufacturer part ID.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID whose PCF data was updated.
+            list_bpns: List of BPNs to send the updated PCF data to.
+            list_policies: Optional list of policies to apply when sending the update.
+        Raises:            
+            ValueError: If there is an error during the update or sending process.
+        """
+        try:
+            pcf_data = self.view_existing_pcf(manufacturer_part_id=manufacturer_part_id)
+            with RepositoryManagerFactory.create() as repo_manager:
+                for bpn in list_bpns:
+                    result = repo_manager.pcf_repository.find_by_bpn(bpn, manufacturer_part_id, direction=PcfExchangeDirection.OUTGOING, status=PcfExchangeStatus.DELIVERED)
+                    if result:
+                        request_id = str(result[0].request_id)
+                        self._send_pcf_via_edc(
+                            request_id=request_id,
+                            requesting_bpn=bpn,
+                            pcf_data=pcf_data,
+                            is_update=True,
+                            manufacturer_part_id=manufacturer_part_id,
+                            list_policies=list_policies,
+                        )
+            return {"message": f"PCF update sent to {len(list_bpns)} participant(s) successfully."}
+        except Exception as e:
+            logger.error(f"Failed to confirm and send PCF update for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            raise ValueError(f"Failed to confirm and send PCF update: {str(e)}")
+
+    def list_provider_notifications(self, status: Optional[str] = None, offset: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        List all notifications related to a specific manufacturer part ID.
+
+        This method retrieves all notifications from the database that are associated with the given manufacturer part ID, regardless of direction (incoming or outgoing). This allows the data provider to see all interactions related to that part.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID to filter notifications by.
+        Returns:
+            A list of notifications related to the specified manufacturer part ID.
+        Raises:
+            ValueError: If there is an error during retrieval from the database.
+        """
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                notifications = repo_manager.pcf_repository.find_by_bpn(
+                        bpn=self._own_bpn,
+                        type=PcfExchangeType.RESPONSE,
+                        direction=PcfExchangeDirection.OUTGOING,
+                        status=status,
+                        offset=offset,
+                        limit=limit)
+                return notifications
+        except Exception as e:
+            logger.error(f"Failed to list provider notifications: {str(e)}")
+            raise ValueError(f"Failed to list provider notifications: {str(e)}")
+    
+    def accept_request_and_send_response(self, request_id: str, list_policies: Optional[List[Dict]] = None) -> Dict[str, Any]:
+        """
+        Accept a PCF request and send the corresponding PCF response.
+
+        This method is intended to be called when a data provider accepts a PCF request. It will retrieve the associated manufacturer part ID from the exchange record, fetch the corresponding PCF data from the submodel service, and send it to the requesting party via EDC.
+
+        Args:
+            request_id: The ID of the PCF request being accepted.
+        Returns:
+            A dictionary containing the details of the sent response.
+        Raises:
+            ValueError: If there is an error during the acceptance or sending process.
+        """        
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                exchange_entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id), type=PcfExchangeType.RESPONSE)
+                if not exchange_entity:
+                    raise ValueError(f"No exchange record found for request {request_id}. Cannot accept request without a valid exchange record.")
+                if exchange_entity.pcf_location is not None:
+                    raise ValueError(f"Request {request_id} has not PCF assigned")
+                if exchange_entity.status == PcfExchangeStatus.DELIVERED:
+                    raise ValueError(f"Request {request_id} is DELIVERED already. Use the update endpoint to send an update response instead of accepting the request again.")
+                pcf_data = PcfManagementManager.get_pcf_data(exchange_entity.manufacturer_part_id)
+                self._send_pcf_via_edc(
+                    request_id=request_id,
+                    requesting_bpn=exchange_entity.requesting_bpn,
+                    pcf_data=pcf_data,
+                    is_update=False,
+                    manufacturer_part_id=exchange_entity.manufacturer_part_id,
+                    list_policies=list_policies
+                )
+                PcfManagementManager._update_status_to_delivered(request_id, PcfExchangeStatus.DELIVERED)
+                
+        except Exception as e:
+            PcfManagementManager._update_status_to_delivered(request_id, PcfExchangeStatus.FAILED)
+            logger.error(f"Failed to accept request and send response for request {request_id}: {str(e)}")
+            raise ValueError(f"Failed to accept request and send response: {str(e)}")
+
+    def refresh_pcf_data_for_request(self, request_id: str) -> PcfExchangeModel:
+        """
+        Refresh the PCF data for a given request by re-sending the latest PCF document.
+
+        This method can be used to proactively refresh the PCF data for a request, for example if the underlying PCF document has been updated and the provider wants to ensure the requester has the latest version.
+
+        Args:
+            request_id: The ID of the PCF request to refresh.
+        Returns:
+            A PcfExchangeModel containing the details of the refreshed response.
+        Raises:
+            ValueError: If there is an error during the refresh process.
+        """
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                exchange_entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
+                if not exchange_entity:
+                    raise ValueError(f"No exchange record found for request {request_id}. Cannot refresh PCF data.")
+
+                manufacturer_part_id = exchange_entity.manufacturer_part_id
+                if not manufacturer_part_id:
+                    raise ValueError(f"No manufacturerPartId associated with request {request_id}. Cannot retrieve PCF data for refresh.")
+                
+                pcf_location = PcfManagementManager.get_pcf_location(UUID(request_id))
+                if not pcf_location:
+                    raise ValueError(f"No PCF location found for request {request_id}. Cannot refresh PCF data.")
+                final_exchange = repo_manager.pcf_repository.update_pcf_location(UUID(request_id), f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}")
+                return PcfExchangeModel.from_entity(final_exchange)
+        except Exception as e:
+            logger.error(f"Failed to refresh PCF data for request {request_id}: {str(e)}")
+            raise ValueError(f"Failed to refresh PCF data: {str(e)}")
 
 # Module-level singleton for convenience
 provision_manager = PcfProvisionManager()

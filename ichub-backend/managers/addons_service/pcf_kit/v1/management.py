@@ -33,7 +33,7 @@ from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
 from managers.metadata_database.manager import RepositoryManagerFactory
-from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus
+from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 from tools.json_validator import json_validator_draft_aware
 
@@ -60,6 +60,9 @@ class PcfManagementManager:
         """Initialize the management manager with submodel service."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
+        if self._own_bpn == None:
+            logger.warning("BPN not configured in configuration.yml.")
+            raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
 
     def _entity_to_dict(self, entity: PcfExchangeEntity) -> Dict[str, Any]:
         """Convert a PcfExchangeEntity to a dictionary representation."""
@@ -261,6 +264,36 @@ class PcfManagementManager:
         except Exception as e:
             logger.error(f"Error listing incoming PCF exchanges: {str(e)}")
             raise
+
+    def _update_status_to_delivered(
+        self,
+        request_id: str,
+        new_status: PcfExchangeStatus = PcfExchangeStatus.DELIVERED,
+    ) -> None:
+        """
+        Update the status of a PCF exchange without interrupting the caller flow.
+
+        Args:
+            request_id: The PCF request ID to update.
+            new_status: The new status to store for the exchange.
+        """
+        try:
+            with RepositoryManagerFactory.create() as repo_manager:
+                entity = repo_manager.pcf_repository.update_status(
+                    request_id=UUID(request_id),
+                    new_status=new_status,
+                )
+                if not entity:
+                    logger.warning(f"PCF exchange {request_id} not found for status update")
+                    return
+
+                logger.info(
+                    f"Updated PCF exchange status to {new_status.value} for request {request_id}"
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to update PCF exchange status to {new_status.value} for request {request_id}: {str(e)}"
+            )
 
     def get_all_outgoing(
         self,
@@ -611,9 +644,23 @@ class PcfManagementManager:
         """
         logger.info(f"Uploading PCF data for manufacturerPartId={manufacturer_part_id}")
 
+        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+
+        # Verify that existing data is present
+        existing = self._submodel_service.get_twin_aspect_document(
+            submodel_id=submodel_id,
+            semantic_id=PCF_SEMANTIC_ID,
+        )
+        if existing:
+            raise ValueError(
+                f"PCF data already exists for manufacturerPartId={manufacturer_part_id}. "
+                "Use update to modify existing data."
+          )
+
+
         self._validate_pcf_schema(pcf_data)
 
-        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+
         pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
 
         self._submodel_service.upload_twin_aspect_document(
@@ -696,6 +743,30 @@ class PcfManagementManager:
             "status": "updated",
             "sharedWithBpns": shared_bpns,
         }
+    
+    def get_pcf_location(self, manufacturer_part_id: str) -> str:
+        """
+        Get the storage location of the PCF data for a given manufacturer part ID.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID to look up.
+        Returns:
+            The PCF location string (e.g., submodel URL).
+        """
+        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+
+        # Verify that existing data is present
+        existing = self._submodel_service.get_twin_aspect_document(
+            submodel_id=submodel_id,
+            semantic_id=PCF_SEMANTIC_ID,
+        )
+
+        if not existing:
+            raise ValueError(
+                f"No existing PCF data found for manufacturerPartId={manufacturer_part_id}."
+            )
+        return f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
+
 
     def _get_shared_bpns(self, manufacturer_part_id: str) -> List[str]:
         """Return deduplicated BPNs that have received this PCF data.
@@ -709,10 +780,12 @@ class PcfManagementManager:
                 manufacturer_part_id=manufacturer_part_id,
             )
 
+        direction = {PcfExchangeDirection.OUTGOING}
+        type_pcf = {PcfExchangeType.RESPONSE}
         delivered_statuses = {PcfExchangeStatus.DELIVERED, PcfExchangeStatus.UPDATED}
         bpns: set[str] = set()
         for entity in entities:
-            if entity.status in delivered_statuses and entity.requesting_bpn:
+            if entity.status in delivered_statuses and entity.requesting_bpn and entity.direction in direction and entity.type in type_pcf:
                 bpns.add(entity.requesting_bpn)
 
         return sorted(bpns)
@@ -723,7 +796,7 @@ class PcfManagementManager:
         Raises:
             ValueError: If the data does not conform to the schema.
         """
-        pcf_schema_result = submodel_schema_finder(PCF_SEMANTIC_ID)
+        pcf_schema_result = submodel_schema_finder("urn:samm:io.catenax.pcf:9.0.0#Pcf")
         json_validator_draft_aware(pcf_schema_result["schema"], pcf_data)
 
     def get_pending_incoming_count(self) -> int:

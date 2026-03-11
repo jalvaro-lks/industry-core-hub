@@ -40,7 +40,7 @@ from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_ma
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.metadata_database.manager import RepositoryManagerFactory
-from managers.addons_service.pcf_kit.v1.management import PcfManagementManager
+from managers.addons_service.pcf_kit.v1.management import management_manager
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.metadata_database.notification.models import NotificationDirection
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel, PcfRelationshipModel, PcfSpecificStateModel
@@ -315,7 +315,7 @@ class PcfConsumptionManager:
                         f"[PCF Consumption] PCF request sent successfully via EDC "
                         f"for request [{request_id}] (HTTP {response.status_code})"
                     )
-                    self._update_status_to_delivered(request_id)
+                    management_manager._update_status_to_delivered(request_id)
                     return
 
                 logger.warning(
@@ -336,24 +336,6 @@ class PcfConsumptionManager:
             f"Failed to send PCF request via EDC to any connector for "
             f"BPN [{target_bpn}]: {last_error}"
         )
-
-    def _update_status_to_delivered(self, request_id: str) -> None:
-        """
-        Update the PCF exchange record status from PENDING to DELIVERED after
-        the request has been successfully transmitted via EDC.
-
-        Args:
-            request_id: The PCF request ID to update.
-        """
-        try:
-            with RepositoryManagerFactory.create() as repo_manager:
-                repo_manager.pcf_repository.update_status(
-                    UUID(request_id), PcfExchangeStatus.DELIVERED
-                )
-                logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
-        except Exception as e:
-            # Status update failure should not block the main flow
-            logger.error(f"Failed to update status to DELIVERED for request {request_id}: {str(e)}")
 
     def search_own_parts_by_manufacturer_part_id(
         self,
@@ -450,9 +432,10 @@ class PcfConsumptionManager:
                     message=request.message,
                     list_policies=list_policies
                 )
-                self._update_status_to_delivered(request_id)
+                management_manager._update_status_to_delivered(request_id)
                 
         except Exception as e:
+            management_manager._update_status_to_delivered(request_id, new_status=PcfExchangeStatus.FAILED)
             logger.error(f"Failed to send PCF request {request_id} to participant: {str(e)}")
             raise ValueError(f"Failed to send PCF request to participant: {str(e)}")
 
@@ -472,7 +455,7 @@ class PcfConsumptionManager:
                 exchange = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
                 if not exchange:
                     raise ValueError(f"PCF request with ID {request_id} not found")
-                pcf_data = PcfManagementManager.get_pcf_data(request_id=request_id)
+                pcf_data = management_manager.get_pcf_data(request_id=request_id)
                 result = PcfExchangeModel.from_entity(exchange)
                 result.pcf_data = pcf_data
                 return result.model_dump()
