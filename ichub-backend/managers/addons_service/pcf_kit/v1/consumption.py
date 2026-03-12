@@ -319,7 +319,6 @@ class PcfConsumptionManager:
                         request_id=request_id,
                         type=PcfExchangeType.REQUEST,
                         new_status=PcfExchangeStatus.DELIVERED,
-                        raise_exceptions=False,
                     )
                     return
 
@@ -441,7 +440,6 @@ class PcfConsumptionManager:
                     request_id=request_id,
                     type=PcfExchangeType.REQUEST,
                     new_status=PcfExchangeStatus.DELIVERED,
-                    raise_exceptions=False,
                 )
                 
         except Exception as e:
@@ -449,7 +447,6 @@ class PcfConsumptionManager:
                 request_id=request_id,
                 type=PcfExchangeType.REQUEST,
                 new_status=PcfExchangeStatus.FAILED,
-                raise_exceptions=False,
             )
             logger.error(f"Failed to send PCF request {request_id} to participant: {str(e)}")
             raise ValueError(f"Failed to send PCF request to participant: {str(e)}")
@@ -493,10 +490,11 @@ class PcfConsumptionManager:
         """
         try:
             part_info = self.search_own_parts_by_manufacturer_part_id(manufacturer_part_id)
-            total_sub_parts = len(part_info.list_sub_manufacturer_part_ids)
+            sub_parts = part_info["list_sub_manufacturer_part_ids"]
+            total_sub_parts = len(sub_parts)
             responded_sub_parts = 0
-            for sub_part in part_info.list_sub_manufacturer_part_ids:
-                if sub_part.status == PcfExchangeStatus.DELIVERED.value and sub_part.type == PcfExchangeType.RESPONSE.value:
+            for sub_part in sub_parts:
+                if sub_part["status"] == PcfExchangeStatus.DELIVERED.value and sub_part["type"] == PcfExchangeType.RESPONSE.value:
                     responded_sub_parts += 1
             progress = (responded_sub_parts / total_sub_parts) * 100 if total_sub_parts > 0 else 100
             return PcfSpecificStateModel(
@@ -505,7 +503,7 @@ class PcfConsumptionManager:
                 responded_sub_parts=responded_sub_parts,
                 progress_percentage=progress,
                 overall_status="PENDING" if responded_sub_parts < total_sub_parts else "COMPLETED"
-            )
+            ).model_dump()
                 
         except Exception as e:
             logger.error(f"Failed to consult global assembly progress for part {manufacturer_part_id}: {str(e)}")
@@ -528,8 +526,8 @@ class PcfConsumptionManager:
                 raise ValueError(f"PCF data for part {manufacturer_part_id} is not yet available for download. Current assembly progress: {status['progress_percentage']}%")
             part_info = self.search_own_parts_by_manufacturer_part_id(manufacturer_part_id)
             pcf_exchange_collection: List[PcfExchangeModel] = []
-            for sub_part in part_info.list_sub_manufacturer_part_ids:
-                exchange = self.consult_pcf_response(sub_part.requestId)
+            for sub_part in part_info["list_sub_manufacturer_part_ids"]:
+                exchange = self.consult_pcf_response(sub_part["request_id"])
                 pcf_exchange_collection.append(exchange)
             return pcf_exchange_collection
         except Exception as e:

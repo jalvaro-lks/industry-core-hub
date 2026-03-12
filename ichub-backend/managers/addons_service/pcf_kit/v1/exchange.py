@@ -45,8 +45,8 @@ from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
 
-# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0)
-PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0 - async exchange use case)
+PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
 
 
 def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
@@ -138,8 +138,8 @@ class PcfExchangeManager:
                     direction=PcfExchangeDirection.OUTGOING,
                     status=PcfExchangeStatus.PENDING,
                     type=PcfExchangeType.RESPONSE,
-                    requesting_bpn=self._own_bpn,
-                    responding_bpn=edc_bpn,
+                    requesting_bpn=edc_bpn,
+                    responding_bpn=self._own_bpn,
                     manufacturer_part_id=manufacturer_part_id,
                     customer_part_id=customer_part_id,
                     message=message,

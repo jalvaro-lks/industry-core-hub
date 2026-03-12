@@ -39,7 +39,7 @@ from tools.json_validator import json_validator_draft_aware
 
 logger = LoggingManager.get_logger(__name__)
 
-# PCF semantic ID constant
+# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0 - async exchange use case)
 PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
 
 

@@ -87,7 +87,6 @@ class PcfExchangeEntity(SQLModel, table=True):
     request_id: UUID = Field(
         default_factory=uuid4,
         index=True,
-        unique=True,
         description="Unique identifier for the PCF exchange request"
     )
     created_at: datetime = Field(

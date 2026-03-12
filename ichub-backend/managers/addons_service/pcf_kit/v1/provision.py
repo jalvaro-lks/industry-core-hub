@@ -49,8 +49,8 @@ from tools.edr_tools import remove_existing_edr
 
 logger = LoggingManager.get_logger(__name__)
 
-# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0)
-PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#Pcf"
+# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0 - async exchange use case)
+PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
 
 # Asset type used to identify PCF exchange assets in EDC catalogs (CX-0136)
 PCF_EXCHANGE_ASSET_TYPE = "https://w3id.org/catenax/taxonomy#PcfExchange"
@@ -272,7 +272,6 @@ class PcfProvisionManager:
         self,
         request_id: str,
         requesting_bpn: str,
-        type: PcfExchangeType,
         pcf_data: Dict[str, Any],
         is_update: bool = False,
         manufacturer_part_id: Optional[str] = None,
@@ -480,7 +479,7 @@ class PcfProvisionManager:
             if pcf_data is None:
                 raise ValueError("PCF data payload is required for upload.")
 
-            PcfManagementManager.upload_pcf_data(
+            management_manager.upload_pcf_data(
                 manufacturer_part_id=manufacturer_part_id,
                 pcf_data=pcf_data
             )
@@ -502,10 +501,12 @@ class PcfProvisionManager:
             ValueError: If there is an error during retrieval from the submodel service.
         """
         try:
-            result = PcfManagementManager.get_pcf_data(
+            result = management_manager.get_pcf_data_by_manufacturer_part_id(
                 manufacturer_part_id=manufacturer_part_id
             )
-            return result.model_dump()
+            if result is None:
+                raise ValueError(f"No PCF data found for manufacturerPartId [{manufacturer_part_id}].")
+            return result
         except Exception as e:
             logger.error(f"Failed to retrieve PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
             raise ValueError(f"Failed to retrieve PCF data: {str(e)}")
@@ -519,7 +520,7 @@ class PcfProvisionManager:
             if pcf_data is None:
                 raise ValueError("PCF data payload is required for update.")
             
-            result = PcfManagementManager.update_pcf_data(
+            result = management_manager.update_pcf_data(
                 manufacturer_part_id=manufacturer_part_id,
                 pcf_data=pcf_data
             )
@@ -588,7 +589,7 @@ class PcfProvisionManager:
                         status=status,
                         offset=offset,
                         limit=limit)
-                return notifications
+                return [PcfExchangeModel.from_entity(n).model_dump() for n in notifications]
         except Exception as e:
             logger.error(f"Failed to list provider notifications: {str(e)}")
             raise ValueError(f"Failed to list provider notifications: {str(e)}")
@@ -611,16 +612,15 @@ class PcfProvisionManager:
                 exchange_entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id), type=PcfExchangeType.RESPONSE)
                 if not exchange_entity:
                     raise ValueError(f"No exchange record found for request {request_id}. Cannot accept request without a valid exchange record.")
-                if exchange_entity.pcf_location is not None:
-                    raise ValueError(f"Request {request_id} has not PCF assigned")
+                if exchange_entity.pcf_location is None:
+                    raise ValueError(f"Request {request_id} has no PCF assigned")
                 if exchange_entity.status == PcfExchangeStatus.DELIVERED:
                     raise ValueError(f"Request {request_id} is DELIVERED already. Use the update endpoint to send an update response instead of accepting the request again.")
-                pcf_data = PcfManagementManager.get_pcf_data(exchange_entity.manufacturer_part_id)
+                pcf_data = management_manager.get_pcf_data_by_manufacturer_part_id(exchange_entity.manufacturer_part_id)
                 self._send_pcf_via_edc(
                     request_id=request_id,
                     requesting_bpn=exchange_entity.requesting_bpn,
                     pcf_data=pcf_data,
-                    type=PcfExchangeType.RESPONSE,
                     is_update=False,
                     manufacturer_part_id=exchange_entity.manufacturer_part_id,
                     list_policies=list_policies
@@ -629,7 +629,6 @@ class PcfProvisionManager:
                     request_id=request_id,
                     type=PcfExchangeType.RESPONSE,
                     new_status=PcfExchangeStatus.DELIVERED,
-                    raise_exceptions=False,
                 )
                 
         except Exception as e:
@@ -637,7 +636,6 @@ class PcfProvisionManager:
                 request_id=request_id,
                 type=PcfExchangeType.RESPONSE,
                 new_status=PcfExchangeStatus.FAILED,
-                raise_exceptions=False,
             )
             logger.error(f"Failed to accept request and send response for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to accept request and send response: {str(e)}")
@@ -665,7 +663,7 @@ class PcfProvisionManager:
                 if not manufacturer_part_id:
                     raise ValueError(f"No manufacturerPartId associated with request {request_id}. Cannot retrieve PCF data for refresh.")
                 
-                pcf_location = PcfManagementManager.get_pcf_location(UUID(request_id))
+                pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
                 if not pcf_location:
                     raise ValueError(f"No PCF location found for request {request_id}. Cannot refresh PCF data.")
                 final_exchange = repo_manager.pcf_repository.update_pcf_location(UUID(request_id), f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}", type=PcfExchangeType.RESPONSE)
