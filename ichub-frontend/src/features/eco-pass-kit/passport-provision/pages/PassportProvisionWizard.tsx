@@ -184,7 +184,7 @@ const PassportProvisionWizard: React.FC = () => {
           return {
             ...part,
             ...twin, // This adds globalId, dtrAasId, etc. if they exist
-            _registrationStatus: twin.dtrAasId && twin.globalId ? 'shared' : 'registered'
+            _registrationStatus: twin.dtrAasId && twin.globalId ? 'registered' : 'error'
           };
         }
         return {

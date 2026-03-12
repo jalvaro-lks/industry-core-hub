@@ -28,6 +28,7 @@ import { discoverPassport, PassportResponse, DiscoveryStatus } from '../api/pass
 import PassportLoadingSteps from '../components/PassportLoadingSteps';
 import { getStepIndexByName } from '../components/loadingStepsConfig';
 import { getDtrPoliciesConfig, getGovernanceConfig } from '@/services/EnvironmentService';
+import { generatePoliciesFromDefinition } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 
 /**
  * Demo page to visualize the user-provided passport data model
@@ -60,13 +61,23 @@ const PassportProvidedVisualization: React.FC = () => {
         // Use the discovery API with real backend polling
         const semanticId = 'urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport';
         
-        // Retrieve DTR and governance policies from configuration (Saturn format)
-        const dtrPolicy = getDtrPoliciesConfig();
+        // Retrieve DTR and governance policies from configuration
+        const dtrPolicyConfig = getDtrPoliciesConfig();
         const agreements = getGovernanceConfig();
-        
+
         // Find the agreement config that matches the semantic ID
         const matchingAgreement = agreements.find(gc => gc.semanticid === semanticId);
-        
+
+        // Process through generatePoliciesFromDefinition — same as parts discovery.
+        // This strips 'context' fields and normalizes plural keys (permissions→permission)
+        // so the connector receives the exact format it expects.
+        const dtrPoliciesNormalized = Array.isArray(dtrPolicyConfig)
+          ? dtrPolicyConfig.flatMap(def => generatePoliciesFromDefinition(def))
+          : [];
+        const governancePoliciesNormalized = matchingAgreement?.policies
+          ? { policies: matchingAgreement.policies.flatMap(def => generatePoliciesFromDefinition(def)) }
+          : undefined;
+
         const response = await discoverPassport(
           passportId,
           semanticId,
@@ -74,15 +85,15 @@ const PassportProvidedVisualization: React.FC = () => {
             // Update the UI based on backend status
             const stepIndex = getStepIndexByName(status.step);
             setCurrentStep(stepIndex);
-            
+
             // If status indicates error, capture it
             if (status.status === 'failed') {
               setError(status.message || 'Discovery failed');
               setErrorStep(stepIndex);
             }
           },
-          dtrPolicy as unknown as Record<string, unknown>,
-          matchingAgreement as unknown as Record<string, unknown>
+          dtrPoliciesNormalized as unknown as Record<string, unknown>,
+          governancePoliciesNormalized as unknown as Record<string, unknown>
         );
         
         setPassportData(response);
