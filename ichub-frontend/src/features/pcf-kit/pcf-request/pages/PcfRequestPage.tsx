@@ -42,6 +42,7 @@ import {
   Security,
   VerifiedUser,
   Add,
+  AddCircleOutline,
   ArrowBack,
   Refresh,
   Error as ErrorIcon,
@@ -55,13 +56,12 @@ import {
   Block,
   Search
 } from '@mui/icons-material';
-import { CatalogPartSearch, CatalogPartSearchResult as SharedCatalogPartSearchResult } from '../../shared/components';
+import { CatalogPartSearch, CatalogPartSearchResult as SharedCatalogPartSearchResult, PartInfoHeader } from '../../shared/components';
 import {
   getCatalogPartWithSubparts,
   addSubpartRelation,
   requestSubpartPcf,
   CatalogPartPcfResponse,
-  CatalogPartSearchResult,
   SubpartPcfResponse,
   AddSubpartFormData
 } from '../api/pcfRequestApi';
@@ -99,10 +99,6 @@ const PcfRequestPage: React.FC = () => {
 
   // Data state
   const [partData, setPartData] = useState<CatalogPartPcfResponse | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<CatalogPartSearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
 
   // Dialog state
   const [addSubpartDialogOpen, setAddSubpartDialogOpen] = useState(false);
@@ -114,40 +110,16 @@ const PcfRequestPage: React.FC = () => {
   // Expanded subparts
   const [expandedSubparts, setExpandedSubparts] = useState<Set<string>>(new Set());
 
-  // Parse part ID from URL
+  // Parse part ID and manufacturer ID from URL
   const partIdFromUrl = params?.partId;
 
   // Load part data when URL contains partId
   useEffect(() => {
     if (partIdFromUrl) {
       const decodedPartId = decodeURIComponent(partIdFromUrl);
-      setSearchTerm(decodedPartId);
       loadPartData(decodedPartId);
     }
   }, [partIdFromUrl]);
-
-  // Search catalog parts as user types
-  useEffect(() => {
-    if (!searchTerm.trim() || pageState !== 'search') {
-      setSearchResults([]);
-      return;
-    }
-
-    const searchTimeout = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const results = await searchCatalogPartsByManufacturerPartId(searchTerm);
-        setSearchResults(results);
-        setShowDropdown(true);
-      } catch (err) {
-        console.error('Search error:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(searchTimeout);
-  }, [searchTerm, pageState]);
 
   const loadPartData = async (manufacturerPartId: string) => {
     setPageState('loading');
@@ -185,29 +157,11 @@ const PcfRequestPage: React.FC = () => {
     }
   };
 
-  // Handle selecting a search result
-  const handleSelectPart = (part: CatalogPartSearchResult) => {
-    setShowDropdown(false);
-    const partId = encodeURIComponent(part.manufacturerPartId);
-    navigate(`/pcf/precalculation/${partId}`);
-  };
-
-  // Handle search submission
-  const handleSearchSubmit = () => {
-    if (searchTerm.trim()) {
-      setShowDropdown(false);
-      const partId = encodeURIComponent(searchTerm.trim());
-      navigate(`/pcf/precalculation/${partId}`);
-    }
-  };
-
   // Handle back to search
   const handleBackToSearch = () => {
     setPageState('search');
     setPartData(null);
     setError(null);
-    setSearchTerm('');
-    setSearchResults([]);
     navigate('/pcf/precalculation');
   };
 
@@ -338,7 +292,7 @@ const PcfRequestPage: React.FC = () => {
               Loading Catalog Part
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace' }}>
-              {searchTerm}
+              {partIdFromUrl ? decodeURIComponent(partIdFromUrl) : ''}
             </Typography>
           </Box>
 
@@ -630,39 +584,13 @@ const PcfRequestPage: React.FC = () => {
 
             {/* Right: Part info and actions */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Box 
-                onClick={() => navigate(`/catalog-management/parts/${encodeURIComponent(partData.manufacturerPartId)}`)}
-                sx={{ 
-                  cursor: 'pointer',
-                  p: 1.5,
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  transition: 'all 0.2s ease',
-                  '&:hover': { 
-                    background: alpha(PCF_PRIMARY, 0.08),
-                    borderColor: alpha(PCF_PRIMARY, 0.2)
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      Manufacturer Part ID
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600, fontFamily: 'monospace' }}>
-                      {partData.manufacturerPartId}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', pl: 3 }}>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      Part Name
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
-                      {partData.partName}
-                    </Typography>
-                  </Box>
-                </Box>
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <PartInfoHeader
+                  manufacturerId={partData.manufacturerId}
+                  manufacturerPartId={partData.manufacturerPartId}
+                  partName={partData.partName}
+                  hideOnSmallScreens={false}
+                />
               </Box>
               <Tooltip title="Refresh">
                 <IconButton
@@ -1250,8 +1178,9 @@ const PcfRequestPage: React.FC = () => {
   // Render search state
   const renderSearch = () => {
     const handlePartSelect = (part: SharedCatalogPartSearchResult) => {
-      const partId = encodeURIComponent(part.manufacturerPartId);
-      navigate(`/pcf/precalculation/${partId}`);
+      const encodedManufacturerId = encodeURIComponent(part.manufacturerId);
+      const encodedPartId = encodeURIComponent(part.manufacturerPartId);
+      navigate(`/pcf/precalculation/${encodedManufacturerId}/${encodedPartId}`);
     };
 
     return (

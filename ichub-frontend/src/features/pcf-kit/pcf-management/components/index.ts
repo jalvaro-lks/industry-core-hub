@@ -20,27 +20,4 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { CloudUpload } from '@mui/icons-material';
-import { FeatureConfig } from '@/types/routing';
-import PcfManagementPage from './pages/PcfManagementPage';
-
-/**
- * PCF Management feature configuration.
- * Allows providers to manage and upload PCF data for their catalog parts.
- */
-export const pcfManagementFeature: FeatureConfig = {
-  name: 'PCF Management',
-  icon: <CloudUpload />,
-  navigationPath: '/pcf/management',
-  disabled: false,
-  routes: [
-    {
-      path: '/pcf/management',
-      element: <PcfManagementPage />
-    },
-    {
-      path: '/pcf/management/:manufacturerId/:partId',
-      element: <PcfManagementPage />
-    }
-  ]
-};
+export { default as ParticipantSelectionDialog } from './ParticipantSelectionDialog';

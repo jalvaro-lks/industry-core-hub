@@ -39,7 +39,7 @@ export const pcfRequestFeature: FeatureConfig = {
       element: <PcfRequestPage />
     },
     {
-      path: '/pcf/precalculation/:partId',
+      path: '/pcf/precalculation/:manufacturerId/:partId',
       element: <PcfRequestPage />
     }
   ]

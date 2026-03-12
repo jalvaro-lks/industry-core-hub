@@ -23,3 +23,7 @@
 export { default as PartSearchBar } from './PartSearchBar';
 export { CatalogPartSearch } from './CatalogPartSearch';
 export type { CatalogPartSearchResult } from './CatalogPartSearch';
+export { PartInfoHeader } from './PartInfoHeader';
+export type { PartInfoHeaderProps } from './PartInfoHeader';
+export { PcfDataEditor } from './PcfDataEditor';
+export type { PcfDataEditorProps } from './PcfDataEditor';

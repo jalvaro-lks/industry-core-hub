@@ -65,7 +65,7 @@ import {
   PlaylistAdd,
   OpenInNew
 } from '@mui/icons-material';
-import { CatalogPartSearch, CatalogPartSearchResult } from '../../shared/components';
+import { CatalogPartSearch, CatalogPartSearchResult, PartInfoHeader, PcfDataEditor } from '../../shared/components';
 import {
   getPcfData,
   publishPcfData,
@@ -73,6 +73,14 @@ import {
   PcfDataRecord
 } from '../../pcf-exchange/api/pcfExchangeApi';
 import { PcfDetailsDialog, PcfEditDialog } from '../../pcf-exchange/components';
+import {
+  getPcfByManufacturerPartId,
+  uploadPcf,
+  updatePcfAndGetParticipants,
+  notifyParticipants
+} from '../../services/pcfApi';
+import { fetchCatalogPart } from '@/features/industry-core-kit/catalog-management/api';
+import { ParticipantSelectionDialog } from '../components';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -132,47 +140,54 @@ const PcfManagementPage: React.FC = () => {
 
   // Part readiness state
   const [partReadiness, setPartReadiness] = useState<PartReadiness>('has-pcf');
-  // Track selected part status from search - used in loadPartData
-  const [, setSelectedPartStatus] = useState<'Draft' | 'Registered' | null>(null);
 
   // Data state
   const [managedPart, setManagedPart] = useState<ManagedPart | null>(null);
   const [pcfData, setPcfData] = useState<PcfDataRecord | null>(null);
+  const [manufacturerId, setManufacturerId] = useState<string>('');
+  const [rawPcfData, setRawPcfData] = useState<Record<string, unknown> | null>(null);
 
   // Dialog state
   const [pcfDetailsDialogOpen, setPcfDetailsDialogOpen] = useState(false);
   const [pcfEditDialogOpen, setPcfEditDialogOpen] = useState(false);
+  const [pcfCreateDialogOpen, setPcfCreateDialogOpen] = useState(false);
+  const [participantDialogOpen, setParticipantDialogOpen] = useState(false);
+  const [availableParticipants, setAvailableParticipants] = useState<string[]>([]);
 
   // PCF loading state
   const [isPcfLoading, setIsPcfLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Parse part ID from URL
+  // Parse part ID and manufacturer ID from URL
+  const manufacturerIdFromUrl = params?.manufacturerId;
   const partIdFromUrl = params?.partId;
 
-  // Load part data when URL contains partId
+  // Load part data when URL contains both params
   useEffect(() => {
-    if (partIdFromUrl) {
+    if (manufacturerIdFromUrl && partIdFromUrl) {
+      const decodedManufacturerId = decodeURIComponent(manufacturerIdFromUrl);
       const decodedPartId = decodeURIComponent(partIdFromUrl);
-      loadPartData(decodedPartId);
+      setManufacturerId(decodedManufacturerId);
+      loadPartData(decodedManufacturerId, decodedPartId);
     }
-  }, [partIdFromUrl]);
+  }, [manufacturerIdFromUrl, partIdFromUrl]);
 
-  const loadPartData = async (manufacturerPartId: string, partStatus?: 'Draft' | 'Registered') => {
+  const loadPartData = async (manufacturerId: string, manufacturerPartId: string) => {
     setPageState('loading');
     setError(null);
     setCurrentStep(0);
-    setSelectedPartStatus(partStatus || null);
+    setManufacturerId(manufacturerId);
 
     try {
-      // Step 1: Search for part
+      // Step 1: Fetch catalog part details
       setCurrentStep(0);
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      // Simulate different readiness levels based on part status or ID pattern
-      // In reality, this would come from the API
-      const isDraft = partStatus === 'Draft' || manufacturerPartId.includes('DRAFT') || manufacturerPartId === 'CELL-HP-01' || manufacturerPartId === 'BMS-CTRL-V2';
-      const hasNoPcf = manufacturerPartId.includes('MOTOR') || manufacturerPartId.includes('INV');
+      const catalogPart = await fetchCatalogPart(manufacturerId, manufacturerPartId);
+      
+      // Determine part status based on catalog part data
+      // API status: 0 = Draft, 1 = Pending, 2 = Registered, 3 = Shared
+      const isDraft = catalogPart.status === 0;
       
       if (isDraft) {
         // Part is in Draft status - not registered
@@ -181,59 +196,77 @@ const PcfManagementPage: React.FC = () => {
           catenaXId: '',
           manufacturerPartId,
           partInstanceId: 'CATALOG',
-          partName: `Product ${manufacturerPartId}`,
+          partName: catalogPart.name || `Product ${manufacturerPartId}`,
           hasPcf: false,
           pcfStatus: 'DRAFT'
         };
         setCurrentStep(3);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
         setManagedPart(part);
         setPcfData(null);
+        setRawPcfData(null);
         setPageState('visualization');
         return;
       }
 
+      // Step 2: Fetch PCF data for the part
+      setCurrentStep(1);
+      let pcfResponse: { pcfData?: Record<string, unknown>; exists: boolean } = { exists: false };
+      
+      try {
+        const pcfResult = await getPcfByManufacturerPartId(manufacturerPartId);
+        if (pcfResult && Object.keys(pcfResult).length > 0) {
+          pcfResponse = { pcfData: pcfResult as Record<string, unknown>, exists: true };
+        }
+      } catch {
+        // No PCF data found for this part
+        pcfResponse = { exists: false };
+      }
+
+      // Step 3: Validate data
+      setCurrentStep(2);
+      await new Promise(resolve => setTimeout(resolve, 400));
+
       // Create managed part from catalog part
+      const hasPcf = pcfResponse.exists;
+      const pcfDataRecord = pcfResponse.pcfData;
+      
+      // Extract PCF values from raw data if available
+      const pcfValue = pcfDataRecord?.pcfValue as number | undefined;
+      const pcfValueUnit = (pcfDataRecord?.pcfValueUnit as string) || 'kg CO2e';
+
       const part: ManagedPart = {
         catenaXId: `urn:uuid:${crypto.randomUUID()}`,
         manufacturerPartId,
         partInstanceId: 'CATALOG',
-        partName: `Product ${manufacturerPartId}`,
-        hasPcf: !hasNoPcf,
-        pcfVersion: hasNoPcf ? undefined : 1,
-        pcfLastUpdated: hasNoPcf ? undefined : new Date().toISOString(),
-        pcfValue: hasNoPcf ? undefined : Math.round(50 + Math.random() * 150),
-        pcfValueUnit: hasNoPcf ? undefined : 'kg CO2e',
-        pcfStatus: hasNoPcf ? undefined : 'PUBLISHED'
+        partName: catalogPart.name || `Product ${manufacturerPartId}`,
+        hasPcf,
+        pcfVersion: hasPcf ? (pcfDataRecord?.version as number) || 1 : undefined,
+        pcfLastUpdated: hasPcf ? (pcfDataRecord?.updatedAt as string) || new Date().toISOString() : undefined,
+        pcfValue: hasPcf ? pcfValue : undefined,
+        pcfValueUnit: hasPcf ? pcfValueUnit : undefined,
+        pcfStatus: hasPcf ? 'PUBLISHED' : undefined
       };
 
-      // Step 2: Load PCF data
-      setCurrentStep(1);
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Step 4: Complete
+      setCurrentStep(3);
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      if (hasNoPcf) {
-        // Part is registered but has no PCF submodel
+      if (!hasPcf) {
         setPartReadiness('registered-no-pcf');
-        setCurrentStep(3);
-        await new Promise(resolve => setTimeout(resolve, 500));
         setManagedPart(part);
         setPcfData(null);
+        setRawPcfData(null);
         setPageState('visualization');
         return;
       }
 
-      const pcf = await getPcfData(part.catenaXId);
-
-      // Step 3: Validate
-      setCurrentStep(2);
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      // Step 4: Complete
-      setCurrentStep(3);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
       setPartReadiness('has-pcf');
       setManagedPart(part);
+      setRawPcfData(pcfDataRecord || null);
+      
+      // Convert raw PCF data to PcfDataRecord format for display
+      const pcf = await getPcfData(part.catenaXId);
       setPcfData(pcf);
       setPageState('visualization');
     } catch (err) {
@@ -245,12 +278,11 @@ const PcfManagementPage: React.FC = () => {
 
   // Handle selecting a part from search
   const handlePartSelect = (part: CatalogPartSearchResult) => {
-    const partId = encodeURIComponent(part.manufacturerPartId);
-    // Store the status to use in loadPartData
-    setSelectedPartStatus(part.status ?? null);
-    navigate(`/pcf/management/${partId}`);
-    // Also pass status through state if navigating
-    loadPartData(part.manufacturerPartId, part.status);
+    const encodedManufacturerId = encodeURIComponent(part.manufacturerId);
+    const encodedPartId = encodeURIComponent(part.manufacturerPartId);
+    setManufacturerId(part.manufacturerId);
+    navigate(`/pcf/management/${encodedManufacturerId}/${encodedPartId}`);
+    loadPartData(part.manufacturerId, part.manufacturerPartId);
   };
 
   // Handle back to search
@@ -264,12 +296,12 @@ const PcfManagementPage: React.FC = () => {
 
   // Handle refresh data
   const handleRefresh = async () => {
-    if (!managedPart) return;
+    if (!managedPart || !manufacturerId) return;
     
     setIsRefreshing(true);
     try {
-      const pcf = await getPcfData(managedPart.catenaXId);
-      setPcfData(pcf);
+      // Refresh by reloading the entire part data
+      await loadPartData(manufacturerId, managedPart.manufacturerPartId);
     } catch (err) {
       console.error('Failed to refresh data:', err);
     } finally {
@@ -277,18 +309,79 @@ const PcfManagementPage: React.FC = () => {
     }
   };
 
-  // Handle upload/publish PCF
+  // Handle opening the PCF create dialog - for parts with no PCF
+  const handleOpenPcfCreateDialog = () => {
+    setPcfCreateDialogOpen(true);
+  };
+
+  // Handle PCF created from PcfDataEditor
+  const handlePcfCreated = async (pcfDataJson: Record<string, unknown>) => {
+    if (!managedPart) return;
+
+    setIsUploading(true);
+    try {
+      // Upload the new PCF data
+      await uploadPcf(managedPart.manufacturerPartId, pcfDataJson);
+      
+      // Refresh the page data to show the new PCF
+      if (manufacturerId) {
+        await loadPartData(manufacturerId, managedPart.manufacturerPartId);
+      }
+      
+      setPcfCreateDialogOpen(false);
+    } catch (err) {
+      console.error('Failed to upload PCF:', err);
+      throw err; // Re-throw to let PcfDataEditor handle the error
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Handle upload/publish PCF (when PCF already exists)
   const handleUploadPcf = async () => {
-    if (!pcfData) return;
+    if (!pcfData || !managedPart) return;
 
     setIsPcfLoading(true);
     try {
-      const updatedPcf = await publishPcfData(pcfData.id);
-      setPcfData(updatedPcf);
+      // Update the PCF and get list of interested participants
+      const participants = await updatePcfAndGetParticipants(
+        managedPart.manufacturerPartId,
+        rawPcfData || {}
+      );
+      
+      if (participants && participants.length > 0) {
+        // Show participant selection dialog
+        setAvailableParticipants(participants);
+        setParticipantDialogOpen(true);
+      } else {
+        // No participants, just update the display
+        const updatedPcf = await publishPcfData(pcfData.id);
+        setPcfData(updatedPcf);
+      }
     } catch (err) {
       console.error('Failed to upload PCF:', err);
     } finally {
       setIsPcfLoading(false);
+    }
+  };
+
+  // Handle notifying selected participants
+  const handleNotifyParticipants = async (selectedParticipants: string[]) => {
+    if (!managedPart) return;
+
+    setIsUpdating(true);
+    try {
+      await notifyParticipants(managedPart.manufacturerPartId, selectedParticipants);
+      
+      // Refresh data after successful notification
+      if (manufacturerId) {
+        await loadPartData(manufacturerId, managedPart.manufacturerPartId);
+      }
+    } catch (err) {
+      console.error('Failed to notify participants:', err);
+      throw err;
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -476,40 +569,13 @@ const PcfManagementPage: React.FC = () => {
             </Box>
             {/* Right side: Part info and refresh */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box 
-                onClick={() => navigate(`/catalog-management/parts/${encodeURIComponent(managedPart.manufacturerPartId)}`)}
-                sx={{ 
-                  cursor: 'pointer',
-                  p: 1.5,
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  transition: 'all 0.2s ease',
-                  display: { xs: 'none', md: 'block' },
-                  '&:hover': { 
-                    background: alpha(PCF_PRIMARY, 0.08),
-                    borderColor: alpha(PCF_PRIMARY, 0.2)
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Box>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      Manufacturer Part ID
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600, fontFamily: 'monospace' }}>
-                      {managedPart.manufacturerPartId}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ borderLeft: '1px solid rgba(255,255,255,0.1)', pl: 3 }}>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      Part Name
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
-                      {managedPart.partName}
-                    </Typography>
-                  </Box>
-                </Box>
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <PartInfoHeader
+                  manufacturerId={manufacturerId}
+                  manufacturerPartId={managedPart.manufacturerPartId}
+                  partName={managedPart.partName}
+                  hideOnSmallScreens={false}
+                />
               </Box>
               <Tooltip title="Refresh">
                 <IconButton
@@ -781,23 +847,46 @@ const PcfManagementPage: React.FC = () => {
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 3, maxWidth: 400, mx: 'auto' }}>
                           Your catalog part is registered. Add a PCF submodel to enable carbon footprint tracking and sharing.
                         </Typography>
-                        <Button
-                          variant="contained"
-                          startIcon={<AddBox />}
-                          endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
-                          onClick={() => navigate(`/submodel-creator?partId=${encodeURIComponent(managedPart.manufacturerPartId)}&type=pcf`)}
-                          sx={{
-                            px: 4,
-                            py: 1.5,
-                            borderRadius: '10px',
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
-                            '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` }
-                          }}
-                        >
-                          Create PCF Submodel
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <Button
+                            variant="contained"
+                            startIcon={isUploading ? <CircularProgress size={18} sx={{ color: 'inherit' }} /> : <PlaylistAdd />}
+                            onClick={handleOpenPcfCreateDialog}
+                            disabled={isUploading}
+                            sx={{
+                              px: 4,
+                              py: 1.5,
+                              borderRadius: '10px',
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
+                              '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` }
+                            }}
+                          >
+                            {isUploading ? 'Uploading...' : 'Upload PCF Data'}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            startIcon={<AddBox />}
+                            endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
+                            onClick={() => navigate(`/submodel-creator?partId=${encodeURIComponent(managedPart.manufacturerPartId)}&type=pcf`)}
+                            sx={{
+                              px: 3,
+                              py: 1.5,
+                              borderRadius: '10px',
+                              textTransform: 'none',
+                              fontWeight: 600,
+                              borderColor: alpha(PCF_PRIMARY, 0.4),
+                              color: PCF_PRIMARY,
+                              '&:hover': { 
+                                borderColor: PCF_PRIMARY,
+                                background: alpha(PCF_PRIMARY, 0.08)
+                              }
+                            }}
+                          >
+                            Submodel Creator
+                          </Button>
+                        </Box>
                       </>
                     )}
                   </Box>
@@ -1039,6 +1128,49 @@ const PcfManagementPage: React.FC = () => {
           pcfData={pcfData}
           part={managedPart}
         />
+
+        {/* Participant Selection Dialog - for notifying parties about updates */}
+        <ParticipantSelectionDialog
+          open={participantDialogOpen}
+          onClose={() => setParticipantDialogOpen(false)}
+          onConfirm={handleNotifyParticipants}
+          participants={availableParticipants}
+          manufacturerPartId={managedPart?.manufacturerPartId || ''}
+          isLoading={isUpdating}
+        />
+
+        {/* Create PCF Dialog - for parts without PCF data */}
+        {pcfCreateDialogOpen && (
+          <Box
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1300,
+              bgcolor: 'rgba(0, 0, 0, 0.75)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 3,
+            }}
+            onClick={() => !isUploading && setPcfCreateDialogOpen(false)}
+          >
+            <Box
+              sx={{ maxWidth: 800, width: '100%' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <PcfDataEditor
+                onSave={handlePcfCreated}
+                onCancel={() => setPcfCreateDialogOpen(false)}
+                mode="create"
+                manufacturerPartId={managedPart?.manufacturerPartId || ''}
+                isSaving={isUploading}
+              />
+            </Box>
+          </Box>
+        )}
       </Box>
     );
   };

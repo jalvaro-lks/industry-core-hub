@@ -11,7 +11,7 @@
  * https://www.apache.org/licenses/LICENSE-2.0.
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS
+ * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the
  * License for the specific language govern in permissions and limitations
@@ -20,27 +20,4 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { CloudUpload } from '@mui/icons-material';
-import { FeatureConfig } from '@/types/routing';
-import PcfManagementPage from './pages/PcfManagementPage';
-
-/**
- * PCF Management feature configuration.
- * Allows providers to manage and upload PCF data for their catalog parts.
- */
-export const pcfManagementFeature: FeatureConfig = {
-  name: 'PCF Management',
-  icon: <CloudUpload />,
-  navigationPath: '/pcf/management',
-  disabled: false,
-  routes: [
-    {
-      path: '/pcf/management',
-      element: <PcfManagementPage />
-    },
-    {
-      path: '/pcf/management/:manufacturerId/:partId',
-      element: <PcfManagementPage />
-    }
-  ]
-};
+export * from './pcfApi';

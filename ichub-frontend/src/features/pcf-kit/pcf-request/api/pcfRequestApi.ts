@@ -18,6 +18,12 @@
  *******************************************************************************/
 
 import { fetchCatalogParts } from '../../../industry-core-kit/catalog-management/api';
+import {
+  getSubparts,
+  addSubpart as apiAddSubpart,
+  sendPcfRequest,
+  PcfExchangeModel
+} from '../../services/pcfApi';
 
 // ============================================================================
 // Types for PCF Request Feature
@@ -231,62 +237,71 @@ export async function searchCatalogPartsByManufacturerPartId(
 }
 
 /**
+ * Convert API exchange model to UI subpart response
+ */
+function convertToSubpartResponse(exchange: PcfExchangeModel): SubpartPcfResponse {
+  // Map API status to UI status
+  const statusMap: Record<string, SubpartPcfResponse['pcfStatus']> = {
+    'pending': 'pending',
+    'delivered': 'delivered',
+    'responded': 'delivered',
+    'rejected': 'rejected',
+    'failed': 'error',
+    'error': 'error'
+  };
+  
+  return {
+    id: exchange.requestId,
+    supplierBpn: exchange.targetBpn,
+    supplierName: exchange.targetBpn, // Could be resolved to company name
+    manufacturerPartId: exchange.manufacturerPartId || exchange.customerPartId || 'Unknown',
+    partName: exchange.manufacturerPartId || 'Unknown Part',
+    pcfStatus: statusMap[exchange.status.toLowerCase()] || 'pending',
+    pcfValue: exchange.pcfData?.pcfValue as number | undefined,
+    pcfUnit: (exchange.pcfData?.pcfUnit as string) || 'kg CO2e',
+    requestedAt: new Date().toISOString(), // API should provide this
+    errorMessage: exchange.status.toLowerCase() === 'error' ? exchange.message : undefined,
+    rejectReason: exchange.status.toLowerCase() === 'rejected' ? exchange.message : undefined
+  };
+}
+
+/**
  * Get a catalog part with its linked subparts and PCF responses
+ * Uses real backend API to fetch subpart relationships
  */
 export async function getCatalogPartWithSubparts(
   manufacturerPartId: string
 ): Promise<CatalogPartPcfResponse | null> {
   try {
+    // First, get the catalog parts to find the one we need
     const catalogParts = await fetchCatalogParts();
     const part = catalogParts.find(p => p.manufacturerPartId === manufacturerPartId);
     
-    if (part) {
-      // In production, fetch subparts from backend
-      const subparts = mockSubparts[manufacturerPartId] || [];
-      
-      return {
-        manufacturerId: part.manufacturerId || '',
-        manufacturerPartId: part.manufacturerPartId,
-        partName: part.name,
-        description: part.description,
-        category: part.category,
-        subparts,
-      };
+    if (!part) {
+      // Part not found in catalog
+      return null;
     }
-    
-    // Fallback to mock data
-    const mockPart = {
-      'CAT-PART-001': {
-        manufacturerId: 'BPNL00000001CFRM',
-        manufacturerPartId: 'CAT-PART-001',
-        partName: 'Automotive Control Module',
-        description: 'Electronic control unit for automotive applications',
-        category: 'Electronics',
-      },
-      'CAT-PART-002': {
-        manufacturerId: 'BPNL00000001CFRM',
-        manufacturerPartId: 'CAT-PART-002',
-        partName: 'Chassis Assembly Frame',
-        description: 'Main structural frame for vehicle chassis',
-        category: 'Structural',
-      },
-      'CAT-PART-003': {
-        manufacturerId: 'BPNL00000001CFRM',
-        manufacturerPartId: 'CAT-PART-003',
-        partName: 'Sensor Module Package',
-        description: 'Integrated sensor package for monitoring systems',
-        category: 'Sensors',
-      },
-    }[manufacturerPartId];
-    
-    if (mockPart) {
-      return {
-        ...mockPart,
-        subparts: mockSubparts[manufacturerPartId] || [],
-      };
+
+    // Get subparts from the real API
+    let subparts: SubpartPcfResponse[] = [];
+    try {
+      const subpartsResponse = await getSubparts(manufacturerPartId);
+      if (subpartsResponse && subpartsResponse.listSubManufacturerPartIds) {
+        subparts = subpartsResponse.listSubManufacturerPartIds.map(convertToSubpartResponse);
+      }
+    } catch {
+      // No subparts or API not available yet - use empty array
+      console.log('No subparts found for part:', manufacturerPartId);
     }
-    
-    return null;
+
+    return {
+      manufacturerId: part.manufacturerId || '',
+      manufacturerPartId: part.manufacturerPartId,
+      partName: part.name,
+      description: part.description,
+      category: part.category,
+      subparts,
+    };
   } catch (error) {
     console.error('Error fetching catalog part:', error);
     return null;
@@ -295,69 +310,90 @@ export async function getCatalogPartWithSubparts(
 
 /**
  * Add a new subpart relation to a catalog part
+ * Uses real backend API to create the relationship and initiate PCF request
  */
 export async function addSubpartRelation(
   parentManufacturerPartId: string,
   formData: AddSubpartFormData
 ): Promise<SubpartPcfResponse> {
-  // Simulate API call
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const newSubpart: SubpartPcfResponse = {
-    id: `sub-${Date.now()}`,
-    supplierBpn: formData.supplierBpn,
-    supplierName: `Supplier ${formData.supplierBpn.slice(-4)}`,
-    manufacturerPartId: formData.manufacturerPartId,
-    partName: `Part ${formData.manufacturerPartId}`,
-    pcfStatus: 'pending',
-    requestedAt: new Date().toISOString(),
-  };
-  
-  // Add to mock data
-  if (!mockSubparts[parentManufacturerPartId]) {
-    mockSubparts[parentManufacturerPartId] = [];
+  try {
+    // Call the real API to add the subpart relation
+    const result = await apiAddSubpart(parentManufacturerPartId, {
+      manufacturerPartId: formData.manufacturerPartId,
+      bpn: formData.supplierBpn
+    });
+    
+    // Find the newly added subpart in the response
+    if (result && result.listSubManufacturerPartIds && result.listSubManufacturerPartIds.length > 0) {
+      // Return the last added subpart (newest)
+      const latestExchange = result.listSubManufacturerPartIds[result.listSubManufacturerPartIds.length - 1];
+      return convertToSubpartResponse(latestExchange);
+    }
+    
+    // Fallback response if API doesn't return the created subpart
+    return {
+      id: `sub-${Date.now()}`,
+      supplierBpn: formData.supplierBpn,
+      supplierName: `Supplier ${formData.supplierBpn.slice(-4)}`,
+      manufacturerPartId: formData.manufacturerPartId,
+      partName: `Part ${formData.manufacturerPartId}`,
+      pcfStatus: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error adding subpart relation:', error);
+    throw error;
   }
-  mockSubparts[parentManufacturerPartId].push(newSubpart);
-  
-  return newSubpart;
 }
 
 /**
  * Request PCF for a specific subpart (send request to supplier)
+ * Uses real backend API to send the PCF request
  */
 export async function requestSubpartPcf(
   parentManufacturerPartId: string,
   subpartId: string
 ): Promise<SubpartPcfResponse> {
-  // Simulate API call
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  const subparts = mockSubparts[parentManufacturerPartId];
-  if (subparts) {
-    const subpart = subparts.find(s => s.id === subpartId);
-    if (subpart) {
-      // Simulate different responses randomly for demo
-      const random = Math.random();
-      if (random < 0.6) {
-        // Success - delivered
-        subpart.pcfStatus = 'delivered';
-        subpart.pcfValue = Math.round(Math.random() * 20 * 10) / 10;
-        subpart.pcfUnit = 'kg CO2e';
-        subpart.deliveredAt = new Date().toISOString();
-      } else if (random < 0.8) {
-        // Rejected
-        subpart.pcfStatus = 'rejected';
-        subpart.rejectReason = 'Supplier declined to share PCF data';
-      } else {
-        // Error
-        subpart.pcfStatus = 'error';
-        subpart.errorMessage = 'Connection timeout - supplier EDC unreachable';
+  try {
+    // Send the PCF request using the requestId (subpartId)
+    await sendPcfRequest(subpartId);
+    
+    // Reload the subparts to get the updated status
+    const subpartsResponse = await getSubparts(parentManufacturerPartId);
+    
+    if (subpartsResponse && subpartsResponse.listSubManufacturerPartIds) {
+      const updatedSubpart = subpartsResponse.listSubManufacturerPartIds.find(
+        (s) => s.requestId === subpartId
+      );
+      
+      if (updatedSubpart) {
+        return convertToSubpartResponse(updatedSubpart);
       }
-      return { ...subpart };
     }
+    
+    // Return a pending status if we couldn't find the updated subpart
+    return {
+      id: subpartId,
+      supplierBpn: '',
+      supplierName: 'Unknown',
+      manufacturerPartId: '',
+      partName: 'Unknown',
+      pcfStatus: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error requesting subpart PCF:', error);
+    // Return error status
+    return {
+      id: subpartId,
+      supplierBpn: '',
+      supplierName: 'Unknown',
+      manufacturerPartId: '',
+      partName: 'Unknown',
+      pcfStatus: 'error',
+      errorMessage: error instanceof Error ? error.message : 'Failed to send PCF request'
+    };
   }
-  
-  throw new Error('Subpart not found');
 }
 
 /**

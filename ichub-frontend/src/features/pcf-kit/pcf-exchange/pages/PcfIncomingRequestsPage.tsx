@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -32,7 +32,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Alert
 } from '@mui/material';
 import {
   Inbox as InboxIcon,
@@ -42,24 +43,42 @@ import {
   Search
 } from '@mui/icons-material';
 import {
-  getNotifications,
-  getNotificationCounts,
-  acceptNotification,
-  rejectNotification,
-  PcfNotification,
-  PcfNotificationStatus
-} from '../../pcf-exchange/api/pcfExchangeApi';
+  getProviderRequests,
+  acceptRequest,
+  countRequestsByStatus,
+  PcfExchangeModel,
+  mapStatusToUi
+} from '../../services/pcfApi';
 import {
   NotificationFilters,
   NotificationCard,
   RejectDialog
 } from '../../pcf-exchange/components';
+import { PcfNotification, PcfNotificationStatus } from '../api/pcfExchangeApi';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
 const PCF_SECONDARY = '#059669';
 
 type ViewMode = 'card' | 'list';
+
+/**
+ * Convert API model to UI notification format (compatible with PcfNotification)
+ */
+function toUiNotification(model: PcfExchangeModel): PcfNotification {
+  return {
+    id: model.requestId,
+    partCatenaXId: '', // Will be resolved if needed
+    manufacturerPartId: model.manufacturerPartId || model.customerPartId || 'Unknown',
+    partInstanceId: 'CATALOG',
+    partName: model.manufacturerPartId,
+    requesterId: model.requestingBpn,
+    requesterName: model.requestingBpn, // Could be resolved to company name
+    requestDate: new Date().toISOString(), // API should provide this
+    status: mapStatusToUi(model.status) as PcfNotificationStatus,
+    message: model.message
+  };
+}
 
 const PcfIncomingRequestsPage: React.FC = () => {
   // Data state
@@ -71,6 +90,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
     DELIVERED: 0,
     FAILED: 0
   });
+  const [error, setError] = useState<string | null>(null);
 
   // UI state
   const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +104,17 @@ const PcfIncomingRequestsPage: React.FC = () => {
   const [rejectingNotificationId, setRejectingNotificationId] = useState<string | null>(null);
   const [processingNotificationId, setProcessingNotificationId] = useState<string | null>(null);
 
+  // Convert API status to UI counts format
+  const mapApiCountsToUi = useCallback((apiCounts: Record<string, number>): Record<PcfNotificationStatus, number> => {
+    return {
+      PENDING: apiCounts.pending || 0,
+      ACCEPTED: apiCounts.accepted || 0,
+      REJECTED: apiCounts.rejected || 0,
+      DELIVERED: apiCounts.delivered || 0,
+      FAILED: apiCounts.failed || 0
+    };
+  }, []);
+
   // Load initial data
   useEffect(() => {
     loadData();
@@ -91,15 +122,17 @@ const PcfIncomingRequestsPage: React.FC = () => {
 
   const loadData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const [notifs, counts] = await Promise.all([
-        getNotifications(),
-        getNotificationCounts()
-      ]);
-      setNotifications(notifs);
-      setNotificationCounts(counts);
+      const requests = await getProviderRequests();
+      const uiNotifications = requests.map(toUiNotification);
+      const counts = countRequestsByStatus(requests);
+      
+      setNotifications(uiNotifications);
+      setNotificationCounts(mapApiCountsToUi(counts));
     } catch (err) {
       console.error('Failed to load notifications:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load PCF requests');
     } finally {
       setIsLoading(false);
     }
@@ -108,15 +141,17 @@ const PcfIncomingRequestsPage: React.FC = () => {
   // Handle refresh data
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setError(null);
     try {
-      const [notifs, counts] = await Promise.all([
-        getNotifications(),
-        getNotificationCounts()
-      ]);
-      setNotifications(notifs);
-      setNotificationCounts(counts);
+      const requests = await getProviderRequests();
+      const uiNotifications = requests.map(toUiNotification);
+      const counts = countRequestsByStatus(requests);
+      
+      setNotifications(uiNotifications);
+      setNotificationCounts(mapApiCountsToUi(counts));
     } catch (err) {
       console.error('Failed to refresh data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh PCF requests');
     } finally {
       setIsRefreshing(false);
     }
@@ -125,11 +160,13 @@ const PcfIncomingRequestsPage: React.FC = () => {
   // Handle accept notification
   const handleAcceptNotification = async (notificationId: string) => {
     setProcessingNotificationId(notificationId);
+    setError(null);
     try {
-      await acceptNotification(notificationId);
+      await acceptRequest(notificationId);
       await handleRefresh();
     } catch (err) {
       console.error('Failed to accept notification:', err);
+      setError(err instanceof Error ? err.message : 'Failed to accept request');
     } finally {
       setProcessingNotificationId(null);
     }
@@ -146,7 +183,10 @@ const PcfIncomingRequestsPage: React.FC = () => {
 
     setProcessingNotificationId(rejectingNotificationId);
     try {
-      await rejectNotification(rejectingNotificationId, reason);
+      // TODO: Implement reject endpoint when available in backend
+      // For now, just log and close the dialog
+      console.log('Rejecting notification:', rejectingNotificationId, 'Reason:', reason);
+      setError('Reject functionality not yet implemented in backend');
       await handleRefresh();
     } finally {
       setProcessingNotificationId(null);
@@ -320,6 +360,23 @@ const PcfIncomingRequestsPage: React.FC = () => {
           onStatusChange={setSelectedStatus}
         />
       </Box>
+
+      {/* Error Alert */}
+      {error && (
+        <Box sx={{ px: { xs: 2, sm: 3, md: 4 }, pb: 2 }}>
+          <Alert 
+            severity="error" 
+            onClose={() => setError(null)}
+            sx={{ 
+              background: 'rgba(211, 47, 47, 0.1)', 
+              border: '1px solid rgba(211, 47, 47, 0.3)',
+              '& .MuiAlert-icon': { color: '#ef5350' }
+            }}
+          >
+            {error}
+          </Alert>
+        </Box>
+      )}
 
       {/* Content */}
       <Box sx={{ flex: 1, px: { xs: 2, sm: 3, md: 4 }, py: 2, overflow: 'auto' }}>
