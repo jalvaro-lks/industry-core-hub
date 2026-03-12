@@ -56,20 +56,11 @@ function usesOdrlPrefix(obj: Record<string, unknown>): boolean {
 }
 
 /**
- * Generate all permutations of an array
+ * Generate all permutations of an array.
+ * Permutation generation is disabled — only the original order is returned.
  */
 function generatePermutations<T>(arr: T[]): T[][] {
-  if (arr.length <= 1) return [arr];
-
-  const result: T[][] = [];
-  for (let i = 0; i < arr.length; i++) {
-    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
-    const perms = generatePermutations(rest);
-    for (const perm of perms) {
-      result.push([arr[i], ...perm]);
-    }
-  }
-  return result;
+  return [arr];
 }
 
 /**
