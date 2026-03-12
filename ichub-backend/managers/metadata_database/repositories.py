@@ -942,6 +942,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         self,
         request_id: UUID,
         new_status: PcfExchangeStatus,
+        type: PcfExchangeType,
         message: Optional[str] = None,
     ) -> Optional[PcfExchangeEntity]:
         """
@@ -955,7 +956,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         Returns:
             The updated PcfExchangeEntity, or None if not found.
         """
-        db_obj = self.find_by_request_id(request_id)
+        db_obj = self.find_by_request_id(request_id, type=type)
         if not db_obj:
             return None
 
@@ -970,6 +971,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
     def update_pcf_location(
         self,
         request_id: UUID,
+        type: PcfExchangeType,
         pcf_location: str,
     ) -> Optional[PcfExchangeEntity]:
         """
@@ -982,7 +984,7 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         Returns:
             The updated PcfExchangeEntity, or None if not found.
         """
-        db_obj = self.find_by_request_id(request_id)
+        db_obj = self.find_by_request_id(request_id, type=type)
         if not db_obj:
             return None
 

@@ -315,7 +315,12 @@ class PcfConsumptionManager:
                         f"[PCF Consumption] PCF request sent successfully via EDC "
                         f"for request [{request_id}] (HTTP {response.status_code})"
                     )
-                    management_manager._update_status_to_delivered(request_id)
+                    management_manager.update_pcf_exchange_status(
+                        request_id=request_id,
+                        type=PcfExchangeType.REQUEST,
+                        new_status=PcfExchangeStatus.DELIVERED,
+                        raise_exceptions=False,
+                    )
                     return
 
                 logger.warning(
@@ -432,10 +437,20 @@ class PcfConsumptionManager:
                     message=request.message,
                     list_policies=list_policies
                 )
-                management_manager._update_status_to_delivered(request_id)
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    type=PcfExchangeType.REQUEST,
+                    new_status=PcfExchangeStatus.DELIVERED,
+                    raise_exceptions=False,
+                )
                 
         except Exception as e:
-            management_manager._update_status_to_delivered(request_id, new_status=PcfExchangeStatus.FAILED)
+            management_manager.update_pcf_exchange_status(
+                request_id=request_id,
+                type=PcfExchangeType.REQUEST,
+                new_status=PcfExchangeStatus.FAILED,
+                raise_exceptions=False,
+            )
             logger.error(f"Failed to send PCF request {request_id} to participant: {str(e)}")
             raise ValueError(f"Failed to send PCF request to participant: {str(e)}")
 

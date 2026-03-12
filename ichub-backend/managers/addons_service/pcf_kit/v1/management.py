@@ -25,7 +25,7 @@
 PCF Management Manager - Administrative operations for PCF data.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timezone
 from uuid import UUID, NAMESPACE_URL, uuid5
 
@@ -265,36 +265,6 @@ class PcfManagementManager:
             logger.error(f"Error listing incoming PCF exchanges: {str(e)}")
             raise
 
-    def _update_status_to_delivered(
-        self,
-        request_id: str,
-        new_status: PcfExchangeStatus = PcfExchangeStatus.DELIVERED,
-    ) -> None:
-        """
-        Update the status of a PCF exchange without interrupting the caller flow.
-
-        Args:
-            request_id: The PCF request ID to update.
-            new_status: The new status to store for the exchange.
-        """
-        try:
-            with RepositoryManagerFactory.create() as repo_manager:
-                entity = repo_manager.pcf_repository.update_status(
-                    request_id=UUID(request_id),
-                    new_status=new_status,
-                )
-                if not entity:
-                    logger.warning(f"PCF exchange {request_id} not found for status update")
-                    return
-
-                logger.info(
-                    f"Updated PCF exchange status to {new_status.value} for request {request_id}"
-                )
-        except Exception as e:
-            logger.error(
-                f"Failed to update PCF exchange status to {new_status.value} for request {request_id}: {str(e)}"
-            )
-
     def get_all_outgoing(
         self,
         status: Optional[str] = None,
@@ -500,15 +470,18 @@ class PcfManagementManager:
     def update_pcf_exchange_status(
         self,
         request_id: str,
-        new_status: str,
-        message: Optional[str] = None,
+        new_status: PcfExchangeStatus,
+        type: PcfExchangeType, 
+        message: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Update the status of an existing PCF exchange.
 
         Args:
             request_id: The ID of the exchange to update.
-            new_status: New status (PENDING, APPROVED, REJECTED, DELIVERED, UPDATED, ERROR).
+            new_status: New status as string or enum
+                        (PENDING, APPROVED, REJECTED, DELIVERED, UPDATED, ERROR).
+            type: The type of the exchange.
             message: Optional message (e.g., rejection reason or error details).
 
         Returns:
@@ -517,27 +490,23 @@ class PcfManagementManager:
         Raises:
             ValueError: If the status value is invalid.
         """
-        logger.info(f"Updating PCF exchange {request_id} status to {new_status}")
-        
-        try:
-            status_enum = PcfExchangeStatus(new_status.upper())
-        except ValueError:
-            raise ValueError(f"Invalid status: {new_status}. Valid values: {[s.value for s in PcfExchangeStatus]}")
-        
+        status_label = new_status.value if isinstance(new_status, PcfExchangeStatus) else new_status
+        logger.info(f"Updating PCF exchange {request_id} status to {status_label}")
+
         try:
             with RepositoryManagerFactory.create() as repo_manager:
                 entity = repo_manager.pcf_repository.update_status(
                     request_id=UUID(request_id),
-                    new_status=status_enum,
+                    new_status=status_label,
+                    type=type,
                     message=message,
                 )
-                
-                if not entity:
-                    logger.warning(f"PCF exchange {request_id} not found for status update")
-                    return None
-                
-                logger.info(f"PCF exchange {request_id} status updated to {new_status}")
-                return self._entity_to_dict(entity)
+            if not entity:
+                logger.warning(f"PCF exchange {request_id} not found for status update")
+                return None
+
+            logger.info(f"PCF exchange {request_id} status updated to {status_label}")
+            return self._entity_to_dict(entity)
                 
         except ValueError as e:
             logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
@@ -559,7 +528,8 @@ class PcfManagementManager:
         """
         return self.update_pcf_exchange_status(
             request_id=request_id,
-            new_status=PcfExchangeStatus.APPROVED.value,
+            new_status=PcfExchangeStatus.DELIVERED.value,
+            type=PcfExchangeType.RESPONSE,
             message=message or "Exchange approved"
         )
 
@@ -576,6 +546,7 @@ class PcfManagementManager:
         """
         return self.update_pcf_exchange_status(
             request_id=request_id,
+            type=PcfExchangeType.RESPONSE,
             new_status=PcfExchangeStatus.REJECTED.value,
             message=reason or "Exchange rejected"
         )

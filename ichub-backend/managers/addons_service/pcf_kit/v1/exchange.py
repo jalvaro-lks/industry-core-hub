@@ -236,7 +236,7 @@ class PcfExchangeManager:
         
 
         try:
-            self._store_and_update_pcf(request_id, pcf_data, is_update)
+            self._store_and_update_pcf(request_id, pcf_data, is_update, type=PcfExchangeType.RESPONSE)
         except Exception as e:
             logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to store PCF data: {str(e)}")
@@ -275,6 +275,7 @@ class PcfExchangeManager:
         request_id: str,
         pcf_data: Dict[str, Any],
         is_update: bool,
+        type: PcfExchangeType
     ) -> None:
         """
         Store the PCF payload in the submodel service and update the exchange
@@ -301,13 +302,21 @@ class PcfExchangeManager:
 
         with RepositoryManagerFactory.create() as repo_manager:
             if is_update:
-                management_manager._update_status_to_delivered(request_id, PcfExchangeStatus.UPDATED)
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    new_status=PcfExchangeStatus.UPDATED,
+                    type=type
+                )
                 logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
             else:
                 pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
-                repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location)
+                repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location, type=type)
                 logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
-                management_manager._update_status_to_delivered(request_id, PcfExchangeStatus.DELIVERED)
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    new_status=PcfExchangeStatus.DELIVERED,
+                    type=type
+                )
                 logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
 
 

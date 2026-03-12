@@ -39,7 +39,7 @@ from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_ma
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
-from managers.addons_service.pcf_kit.v1.management import PcfManagementManager
+from managers.addons_service.pcf_kit.v1.management import PcfManagementManager, management_manager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
@@ -272,6 +272,7 @@ class PcfProvisionManager:
         self,
         request_id: str,
         requesting_bpn: str,
+        type: PcfExchangeType,
         pcf_data: Dict[str, Any],
         is_update: bool = False,
         manufacturer_part_id: Optional[str] = None,
@@ -402,31 +403,23 @@ class PcfProvisionManager:
             ValueError: If the exchange record is not found or the update fails.
         """
         try:
-            with RepositoryManagerFactory.create() as repo_manager:
-                entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
-
-                if not entity:
-                    logger.warning(
-                        f"No exchange record found for request {request_id}. "
-                        "The request may not have been received through the exchange endpoint."
-                    )
-                    return
-
-                if is_update:
-                    repo_manager.pcf_repository.update_status(
-                        UUID(request_id), PcfExchangeStatus.UPDATED, message
-                    )
-                    logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
-                else:
-                    pcf_location = f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
-                    repo_manager.pcf_repository.update_pcf_location(UUID(request_id), pcf_location)
-                    repo_manager.pcf_repository.update_status(
-                        UUID(request_id), PcfExchangeStatus.DELIVERED, message
-                    )
-                    logger.info(
-                        f"PCF exchange {request_id} marked as DELIVERED "
-                        f"with location: {pcf_location}"
-                    )
+            pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
+            logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
+            
+            if is_update:
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    new_status=PcfExchangeStatus.UPDATED.value,
+                    type=PcfExchangeType.RESPONSE,
+                    message=message or "PCF exchange updated with new data"
+                )
+            else:
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    new_status=PcfExchangeStatus.DELIVERED.value,
+                    type=PcfExchangeType.RESPONSE,
+                    message=message or "PCF exchange delivered with data location"
+                )
 
         except Exception as e:
             logger.error(f"Failed to update exchange record for request {request_id}: {str(e)}")
@@ -627,14 +620,25 @@ class PcfProvisionManager:
                     request_id=request_id,
                     requesting_bpn=exchange_entity.requesting_bpn,
                     pcf_data=pcf_data,
+                    type=PcfExchangeType.RESPONSE,
                     is_update=False,
                     manufacturer_part_id=exchange_entity.manufacturer_part_id,
                     list_policies=list_policies
                 )
-                PcfManagementManager._update_status_to_delivered(request_id, PcfExchangeStatus.DELIVERED)
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    type=PcfExchangeType.RESPONSE,
+                    new_status=PcfExchangeStatus.DELIVERED,
+                    raise_exceptions=False,
+                )
                 
         except Exception as e:
-            PcfManagementManager._update_status_to_delivered(request_id, PcfExchangeStatus.FAILED)
+            management_manager.update_pcf_exchange_status(
+                request_id=request_id,
+                type=PcfExchangeType.RESPONSE,
+                new_status=PcfExchangeStatus.FAILED,
+                raise_exceptions=False,
+            )
             logger.error(f"Failed to accept request and send response for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to accept request and send response: {str(e)}")
 
@@ -664,7 +668,7 @@ class PcfProvisionManager:
                 pcf_location = PcfManagementManager.get_pcf_location(UUID(request_id))
                 if not pcf_location:
                     raise ValueError(f"No PCF location found for request {request_id}. Cannot refresh PCF data.")
-                final_exchange = repo_manager.pcf_repository.update_pcf_location(UUID(request_id), f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}")
+                final_exchange = repo_manager.pcf_repository.update_pcf_location(UUID(request_id), f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}", type=PcfExchangeType.RESPONSE)
                 return PcfExchangeModel.from_entity(final_exchange)
         except Exception as e:
             logger.error(f"Failed to refresh PCF data for request {request_id}: {str(e)}")
