@@ -47,11 +47,10 @@ import {
 import {
     Close as CloseIcon,
     Schema as SchemaIcon,
-    Add as AddIcon,
     AccountTree as AccountTreeIcon,
     OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
-import { getAvailableSchemas, SchemaDefinition, SCHEMA_REGISTRY } from '../../schemas';
+import { SchemaDefinition, SCHEMA_REGISTRY } from '../../schemas';
 
 interface SchemaSelectorProps {
     open: boolean;
@@ -129,7 +128,6 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
     onSchemaSelect,
     manufacturerPartId
 }) => {
-    const availableSchemas = getAvailableSchemas();
     const [copySuccess, setCopySuccess] = useState(false);
     const [copiedValue, setCopiedValue] = useState<string | null>(null);
     const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
@@ -327,14 +325,8 @@ const SchemaSelector: React.FC<SchemaSelectorProps> = ({
                                                     }}>
                                                         {(() => {
                                                             const desc = schema.metadata.description || '';
-                                                            const lines = desc.split(/\r?\n/);
-                                                            const isLong = lines.length > 3 || desc.length > 150;
                                                             const expanded = !!expandedMap[schemaKey];
-
-                                                            // Fallback preview: first 5 newline lines if present, otherwise slice chars
-                                                            const preview = lines.length > 1
-                                                                ? lines.slice(0, 3).join('\n')
-                                                                : desc.slice(0, 150).trim();
+                                                            const isOverflowing = !!overflowMap[schemaKey];
 
                                                             return (
                                                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minHeight: 0 }}>
