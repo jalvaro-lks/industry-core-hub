@@ -39,7 +39,10 @@ import {
   PostAdd,
   BarChart,
   Co2,
-  Insights
+  Insights,
+  Calculate,
+  CloudUpload,
+  Inbox
 } from '@mui/icons-material';
 import { kitFeaturesFeature } from './kit-features/routes';
 import { FeatureConfig, NavigationItem } from '@/types/routing';
@@ -62,8 +65,9 @@ import { partnerManagementFeature } from './business-partner-kit/partner-managem
 import { serializedPartsFeature } from './industry-core-kit/serialized-parts/routes';
 import { passportConsumptionFeature } from './eco-pass-kit/passport-consumption/routes';
 import { passportProvisionFeature } from './eco-pass-kit/passport-provision/routes';
-import { pcfProvisionFeature } from './pcf-kit/pcf-provision/routes';
-import { pcfConsumptionFeature } from './pcf-kit/pcf-consumption/routes';
+import { pcfRequestFeature } from './pcf-kit/pcf-request/routes';
+import { pcfExchangeFeature } from './pcf-kit/pcf-exchange/routes';
+import { pcfManagementFeature } from './pcf-kit/pcf-management/routes';
 
 // KIT configurations with feature toggles
 export const kits: KitFeature[] = [
@@ -174,20 +178,29 @@ export const kits: KitFeature[] = [
     image: PcfKitImage,
     features: [
       {
-        module: pcfProvisionFeature,
-        id: 'pcf-provision',
-        name: i18n.t('pcf.features.pcfProvision.name', { ns: 'kits' }),
-        description: i18n.t('pcf.features.pcfProvision.description', { ns: 'kits' }),
-        icon: <Co2 />,
+        module: pcfRequestFeature,
+        id: 'pcf-precalculation',
+        name: i18n.t('pcf.features.pcfPrecalculation.name', { ns: 'kits', defaultValue: 'PCF Precalculation' }),
+        description: i18n.t('pcf.features.pcfPrecalculation.description', { ns: 'kits', defaultValue: 'Calculate product carbon footprint from subpart PCF data' }),
+        icon: <Calculate />,
         enabled: false,
         default: false
       },
       {
-        module: pcfConsumptionFeature,
-        id: 'pcf-consumption',
-        name: i18n.t('pcf.features.pcfConsumption.name', { ns: 'kits' }),
-        description: i18n.t('pcf.features.pcfConsumption.description', { ns: 'kits' }),
-        icon: <Insights />,
+        module: pcfManagementFeature,
+        id: 'pcf-management',
+        name: i18n.t('pcf.features.pcfManagement.name', { ns: 'kits', defaultValue: 'PCF Management' }),
+        description: i18n.t('pcf.features.pcfManagement.description', { ns: 'kits', defaultValue: 'Manage and upload PCF data for your catalog parts' }),
+        icon: <CloudUpload />,
+        enabled: false,
+        default: false
+      },
+      {
+        module: pcfExchangeFeature,
+        id: 'pcf-requests',
+        name: i18n.t('pcf.features.pcfRequests.name', { ns: 'kits', defaultValue: 'PCF Requests' }),
+        description: i18n.t('pcf.features.pcfRequests.description', { ns: 'kits', defaultValue: 'View and respond to incoming PCF requests' }),
+        icon: <Inbox />,
         enabled: false,
         default: false
       }

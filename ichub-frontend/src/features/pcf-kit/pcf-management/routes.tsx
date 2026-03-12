@@ -20,15 +20,27 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React from 'react';
-import PcfConsumption from './PcfConsumption';
+import { CloudUpload } from '@mui/icons-material';
+import { FeatureConfig } from '@/types/routing';
+import PcfManagementPage from './pages/PcfManagementPage';
 
 /**
- * PCF Consumption main page component.
- * Allows searching and visualizing PCF data from dataspace partners.
+ * PCF Management feature configuration.
+ * Allows providers to manage and upload PCF data for their catalog parts.
  */
-const PcfConsumptionPage: React.FC = () => {
-  return <PcfConsumption />;
+export const pcfManagementFeature: FeatureConfig = {
+  name: 'PCF Management',
+  icon: <CloudUpload />,
+  navigationPath: '/pcf/management',
+  disabled: false,
+  routes: [
+    {
+      path: '/pcf/management',
+      element: <PcfManagementPage />
+    },
+    {
+      path: '/pcf/management/:partId',
+      element: <PcfManagementPage />
+    }
+  ]
 };
-
-export default PcfConsumptionPage;

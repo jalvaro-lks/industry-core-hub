@@ -20,23 +20,23 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { Insights } from '@mui/icons-material';
+import { Inbox } from '@mui/icons-material';
 import { FeatureConfig } from '@/types/routing';
-import PcfConsumptionPage from './pages/PcfConsumptionPage';
+import PcfIncomingRequestsPage from './pages/PcfIncomingRequestsPage';
 
-export const pcfConsumptionFeature: FeatureConfig = {
-  name: 'PCF Consumption & Visualization',
-  icon: <Insights />,
-  navigationPath: '/pcf/consume',
+/**
+ * PCF Requests feature configuration.
+ * Allows providers to view and respond to incoming PCF data requests.
+ */
+export const pcfExchangeFeature: FeatureConfig = {
+  name: 'PCF Requests',
+  icon: <Inbox />,
+  navigationPath: '/pcf/requests',
   disabled: false,
   routes: [
     {
-      path: '/pcf/consume',
-      element: <PcfConsumptionPage />
-    },
-    {
-      path: '/pcf/consume/:id',
-      element: <PcfConsumptionPage />
+      path: '/pcf/requests',
+      element: <PcfIncomingRequestsPage />
     }
   ]
 };

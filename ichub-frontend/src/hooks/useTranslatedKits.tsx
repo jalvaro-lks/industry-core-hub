@@ -40,7 +40,10 @@ import {
   PostAdd,
   BarChart,
   Co2,
-  Insights
+  Insights,
+  Calculate,
+  CloudUpload,
+  Inbox
 } from '@mui/icons-material';
 import { KitFeature } from '@/features/kit-features/types';
 import { FeatureConfig } from '@/types/routing';
@@ -62,8 +65,9 @@ import { partnerManagementFeature } from '@/features/business-partner-kit/partne
 import { serializedPartsFeature } from '@/features/industry-core-kit/serialized-parts/routes';
 import { passportConsumptionFeature } from '@/features/eco-pass-kit/passport-consumption/routes';
 import { passportProvisionFeature } from '@/features/eco-pass-kit/passport-provision/routes';
-import { pcfProvisionFeature } from '@/features/pcf-kit/pcf-provision/routes';
-import { pcfConsumptionFeature } from '@/features/pcf-kit/pcf-consumption/routes';
+import { pcfRequestFeature } from '@/features/pcf-kit/pcf-request/routes';
+import { pcfExchangeFeature } from '@/features/pcf-kit/pcf-exchange/routes';
+import { pcfManagementFeature } from '@/features/pcf-kit/pcf-management/routes';
 
 /**
  * Hook that returns translated KIT configurations.
@@ -180,20 +184,29 @@ export const useTranslatedKits = (): KitFeature[] => {
       image: PcfKitImage,
       features: [
         {
-          module: pcfProvisionFeature,
-          id: 'pcf-provision',
-          name: t('items.pcf.features.pcfProvision.name'),
-          description: t('items.pcf.features.pcfProvision.description'),
-          icon: <Co2 />,
+          module: pcfRequestFeature,
+          id: 'pcf-precalculation',
+          name: t('items.pcf.features.pcfPrecalculation.name', { defaultValue: 'PCF Precalculation' }),
+          description: t('items.pcf.features.pcfPrecalculation.description', { defaultValue: 'Calculate product carbon footprint from subpart PCF data' }),
+          icon: <Calculate />,
           enabled: false,
           default: false
         },
         {
-          module: pcfConsumptionFeature,
-          id: 'pcf-consumption',
-          name: t('items.pcf.features.pcfConsumption.name'),
-          description: t('items.pcf.features.pcfConsumption.description'),
-          icon: <Insights />,
+          module: pcfManagementFeature,
+          id: 'pcf-management',
+          name: t('items.pcf.features.pcfManagement.name', { defaultValue: 'PCF Management' }),
+          description: t('items.pcf.features.pcfManagement.description', { defaultValue: 'Manage and upload PCF data for your catalog parts' }),
+          icon: <CloudUpload />,
+          enabled: false,
+          default: false
+        },
+        {
+          module: pcfExchangeFeature,
+          id: 'pcf-requests',
+          name: t('items.pcf.features.pcfRequests.name', { defaultValue: 'PCF Requests' }),
+          description: t('items.pcf.features.pcfRequests.description', { defaultValue: 'View and respond to incoming PCF requests' }),
+          icon: <Inbox />,
           enabled: false,
           default: false
         }

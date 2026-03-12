@@ -20,15 +20,27 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React from 'react';
-import PcfProvisionList from './PcfProvisionList';
+import { Calculate } from '@mui/icons-material';
+import { FeatureConfig } from '@/types/routing';
+import PcfRequestPage from './pages/PcfRequestPage';
 
 /**
- * PCF Provision main page component.
- * Displays the list of user's PCF declarations with management capabilities.
+ * PCF Precalculation feature configuration.
+ * Calculate product carbon footprint from subpart PCF data.
  */
-const PcfProvisionPage: React.FC = () => {
-  return <PcfProvisionList />;
+export const pcfRequestFeature: FeatureConfig = {
+  name: 'PCF Precalculation',
+  icon: <Calculate />,
+  navigationPath: '/pcf/precalculation',
+  disabled: false,
+  routes: [
+    {
+      path: '/pcf/precalculation',
+      element: <PcfRequestPage />
+    },
+    {
+      path: '/pcf/precalculation/:partId',
+      element: <PcfRequestPage />
+    }
+  ]
 };
-
-export default PcfProvisionPage;

@@ -20,28 +20,5 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { Co2 } from '@mui/icons-material';
-import { FeatureConfig } from '@/types/routing';
-import PcfProvisionPage from './pages/PcfProvisionPage';
-import PcfProvisionWizard from './pages/PcfProvisionWizard';
-
-export const pcfProvisionFeature: FeatureConfig = {
-  name: 'PCF Provision & Management',
-  icon: <Co2 />,
-  navigationPath: '/pcf/provision',
-  disabled: false,
-  routes: [
-    {
-      path: '/pcf/provision',
-      element: <PcfProvisionPage />
-    },
-    {
-      path: '/pcf/provision/create',
-      element: <PcfProvisionWizard />
-    },
-    {
-      path: '/pcf/provision/:id',
-      element: <PcfProvisionPage />
-    }
-  ]
-};
+export { default as PcfExchangePage } from './PcfExchangePage';
+export { default as PcfIncomingRequestsPage } from './PcfIncomingRequestsPage';
