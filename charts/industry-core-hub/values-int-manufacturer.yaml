@@ -76,7 +76,7 @@ frontend:
       clientId: "industry-core-hub-frontend"
       realmImport:
         enabled: true
-        method: "startup"
+        method: "job"
         availabilityCheck:
           timeout: "120s"
           delay: "5s"
