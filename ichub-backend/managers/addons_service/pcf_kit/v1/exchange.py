@@ -119,33 +119,61 @@ class PcfExchangeManager:
         try:
             # Store PCF request in database
             with RepositoryManagerFactory.create() as repo_manager:
-                # Create new PCF exchange record with PENDING status
-                repo_manager.pcf_repository.create_new(
-                    request_id=UUID(request_id),
-                    direction=PcfExchangeDirection.INCOMING,
-                    status=PcfExchangeStatus.DELIVERED,
-                    type=PcfExchangeType.REQUEST,
-                    requesting_bpn=edc_bpn,
-                    responding_bpn=self._own_bpn,
-                    manufacturer_part_id=manufacturer_part_id,
-                    customer_part_id=customer_part_id,
-                    message=message
+                # Check if incoming request record already exists
+                existing_request = repo_manager.pcf_repository.find_by_request_id(
+                    UUID(request_id), 
+                    type=PcfExchangeType.REQUEST
                 )
-                logger.info(f"Created PCF exchange record for request {request_id} with status DELIVERED")
-                pcf_location = management_manager.get_pcf_location(manufacturer_part_id) if manufacturer_part_id else None
-                repo_manager.pcf_repository.create_new(
-                    request_id=UUID(request_id),
-                    direction=PcfExchangeDirection.OUTGOING,
-                    status=PcfExchangeStatus.PENDING,
-                    type=PcfExchangeType.RESPONSE,
-                    requesting_bpn=edc_bpn,
-                    responding_bpn=self._own_bpn,
-                    manufacturer_part_id=manufacturer_part_id,
-                    customer_part_id=customer_part_id,
-                    message=message,
-                    pcf_location=pcf_location
+                
+                if not existing_request:
+                    # Create incoming request record
+                    repo_manager.pcf_repository.create_new(
+                        request_id=UUID(request_id),
+                        direction=PcfExchangeDirection.INCOMING,
+                        status=PcfExchangeStatus.DELIVERED,
+                        type=PcfExchangeType.REQUEST,
+                        requesting_bpn=edc_bpn,
+                        responding_bpn=self._own_bpn,
+                        manufacturer_part_id=manufacturer_part_id,
+                        customer_part_id=customer_part_id,
+                        message=message
+                    )
+                    logger.info(f"Created PCF exchange record for request {request_id} with status DELIVERED")
+                else:
+                    logger.info(f"PCF request {request_id} already exists, skipping incoming record creation")
+                
+                # Try to get existing PCF location, but handle case where it doesn't exist yet
+                pcf_location = None
+                if manufacturer_part_id:
+                    try:
+                        pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
+                    except Exception as e:
+                        logger.info(f"No existing PCF data found for manufacturer_part_id {manufacturer_part_id}: {str(e)}")
+                        pcf_location = None
+                
+                # Check if outgoing response record already exists
+                existing_response = repo_manager.pcf_repository.find_by_request_id(
+                    UUID(request_id), 
+                    type=PcfExchangeType.RESPONSE
                 )
-                logger.info(f"Created PCF exchange record for response to request {request_id} with status PENDING")
+                
+                if not existing_response:
+                    # Create outgoing response record
+                    repo_manager.pcf_repository.create_new(
+                        request_id=UUID(request_id),
+                        direction=PcfExchangeDirection.OUTGOING,
+                        status=PcfExchangeStatus.PENDING,
+                        type=PcfExchangeType.RESPONSE,
+                        requesting_bpn=edc_bpn,
+                        responding_bpn=self._own_bpn,
+                        manufacturer_part_id=manufacturer_part_id,
+                        customer_part_id=customer_part_id,
+                        message=message,
+                        pcf_location=pcf_location
+                    )
+                    logger.info(f"Created PCF exchange record for response to request {request_id} with status PENDING")
+                else:
+                    logger.info(f"PCF response {request_id} already exists, skipping response record creation")
                 
         except Exception as e:
             logger.error(f"Failed to store PCF request {request_id}: {str(e)}")
@@ -236,7 +264,13 @@ class PcfExchangeManager:
         
 
         try:
-            self._store_and_update_pcf(request_id, pcf_data, is_update, type=PcfExchangeType.RESPONSE)
+            self._store_and_update_pcf(
+                request_id, 
+                pcf_data, 
+                is_update, 
+                type=PcfExchangeType.RESPONSE,
+                responding_bpn=edc_bpn
+            )
         except Exception as e:
             logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to store PCF data: {str(e)}")
@@ -275,49 +309,100 @@ class PcfExchangeManager:
         request_id: str,
         pcf_data: Dict[str, Any],
         is_update: bool,
-        type: PcfExchangeType
+        type: PcfExchangeType,
+        responding_bpn: Optional[str] = None
     ) -> None:
         """
         Store the PCF payload in the submodel service and update the exchange
         record status.
 
-        The payload is keyed by ``manufacturer_part_id`` (product-scoped).
+        When receiving a response (type=RESPONSE), this creates an INCOMING RESPONSE
+        record. The payload is keyed by ``manufacturer_part_id`` (product-scoped).
 
         Args:
             request_id: The PCF request ID.
             pcf_data: The validated PCF payload.
             is_update: Whether this is an update to previously shared data.
+            type: The type of exchange (REQUEST or RESPONSE).
+            responding_bpn: The BPN of the party sending the response (required for RESPONSE type).
         """
         with RepositoryManagerFactory.create() as repo_manager:
-            entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
-
-        if not entity or not entity.manufacturer_part_id:
-            raise ValueError(
-                f"No manufacturerPartId found for request {request_id}. "
-                "Cannot store PCF data without a part identifier."
-            )
-
-        manufacturer_part_id = entity.manufacturer_part_id
-        management_manager.upload_pcf_data(manufacturer_part_id, pcf_data)
+            # Find the OUTGOING REQUEST to get the manufacturer_part_id and consumer BPN
+            outgoing_request = repo_manager.pcf_repository.find_by_request_id(UUID(request_id), type=PcfExchangeType.REQUEST)
+            if not outgoing_request or not outgoing_request.manufacturer_part_id:
+                raise ValueError(
+                    f"No manufacturerPartId found for request {request_id}. "
+                    "Cannot store PCF data without a part identifier."
+                )
+            manufacturer_part_id = outgoing_request.manufacturer_part_id
+            requesting_bpn = outgoing_request.requesting_bpn
+        
+        # Try to upload new PCF data; if it already exists, check if we should update or if it's identical
+        try:
+            management_manager.upload_pcf_data(manufacturer_part_id, pcf_data)
+        except ValueError as e:
+            if "already exists" in str(e):
+                if is_update:
+                    # Update is allowed when is_update=True
+                    management_manager.update_pcf_data(manufacturer_part_id, pcf_data)
+                else:
+                    # If is_update=False but data exists, check if it's the same data (idempotent)
+                    existing_pcf = management_manager.get_pcf_data_by_manufacturer_part_id(manufacturer_part_id)
+                    if existing_pcf == pcf_data:
+                        logger.info(f"PCF data for {manufacturer_part_id} already exists and is identical - treating as idempotent operation")
+                        # Continue with normal flow (create/update response record)
+                    else:
+                        # Data exists but is different - this is a conflict
+                        raise ValueError(
+                            f"PCF data already exists for manufacturerPartId={manufacturer_part_id} and differs from received data. "
+                            "Use is_update=true to replace it."
+                        )
+            else:
+                raise
 
         with RepositoryManagerFactory.create() as repo_manager:
-            if is_update:
-                management_manager.update_pcf_exchange_status(
-                    request_id=request_id,
-                    new_status=PcfExchangeStatus.UPDATED,
-                    type=type
-                )
-                logger.info(f"Updated PCF exchange status to UPDATED for request {request_id}")
+            pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
+            
+            if type == PcfExchangeType.RESPONSE:
+                # When receiving a response, create or update an INCOMING RESPONSE record
+                existing_response = repo_manager.pcf_repository.find_by_request_id(UUID(request_id), type=PcfExchangeType.RESPONSE)
+                
+                if existing_response:
+                    # Update existing INCOMING RESPONSE
+                    if is_update:
+                        repo_manager.pcf_repository.update_status(
+                            request_id=UUID(request_id),
+                            new_status=PcfExchangeStatus.UPDATED,
+                            type=PcfExchangeType.RESPONSE
+                        )
+                        logger.info(f"Updated PCF INCOMING RESPONSE status to UPDATED for request {request_id}")
+                    else:
+                        # First response, update location if not set
+                        repo_manager.pcf_repository.update_pcf_location(existing_response.request_id, existing_response.type, pcf_location)
+                        repo_manager.commit()
+                        logger.info(f"Updated PCF location for INCOMING RESPONSE {request_id}: {pcf_location}")
+                else:
+                    # Create new INCOMING RESPONSE record
+                    new_response = repo_manager.pcf_repository.create_new(
+                        requesting_bpn=requesting_bpn,
+                        responding_bpn=responding_bpn,
+                        direction=PcfExchangeDirection.INCOMING,
+                        type=PcfExchangeType.RESPONSE,
+                        manufacturer_part_id=manufacturer_part_id,
+                        status=PcfExchangeStatus.DELIVERED if not is_update else PcfExchangeStatus.UPDATED,
+                        pcf_location=pcf_location,
+                        request_id=UUID(request_id)
+                    )
+                    repo_manager.commit()
+                    logger.info(f"Created PCF INCOMING RESPONSE for request {request_id} with status DELIVERED")
             else:
-                pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
-                repo_manager.pcf_repository.update_pcf_location(request_id, pcf_location, type=type)
-                logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
+                # For other types (not typically used in response flow)
                 management_manager.update_pcf_exchange_status(
                     request_id=request_id,
-                    new_status=PcfExchangeStatus.DELIVERED,
+                    new_status=PcfExchangeStatus.UPDATED if is_update else PcfExchangeStatus.DELIVERED,
                     type=type
                 )
-                logger.info(f"Updated PCF exchange status to DELIVERED for request {request_id}")
+                logger.info(f"Updated PCF exchange status for request {request_id}")
 
 
 # Module-level singleton for convenience

@@ -23,8 +23,8 @@
 
 """PCF Exchange API - EDC-level endpoints for PCF data exchange."""
 
-from typing import Optional
-from fastapi import APIRouter, Depends, Header, Query, HTTPException, Path
+from typing import Optional, Any
+from fastapi import APIRouter, Depends, Header, Query, HTTPException, Path, Body
 from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
@@ -48,8 +48,8 @@ MESSAGE_DESCRIPTION = "URL encoded, max 250 chars"
 
 @router.put("/{requestId}")
 async def put_pcf_with_path_id(
-    body: dict,
     request_id: str = Path(..., alias="requestId"),
+    body: dict = Body(...),
     edc_bpn: Optional[str] = Header(None, alias="edc-bpn", description=EDC_BPN_DESCRIPTION),
     message: Optional[str] = Query(None, description=MESSAGE_DESCRIPTION),
     update: bool = Query(False, description="Whether this is an update to an existing request")
@@ -113,8 +113,8 @@ async def put_pcf_with_path_id(
 async def request_pcf(
     request_id: str = Path(..., alias="requestId"),
     edc_bpn: Optional[str] = Header(None, alias="edc-bpn", description=EDC_BPN_DESCRIPTION),
-    manufacturer_part_id: Optional[str] = Query(None, description="Manufacturer part ID"),
-    customer_part_id: Optional[str] = Query(None, description="Customer part ID"),
+    manufacturer_part_id: Optional[str] = Query(None, alias="manufacturerPartId", description="Manufacturer part ID"),
+    customer_part_id: Optional[str] = Query(None, alias="customerPartId", description="Customer part ID"),
     message: Optional[str] = Query(None, description=MESSAGE_DESCRIPTION)
 ):
     """

@@ -25,13 +25,15 @@
 
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from models.metadata_database.pcf.models import PcfExchangeEntity
 
 
 
 class PcfExchangeModel(BaseModel):
     """Model for representing a PCF exchange."""
+    model_config = ConfigDict(populate_by_name=True)
+    
     request_id: str = Field(
         alias="requestId",
         description="Unique identifier for the PCF request."
@@ -64,6 +66,11 @@ class PcfExchangeModel(BaseModel):
         default=None,
         description="Optional message or note associated with the PCF exchange."
     )
+    pcf_location: Optional[str] = Field(
+        alias="pcfLocation",
+        default=None,
+        description="Location/URI where the PCF data is stored (e.g., submodel://...)."
+    )
     pcf_data: Optional[Dict[str, Any]] = Field(
         alias="pcfData",
         default=None,
@@ -74,18 +81,21 @@ class PcfExchangeModel(BaseModel):
     def from_entity(entity: PcfExchangeEntity) -> "PcfExchangeModel":
         """Factory method to create a PcfExchangeModel from a database entity."""
         return PcfExchangeModel(
-            requestId=entity.request_id,
+            requestId=str(entity.request_id),
             manufacturerPartId=entity.manufacturer_part_id,
             customerPartId=entity.customer_part_id,
             requestingBpn=entity.requesting_bpn,
             targetBpn=entity.responding_bpn,
             status=entity.status.value,
-            type= entity.type.value,
-            message=entity.message
+            type=entity.type.value,
+            message=entity.message,
+            pcfLocation=entity.pcf_location
         )
 
 class PcfRelationshipModel(BaseModel):
     """Model for returning relationships between main parts and sub-parts."""
+    model_config = ConfigDict(populate_by_name=True)
+    
     main_manufacturer_part_id: str = Field(
         alias="mainManufacturerPartId",
         description="The manufacturer part ID of the main part."
@@ -108,6 +118,8 @@ class PcfSubPartModel(BaseModel):
 
 class PcfSpecificStateModel(BaseModel):
     """Model for representing the global state of PCF exchanges."""
+    model_config = ConfigDict(populate_by_name=True)
+    
     manufacturer_part_id: str = Field(
         alias="manufacturerPartId"
     )

@@ -33,8 +33,6 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID, NAMESPACE_URL, uuid5
 from datetime import datetime, timezone
 
-from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
-
 from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
@@ -45,7 +43,6 @@ from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
 from models.metadata_database.notification.models import NotificationDirection
 from tools.constants import PCF
-from tools.edr_tools import remove_existing_edr
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -85,7 +82,7 @@ class PcfProvisionManager:
 
     EDC Data Exchange Flow:
         1. Discover connector endpoints for the requesting BPN
-        2. For each connector, the SDK's ``do_put()`` with a dct_type filter handles
+        2. For each connector, the SDK's ``do_put_by_dct_type()`` handles
            catalog filtering, contract negotiation, and PUT in a single call
         3. The PCF data is sent via EDC data plane PUT to ``/{requestId}``
 
@@ -105,11 +102,6 @@ class PcfProvisionManager:
         if self._own_bpn == None:
             logger.warning("BPN not configured in configuration.yml.")
             raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
-
-        # EDC connector services are imported lazily from the connector module
-        # to avoid circular imports at module load time.
-        self._connector_consumer_manager = None
-        self._consumer_connector_service: Optional[BaseConnectorConsumerService] = None
 
     def send_or_update_pcf_response(
         self,
@@ -254,20 +246,6 @@ class PcfProvisionManager:
             )
             return None
 
-    def _get_connector_services(self):
-        """
-        Lazily import connector services to avoid circular imports at module load.
-
-        Returns:
-            Tuple of (connector_consumer_manager, consumer_connector_service).
-        """
-        if self._connector_consumer_manager is None:
-            from connector import connector_consumer_manager, consumer_connector_service
-
-            self._connector_consumer_manager = connector_consumer_manager
-            self._consumer_connector_service = consumer_connector_service
-        return self._connector_consumer_manager, self._consumer_connector_service
-
     def _send_pcf_via_edc(
         self,
         request_id: str,
@@ -280,10 +258,8 @@ class PcfProvisionManager:
         """
         Send PCF data to the requesting party through the EDC dataspace connector.
 
-        Uses the SDK's ``do_put()`` with a ``PcfExchange`` dct_type filter
-        expression, which handles the full EDC flow (catalog filtering ->
-        contract negotiation -> EDR -> HTTP PUT) in a single call.
-        Each discovered connector is tried until one succeeds.
+        Delegates to the management manager's generic send_via_edc method which 
+        handles connector discovery, EDR cleanup, contract negotiation, and PUT request.
 
         Args:
             request_id: The PCF request ID (used as the PUT path).
@@ -291,89 +267,29 @@ class PcfProvisionManager:
             pcf_data: The validated PCF payload to send.
             is_update: Whether this is an update to a previously delivered response.
             manufacturer_part_id: The manufacturer part ID (used for pcf_location).
+            list_policies: Optional list of policies for contract negotiation.
 
         Raises:
-            ValueError: If no connectors are found or the data transfer fails
-                on all discovered connectors.
+            ValueError: If no connectors are found or the data transfer fails.
         """
-        connector_consumer_manager, consumer_connector_service = self._get_connector_services()
-
-        if not connector_consumer_manager or not consumer_connector_service:
-            raise ValueError(
-                "EDC connector services are not available. "
-                "Cannot send PCF data via dataspace."
-            )
-
-        logger.info(f"[PCF Provision] Discovering connectors for BPN [{requesting_bpn}]")
-
-        with RepositoryManagerFactory.create() as repos:
-            remove_existing_edr(repos, requesting_bpn, "ichub:asset:pcf-exchange:%")
-
-        connectors: List[str] = connector_consumer_manager.get_connectors(requesting_bpn)
-        if not connectors:
-            raise ValueError(
-                f"No connector endpoints found for BPN [{requesting_bpn}]. "
-                "Cannot send PCF data via EDC."
-            )
-        logger.info(
-            f"[PCF Provision] Found {len(connectors)} connector(s) for BPN [{requesting_bpn}]"
-        )
-
-        filter_expression = [
-            consumer_connector_service.get_filter_expression(
-                key=consumer_connector_service.DEFAULT_DCT_TYPE_KEY,
-                operator="=",
-                value=PCF_EXCHANGE_ASSET_TYPE,
-            )
-        ]
-
         put_path = f"/{request_id}"
         if is_update:
             put_path += "?update=true"
 
-        last_error: Optional[Exception] = None
-        for connector_url in connectors:
-            try:
-                logger.info(
-                    f"[PCF Provision] Attempting do_put on "
-                    f"[{connector_url}] path=[{put_path}]"
-                )
-                response = consumer_connector_service.do_put(
-                    counter_party_id=requesting_bpn,
-                    counter_party_address=connector_url,
-                    filter_expression=filter_expression,
-                    path=put_path,
-                    json=pcf_data,
-                    policies=list_policies,
-                )
+        # Use the shared EDC method from management manager
+        management_manager.send_via_edc(
+            request_id=request_id,
+            target_bpn=requesting_bpn,
+            http_method="PUT",
+            path=put_path,
+            json_data=pcf_data,
+            list_policies=list_policies,
+            asset_type=PCF_EXCHANGE_ASSET_TYPE,
+        )
 
-                if response.status_code in (200, 201, 204):
-                    logger.info(
-                        f"[PCF Provision] PCF data sent successfully via EDC "
-                        f"for request [{request_id}] (HTTP {response.status_code})"
-                    )
-                    self._update_exchange_record(
-                        request_id, is_update, manufacturer_part_id=manufacturer_part_id
-                    )
-                    return
-
-                logger.warning(
-                    f"[PCF Provision] EDC PUT returned status "
-                    f"{response.status_code} on [{connector_url}]: {response.text}"
-                )
-                last_error = ValueError(
-                    f"EDC data transfer failed with status {response.status_code}"
-                )
-
-            except Exception as e:
-                logger.warning(
-                    f"[PCF Provision] Failed on connector [{connector_url}]: {e}"
-                )
-                last_error = e
-
-        raise ValueError(
-            f"Failed to send PCF data via EDC to any connector for "
-            f"BPN [{requesting_bpn}]: {last_error}"
+        # Update exchange record after successful EDC transfer
+        self._update_exchange_record(
+            request_id, is_update, manufacturer_part_id=manufacturer_part_id
         )
 
     def _update_exchange_record(
@@ -408,14 +324,14 @@ class PcfProvisionManager:
             if is_update:
                 management_manager.update_pcf_exchange_status(
                     request_id=request_id,
-                    new_status=PcfExchangeStatus.UPDATED.value,
+                    new_status=PcfExchangeStatus.UPDATED,
                     type=PcfExchangeType.RESPONSE,
                     message=message or "PCF exchange updated with new data"
                 )
             else:
                 management_manager.update_pcf_exchange_status(
                     request_id=request_id,
-                    new_status=PcfExchangeStatus.DELIVERED.value,
+                    new_status=PcfExchangeStatus.DELIVERED,
                     type=PcfExchangeType.RESPONSE,
                     message=message or "PCF exchange delivered with data location"
                 )
@@ -589,7 +505,7 @@ class PcfProvisionManager:
                         status=status,
                         offset=offset,
                         limit=limit)
-                return [PcfExchangeModel.from_entity(n).model_dump() for n in notifications]
+                return [PcfExchangeModel.from_entity(n) for n in notifications]
         except Exception as e:
             logger.error(f"Failed to list provider notifications: {str(e)}")
             raise ValueError(f"Failed to list provider notifications: {str(e)}")
@@ -666,7 +582,11 @@ class PcfProvisionManager:
                 pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
                 if not pcf_location:
                     raise ValueError(f"No PCF location found for request {request_id}. Cannot refresh PCF data.")
-                final_exchange = repo_manager.pcf_repository.update_pcf_location(UUID(request_id), f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}", type=PcfExchangeType.RESPONSE)
+                final_exchange = repo_manager.pcf_repository.update_pcf_location(
+                    request_id=UUID(request_id),
+                    type=PcfExchangeType.RESPONSE,
+                    pcf_location=pcf_location
+                )
                 return PcfExchangeModel.from_entity(final_exchange)
         except Exception as e:
             logger.error(f"Failed to refresh PCF data for request {request_id}: {str(e)}")

@@ -26,6 +26,7 @@
 from sqlalchemy import case
 from sqlmodel import SQLModel, Session, select, desc
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 from typing import TypeVar, Type, List, Optional, Generic
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
@@ -861,13 +862,21 @@ class PCFRepository(BaseRepository[PcfExchangeEntity]):
         """
         stmt = select(PcfExchangeEntity)
 
-        # Filter by BPN based on direction
+        # Filter by BPN based on direction and type
         if direction == PcfExchangeDirection.OUTGOING:
-            # We are the requester (consumer)
-            stmt = stmt.where(PcfExchangeEntity.requesting_bpn == bpn)
+            if type == PcfExchangeType.RESPONSE:
+                # We are responding (provider sending a response)
+                stmt = stmt.where(PcfExchangeEntity.responding_bpn == bpn)
+            else:
+                # We are requesting (consumer sending a request)
+                stmt = stmt.where(PcfExchangeEntity.requesting_bpn == bpn)
         elif direction == PcfExchangeDirection.INCOMING:
-            # We are the responder (provider)
-            stmt = stmt.where(PcfExchangeEntity.responding_bpn == bpn)
+            if type == PcfExchangeType.RESPONSE:
+                # We received a response (consumer received a response)
+                stmt = stmt.where(PcfExchangeEntity.requesting_bpn == bpn)
+            else:
+                # We received a request (provider received a request)
+                stmt = stmt.where(PcfExchangeEntity.responding_bpn == bpn)
         else:
             # Any interaction with this BPN
             stmt = stmt.where(
@@ -1039,6 +1048,8 @@ class PCFRelationshipRepository(BaseRepository[PcfRelationshipEntity]):
         relationship = self.find_by_main_manufacturer_part_id(main_manufacturer_part_id)
         if relationship and sub_manufacturer_part_id not in relationship.list_sub_manufacturer_part_id:
             relationship.list_sub_manufacturer_part_id.append(sub_manufacturer_part_id)
+            # Flag the list as modified so SQLAlchemy tracks the change to the JSON column
+            flag_modified(relationship, "list_sub_manufacturer_part_id")
             self._session.add(relationship)
             return relationship
         return None

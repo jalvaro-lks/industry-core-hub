@@ -31,7 +31,7 @@ from fastapi.responses import JSONResponse
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import consumption_manager
 from models.services.addons.pcf_kit.v1.management import SendPcfRequestModel
-from models.services.addons.pcf_kit.v1.models import PcfSubPartModel
+from models.services.addons.pcf_kit.v1.models import PcfSubPartModel, PcfRelationshipModel, PcfExchangeModel, PcfSpecificStateModel
 
 
 router = APIRouter(
@@ -72,7 +72,7 @@ def _not_implemented() -> None:
 @router.get("/parts/{manufacturerPartId}/subparts")
 async def search_own_parts_by_manufacturer_part_id(
     manufacturer_part_id: str = Path(..., alias="manufacturerPartId")
-) -> Dict[str, Any]:
+) -> PcfRelationshipModel:
     try:
         result = consumption_manager.search_own_parts_by_manufacturer_part_id(manufacturer_part_id)
         return result
@@ -86,7 +86,7 @@ async def search_own_parts_by_manufacturer_part_id(
 async def add_subpart_and_create_request(
     manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
     body: PcfSubPartModel = None
-) -> Dict[str, Any]:
+) -> PcfRelationshipModel:
     if body is None:
         raise HTTPException(status_code=400, detail="Request body is required")
     try:
@@ -95,7 +95,7 @@ async def add_subpart_and_create_request(
             sub_manufacturer_part_id=body.manufacturer_part_id,
             responding_bpn=body.bpn
         )
-        return JSONResponse(status_code=201, content=result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -130,10 +130,10 @@ async def list_requests_for_part(
 
 
 @router.get("/requests/{requestId}/response")
-async def consult_pcf_response(request_id: str = Path(..., alias="requestId")) -> Dict[str, Any]:
+async def consult_pcf_response(request_id: str = Path(..., alias="requestId")) -> PcfExchangeModel:
     try:
         result = consumption_manager.consult_pcf_response(request_id=request_id)
-        return JSONResponse(status_code=200, content=result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -166,10 +166,10 @@ async def retry_pcf_request_sending(
 @router.get("/parts/{manufacturerPartId}/pcf-status")
 async def consult_global_assembly_progress(
     manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
-) -> Dict[str, Any]:
+) -> PcfSpecificStateModel:
     try:
         result = consumption_manager.consult_global_assembly_progress(manufacturer_part_id=manufacturer_part_id)
-        return JSONResponse(status_code=200, content=result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

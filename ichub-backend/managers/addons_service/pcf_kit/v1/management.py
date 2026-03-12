@@ -28,6 +28,8 @@ PCF Management Manager - Administrative operations for PCF data.
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime, timezone
 from uuid import UUID, NAMESPACE_URL, uuid5
+from urllib.parse import quote
+import time
 
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
@@ -36,6 +38,8 @@ from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 from tools.json_validator import json_validator_draft_aware
+from tools.edr_tools import remove_existing_edr
+from tools.exceptions import NotFoundError
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -66,12 +70,17 @@ class PcfManagementManager:
 
     def _entity_to_dict(self, entity: PcfExchangeEntity) -> Dict[str, Any]:
         """Convert a PcfExchangeEntity to a dictionary representation."""
+        # Handle both enum and string values for direction and status
+        # Repository may store as string, while some paths store as enum
+        direction_value = entity.direction.value if isinstance(entity.direction, PcfExchangeDirection) else entity.direction
+        status_value = entity.status.value if isinstance(entity.status, PcfExchangeStatus) else entity.status
+        
         return {
             "requestId": str(entity.request_id),
             "requestingBpn": entity.requesting_bpn,
             "respondingBpn": entity.responding_bpn,
-            "direction": entity.direction.value if entity.direction else None,
-            "status": entity.status.value if entity.status else None,
+            "direction": direction_value,
+            "status": status_value,
             "manufacturerPartId": entity.manufacturer_part_id,
             "customerPartId": entity.customer_part_id,
             "message": entity.message,
@@ -150,14 +159,17 @@ class PcfManagementManager:
             with RepositoryManagerFactory.create() as repo_manager:
                 entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
 
-            if not entity or not entity.manufacturer_part_id:
-                logger.warning(
-                    f"No manufacturerPartId for request {request_id}. "
-                    "Cannot retrieve PCF data."
-                )
-                return None
+                if not entity or not entity.manufacturer_part_id:
+                    logger.warning(
+                        f"No manufacturerPartId for request {request_id}. "
+                        "Cannot retrieve PCF data."
+                    )
+                    return None
 
-            submodel_id = _pcf_submodel_id(entity.manufacturer_part_id)
+                # Store the manufacturer_part_id while session is open
+                stored_manufacturer_part_id = entity.manufacturer_part_id
+
+            submodel_id = _pcf_submodel_id(stored_manufacturer_part_id)
             pcf_data = self._submodel_service.get_twin_aspect_document(
                 submodel_id=submodel_id,
                 semantic_id=PCF_SEMANTIC_ID
@@ -186,14 +198,17 @@ class PcfManagementManager:
             with RepositoryManagerFactory.create() as repo_manager:
                 entity = repo_manager.pcf_repository.find_by_part_id(manufacturer_part_id)
 
-            if not entity or not entity[0].manufacturer_part_id:
-                logger.warning(
-                    f"No manufacturerPartId for manufacturer part ID {manufacturer_part_id}. "
-                    "Cannot retrieve PCF data."
-                )
-                return None
+                if not entity or not entity[0].manufacturer_part_id:
+                    logger.warning(
+                        f"No manufacturerPartId for manufacturer part ID {manufacturer_part_id}. "
+                        "Cannot retrieve PCF data."
+                    )
+                    return None
 
-            submodel_id = _pcf_submodel_id(entity[0].manufacturer_part_id)
+                # Store the manufacturer_part_id while session is open
+                stored_manufacturer_part_id = entity[0].manufacturer_part_id
+
+            submodel_id = _pcf_submodel_id(stored_manufacturer_part_id)
             pcf_data = self._submodel_service.get_twin_aspect_document(
                 submodel_id=submodel_id,
                 semantic_id=PCF_SEMANTIC_ID
@@ -501,12 +516,14 @@ class PcfManagementManager:
                     type=type,
                     message=message,
                 )
-            if not entity:
-                logger.warning(f"PCF exchange {request_id} not found for status update")
-                return None
+                if not entity:
+                    logger.warning(f"PCF exchange {request_id} not found for status update")
+                    return None
 
-            logger.info(f"PCF exchange {request_id} status updated to {status_label}")
-            return self._entity_to_dict(entity)
+                # Convert entity to dict while session is still active
+                result = self._entity_to_dict(entity)
+                logger.info(f"PCF exchange {request_id} status updated to {status_label}")
+                return result
                 
         except ValueError as e:
             logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
@@ -617,16 +634,20 @@ class PcfManagementManager:
 
         submodel_id = _pcf_submodel_id(manufacturer_part_id)
 
-        # Verify that existing data is present
-        existing = self._submodel_service.get_twin_aspect_document(
-            submodel_id=submodel_id,
-            semantic_id=PCF_SEMANTIC_ID,
-        )
-        if existing:
-            raise ValueError(
-                f"PCF data already exists for manufacturerPartId={manufacturer_part_id}. "
-                "Use update to modify existing data."
-          )
+        # Verify that existing data is not present
+        try:
+            existing = self._submodel_service.get_twin_aspect_document(
+                submodel_id=submodel_id,
+                semantic_id=PCF_SEMANTIC_ID,
+            )
+            if existing:
+                raise ValueError(
+                    f"PCF data already exists for manufacturerPartId={manufacturer_part_id}. "
+                    "Use update to modify existing data."
+                )
+        except NotFoundError:
+            # File doesn't exist yet - this is expected for a new upload
+            pass
 
 
         self._validate_pcf_schema(pcf_data)
@@ -640,7 +661,8 @@ class PcfManagementManager:
             payload=pcf_data,
         )
 
-        shared_bpns = self._get_shared_bpns(manufacturer_part_id)
+        # Update all pending responses with the PCF location
+        self._update_pending_responses_with_pcf_location(manufacturer_part_id, pcf_location)
 
         logger.info(
             f"PCF data uploaded for manufacturerPartId={manufacturer_part_id} "
@@ -651,7 +673,6 @@ class PcfManagementManager:
             "manufacturerPartId": manufacturer_part_id,
             "pcfLocation": pcf_location,
             "status": "uploaded",
-            "sharedWithBpns": shared_bpns,
         }
 
     def update_pcf_data(
@@ -712,7 +733,7 @@ class PcfManagementManager:
             "manufacturerPartId": manufacturer_part_id,
             "pcfLocation": pcf_location,
             "status": "updated",
-            "sharedWithBpns": shared_bpns,
+            "sharedWithBpns": shared_bpns
         }
     
     def get_pcf_location(self, manufacturer_part_id: str) -> str:
@@ -739,25 +760,53 @@ class PcfManagementManager:
         return f"submodel://{PCF_SEMANTIC_ID}/{manufacturer_part_id}"
 
 
-    def _get_shared_bpns(self, manufacturer_part_id: str) -> List[str]:
-        """Return deduplicated BPNs that have received this PCF data.
+    def _update_pending_responses_with_pcf_location(self, manufacturer_part_id: str, pcf_location: str) -> None:
+        """Update all pending PCF responses for this manufacturer part with the PCF location.
 
-        Looks up INCOMING exchanges (i.e. requests others made to us) for the
-        given ``manufacturer_part_id`` that reached DELIVERED or UPDATED status,
-        and collects the requesting BPNs.
+        Finds all OUTGOING RESPONSE records with PENDING status for the given
+        manufacturer_part_id and updates their pcf_location field so they're ready
+        to be sent to requesting parties.
+
+        Args:
+            manufacturer_part_id: The manufacturer part ID to filter by.
+            pcf_location: The PCF location string to set (e.g., submodel://.../id).
         """
         with RepositoryManagerFactory.create() as repo_manager:
             entities = repo_manager.pcf_repository.find_by_part_id(
                 manufacturer_part_id=manufacturer_part_id,
+                status=PcfExchangeStatus.PENDING
             )
+            
+            # Extract and update pending responses while session is open
+            for entity in entities:
+                if (entity.direction == PcfExchangeDirection.OUTGOING and 
+                    entity.type == PcfExchangeType.RESPONSE):
+                    
+                    repo_manager.pcf_repository.update_pcf_location(entity.request_id, entity.type, pcf_location)
+                    logger.info(f"Updated PCF location for pending response {entity.request_id}")
+            
+            repo_manager.commit()
 
+    def _get_shared_bpns(self, manufacturer_part_id: str) -> List[str]:
+        """Return deduplicated BPNs that have received this PCF data.
+
+        Looks up OUTGOING RESPONSE records with DELIVERED or UPDATED status for the
+        given ``manufacturer_part_id`` and collects the requesting BPNs.
+        """
         direction = {PcfExchangeDirection.OUTGOING}
         type_pcf = {PcfExchangeType.RESPONSE}
         delivered_statuses = {PcfExchangeStatus.DELIVERED, PcfExchangeStatus.UPDATED}
         bpns: set[str] = set()
-        for entity in entities:
-            if entity.status in delivered_statuses and entity.requesting_bpn and entity.direction in direction and entity.type in type_pcf:
-                bpns.add(entity.requesting_bpn)
+        
+        with RepositoryManagerFactory.create() as repo_manager:
+            entities = repo_manager.pcf_repository.find_by_part_id(
+                manufacturer_part_id=manufacturer_part_id,
+            )
+            
+            # Extract data while session is open to avoid detached instance errors
+            for entity in entities:
+                if entity.status in delivered_statuses and entity.requesting_bpn and entity.direction in direction and entity.type in type_pcf:
+                    bpns.add(entity.requesting_bpn)
 
         return sorted(bpns)
 
@@ -783,6 +832,232 @@ class PcfManagementManager:
         except Exception as e:
             logger.error(f"Error counting pending incoming exchanges: {str(e)}")
             return 0
+
+    def send_via_edc(
+        self,
+        request_id: str,
+        target_bpn: str,
+        http_method: str,
+        path: str,
+        params: Optional[Dict[str, str]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        list_policies: Optional[List[Dict]] = None,
+        asset_type: str = "https://w3id.org/catenax/taxonomy#PcfExchange",
+    ) -> None:
+        """
+        Send PCF data via EDC using either GET or PUT method with single retry on failure.
+
+        This is a shared method for both consumption (GET requests) and 
+        provision (PUT responses) to avoid code duplication.
+
+        Args:
+            request_id: The PCF request/response ID
+            target_bpn: Business Partner Number of the target organization
+            http_method: 'GET' for requests, 'PUT' for responses
+            path: The EDC path (e.g., '/request-id' or '/request-id?update=true')
+            params: Query parameters for GET requests
+            json_data: JSON payload for PUT requests
+            list_policies: Optional list of policies for contract negotiation
+            asset_type: The EDC asset type to filter by (default: PcfExchange)
+
+        Returns:
+            The response object from the EDC data plane
+
+        Raises:
+            ValueError: If no connectors found or all data transfers fail
+        """
+        from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
+
+        connector_consumer_manager, consumer_connector_service = self._get_connector_services()
+
+        if not connector_consumer_manager or not consumer_connector_service:
+            raise ValueError("EDC connector services are not available.")
+
+        logger.info(f"[PCF EDC] Discovering connectors for BPN [{target_bpn}]")
+
+        # Remove stale EDR from database to ensure fresh EDR negotiation
+        with RepositoryManagerFactory.create() as repos:
+            remove_existing_edr(repos, target_bpn, "ichub:asset:pcf-exchange:%")
+
+        connectors = connector_consumer_manager.get_connectors(target_bpn)
+        if not connectors:
+            raise ValueError(f"No connector endpoints found for BPN [{target_bpn}].")
+        logger.info(f"[PCF EDC] Found {len(connectors)} connector(s) for BPN [{target_bpn}]")
+
+        last_error = None
+        for connector_url in connectors:
+            try:
+                logger.info(
+                    f"[PCF EDC] Attempting {http_method} on [{connector_url}] path=[{path}]"
+                )
+
+                if http_method.upper() == "GET":
+                    response = consumer_connector_service.do_get_by_dct_type(
+                        counter_party_id=target_bpn,
+                        counter_party_address=connector_url,
+                        dct_type=asset_type,
+                        policies=list_policies,
+                        path=path,
+                        params=params if params else None,
+                    )
+                elif http_method.upper() == "PUT":
+                    response = self._do_put_by_dct_type(
+                        consumer_connector_service=consumer_connector_service,
+                        counter_party_id=target_bpn,
+                        counter_party_address=connector_url,
+                        dct_type=asset_type,
+                        json_data=json_data,
+                        policies=list_policies,
+                        path=path,
+                    )
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {http_method}")
+
+                if response.status_code in (200, 201, 202, 204):
+                    logger.info(
+                        f"[PCF EDC] {http_method} successful for request [{request_id}] "
+                        f"(HTTP {response.status_code})"
+                    )
+                    return response
+
+                logger.warning(
+                    f"[PCF EDC] {http_method} returned status {response.status_code} "
+                    f"on [{connector_url}]: {response.text}"
+                )
+                last_error = ValueError(
+                    f"EDC data transfer failed with status {response.status_code}"
+                )
+
+            except Exception as e:
+                logger.warning(
+                    f"[PCF EDC] Failed on connector [{connector_url}]: {e}. "
+                    f"Retrying in 3 seconds..."
+                )
+                last_error = e
+                
+                # Wait and retry once more
+                time.sleep(3)
+                
+                try:
+                    logger.info(
+                        f"[PCF EDC] Retry: Attempting {http_method} on [{connector_url}] path=[{path}]"
+                    )
+                    
+                    if http_method.upper() == "GET":
+                        response = consumer_connector_service.do_get_by_dct_type(
+                            counter_party_id=target_bpn,
+                            counter_party_address=connector_url,
+                            dct_type=asset_type,
+                            policies=list_policies,
+                            path=path,
+                            params=params if params else None,
+                        )
+                    elif http_method.upper() == "PUT":
+                        response = self._do_put_by_dct_type(
+                            consumer_connector_service=consumer_connector_service,
+                            counter_party_id=target_bpn,
+                            counter_party_address=connector_url,
+                            dct_type=asset_type,
+                            json_data=json_data,
+                            policies=list_policies,
+                            path=path,
+                        )
+                    
+                    if response.status_code in (200, 201, 202, 204):
+                        logger.info(
+                            f"[PCF EDC] Retry successful for request [{request_id}] "
+                            f"(HTTP {response.status_code})"
+                        )
+                        return response
+                    
+                    logger.warning(
+                        f"[PCF EDC] Retry also failed with status {response.status_code}"
+                    )
+                    last_error = ValueError(
+                        f"EDC data transfer failed on retry with status {response.status_code}"
+                    )
+                    
+                except Exception as retry_error:
+                    logger.warning(
+                        f"[PCF EDC] Retry also failed: {retry_error}"
+                    )
+                    last_error = retry_error
+
+        raise ValueError(
+            f"Failed to send PCF data via EDC to any connector for BPN [{target_bpn}]: {last_error}"
+        )
+
+    def _do_put_by_dct_type(
+        self,
+        consumer_connector_service,
+        counter_party_id: str,
+        counter_party_address: str,
+        dct_type: str,
+        json_data: Optional[Dict[str, Any]] = None,
+        policies: Optional[List[Dict]] = None,
+        path: str = "/",
+        dct_type_key: str = "'http://purl.org/dc/terms/type'.'@id'",
+        operator: str = "=",
+        **kwargs,
+    ):
+        """
+        Temporary wrapper for do_put_by_dct_type (not yet in SDK).
+        
+        Executes an HTTP PUT request to an asset behind an EDC, filtered by DCT type.
+        This is a local wrapper that will be replaced once do_put_by_dct_type is
+        merged into the tractusx SDK.
+
+        Parameters:
+        counter_party_id (str): Business Partner Number of the target organization.
+        counter_party_address (str): The URL of the EDC provider's DSP endpoint.
+        dct_type (str): The DCT type to filter assets by (e.g., "PcfExchange").
+        json_data (dict, optional): The JSON data to be sent in the PUT request.
+        policies (list, optional): List of allowed policies for contract negotiation.
+        path (str, optional): The path to be appended to the dataplane URL. Defaults to "/".
+        dct_type_key (str, optional): The JSON path key for DCT type filtering.
+        operator (str, optional): The comparison operator for filtering. Defaults to "=".
+        **kwargs: Additional keyword arguments (headers, timeout, verify, etc).
+
+        Returns:
+        Response: The HTTP response from the PUT request to the dataplane.
+
+        Raises:
+        RuntimeError: If EDR negotiation fails or dataplane details cannot be retrieved.
+        ConnectionError: If catalog retrieval or HTTP request fails.
+        """
+        # Create filter expression matching the asset property structure
+        filter_expression = [{
+            "operandLeft": dct_type_key,
+            "operator": operator,
+            "operandRight": dct_type,
+        }]
+
+        
+
+        # Call do_put with the filter expression
+        # Only override json to ensure it's never None (SDK requirement)
+        return consumer_connector_service.do_put(
+            counter_party_id=counter_party_id,
+            counter_party_address=counter_party_address,
+            filter_expression=filter_expression,
+            path=path,
+            json=json_data if json_data is not None else {},
+            policies=policies,
+            headers={}
+        )
+
+    def _get_connector_services(self):
+        """
+        Lazily import connector services to avoid circular imports.
+
+        Returns:
+            Tuple of (connector_consumer_manager, consumer_connector_service).
+        """
+        if not hasattr(self, "_connector_consumer_manager") or self._connector_consumer_manager is None:
+            from connector import connector_consumer_manager, consumer_connector_service
+            self._connector_consumer_manager = connector_consumer_manager
+            self._consumer_connector_service = consumer_connector_service
+        return self._connector_consumer_manager, self._consumer_connector_service
 
 
 # Module-level singleton for convenience

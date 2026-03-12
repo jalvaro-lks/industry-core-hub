@@ -34,7 +34,6 @@ from uuid import UUID, uuid4
 from datetime import datetime, timezone
 from urllib.parse import quote
 
-from tractusx_sdk.dataspace.services.connector import BaseConnectorConsumerService
 from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
 
 from managers.config.log_manager import LoggingManager
@@ -44,7 +43,6 @@ from managers.addons_service.pcf_kit.v1.management import management_manager
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.metadata_database.notification.models import NotificationDirection
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel, PcfRelationshipModel, PcfSpecificStateModel
-from tools.edr_tools import remove_existing_edr
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -80,11 +78,6 @@ class PcfConsumptionManager:
         if self._own_bpn == None:
             logger.warning("BPN not configured in configuration.yml.")
             raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
-
-        # EDC connector services are imported lazily from the connector module
-        # to avoid circular imports at module load time.
-        self._connector_consumer_manager = None
-        self._consumer_connector_service: Optional[BaseConnectorConsumerService] = None
 
     def send_pcf_request(
         self,
@@ -205,6 +198,7 @@ class PcfConsumptionManager:
                 repo_manager.pcf_repository.create_new(
                     request_id=UUID(request_id),
                     direction=PcfExchangeDirection.OUTGOING,
+                    type=PcfExchangeType.REQUEST,
                     status=PcfExchangeStatus.PENDING,
                     requesting_bpn=requesting_bpn,
                     responding_bpn=responding_bpn,
@@ -217,19 +211,6 @@ class PcfConsumptionManager:
             logger.error(f"Failed to store PCF request {request_id}: {str(e)}")
             raise ValueError(f"Failed to store PCF request: {str(e)}")
 
-    def _get_connector_services(self):
-        """
-        Lazily import connector services to avoid circular imports at module load.
-
-        Returns:
-            Tuple of (connector_consumer_manager, consumer_connector_service).
-        """
-        if self._connector_consumer_manager is None:
-            from connector import connector_consumer_manager, consumer_connector_service
-            self._connector_consumer_manager = connector_consumer_manager
-            self._consumer_connector_service = consumer_connector_service
-        return self._connector_consumer_manager, self._consumer_connector_service
-
     def _send_pcf_request_via_edc(
         self,
         request_id: str,
@@ -240,47 +221,21 @@ class PcfConsumptionManager:
         list_policies: Optional[List[Dict]] = None,
     ) -> None:
         """
-        Send a PCF request to the data provider through the EDC dataspace connector.
+        Send a PCF request to the data provider via EDC.
 
-        Uses the SDK's ``do_get_by_dct_type()`` which handles the full EDC flow
-        (catalog filtering by dct_type → contract negotiation → EDR → HTTP GET)
-        in a single call. Each discovered connector is tried until one succeeds.
+        Delegates to the management manager's generic send_via_edc method.
 
         Args:
-            request_id: The PCF request ID (used in the GET path).
+            request_id: The PCF request ID.
             target_bpn: BPN of the target data provider.
-            manufacturer_part_id: Manufacturer's part identifier (sent as query param).
-            customer_part_id: Customer's part identifier (sent as query param).
-            message: Optional message (sent as query param).
+            manufacturer_part_id: Manufacturer's part identifier.
+            customer_part_id: Customer's part identifier.
+            message: Optional message.
+            list_policies: Optional list of policies.
 
         Raises:
-            ValueError: If no connectors are found or the data transfer fails
-                        on all discovered connectors.
+            ValueError: If the data transfer fails.
         """
-        connector_consumer_manager, consumer_connector_service = self._get_connector_services()
-
-        if not connector_consumer_manager or not consumer_connector_service:
-            raise ValueError(
-                "EDC connector services are not available. "
-                "Cannot send PCF request via dataspace."
-            )
-
-        # Step 1: Discover connector endpoints for the target BPN
-        logger.info(f"[PCF Consumption] Discovering connectors for BPN [{target_bpn}]")
-
-        with RepositoryManagerFactory.create() as repos:
-            remove_existing_edr(repos, target_bpn, "ichub:asset:pcf-exchange:%")
-
-        connectors: List[str] = connector_consumer_manager.get_connectors(target_bpn)
-        if not connectors:
-            raise ValueError(
-                f"No connector endpoints found for BPN [{target_bpn}]. "
-                "Cannot send PCF request via EDC."
-            )
-        logger.info(
-            f"[PCF Consumption] Found {len(connectors)} connector(s) for BPN [{target_bpn}]"
-        )
-
         # Build query parameters per CX-0136 footprintExchange GET spec
         params: Dict[str, str] = {}
         if manufacturer_part_id:
@@ -292,72 +247,42 @@ class PcfConsumptionManager:
 
         get_path = f"/{request_id}"
 
-        # Step 2: Try each connector — do_get_by_dct_type handles catalog
-        #         filtering, contract negotiation, and GET in a single call
-        last_error: Optional[Exception] = None
-        for connector_url in connectors:
-            try:
-                logger.info(
-                    f"[PCF Consumption] Attempting do_get_by_dct_type on "
-                    f"[{connector_url}] path=[{get_path}]"
-                )
-                response = consumer_connector_service.do_get_by_dct_type(
-                    counter_party_id=target_bpn,
-                    counter_party_address=connector_url,
-                    dct_type=PCF_EXCHANGE_ASSET_TYPE,
-                    policies=list_policies,
-                    path=get_path,
-                    params=params if params else None,
-                )
-
-                if response.status_code in (200, 202):
-                    logger.info(
-                        f"[PCF Consumption] PCF request sent successfully via EDC "
-                        f"for request [{request_id}] (HTTP {response.status_code})"
-                    )
-                    management_manager.update_pcf_exchange_status(
-                        request_id=request_id,
-                        type=PcfExchangeType.REQUEST,
-                        new_status=PcfExchangeStatus.DELIVERED,
-                    )
-                    return
-
-                logger.warning(
-                    f"[PCF Consumption] EDC GET returned status "
-                    f"{response.status_code} on [{connector_url}]: {response.text}"
-                )
-                last_error = ValueError(
-                    f"EDC data transfer failed with status {response.status_code}"
-                )
-
-            except Exception as e:
-                logger.warning(
-                    f"[PCF Consumption] Failed on connector [{connector_url}]: {e}"
-                )
-                last_error = e
-
-        raise ValueError(
-            f"Failed to send PCF request via EDC to any connector for "
-            f"BPN [{target_bpn}]: {last_error}"
+        # Use the shared EDC method from management manager
+        management_manager.send_via_edc(
+            request_id=request_id,
+            target_bpn=target_bpn,
+            http_method="GET",
+            path=get_path,
+            params=params if params else None,
+            list_policies=list_policies,
+            asset_type=PCF_EXCHANGE_ASSET_TYPE,
         )
 
     def search_own_parts_by_manufacturer_part_id(
         self,
         manufacturer_part_id: str,
     ) -> PcfRelationshipModel:
+        """
+        Search for sub-parts related to a main manufacturer part ID.
 
+        Args:
+            manufacturer_part_id: The main part ID to search for.
+
+        Returns:
+            PcfRelationshipModel with the main part ID and list of sub-parts.
+        """
         with RepositoryManagerFactory.create() as repo_manager:
             own_part = repo_manager.pcf_relationship_repository.find_by_main_manufacturer_part_id(manufacturer_part_id)
             
             if not own_part:
-                result =repo_manager.pcf_relationship_repository.create_new(
+                result = repo_manager.pcf_relationship_repository.create_new(
                     main_manufacturer_part_id=manufacturer_part_id,
                     list_sub_manufacturer_part_ids=[]
                 )
                 return PcfRelationshipModel(
                     main_manufacturer_part_id=result.main_manufacturer_part_id,
                     list_sub_manufacturer_part_ids=[]
-                ).model_dump()
+                )
             
             result = PcfRelationshipModel(
                 main_manufacturer_part_id=own_part.main_manufacturer_part_id,
@@ -365,7 +290,7 @@ class PcfConsumptionManager:
             )
 
             if own_part.list_sub_manufacturer_part_id == []:
-                return result.model_dump()
+                return result
 
             for sub_part_id in own_part.list_sub_manufacturer_part_id:
                 sub_part = repo_manager.pcf_repository.find_by_part_id(sub_part_id)
@@ -374,7 +299,7 @@ class PcfConsumptionManager:
                 else:
                     logger.warning(f"Sub part with ID {sub_part_id} not found in PCF repository")
             
-            return result.model_dump()
+            return result
         
     def add_subpart_and_create_request(
         self,
@@ -382,25 +307,57 @@ class PcfConsumptionManager:
         sub_manufacturer_part_id: str,
         responding_bpn: str
     ) -> PcfRelationshipModel:
-        
+        """
+        Add a sub-part to a main part and create a PCF request for it.
+
+        This method prevents duplicate requests by checking if one already exists
+        for the given sub_manufacturer_part_id before creating a new one.
+
+        Args:
+            main_manufacturer_part_id: The main part ID to add the sub-part to.
+            sub_manufacturer_part_id: The sub-part ID to add.
+            responding_bpn: The BPN of the supplier for this sub-part.
+
+        Returns:
+            The updated PcfRelationshipModel containing all sub-parts.
+
+        Raises:
+            ValueError: If the operation fails.
+        """
         try:
             with RepositoryManagerFactory.create() as repo_manager:
+                # Check if a request already exists for this sub_manufacturer_part_id
+                existing_request = repo_manager.pcf_repository.find_by_part_id(sub_manufacturer_part_id)
+                
+                if not existing_request or len(existing_request) == 0:
+                    # Only create a new request if one doesn't exist
+                    repo_manager.pcf_repository.create_new(
+                        request_id=UUID(str(uuid4())),
+                        direction=PcfExchangeDirection.OUTGOING,
+                        type=PcfExchangeType.REQUEST,
+                        status=PcfExchangeStatus.PENDING,
+                        requesting_bpn=self._own_bpn,
+                        responding_bpn=responding_bpn,
+                        manufacturer_part_id=sub_manufacturer_part_id,
+                        customer_part_id=None,
+                        message=None
+                    )
+                    logger.info(f"Created new PCF request for sub-part {sub_manufacturer_part_id}")
+                else:
+                    logger.info(f"PCF request already exists for sub-part {sub_manufacturer_part_id}, skipping creation")
+                
+                # Add the sub-part to the main part's relationship (only if not already present)
                 repo_manager.pcf_relationship_repository.add_sub_manufacturer_part_id(
                     main_manufacturer_part_id=main_manufacturer_part_id,
                     sub_manufacturer_part_id=sub_manufacturer_part_id
                 )
-                repo_manager.pcf_repository.create_new(
-                    request_id=UUID(str(uuid4())),
-                    direction=PcfExchangeDirection.OUTGOING,
-                    status=PcfExchangeStatus.PENDING,
-                    requesting_bpn=self._own_bpn,
-                    responding_bpn=responding_bpn,
-                    manufacturer_part_id=sub_manufacturer_part_id,
-                    customer_part_id=None,
-                    message=None
-                )
-                result = self.search_own_parts_by_manufacturer_part_id(main_manufacturer_part_id)
-                return result
+                
+                # Commit changes to database so they're visible to the next session
+                repo_manager.commit()
+                
+            # Now search in a new session - it will see the committed changes
+            result = self.search_own_parts_by_manufacturer_part_id(main_manufacturer_part_id)
+            return result
         except Exception as e:
             logger.error(f"Failed to add sub part and create request for main part {main_manufacturer_part_id}: {str(e)}")
             raise ValueError(f"Failed to add sub part and create request: {str(e)}")
@@ -420,6 +377,8 @@ class PcfConsumptionManager:
         Raises:
             ValueError: If the request does not exist, is not in PENDING status, or if the EDC exchange fails.
         """
+        # Extract all request data first to avoid detached session issues
+        request_data = None
         try:
             with RepositoryManagerFactory.create() as repo_manager:
                 request = repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
@@ -428,19 +387,30 @@ class PcfConsumptionManager:
                 if request.status != PcfExchangeStatus.PENDING and request.status != PcfExchangeStatus.FAILED:
                     raise ValueError(f"PCF request with ID {request_id} is not in PENDING or FAILED status and cannot be sent")
 
-                self._send_pcf_request_via_edc(
-                    request_id=request_id,
-                    target_bpn=request.responding_bpn,
-                    manufacturer_part_id=request.manufacturer_part_id,
-                    customer_part_id=request.customer_part_id,
-                    message=request.message,
-                    list_policies=list_policies
-                )
-                management_manager.update_pcf_exchange_status(
-                    request_id=request_id,
-                    type=PcfExchangeType.REQUEST,
-                    new_status=PcfExchangeStatus.DELIVERED,
-                )
+                # Extract all data from request object while session is active
+                request_data = {
+                    'target_bpn': request.responding_bpn,
+                    'manufacturer_part_id': request.manufacturer_part_id,
+                    'customer_part_id': request.customer_part_id,
+                    'message': request.message
+                }
+            
+            # Call _send_pcf_request_via_edc outside the session context
+            self._send_pcf_request_via_edc(
+                request_id=request_id,
+                target_bpn=request_data['target_bpn'],
+                manufacturer_part_id=request_data['manufacturer_part_id'],
+                customer_part_id=request_data['customer_part_id'],
+                message=request_data['message'],
+                list_policies=list_policies
+            )
+            
+            # Update status after EDC operation completes
+            management_manager.update_pcf_exchange_status(
+                request_id=request_id,
+                type=PcfExchangeType.REQUEST,
+                new_status=PcfExchangeStatus.DELIVERED,
+            )
                 
         except Exception as e:
             management_manager.update_pcf_exchange_status(
@@ -470,7 +440,7 @@ class PcfConsumptionManager:
                 pcf_data = management_manager.get_pcf_data(request_id=request_id)
                 result = PcfExchangeModel.from_entity(exchange)
                 result.pcf_data = pcf_data
-                return result.model_dump()
+                return result
         except Exception as e:
             logger.error(f"Failed to consult PCF response for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to consult PCF response: {str(e)}")
@@ -490,11 +460,11 @@ class PcfConsumptionManager:
         """
         try:
             part_info = self.search_own_parts_by_manufacturer_part_id(manufacturer_part_id)
-            sub_parts = part_info["list_sub_manufacturer_part_ids"]
+            sub_parts = part_info.list_sub_manufacturer_part_ids
             total_sub_parts = len(sub_parts)
             responded_sub_parts = 0
             for sub_part in sub_parts:
-                if sub_part["status"] == PcfExchangeStatus.DELIVERED.value and sub_part["type"] == PcfExchangeType.RESPONSE.value:
+                if sub_part.status == PcfExchangeStatus.DELIVERED.value and sub_part.type == PcfExchangeType.RESPONSE.value:
                     responded_sub_parts += 1
             progress = (responded_sub_parts / total_sub_parts) * 100 if total_sub_parts > 0 else 100
             return PcfSpecificStateModel(
@@ -503,7 +473,7 @@ class PcfConsumptionManager:
                 responded_sub_parts=responded_sub_parts,
                 progress_percentage=progress,
                 overall_status="PENDING" if responded_sub_parts < total_sub_parts else "COMPLETED"
-            ).model_dump()
+            )
                 
         except Exception as e:
             logger.error(f"Failed to consult global assembly progress for part {manufacturer_part_id}: {str(e)}")
@@ -522,12 +492,12 @@ class PcfConsumptionManager:
         """
         try:
             status = self.consult_global_assembly_progress(manufacturer_part_id)
-            if status["overall_status"] != "COMPLETED":
-                raise ValueError(f"PCF data for part {manufacturer_part_id} is not yet available for download. Current assembly progress: {status['progress_percentage']}%")
+            if status.overall_status != "COMPLETED":
+                raise ValueError(f"PCF data for part {manufacturer_part_id} is not yet available for download. Current assembly progress: {status.progress_percentage}%")
             part_info = self.search_own_parts_by_manufacturer_part_id(manufacturer_part_id)
             pcf_exchange_collection: List[PcfExchangeModel] = []
-            for sub_part in part_info["list_sub_manufacturer_part_ids"]:
-                exchange = self.consult_pcf_response(sub_part["request_id"])
+            for sub_part in part_info.list_sub_manufacturer_part_ids:
+                exchange = self.consult_pcf_response(sub_part.request_id)
                 pcf_exchange_collection.append(exchange)
             return pcf_exchange_collection
         except Exception as e:

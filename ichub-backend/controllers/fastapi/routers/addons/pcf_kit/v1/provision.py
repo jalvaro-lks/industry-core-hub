@@ -31,6 +31,7 @@ from fastapi.responses import JSONResponse
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import provision_manager
 from models.services.addons.pcf_kit.v1.management import SendOrUpdatePcfResponseModel
+from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
 
 
 router = APIRouter(
@@ -139,10 +140,10 @@ async def list_provider_notifications(
     status: Optional[str] = Query(None, description="Filter by request status (e.g., PENDING, DELIVERED)"),
     offset: int = Query(0, description="Pagination offset"),
     limit: int = Query(100, description="Pagination limit")
-) -> Dict[str, Any]:
+) -> List[PcfExchangeModel]:
     try:
         result = provision_manager.list_provider_notifications(status=status, offset=offset, limit=limit)
-        return JSONResponse(status_code=200, content=result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
@@ -164,10 +165,10 @@ async def accept_request_and_send_response(
 
 
 @router.get("/requests/{requestId}/refresh-pcf")
-async def refresh_pcf_data_for_request(request_id: str = Path(..., alias="requestId")) -> Dict[str, Any]:
+async def refresh_pcf_data_for_request(request_id: str = Path(..., alias="requestId")) -> PcfExchangeModel:
     try:
         result = provision_manager.refresh_pcf_data_for_request(request_id=request_id)
-        return JSONResponse(status_code=200, content=result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
