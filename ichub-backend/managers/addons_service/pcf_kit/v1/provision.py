@@ -548,13 +548,17 @@ class PcfProvisionManager:
                 )
                 
         except Exception as e:
-            management_manager.update_pcf_exchange_status(
-                request_id=request_id,
-                type=PcfExchangeType.RESPONSE,
-                new_status=PcfExchangeStatus.FAILED,
-            )
-            logger.error(f"Failed to accept request and send response for request {request_id}: {str(e)}")
-            raise ValueError(f"Failed to accept request and send response: {str(e)}")
+            if exchange_entity.status != PcfExchangeStatus.DELIVERED:
+                management_manager.update_pcf_exchange_status(
+                    request_id=request_id,
+                    type=PcfExchangeType.RESPONSE,
+                    new_status=PcfExchangeStatus.FAILED,
+                )
+                logger.error(f"Failed to accept request and send response for request {request_id}: {str(e)}")
+                raise ValueError(f"Failed to accept request and send response: {str(e)}")
+            else:
+                logger.error(f"Request {request_id} is already DELIVERED. No action taken. Error details: {str(e)}")
+                raise ValueError(f"Request {request_id} is already DELIVERED. No action taken.")
 
     def refresh_pcf_data_for_request(self, request_id: str) -> PcfExchangeModel:
         """

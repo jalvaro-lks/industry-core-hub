@@ -182,7 +182,7 @@ async def download_consolidated_pcf_data(
 ) -> Dict[str, Any]:
     try:
         result = consumption_manager.download_pcf_data(manufacturer_part_id=manufacturer_part_id)
-        return JSONResponse(status_code=200, content=result)
+        return JSONResponse(status_code=200, content=[item.model_dump(by_alias=True) for item in result])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
