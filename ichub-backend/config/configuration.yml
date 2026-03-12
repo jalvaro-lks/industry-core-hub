@@ -22,6 +22,7 @@
 #################################################################################
 
 hostname: "http://localhost:9000"
+bpn: ""
 
 authorization:
   enabled: true
@@ -323,6 +324,45 @@ provider:
               - leftOperand: cx-policy:UsagePurpose
                 operator: odrl:eq
                 rightOperand: cx.core.industrycore:1
+        prohibition: []
+        obligation: []
+      access:
+        context:
+          odrl: http://www.w3.org/ns/odrl/2/
+          cx-policy: https://w3id.org/catenax/policy/
+        permission:
+          - action: odrl:use
+            constraints:
+              - leftOperand: cx-policy:Membership
+                operator: odrl:eq
+                rightOperand: active
+        prohibition: []
+        obligation: []
+
+  pcfExchange:
+    enabled: true
+    hostname: "https://<provider-pcf-exchange-api>"
+    asset_config:
+      dct_type: "cx-taxo:PcfExchange"
+      # existing_asset_id: <pcf-exchange-asset> # -- In case an existing PCF Exchange asset wants to be used specify here the id, otherwise it will be created based on the url, if it not exists it will be created
+    policy:
+      usage:
+        context:
+          odrl: http://www.w3.org/ns/odrl/2/
+          cx-policy: https://w3id.org/catenax/policy/
+        permission:
+          - action: odrl:use
+            LogicalConstraint: odrl:and
+            constraints:
+              - leftOperand: cx-policy:FrameworkAgreement
+                operator: odrl:eq
+                rightOperand: DataExchangeGovernance:1.0
+              - leftOperand: cx-policy:Membership
+                operator: odrl:eq
+                rightOperand: active
+              - leftOperand: cx-policy:UsagePurpose
+                operator: odrl:eq
+                rightOperand: cx.pcf.base:1
         prohibition: []
         obligation: []
       access:

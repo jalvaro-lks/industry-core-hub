@@ -448,6 +448,11 @@ class TwinManagementService:
     
     def create_serialized_part_twin_share(self, serialized_part_share_input: SerializedPartTwinShareCreate) -> bool:
         
+        logger.info(f"[SHARE DEBUG] create_serialized_part_twin_share called with: "
+                    f"manufacturer_id={serialized_part_share_input.manufacturer_id}, "
+                    f"manufacturer_part_id={serialized_part_share_input.manufacturer_part_id}, "
+                    f"part_instance_id={serialized_part_share_input.part_instance_id}")
+        
         with RepositoryManagerFactory.create() as repo:
             # Step 1: Retrieve the serialized part entity according to the serialized part data (manufacturer_id, manufacturer_part_id, part_instance_id)
             db_serialized_parts = repo.serialized_part_repository.find(
@@ -455,6 +460,7 @@ class TwinManagementService:
                 manufacturer_part_id=serialized_part_share_input.manufacturer_part_id,
                 part_instance_id=serialized_part_share_input.part_instance_id,
             )
+            logger.info(f"[SHARE DEBUG] Serialized parts found: {len(db_serialized_parts) if db_serialized_parts else 0}")
             if not db_serialized_parts:
                 raise NotFoundError("Serialized part not found.")
             else:

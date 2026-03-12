@@ -110,7 +110,7 @@ const getVersionDisplay = (version: string | undefined): string => {
 const getStatusLabel = (status: string): string => {
   const statusMap: Record<string, string> = {
     'draft': 'Draft',
-    'active': 'Registered',
+    'active': 'Shared',
     'shared': 'Shared',
     'pending': 'Pending'
   };
@@ -295,10 +295,23 @@ const PassportProvisionList: React.FC = () => {
     const dpp = dpps.find(d => d.id === dppId);
     if (!dpp) return;
 
+    // DEBUG: Log which DPP is being shared
+    console.log('[SHARE DEBUG] handleShare called with dppId:', dppId);
+    console.log('[SHARE DEBUG] DPP found:', JSON.stringify({
+      id: dpp.id,
+      name: dpp.name,
+      manufacturerPartId: dpp.manufacturerPartId,
+      partInstanceId: dpp.partInstanceId,
+      status: dpp.status,
+      passportIdentifier: dpp.passportIdentifier,
+    }, null, 2));
+
     // Use passport discovery ID (CX:manufacturerPartId:partInstanceId) for sharing
     const passportDiscoveryId = dpp.manufacturerPartId && dpp.partInstanceId 
       ? `CX:${dpp.manufacturerPartId}:${dpp.partInstanceId}`
       : dpp.id; // Fallback to internal ID if discovery ID not available
+
+    console.log('[SHARE DEBUG] Computed passportDiscoveryId:', passportDiscoveryId);
 
     // Add to sharing in progress
     setSharingInProgress(prev => new Set(prev).add(dppId));

@@ -48,11 +48,19 @@ export interface SchemaMetadata {
   namespace?: string; // Optional namespace for schema identification
 }
 
+export interface SectionConfig {
+  order?: string[]; // Explicit section order override
+  displayNames?: Record<string, string>; // Custom display names per section
+  defaultSection?: string; // Default section for fields without explicit section
+}
+
 export interface SchemaDefinition<T = any> {
   metadata: SchemaMetadata;
   formFields: any[];
+  sectionConfig?: SectionConfig; // Optional section customization
   createDefault: (params?: any) => Partial<T>;
   validate?: (data: Partial<T>) => { isValid: boolean; errors: string[] };
+  properties?: Record<string, any>; // Schema properties for section detection
 }
 
 /**

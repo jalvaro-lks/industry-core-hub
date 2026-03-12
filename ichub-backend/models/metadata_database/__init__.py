@@ -29,3 +29,7 @@ from .provider.models import (
     DataExchangeAgreement, DataExchangeContract
 )
 
+from .pcf.models import (
+    PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus
+)
+

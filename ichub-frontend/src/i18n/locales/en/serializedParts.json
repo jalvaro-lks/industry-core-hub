@@ -13,12 +13,12 @@
       "deleteSerializedPart": "Delete Serialized Part"
     },
     "messages": {
-      "twinRegistered": "Twin registered successfully!",
+      "twinRegistered": "Twin shared successfully!",
       "twinShared": "Twin shared successfully!",
       "twinUnshared": "Twin unshared successfully!",
       "partDeleted": "Serialized part deleted successfully!",
       "dataRefreshed": "Data refreshed successfully!",
-      "registerFailed": "Registration failed",
+      "registerFailed": "Sharing failed",
       "shareFailed": "Sharing failed",
       "unshareFailed": "Unsharing failed",
       "deleteFailed": "Deletion failed",

@@ -13,12 +13,12 @@
       "deleteSerializedPart": "Eliminar Pieza Serializada"
     },
     "messages": {
-      "twinRegistered": "¡Gemelo registrado correctamente!",
+      "twinRegistered": "¡Gemelo compartido correctamente!",
       "twinShared": "¡Gemelo compartido correctamente!",
       "twinUnshared": "¡Gemelo dejado de compartir correctamente!",
       "partDeleted": "¡Pieza serializada eliminada correctamente!",
       "dataRefreshed": "¡Datos actualizados correctamente!",
-      "registerFailed": "Error en el registro",
+      "registerFailed": "Error al compartir",
       "shareFailed": "Error al compartir",
       "unshareFailed": "Error al dejar de compartir",
       "deleteFailed": "Error al eliminar",
