@@ -288,8 +288,19 @@ async def base_error_exception_handler(
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """
     Exception handler for validation errors.
+    Returns the first error message plus a list of all field-level errors so callers
+    can see exactly which fields failed and why.
     """
-    raise ValidationError(exc.errors()[0]["msg"])
+    errors = exc.errors()
+    message = errors[0]["msg"] if errors else "Validation error"
+    details = [
+        f"{' -> '.join(str(loc) for loc in e['loc'])}: {e['msg']}"
+        for e in errors
+    ]
+    return JSONResponse(
+        status_code=422,
+        content={"status": 422, "message": message, "details": details}
+    )
 
 @app.get("/health")
 def check_health():
