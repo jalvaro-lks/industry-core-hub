@@ -342,6 +342,11 @@ This focused view shows how the `models/` package is split between service-layer
 %%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
 flowchart LR
     subgraph MODEL_FOCUS["Models — models/"]
+        %% This creates an invisible spacer to push real nodes down
+        spacer1[" "]
+        spacer1[" "]
+        spacer1[" "]
+        style spacer1 fill:transparent,stroke:none,color:transparent,height:20px
         subgraph SVC_MODELS["services/ (Pydantic DTOs)"]
             M_PROV["provider/<br/>part, twin, sharing, partner"]
             M_CONS["consumer/<br/>discovery, connection"]
