@@ -22,7 +22,7 @@
 #################################################################################
 
 from uuid import UUID
-from typing import List, Dict
+from typing import List
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response, JSONResponse
 
@@ -33,6 +33,7 @@ from controllers.fastapi.routers.authentication.auth_api import get_authenticati
 from services.notifications.notifications_management_service import NotificationsManagementService
 from models.metadata_database.notification.models import NotificationStatus, NotificationDirection
 from models.services.notification.responses import NotificationResponse
+from models.services.notification.requests import SendNotificationRequest
 from tools.exceptions import (
     NotificationCreationError,
     NotificationUpdateStatusError,
@@ -77,12 +78,23 @@ async def create_notification(notification: Notification) -> Response:
         return JSONResponse(status_code=500, content={"detail": INTERNAL_SERVER_ERROR})
 
 @router.post("/notification/send")
-async def send_notification(message_id: UUID, endpoint_path: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> Response:
+async def send_notification(request: SendNotificationRequest) -> Response:
     """
     Send an existing notification to the specified endpoint.
+
+    All parameters are supplied in the request body. The ``governance`` field is
+    optional — when omitted the backend falls back to the
+    ``provider.digitalTwinEventAPI.policy.usage`` policy defined in
+    ``configuration.yml``.
     """
     try:
-        notification_management_service.send_notification(message_id, endpoint_path, provider_bpn, provider_dsp_url, list_policies)
+        notification_management_service.send_notification(
+            message_id=request.message_id,
+            endpoint_url=request.endpoint_path,
+            provider_bpn=request.provider_bpn,
+            provider_dsp_url=request.provider_dsp_url,
+            list_policies=request.governance,
+        )
         return Response(status_code=200)
     except NotificationSendingError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})

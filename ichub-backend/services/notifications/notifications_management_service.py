@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
+import re
 from uuid import UUID
 from typing import List, Optional, Dict
 
@@ -29,6 +30,7 @@ from tractusx_sdk.industry.services.notifications import NotificationConsumerSer
 from tractusx_sdk.industry.services.notifications.exceptions import NotificationError
 from tractusx_sdk.dataspace.services.connector.base_connector_consumer import BaseConnectorConsumerService
 
+from managers.config.config_manager import ConfigManager
 from managers.config.log_manager import LoggingManager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
@@ -50,6 +52,26 @@ class NotificationsManagementService():
     def __init__(self):
         self.connector_consumer_service: BaseConnectorConsumerService = connector_manager.consumer.connector_service
         self.submodel_service_manager = SubmodelServiceManager()
+
+    @staticmethod
+    def _derive_endpoint_path(context: str) -> str:
+        """
+        Derive the DigitalTwinEventAPI endpoint path from a notification context string.
+
+        Example: ``IndustryCore-DigitalTwinEventAPI-ConnectToParent:3.0.0``
+                 → ``/connect-to-parent``
+        """
+        try:
+            marker = "DigitalTwinEventAPI-"
+            idx = context.index(marker) + len(marker)
+            type_name = context[idx:].split(":")[0]  # e.g. "ConnectToParent"
+            kebab = re.sub(r"([A-Z])", r"-\1", type_name).lower().lstrip("-")
+            return f"/{kebab}"
+        except (ValueError, IndexError):
+            logger.warning(
+                f"[Notifications] Could not derive endpoint path from context '{context}', using empty path"
+            )
+            return ""
 
     @staticmethod
     def _build_location(message_id: UUID) -> str:
@@ -171,12 +193,45 @@ class NotificationsManagementService():
             logger.error(f"Error deleting notification: {e}")
             raise NotificationDeleteError(f"Failed to delete notification: {e}")
 
-    def send_notification(self, message_id: UUID, endpoint_url: str, provider_bpn: str, provider_dsp_url: str, list_policies: List[Dict]) -> None:
+    def send_notification(self, message_id: UUID, endpoint_url: Optional[str], provider_bpn: str, provider_dsp_url: Optional[str], list_policies: Optional[List[Dict]]) -> None:
         """
         Send a notification to the specified endpoint using the connector consumer service.
         Retrieves the notification from the database using the message_id.
+
+        If ``endpoint_url`` is None, the path is derived automatically from the
+        notification's ``header.context`` (e.g. ``ConnectToParent`` → ``/connect-to-parent``).
+
+        If ``provider_dsp_url`` is None, the DSP URL is resolved automatically
+        from the connector discovery cache for the given ``provider_bpn``.
+
+        If ``list_policies`` is None or empty, the policy defined at
+        ``provider.digitalTwinEventAPI.policy.usage`` in ``configuration.yml`` is
+        used as the fallback.
         """
         try:
+            # Resolve DSP URL: use provided value or fall back to connector discovery
+            resolved_dsp_url = provider_dsp_url
+            if not resolved_dsp_url:
+                connectors = connector_manager.consumer.get_connectors(provider_bpn)
+                if not connectors:
+                    raise NotificationSendingError(
+                        f"No connector DSP URL found for provider BPN [{provider_bpn}]. "
+                        "Please provide provider_dsp_url explicitly."
+                    )
+                resolved_dsp_url = connectors[0]
+                logger.debug(
+                    f"[Notifications] No provider_dsp_url provided; using discovered "
+                    f"DSP URL [{resolved_dsp_url}] for BPN [{provider_bpn}]"
+                )
+
+            # Resolve policies: caller-supplied takes precedence over config fallback
+            resolved_policies = list_policies
+            if not resolved_policies:
+                dte_policy = ConfigManager.get_config("provider.digitalTwinEventAPI.policy.usage")
+                if dte_policy:
+                    resolved_policies = [dte_policy]
+                    logger.debug("[Notifications] No governance provided; using provider.digitalTwinEventAPI.policy.usage from configuration")
+
             with RepositoryManagerFactory().create() as repos:
                 self._remove_existing_edr_for_digital_twin_event_api(provider_bpn)
                 db_notification = repos.notification_repository.find_by_message_id(
@@ -191,6 +246,9 @@ class NotificationsManagementService():
             )
             notification = db_notification.to_sdk(payload)
 
+            # Resolve endpoint path: explicit override or derived from context
+            resolved_endpoint = endpoint_url or self._derive_endpoint_path(notification.header.context)
+
             notification_service = NotificationConsumerService(
                 self.connector_consumer_service,
                 verbose=True
@@ -198,10 +256,10 @@ class NotificationsManagementService():
 
             result = notification_service.send_notification(
                 provider_bpn=provider_bpn,
-                provider_dsp_url=provider_dsp_url,
+                provider_dsp_url=resolved_dsp_url,
                 notification=notification,
-                endpoint_path=endpoint_url,
-                policies=list_policies
+                endpoint_path=resolved_endpoint,
+                policies=resolved_policies
             )
             self.update_notification_status(
                 message_id=message_id,
