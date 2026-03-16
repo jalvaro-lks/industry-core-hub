@@ -22,8 +22,8 @@
 #################################################################################
 
 from uuid import UUID
-from typing import List
-from fastapi import APIRouter, Depends
+from typing import Annotated, List
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import Response, JSONResponse
 
 from tractusx_sdk.industry.models.notifications import (
@@ -63,8 +63,41 @@ async def get_all_notifications(bpn: str, status: NotificationStatus = None, off
     except NotificationRetrievalError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
 
+# Explicit Swagger UI example without ``additionalProperties`` clutter.
+# The SDK's ``NotificationContent`` model carries ``extra="allow"`` which causes
+# Pydantic to emit ``additionalProperties: true`` in the JSON schema.  Swagger UI
+# then inserts a placeholder ``additionalProp1: {}`` field in its auto-generated
+# example body.  Users who delete that placeholder but forget to remove the
+# trailing comma trigger a JSON decode error on every actual request.
+# Providing ``openapi_examples`` via ``Body()`` replaces the auto-generated
+# example with a clean, valid one so the issue cannot occur from the UI.
+_NOTIFICATION_BODY_EXAMPLE = Body(
+    openapi_examples={
+        "connect_to_parent": {
+            "summary": "ConnectToParent notification",
+            "value": {
+                "header": {
+                    "context": "IndustryCore-DigitalTwinEventAPI-ConnectToParent:3.0.0",
+                    "senderBpn": "BPNL00000000024R",
+                    "receiverBpn": "BPNL000000000342",
+                    "version": "3.0.0",
+                },
+                "content": {
+                    "information": "Notification message",
+                    "listOfAffectedItems": [
+                        "urn:uuid:b5f462a2-54e8-4034-85e2-2d663f1c2c2f"
+                    ],
+                },
+            },
+        }
+    }
+)
+
+
 @router.post("/notification")
-async def create_notification(notification: Notification) -> JSONResponse:
+async def create_notification(
+    notification: Annotated[Notification, _NOTIFICATION_BODY_EXAMPLE],
+) -> JSONResponse:
     """
     Create a new notification (OUTGOING direction).
 
