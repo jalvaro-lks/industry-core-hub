@@ -115,17 +115,19 @@ const mapVerificationState = (backendStatus: string): NotificationVerificationSt
 // ---------------------------------------------------------------------------
 
 /**
- * Converts a snake_case header from the backend to the frontend camelCase format.
+ * Converts a header from the backend to the frontend camelCase format.
+ * Supports both camelCase (new records) and snake_case (old stored records)
+ * so the UI works regardless of when the notification was created.
  */
-const mapHeader = (raw: NotificationApiResponse['full_notification']['header']): NotificationHeader => ({
-  messageId: raw.message_id,
+const mapHeader = (raw: NotificationApiResponse['fullNotification']['header']): NotificationHeader => ({
+  messageId: raw.messageId ?? raw.message_id ?? '',
   context: raw.context,
-  sentDateTime: raw.sent_date_time,
-  senderBpn: raw.sender_bpn,
-  receiverBpn: raw.receiver_bpn,
+  sentDateTime: raw.sentDateTime ?? raw.sent_date_time ?? '',
+  senderBpn: raw.senderBpn ?? raw.sender_bpn ?? '',
+  receiverBpn: raw.receiverBpn ?? raw.receiver_bpn ?? '',
   version: raw.version,
-  expectedResponseBy: raw.expected_response_by ?? undefined,
-  relatedMessageId: raw.related_message_id ?? undefined,
+  expectedResponseBy: (raw.expectedResponseBy ?? raw.expected_response_by) ?? undefined,
+  relatedMessageId: (raw.relatedMessageId ?? raw.related_message_id) ?? undefined,
 });
 
 // ---------------------------------------------------------------------------
@@ -151,7 +153,17 @@ const mapContentItems = (rawContent: Record<string, unknown>): ConnectToParentIt
     return mapSnakeCaseItems(rawContent.list_of_items as Record<string, unknown>[]);
   }
 
-  // 3. Fallback: list_of_affected_items (SDK standard field — array of ID strings)
+  // 3. camelCase listOfAffectedItems — new records (stored with by_alias=True)
+  if (Array.isArray(rawContent.listOfAffectedItems) && (rawContent.listOfAffectedItems as unknown[]).length > 0) {
+    return (rawContent.listOfAffectedItems as string[]).map((id: string) => ({
+      manufacturerId: '',
+      manufacturerPartId: '',
+      catenaXId: id,
+      partInstanceId: id,
+    }));
+  }
+
+  // 4. snake_case list_of_affected_items — old records stored before the fix
   if (Array.isArray(rawContent.list_of_affected_items)) {
     return (rawContent.list_of_affected_items as string[]).map((id: string) => ({
       manufacturerId: '',
@@ -243,8 +255,8 @@ const mapContent = (rawContent: Record<string, unknown>): ConnectToParentPayload
 export const mapApiResponseToInboxNotification = (
   response: NotificationApiResponse,
 ): InboxNotification => {
-  const header = mapHeader(response.full_notification.header);
-  const content = mapContent(response.full_notification.content);
+  const header = mapHeader(response.fullNotification.header);
+  const content = mapContent(response.fullNotification.content);
   const notificationType = parseNotificationType(header.context);
   const status = mapStatus(response.status);
   const verificationState = mapVerificationState(response.status);
@@ -252,14 +264,14 @@ export const mapApiResponseToInboxNotification = (
   const verifiedItems: VerifiedItem[] = content.listOfItems.map((item) => ({
     item,
     verificationStatus: verificationState === 'feedback-sent' ? 'accessible' : 'not-verified',
-    verifiedAt: verificationState === 'feedback-sent' ? new Date(response.created_at) : undefined,
+    verifiedAt: verificationState === 'feedback-sent' ? new Date(response.createdAt) : undefined,
   }));
 
-  const receivedAt = new Date(response.created_at);
+  const receivedAt = new Date(response.createdAt);
   const isFeedbackSent = status === 'feedback-sent';
 
   return {
-    id: response.message_id,
+    id: response.messageId,
     type: notificationType,
     status,
     header,

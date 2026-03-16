@@ -43,27 +43,39 @@ export interface SendNotificationRequest {
 
 /**
  * Raw notification response from the backend API.
- * Field names are snake_case as returned by FastAPI/Pydantic.
+ * Top-level fields are camelCase (FastAPI alias_generator=to_camel).
+ * fullNotification.header supports both camelCase (records created after the
+ * by_alias fix) and snake_case (records stored before the fix) so the mapper
+ * can handle both without data loss.
  */
 export interface NotificationApiResponse {
   id: number;
-  created_at: string;
-  message_id: string;
-  sender_bpn: string;
-  receiver_bpn: string;
+  createdAt: string;
+  messageId: string;
+  senderBpn: string;
+  receiverBpn: string;
   direction: string;
   status: string;
-  use_case: string | null;
-  full_notification: {
+  useCase: string | null;
+  fullNotification: {
     header: {
-      message_id: string;
-      context: string;
-      sent_date_time: string;
-      sender_bpn: string;
-      receiver_bpn: string;
-      version: string;
+      // camelCase — new records (by_alias=True)
+      messageId?: string;
+      sentDateTime?: string;
+      senderBpn?: string;
+      receiverBpn?: string;
+      expectedResponseBy?: string | null;
+      relatedMessageId?: string | null;
+      // snake_case — old records stored before the fix
+      message_id?: string;
+      sent_date_time?: string;
+      sender_bpn?: string;
+      receiver_bpn?: string;
       expected_response_by?: string | null;
       related_message_id?: string | null;
+      // always present
+      context: string;
+      version: string;
     };
     content: Record<string, unknown>;
   };
