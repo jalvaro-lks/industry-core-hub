@@ -334,6 +334,44 @@ flowchart LR
     R_ADDON_F --> MGR_ADDON_F
 ```
 
+**Focused View — Services and Their External Relations**
+
+This focused view highlights how the `services/` package is split into provider and notification services, and how those services are called by controllers while orchestrating managers and models.
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
+flowchart LR
+    subgraph CTRL_SVC["Controllers — controllers/fastapi/routers/"]
+        C_PROV_SVC["Provider Routers"]
+        C_NOTIF_SVC["Notification Routers"]
+    end
+
+    subgraph SVC_SVC["Services — services/"]
+        S_PROV_SVC["provider/<br/>PartManagementService<br/>TwinManagementService<br/>SubmodelDispatcherService<br/>SharingService<br/>PartnerManagementService"]
+        S_NOTIF_SVC["notifications/<br/>NotificationsManagementService<br/>DigitalTwinEventApiService"]
+    end
+
+    subgraph MGR_SVC["Managers — managers/"]
+        M_DB_SVC["metadata_database manager / repositories"]
+        M_SUBMODEL_SVC["submodel managers<br/>(service manager + document generator)"]
+        M_CFG_SVC["config managers<br/>(logging/config)"]
+    end
+
+    subgraph MODEL_SVC["Models — models/"]
+        MD_DTO_SVC["services/* DTOs"]
+        MD_DB_SVC["metadata_database/* SQLModel"]
+    end
+
+    C_PROV_SVC --> S_PROV_SVC
+    C_NOTIF_SVC --> S_NOTIF_SVC
+
+    S_PROV_SVC --> M_DB_SVC & M_SUBMODEL_SVC & M_CFG_SVC
+    S_NOTIF_SVC --> M_DB_SVC & M_SUBMODEL_SVC & M_CFG_SVC
+
+    S_PROV_SVC --> MD_DTO_SVC & MD_DB_SVC
+    S_NOTIF_SVC --> MD_DTO_SVC & MD_DB_SVC
+```
+
 **Focused View — Models and Their Cross-Layer Relations**
 
 This focused view shows how the `models/` package is split between service-layer DTOs (Pydantic) and metadata persistence entities (SQLModel), and which backend layers consume each model family.
@@ -379,7 +417,7 @@ flowchart LR
 
 The backend is organized into the following packages:
 - **`controllers/`** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
-- **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers
+- **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers (see the focused services view above for controller, manager, and model relations)
 - **`managers/`** — Low-level wrappers around external systems and the metadata database:
   - `enablement_services/provider/` — `ConnectorProviderManager` (EDC), `DtrProviderManager` (DTR)
   - `enablement_services/consumer/` — `ConsumerConnectorManager`, `DtrConsumerManager`
