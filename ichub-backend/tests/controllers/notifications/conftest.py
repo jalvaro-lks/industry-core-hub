@@ -21,7 +21,6 @@
 #################################################################################
 
 import sys
-import importlib
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
@@ -80,11 +79,14 @@ def app_client():
     _restore_real_modules()
 
     with patch("services.notifications.notifications_management_service.connector_manager") as mock_conn, \
-         patch("services.notifications.notifications_management_service.dtr_manager") as mock_dtr:
+         patch("services.notifications.notifications_management_service.dtr_manager") as mock_dtr, \
+         patch("controllers.fastapi.routers.authentication.auth_api.api_key_manager", None), \
+         patch("controllers.fastapi.routers.authentication.auth_api.oauth2_manager", None):
         mock_conn.consumer.connector_service = Mock()
         mock_dtr.purge_edrs_matching.return_value = 0
 
         from controllers.fastapi.app import app
+
         with TestClient(app, raise_server_exceptions=False) as client:
             yield client
 
