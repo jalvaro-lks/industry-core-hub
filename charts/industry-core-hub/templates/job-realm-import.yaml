@@ -30,9 +30,8 @@ metadata:
     app.kubernetes.io/component: keycloak-import
   annotations:
     {{- if eq .Values.deploymentMode "argocd"  }}
-    # ArgoCD annotations - runs on every sync
-    "argocd.argoproj.io/sync-wave": "3"
-    "argocd.argoproj.io/hook": Sync
+    # ArgoCD annotations - runs after every sync completes
+    "argocd.argoproj.io/hook": PostSync
     "argocd.argoproj.io/hook-delete-policy": BeforeHookCreation
     {{- else }}
     # Helm hooks for standard Helm deployments
