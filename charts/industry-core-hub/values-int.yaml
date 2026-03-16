@@ -472,7 +472,8 @@ backend:
 
 keycloak:
   realmImport:
-    method: "startup"
+    enabled: true
+    method: "job"
   realm:
     users:
       - username: "ichub-admin"
