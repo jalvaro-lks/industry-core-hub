@@ -22,7 +22,8 @@
 #################################################################################
 
 import re
-from uuid import UUID
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 from typing import List, Optional, Dict
 
 from tractusx_sdk.industry.models.notifications import Notification
@@ -98,8 +99,16 @@ class NotificationsManagementService():
     def create_notification(self, notification: Notification, direction: NotificationDirection, use_case: str = None) -> NotificationEntity:
         """
         Create a new notification in the system.
+
+        ``message_id`` and ``sent_date_time`` are always generated server-side
+        so that callers never need to supply them and duplicates are impossible.
         """
         try:
+            # Always generate a fresh ID and timestamp on the server; client-supplied
+            # values are intentionally ignored to guarantee uniqueness.
+            notification.header.message_id = uuid4()
+            notification.header.sent_date_time = datetime.now(timezone.utc)
+
             status: NotificationStatus = None
             if direction == NotificationDirection.INCOMING:
                 logger.info(f"Creating incoming notification with ID: {notification.header.message_id}")

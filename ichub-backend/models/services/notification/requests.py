@@ -83,7 +83,7 @@ class SendNotificationRequest(BaseModel):
                             "https://w3id.org/catenax/2025/9/policy/context.jsonld",
                             {"@vocab": "https://w3id.org/edc/v0.0.1/ns/"}
                         ],
-                        "permissions": [
+                        "permission": [
                             {
                                 "action": "use",
                                 "constraint": {
@@ -95,8 +95,8 @@ class SendNotificationRequest(BaseModel):
                                 }
                             }
                         ],
-                        "prohibitions": [],
-                        "obligations": []
+                        "prohibition": [],
+                        "obligation": []
                     }
                 ]
             }

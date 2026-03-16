@@ -29,6 +29,19 @@ import httpClient from '@/services/HttpClient';
 export type BackendNotificationStatus = 'received' | 'read' | 'pending' | 'sent' | 'failed';
 
 /**
+ * Request body for POST /v1/notifications-management/notification/send.
+ * All fields except message_id and provider_bpn are optional — the backend
+ * resolves them automatically from connector discovery and configuration.
+ */
+export interface SendNotificationRequest {
+  message_id: string;
+  provider_bpn: string;
+  endpoint_path?: string;
+  provider_dsp_url?: string;
+  governance?: Array<Record<string, unknown>>;
+}
+
+/**
  * Raw notification response from the backend API.
  * Field names are snake_case as returned by FastAPI/Pydantic.
  */
@@ -116,6 +129,17 @@ class NotificationApiService {
     await httpClient.delete(`${this.basePath}/notification`, {
       params: { message_id: messageId },
     });
+  }
+
+  /**
+   * Send an existing notification via the EDC connector.
+   *
+   * Backend endpoint: POST /v1/notifications-management/notification/send
+   * Body: SendNotificationRequest (message_id + provider_bpn required; other fields
+   *       are resolved automatically by the backend when omitted)
+   */
+  async sendNotification(payload: SendNotificationRequest): Promise<void> {
+    await httpClient.post(`${this.basePath}/notification/send`, payload);
   }
 }
 

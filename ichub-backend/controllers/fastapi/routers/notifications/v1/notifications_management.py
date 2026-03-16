@@ -64,13 +64,17 @@ async def get_all_notifications(bpn: str, status: NotificationStatus = None, off
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
 
 @router.post("/notification")
-async def create_notification(notification: Notification) -> Response:
+async def create_notification(notification: Notification) -> JSONResponse:
     """
     Create a new notification (OUTGOING direction).
+
+    ``message_id`` and ``sentDateTime`` in the request body are ignored — the
+    backend always generates them server-side.  The assigned ``message_id`` is
+    returned in the 201 response body so callers can reference the notification.
     """
     try:
-        notification_management_service.create_notification(notification, direction=NotificationDirection.OUTGOING)
-        return Response(status_code=201)
+        entity = notification_management_service.create_notification(notification, direction=NotificationDirection.OUTGOING)
+        return JSONResponse(status_code=201, content={"message_id": str(entity.message_id)})
     except NotificationCreationError as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail.model_dump()})
     except Exception as e:
