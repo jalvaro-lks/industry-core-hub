@@ -624,6 +624,10 @@ frontend:
     enablePerformanceMonitoring: false
     enableDevTools: false
 
+    # Notifications configuration
+    notifications:
+      pollInterval: 30000
+
     # UI configuration
     uiTheme: "auto"
     uiLocale: "en"

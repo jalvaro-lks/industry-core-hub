@@ -68,6 +68,7 @@ GOVERNANCE_RETRY_ATTEMPTS \
 PARTICIPANT_API_URL \
 PARTICIPANT_TIMEOUT \
 PARTICIPANT_RETRY_ATTEMPTS \
+NOTIFICATIONS_POLL_INTERVAL \
 "
 
 # List of environment variables to be replaced as JSON objects
@@ -80,12 +81,16 @@ DTR_POLICIES_CONFIG \
 sed_command="cat ${source_file} | sed -e \"s@^\\\s*//.*@@g\""
 
 # Process string variables (wrapped in quotes)
+# Only replaces value if the env var is set and non-empty, preserving index.html defaults otherwise
 set -- $string_vars
 while [ -n "$1" ]; do
   var=$1
-  # add a replace expression for each string variable
-  # Pattern matches: VAR_NAME: "any_value", and replaces with VAR_NAME: "${VAR_NAME}",
-  sed_command="${sed_command} -e \"s@${var}:[[:space:]]*\\\"[^\\\"]*\\\"@${var}: \\\"\${${var}}\\\"@g\""
+  # Check if env var is set and non-empty before adding the replacement expression
+  eval "_env_val=\"\${${var}}\""
+  if [ -n "${_env_val}" ]; then
+    # Pattern matches: VAR_NAME: "any_value", and replaces with VAR_NAME: "${VAR_NAME}",
+    sed_command="${sed_command} -e \"s@${var}:[[:space:]]*\\\"[^\\\"]*\\\"@${var}: \\\"\${${var}}\\\"@g\""
+  fi
   shift
 done
 
