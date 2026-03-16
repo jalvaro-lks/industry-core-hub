@@ -75,7 +75,7 @@ const PassportProvidedVisualization: React.FC = () => {
           ? dtrPolicyConfig.flatMap(def => generatePoliciesFromDefinition(def))
           : [];
         const governancePoliciesNormalized = matchingAgreement?.policies
-          ? { policies: matchingAgreement.policies.flatMap(def => generatePoliciesFromDefinition(def)) }
+          ? matchingAgreement.policies.flatMap(def => generatePoliciesFromDefinition(def))
           : undefined;
 
         const response = await discoverPassport(
@@ -92,8 +92,8 @@ const PassportProvidedVisualization: React.FC = () => {
               setErrorStep(stepIndex);
             }
           },
-          dtrPoliciesNormalized as unknown as Record<string, unknown>,
-          governancePoliciesNormalized as unknown as Record<string, unknown>
+          dtrPoliciesNormalized as Record<string, unknown>[],
+          governancePoliciesNormalized as Record<string, unknown>[]
         );
         
         setPassportData(response);

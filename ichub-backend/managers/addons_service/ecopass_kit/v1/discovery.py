@@ -245,9 +245,8 @@ class DiscoveryManager:
         """
         try:
             # Policies are passed through as-is — normalization is the frontend's responsibility.
-            # governance wraps policies in {"policies": [...]}; unwrap to get the list discover_submodel expects.
             odrl_dtr_policies = dtr_policies
-            odrl_governance = governance.get("policies") if governance else None
+            odrl_governance = governance
             
             logger.debug(f"[Task {task_id}] DTR policies: {odrl_dtr_policies}")
             logger.debug(f"[Task {task_id}] Governance policies: {odrl_governance}")
