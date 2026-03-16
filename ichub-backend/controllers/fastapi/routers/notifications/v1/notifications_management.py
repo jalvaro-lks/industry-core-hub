@@ -68,8 +68,9 @@ async def create_notification(notification: Notification) -> JSONResponse:
     """
     Create a new notification (OUTGOING direction).
 
-    ``message_id`` and ``sentDateTime`` in the request body are ignored — the
-    backend always generates them server-side.  The assigned ``message_id`` is
+    If ``message_id`` or ``sentDateTime`` are omitted from the request body the
+    backend auto-generates them (UUID v4 and current UTC timestamp respectively).
+    Caller-supplied values are preserved as-is.  The ``message_id`` is always
     returned in the 201 response body so callers can reference the notification.
     """
     try:
