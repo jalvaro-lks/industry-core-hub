@@ -258,7 +258,8 @@ class NotificationsManagementService():
             # Stamp the actual dispatch time so sentDateTime in the payload reflects
             # when the message left this system, not when it was pre-created.
             notification.header.sent_date_time = datetime.now(timezone.utc)
-            updated_payload = notification.model_dump(mode="json")
+            # Store with camelCase aliases consistent with the rest of the payload
+            updated_payload = notification.model_dump(mode="json", by_alias=True)
             self.submodel_service_manager.upload_twin_aspect_document(
                 submodel_id=message_id,
                 semantic_id=SEM_ID_NOTIFICATION,
