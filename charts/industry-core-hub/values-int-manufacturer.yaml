@@ -74,13 +74,7 @@ frontend:
       url: "https://ichub-iam-manufacturer.int.catena-x.net/auth"
       realm: "ICHub"
       clientId: "industry-core-hub-frontend"
-      realmImport:
-        enabled: true
-        method: "job"
-        availabilityCheck:
-          timeout: "120s"
-          delay: "5s"
-    
+  
     
     # Feature flags for integration environment
     enableAdvancedLogging: true
@@ -496,6 +490,8 @@ backend:
               port: 8000
 
 keycloak:
+  realmImport:
+    method: "startup"
   realm:
     users:
       - username: "ichub-admin"
