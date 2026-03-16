@@ -95,8 +95,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.circular.dpp:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -108,8 +108,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
       - semanticid: urn:samm:io.catenax.serial_part:3.0.0#SerialPart
         usage:
           context:
@@ -129,8 +129,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -142,8 +142,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
       - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
         usage:
           context:
@@ -163,8 +163,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -176,8 +176,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
       - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
         usage:
           context:
@@ -197,8 +197,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -210,8 +210,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
     authorization:
       enabled: true
       apiKey:
@@ -310,8 +310,8 @@ backend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.digitalTwinRegistry:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
           access:
             context:
               - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -323,8 +323,8 @@ backend:
                   leftOperand: "Membership"
                   operator: "eq"
                   rightOperand: "active"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
       digitalTwinEventAPI:
         hostname: "http://<provider-digital-twin-event-api>"
         apiPath: /api/v3
@@ -353,8 +353,8 @@ backend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.industrycore:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
           access:
             context:
               - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -366,8 +366,8 @@ backend:
                   leftOperand: "Membership"
                   operator: "eq"
                   rightOperand: "active"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
       # -- Submodel Dispatcher configuration
       submodel_dispatcher:
         # -- Storage mode: "filesystem" (local storage) or "http" (external service)
@@ -686,8 +686,8 @@ frontend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.digitalTwinRegistry:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
     # -- Governance policies for consumption (Saturn format — 1:1 match with backend agreements YAML)
     # Each entry maps a semantic ID to its usage and access policies.
     # The JSON-LD @context handles namespace expansion (ODRL prefixes, cx-policy terms).
@@ -711,8 +711,8 @@ frontend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.industrycore:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
       - semanticid: "urn:samm:io.catenax.serial_part:3.0.0#SerialPart"
         policies:
           - context:
@@ -732,8 +732,8 @@ frontend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.industrycore:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
       - semanticid: "urn:samm:io.catenax.generic.digital_product_passport:6.1.0#DigitalProductPassport"
         policies:
           - context:
@@ -753,8 +753,8 @@ frontend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.circular.dpp:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
       - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
         policies:
           - context:
@@ -774,8 +774,8 @@ frontend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.industrycore:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
 
   healthChecks:
     startup:

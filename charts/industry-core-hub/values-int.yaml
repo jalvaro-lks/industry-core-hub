@@ -193,8 +193,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.circular.dpp:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -206,8 +206,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
       - semanticid: urn:samm:io.catenax.serial_part:3.0.0#SerialPart
         usage:
           context:
@@ -227,8 +227,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -240,8 +240,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
       - semanticid: "urn:samm:io.catenax.part_type_information:1.0.0#PartTypeInformation"
         usage:
           context:
@@ -261,8 +261,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -274,8 +274,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
       - semanticid: "urn:samm:io.catenax.us_tariff_information:1.0.0#UsTariffInformation"
         usage:
           context:
@@ -295,8 +295,8 @@ backend:
                   - leftOperand: "UsagePurpose"
                     operator: "isAnyOf"
                     rightOperand: "cx.core.industrycore:1"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
         access:
           context:
             - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -308,8 +308,8 @@ backend:
                 leftOperand: "Membership"
                 operator: "eq"
                 rightOperand: "active"
-          prohibitions: []
-          obligations: []
+          prohibition: []
+          obligation: []
     consumer:
       discovery:
         discovery_finder:
@@ -379,8 +379,8 @@ backend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.digitalTwinRegistry:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
           access:
             context:
               - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -392,8 +392,8 @@ backend:
                   leftOperand: "Membership"
                   operator: "eq"
                   rightOperand: "active"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
       digitalTwinEventAPI:
         hostname: "https://dtr-ichub.int.catena-x.net"
         apiPath: "/api/v3"
@@ -421,8 +421,8 @@ backend:
                     - leftOperand: "UsagePurpose"
                       operator: "isAnyOf"
                       rightOperand: "cx.core.industrycore:1"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
           access:
             context:
               - "https://w3id.org/catenax/2025/9/policy/odrl.jsonld"
@@ -434,8 +434,8 @@ backend:
                   leftOperand: "Membership"
                   operator: "eq"
                   rightOperand: "active"
-            prohibitions: []
-            obligations: []
+            prohibition: []
+            obligation: []
     submodel_dispatcher:
       path: "/industry-core-hub/data/submodels"
       apiPath: "/submodel-dispatcher"
