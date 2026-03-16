@@ -422,6 +422,9 @@ class TestNotificationsManagementService:
         list_policies = [{"policy": "test"}]
 
         mock_notification = Mock(spec=Notification)
+        mock_notification.header = Mock()
+        mock_notification.header.context = "IndustryCore-DigitalTwinEventAPI-ConnectToParent:3.0.0"
+        mock_notification.model_dump.return_value = {"some": "payload"}
         mock_db_notification = Mock()
         mock_db_notification.to_sdk.return_value = mock_notification
 
@@ -433,7 +436,8 @@ class TestNotificationsManagementService:
 
         self.service.submodel_service_manager = Mock()
         self.service.submodel_service_manager.get_twin_aspect_document.return_value = {"some": "payload"}
-        
+        self.service.submodel_service_manager.upload_twin_aspect_document.return_value = None
+
         mock_service_instance = Mock()
         mock_service_instance.send_notification.return_value = {"status": "sent"}
         mock_notification_consumer_service.return_value = mock_service_instance
@@ -480,8 +484,12 @@ class TestNotificationsManagementService:
         provider_dsp_url = "https://example.com/dsp"
         list_policies = [{"policy": "test"}]
 
+        mock_notification_obj = Mock(spec=Notification)
+        mock_notification_obj.header = Mock()
+        mock_notification_obj.header.context = "IndustryCore-DigitalTwinEventAPI-ConnectToParent:3.0.0"
+        mock_notification_obj.model_dump.return_value = {"some": "payload"}
         mock_db_notification = Mock()
-        mock_db_notification.to_sdk.return_value = Mock(spec=Notification)
+        mock_db_notification.to_sdk.return_value = mock_notification_obj
 
         mock_repo_manager = MagicMock()
         mock_repo_manager.notification_repository.find_by_message_id.return_value = mock_db_notification
@@ -491,7 +499,8 @@ class TestNotificationsManagementService:
 
         self.service.submodel_service_manager = Mock()
         self.service.submodel_service_manager.get_twin_aspect_document.return_value = {"some": "payload"}
-        
+        self.service.submodel_service_manager.upload_twin_aspect_document.return_value = None
+
         mock_service_instance = Mock()
         mock_service_instance.send_notification.side_effect = NotificationError("Send failed")
         mock_notification_consumer_service.return_value = mock_service_instance

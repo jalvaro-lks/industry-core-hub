@@ -23,7 +23,7 @@
 
 import re
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import List, Optional, Dict
 
 from tractusx_sdk.industry.models.notifications import Notification
@@ -100,15 +100,12 @@ class NotificationsManagementService():
         """
         Create a new notification in the system.
 
-        ``message_id`` and ``sent_date_time`` are always generated server-side
-        so that callers never need to supply them and duplicates are impossible.
+        ``message_id`` and ``sent_date_time`` default to a server-generated UUID
+        and the current UTC timestamp respectively when not supplied by the caller
+        (the SDK ``NotificationHeader`` model handles this via ``default_factory``).
+        Caller-supplied values are preserved as-is.
         """
         try:
-            # Always generate a fresh ID and timestamp on the server; client-supplied
-            # values are intentionally ignored to guarantee uniqueness.
-            notification.header.message_id = uuid4()
-            notification.header.sent_date_time = datetime.now(timezone.utc)
-
             status: NotificationStatus = None
             if direction == NotificationDirection.INCOMING:
                 logger.info(f"Creating incoming notification with ID: {notification.header.message_id}")
@@ -254,6 +251,16 @@ class NotificationsManagementService():
                 semantic_id=SEM_ID_NOTIFICATION
             )
             notification = db_notification.to_sdk(payload)
+
+            # Stamp the actual dispatch time so sentDateTime in the payload reflects
+            # when the message left this system, not when it was pre-created.
+            notification.header.sent_date_time = datetime.now(timezone.utc)
+            updated_payload = notification.model_dump(mode="json")
+            self.submodel_service_manager.upload_twin_aspect_document(
+                submodel_id=message_id,
+                semantic_id=SEM_ID_NOTIFICATION,
+                payload=updated_payload
+            )
 
             # Resolve endpoint path: explicit override or derived from context
             resolved_endpoint = endpoint_url or self._derive_endpoint_path(notification.header.context)
