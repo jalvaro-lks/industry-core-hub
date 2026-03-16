@@ -114,7 +114,10 @@ class NotificationsManagementService():
                 logger.info(f"Creating outgoing notification with ID: {notification.header.message_id}")
                 status = NotificationStatus.PENDING
 
-            payload = notification.model_dump(mode="json")
+            # Store payload using camelCase aliases so full_notification in the
+            # API response is consistent with the Catena-X notification schema
+            # and the camelCase keys used in request bodies (senderBpn, etc.).
+            payload = notification.model_dump(mode="json", by_alias=True)
             self.submodel_service_manager.upload_twin_aspect_document(
                 submodel_id=notification.header.message_id,
                 semantic_id=SEM_ID_NOTIFICATION,
