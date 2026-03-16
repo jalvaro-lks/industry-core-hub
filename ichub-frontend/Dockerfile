@@ -21,7 +21,9 @@
 #################################################################################
 
 # Stage 1: Build the React app
-FROM node:lts-alpine3.23 AS builder
+# Use BUILDPLATFORM to always run the JS build natively (not under QEMU)
+# since Vite output (HTML/CSS/JS) is platform-independent
+FROM --platform=$BUILDPLATFORM node:lts-alpine3.23 AS builder
 
 # Set working directory first
 WORKDIR /app
