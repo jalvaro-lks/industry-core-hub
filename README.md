@@ -343,21 +343,25 @@ This focused view shows how the `models/` package is split between service-layer
 flowchart LR
     subgraph MODEL_FOCUS["Models (models/)"]
         direction TB
-        %% Spacer keeps the parent subgraph title visible in some Mermaid renderers.
-        MODEL_SPACER[" "]
-        style MODEL_SPACER fill:transparent,stroke:none,color:transparent,height:20px
-        subgraph SVC_MODELS["services/ (Pydantic DTOs)"]
-            M_PROV["provider/<br/>part, twin, sharing, partner"]
-            M_CONS["consumer/<br/>discovery, connection"]
-            M_NOTIF["notification/<br/>API response DTOs"]
-            M_ADDON["addons/ecopass_kit/v1/<br/>DPP DTOs"]
-        end
+        SVC_LABEL["services/ (Pydantic DTOs)"]
+        M_PROV["provider/<br/>part, twin, sharing, partner"]
+        M_CONS["consumer/<br/>discovery, connection"]
+        M_NOTIF["notification/<br/>API response DTOs"]
+        M_ADDON["addons/ecopass_kit/v1/<br/>DPP DTOs"]
 
-        subgraph DB_MODELS["metadata_database/ (SQLModel entities + enums)"]
-            DB_PROV["provider/models.py<br/>parts, twins, agreements, stacks"]
-            DB_CONS["consumer/models.py<br/>KnownConnectors, KnownDtrs"]
-            DB_NOTIF["notification/models.py<br/>NotificationEntity + status/direction"]
-        end
+        DB_LABEL["metadata_database/ (SQLModel entities + enums)"]
+        DB_PROV["provider/models.py<br/>parts, twins, agreements, stacks"]
+        DB_CONS["consumer/models.py<br/>KnownConnectors, KnownDtrs"]
+        DB_NOTIF["notification/models.py<br/>NotificationEntity + status/direction"]
+
+        SVC_LABEL --- M_PROV
+        SVC_LABEL --- M_CONS
+        SVC_LABEL --- M_NOTIF
+        SVC_LABEL --- M_ADDON
+
+        DB_LABEL --- DB_PROV
+        DB_LABEL --- DB_CONS
+        DB_LABEL --- DB_NOTIF
     end
 
     subgraph LAYERS["Using Layers"]
