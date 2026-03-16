@@ -165,9 +165,14 @@ class NotificationDeleteError(BaseError):
 class NotificationSendingError(BaseError):
     """
     Exception raised when sending a notification fails.
+
+    The optional ``details`` list can carry context useful for diagnosing the
+    failure — e.g. which DSP URL was attempted and the underlying error
+    message — so that API consumers can act on the information without having
+    to grep server logs.
     """
-    def __init__(self, message: str = "Failed to send notification."):
-        super().__init__(status_code=502, message=message)
+    def __init__(self, message: str = "Failed to send notification.", details: Optional[list[str]] = None):
+        super().__init__(status_code=502, message=message, details=details)
 
 
 class PolicyMismatchError(BaseError):

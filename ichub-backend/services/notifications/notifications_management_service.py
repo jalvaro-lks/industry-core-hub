@@ -290,7 +290,14 @@ class NotificationsManagementService():
 
         except NotificationError as ne:
             logger.error(f"NotificationError sending notification: {ne}")
-            raise NotificationSendingError(f"NotificationError: {ne}")
+            raise NotificationSendingError(
+                message=f"NotificationError: {ne}",
+                details=[
+                    f"Provider BPN: {provider_bpn}",
+                    f"DSP URL attempted: {resolved_dsp_url}",
+                    f"Notification ID: {message_id}",
+                ]
+            )
         except Exception as e:
             logger.error(f"Error sending notification: {e}")
             raise NotificationSendingError(f"Failed to send notification: {e}")
