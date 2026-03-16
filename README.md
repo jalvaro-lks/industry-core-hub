@@ -334,6 +334,41 @@ flowchart LR
     R_ADDON_F --> MGR_ADDON_F
 ```
 
+**Focused View — Models and Their Cross-Layer Relations**
+
+This focused view shows how the `models/` package is split between service-layer DTOs (Pydantic) and metadata persistence entities (SQLModel), and which backend layers consume each model family.
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
+flowchart LR
+    subgraph MODEL_FOCUS["Models — models/"]
+        subgraph SVC_MODELS["services/ (Pydantic DTOs)"]
+            M_PROV["provider/<br/>part, twin, sharing, partner"]
+            M_CONS["consumer/<br/>discovery, connection"]
+            M_NOTIF["notification/<br/>API response DTOs"]
+            M_ADDON["addons/ecopass_kit/v1/<br/>DPP DTOs"]
+        end
+
+        subgraph DB_MODELS["metadata_database/ (SQLModel entities + enums)"]
+            DB_PROV["provider/models.py<br/>parts, twins, agreements, stacks"]
+            DB_CONS["consumer/models.py<br/>KnownConnectors, KnownDtrs"]
+            DB_NOTIF["notification/models.py<br/>NotificationEntity + status/direction"]
+        end
+    end
+
+    subgraph LAYERS["Using Layers"]
+        L_CTRL["Controllers"]
+        L_SVC["Services"]
+        L_MGR["Managers / Repositories"]
+        L_JOB["Background Jobs"]
+    end
+
+    L_CTRL --> M_PROV & M_CONS & M_NOTIF & M_ADDON & DB_NOTIF
+    L_SVC --> M_PROV & M_CONS & M_NOTIF & DB_PROV & DB_NOTIF
+    L_MGR --> DB_PROV & DB_CONS & DB_NOTIF & M_ADDON
+    L_JOB --> DB_PROV
+```
+
 The backend is organized into the following packages:
 - **`controllers/`** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
 - **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers
@@ -344,7 +379,7 @@ The backend is organized into the following packages:
   - `metadata_database/` — `RepositoryManager` + SQLModel-based repositories (PostgreSQL)
   - `addons_service/` — KIT-specific managers (e.g. EcoPass KIT)
   - `config/` — `ConfigManager`, `LoggingManager`
-- **`models/`** — Pydantic service models and SQLModel ORM models (consumed across all layers)
+- **`models/`** — Pydantic service models and SQLModel ORM models (consumed across all layers; see the focused models view above for the split between DTOs and persistence entities)
 - **`jobs/`** — Background sync jobs (e.g. `asset_sync_job` for EDC asset synchronization)
 - **`tools/` / `utils/`** — Cross-cutting utilities (exceptions, env tools, async helpers)
 
