@@ -21,7 +21,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy import Enum as SAEnum
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import UUID
@@ -51,8 +52,22 @@ class NotificationEntity(SQLModel, table=True):
     message_id: UUID = Field(index=True, unique=True)
     sender_bpn: str = Field(index=True)
     receiver_bpn: str = Field(index=True)
-    direction: NotificationDirection = Field(default=NotificationDirection.INCOMING, index=True)
-    status: NotificationStatus = Field(default=NotificationStatus.RECEIVED, index=True)
+    direction: NotificationDirection = Field(
+        default=NotificationDirection.INCOMING,
+        sa_column=Column(
+            SAEnum(NotificationDirection, values_callable=lambda x: [e.value for e in x], name="notification_direction", create_type=False),
+            index=True,
+            nullable=False,
+        )
+    )
+    status: NotificationStatus = Field(
+        default=NotificationStatus.RECEIVED,
+        sa_column=Column(
+            SAEnum(NotificationStatus, values_callable=lambda x: [e.value for e in x], name="notification_status", create_type=False),
+            index=True,
+            nullable=False,
+        )
+    )
 
     use_case: Optional[str] = Field(
         default=None,
