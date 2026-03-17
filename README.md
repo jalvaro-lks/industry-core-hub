@@ -302,6 +302,21 @@ graph TB
     SVM --> SS
     DB_M --> PG
 ```
+The backend is organized into the following packages:
+- **`controllers/`** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons) (see the focused controllers view below for more detail in the relations of this package).
+- **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers (see the focused services view below for controller, manager, and model relations)
+- **`managers/`** — Low-level wrappers around external systems and the metadata database (see the focused managers view below for calling layers and external system relations):
+  - `enablement_services/provider/` — `ConnectorProviderManager` (EDC), `DtrProviderManager` (DTR)
+  - `enablement_services/consumer/` — `ConsumerConnectorManager`, `DtrConsumerManager`
+  - `submodels/` — `SubmodelDocumentGenerator` for building aspect model documents
+  - `metadata_database/` — `RepositoryManager` + SQLModel-based repositories (PostgreSQL)
+  - `addons_service/` — KIT-specific managers (e.g. EcoPass KIT)
+  - `config/` — `ConfigManager`, `LoggingManager`
+- **`models/`** — Pydantic service models and SQLModel ORM models (consumed across all layers; see the focused models view below for the split between DTOs and persistence entities)
+- **`jobs/`** — Background sync jobs (e.g. `asset_sync_job` for EDC asset synchronization)
+- **`tools/` / `utils/`** — Cross-cutting utilities (exceptions, env tools, async helpers)
+
+> **Note:** There is currently no `services/consumer/` layer — consumer routers call the consumer managers directly. Similarly, add-on routers bypass the provider services and call their own KIT-specific managers. Background jobs (`jobs/`) also call managers directly, without going through any service layer.
 
 For better readability, the backend architecture can be split into focused diagrams.
 
@@ -334,21 +349,131 @@ flowchart LR
     R_ADDON_F --> MGR_ADDON_F
 ```
 
-The backend is organized into the following packages:
-- **`controllers/`** — FastAPI routers exposing the REST API endpoints (provider, consumer, authentication, add-ons)
-- **`services/provider/`** — Business logic for the provider path, independent of the exposing technology; orchestrates the managers
-- **`managers/`** — Low-level wrappers around external systems and the metadata database:
-  - `enablement_services/provider/` — `ConnectorProviderManager` (EDC), `DtrProviderManager` (DTR)
-  - `enablement_services/consumer/` — `ConsumerConnectorManager`, `DtrConsumerManager`
-  - `submodels/` — `SubmodelDocumentGenerator` for building aspect model documents
-  - `metadata_database/` — `RepositoryManager` + SQLModel-based repositories (PostgreSQL)
-  - `addons_service/` — KIT-specific managers (e.g. EcoPass KIT)
-  - `config/` — `ConfigManager`, `LoggingManager`
-- **`models/`** — Pydantic service models and SQLModel ORM models (consumed across all layers)
-- **`jobs/`** — Background sync jobs (e.g. `asset_sync_job` for EDC asset synchronization)
-- **`tools/` / `utils/`** — Cross-cutting utilities (exceptions, env tools, async helpers)
+**Focused View — Services and Their External Relations**
 
-> **Note:** There is currently no `services/consumer/` layer — consumer routers call the consumer managers directly. Similarly, add-on routers bypass the provider services and call their own KIT-specific managers. Background jobs (`jobs/`) also call managers directly, without going through any service layer.
+This focused view highlights how the `services/` package is split into provider and notification services, and how those services are called by controllers while orchestrating managers and models.
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
+flowchart LR
+    subgraph CTRL_SVC["Controllers — controllers/fastapi/routers/"]
+        C_PROV_SVC["Provider Routers"]
+        C_NOTIF_SVC["Notification Routers"]
+    end
+
+    subgraph SVC_SVC["Services — services/"]
+        S_PROV_SVC["provider/<br/>PartManagementService<br/>TwinManagementService<br/>SubmodelDispatcherService<br/>SharingService<br/>PartnerManagementService"]
+        S_NOTIF_SVC["notifications/<br/>NotificationsManagementService<br/>DigitalTwinEventApiService"]
+    end
+
+    subgraph MGR_SVC["Managers — managers/"]
+        M_DB_SVC["metadata_database manager / repositories"]
+        M_SUBMODEL_SVC["submodel managers<br/>(service manager + document generator)"]
+        M_CFG_SVC["config managers<br/>(logging/config)"]
+    end
+
+    subgraph MODEL_SVC["Models — models/"]
+        MD_DTO_SVC["services/* DTOs"]
+        MD_DB_SVC["metadata_database/* SQLModel"]
+    end
+
+    C_PROV_SVC --> S_PROV_SVC
+    C_NOTIF_SVC --> S_NOTIF_SVC
+
+    S_PROV_SVC --> M_DB_SVC & M_SUBMODEL_SVC & M_CFG_SVC
+    S_NOTIF_SVC --> M_DB_SVC & M_SUBMODEL_SVC & M_CFG_SVC
+
+    S_PROV_SVC --> MD_DTO_SVC & MD_DB_SVC
+    S_NOTIF_SVC --> MD_DTO_SVC & MD_DB_SVC
+```
+
+**Focused View — Managers and Their External Relations**
+
+This focused view shows the main `managers/` domains, which backend layers call them directly, and which external systems they abstract.
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 24, "bottom": 12}}}}%%
+flowchart LR
+    subgraph CALLERS_MGR["Calling Layers"]
+        CL_SVC_MGR["Provider / Notification Services"]
+        CL_CTRL_CONS_MGR["Consumer Routers"]
+        CL_CTRL_ADDON_MGR["Add-on Routers"]
+        CL_CTRL_INFRA_MGR["Auth / App Bootstrap"]
+        CL_JOBS_MGR["Background Jobs"]
+    end
+
+    subgraph MGR_FOCUS2["Managers — managers/"]
+        M_EN_PROV_MGR["enablement_services/provider/<br/>ConnectorProviderManager<br/>DtrProviderManager"]
+        M_EN_CONS_MGR["enablement_services/consumer/<br/>Consumer connector + DTR managers"]
+        M_SUB_MGR["submodel managers<br/>(submodel_service_manager + submodel_document_generator)"]
+        M_DB_MGR["metadata_database/<br/>RepositoryManager + repositories"]
+        M_ADDON_MGR["addons_service/ecopass_kit/*"]
+        M_CFG_MGR["config/<br/>ConfigManager + LoggingManager"]
+    end
+
+    subgraph EXT_MGR["External Systems"]
+        EX_EDC_MGR["EDC Connector"]
+        EX_DTR_MGR["Digital Twin Registry"]
+        EX_SS_MGR["Submodel Server"]
+        EX_PG_MGR[("PostgreSQL")]
+    end
+
+    CL_SVC_MGR --> M_EN_PROV_MGR & M_SUB_MGR & M_DB_MGR & M_CFG_MGR
+    CL_CTRL_CONS_MGR --> M_EN_CONS_MGR
+    CL_CTRL_ADDON_MGR --> M_ADDON_MGR & M_CFG_MGR
+    CL_CTRL_INFRA_MGR --> M_CFG_MGR
+    CL_JOBS_MGR --> M_EN_PROV_MGR & M_CFG_MGR
+
+    M_EN_PROV_MGR --> EX_EDC_MGR & EX_DTR_MGR
+    M_EN_CONS_MGR --> EX_EDC_MGR & EX_DTR_MGR
+    M_SUB_MGR --> EX_SS_MGR
+    M_DB_MGR --> EX_PG_MGR
+```
+
+**Focused View — Models and Their Cross-Layer Relations**
+
+This focused view shows how the `models/` package is split between service-layer DTOs (Pydantic) and metadata persistence entities (SQLModel), and which backend layers consume each model family.
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 32, "bottom": 14}}}}%%
+flowchart LR
+    subgraph MODEL_FOCUS["Models (models/)"]
+        direction TB
+        SVC_LABEL["services/ (Pydantic DTOs)"]
+        M_PROV["provider/<br/>part, twin, sharing, partner"]
+        M_CONS["consumer/<br/>discovery, connection"]
+        M_NOTIF["notification/<br/>API response DTOs"]
+        M_ADDON["addons/ecopass_kit/v1/<br/>DPP DTOs"]
+
+        DB_LABEL["metadata_database/ (SQLModel entities + enums)"]
+        DB_PROV["provider/models.py<br/>parts, twins, agreements, stacks"]
+        DB_CONS["consumer/models.py<br/>KnownConnectors, KnownDtrs"]
+        DB_NOTIF["notification/models.py<br/>NotificationEntity + status/direction"]
+
+        SVC_LABEL --- M_PROV
+        SVC_LABEL --- M_CONS
+        SVC_LABEL --- M_NOTIF
+        SVC_LABEL --- M_ADDON
+
+        DB_LABEL --- DB_PROV
+        DB_LABEL --- DB_CONS
+        DB_LABEL --- DB_NOTIF
+    end
+
+    subgraph LAYERS["Using Layers"]
+        L_CTRL["Controllers"]
+        L_SVC["Services"]
+        L_MGR["Managers / Repositories"]
+        L_JOB["Background Jobs"]
+    end
+
+    L_CTRL --> M_PROV & M_CONS & M_NOTIF & M_ADDON & DB_NOTIF
+    L_SVC --> M_PROV & M_CONS & M_NOTIF & DB_PROV & DB_NOTIF
+    L_MGR --> DB_PROV & DB_CONS & DB_NOTIF & M_ADDON
+    L_JOB --> DB_PROV
+```
+
+
 
 See the [API Reference](./docs/api/openAPI.yaml) and [API Collection (Bruno)](./docs/api/bruno/) for details.
 
