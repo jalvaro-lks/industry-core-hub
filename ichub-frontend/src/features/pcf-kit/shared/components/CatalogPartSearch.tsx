@@ -21,6 +21,7 @@
  ********************************************************************************/
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -97,9 +98,10 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   title,
   subtitle,
   onPartSelect,
-  searchPlaceholder = 'Enter Manufacturer Part ID...',
-  searchButtonText = 'Search Part'
+  searchPlaceholder,
+  searchButtonText
 }) => {
+  const { t } = useTranslation('pcf');
   const [searchTerm, setSearchTerm] = useState('');
   const [allParts, setAllParts] = useState<CatalogPartSearchResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<CatalogPartSearchResult[]>([]);
@@ -108,19 +110,10 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
 
-  // Mock data fallback for when API fails
-  const MOCK_PARTS: CatalogPartSearchResult[] = [
-    { manufacturerId: 'BPNL00000001CFRM', manufacturerPartId: 'BATTERY-MOD-A', partName: 'HV Battery Module Type A', category: 'Battery', status: 'Registered' },
-    { manufacturerId: 'BPNL00000001CFRM', manufacturerPartId: 'BATTERY-MOD-B', partName: 'HV Battery Module Type B', category: 'Battery', status: 'Registered' },
-    { manufacturerId: 'BPNL00000001CFRM', manufacturerPartId: 'CELL-HP-01', partName: 'High Performance Cell Unit', category: 'Cell', status: 'Draft' },
-    { manufacturerId: 'BPNL00000001CFRM', manufacturerPartId: 'MOTOR-CTRL-X1', partName: 'Electric Motor Controller X1', category: 'Controller', status: 'Registered' },
-    { manufacturerId: 'BPNL00000001CFRM', manufacturerPartId: 'BMS-CTRL-V2', partName: 'Battery Management System V2', category: 'Controller', status: 'Draft' }
-  ];
-
-  // Load all parts on component mount
+  // Load all parts from backend on first focus
   const loadAllParts = async () => {
     if (allParts.length > 0) return; // Already loaded
-    
+
     setIsInitialLoading(true);
     try {
       const catalogParts = await fetchCatalogParts();
@@ -132,10 +125,9 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
         category: part.category,
         status: (part.status === 'Draft' ? 'Draft' : 'Registered') as 'Draft' | 'Registered'
       }));
-      setAllParts(mapped.length > 0 ? mapped : MOCK_PARTS);
+      setAllParts(mapped);
     } catch (err) {
       console.error('Failed to load parts:', err);
-      setAllParts(MOCK_PARTS);
     } finally {
       setIsInitialLoading(false);
     }
@@ -159,7 +151,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   const handleFocus = async () => {
     await loadAllParts();
     setShowDropdown(true);
-    setFilteredResults(allParts.length > 0 ? (searchTerm.trim() ? filteredResults : allParts) : MOCK_PARTS);
+    setFilteredResults(searchTerm.trim() ? filteredResults : allParts);
   };
 
   // Handle selecting a search result
@@ -191,7 +183,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   };
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3, md: 4 } }}>
+    <Box sx={{ minHeight: 'calc(100vh - 68.8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3, md: 4 } }}>
       <Box sx={{ width: '100%', maxWidth: '700px', textAlign: 'center' }}>
         {/* Header */}
         <Box sx={{ mb: 5 }}>
@@ -232,21 +224,22 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
         >
           <CardContent sx={{ p: 4 }}>
             <Typography variant="h6" sx={{ color: '#fff', mb: 0.5, fontWeight: 600 }}>
-              Search Catalog Part
+              {t('search.title')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', mb: 3 }}>
-              Enter a Manufacturer Part ID to get started
+              {t('search.subtitle')}
             </Typography>
 
             <ClickAwayListener onClickAway={handleClickAway}>
               <Box sx={{ position: 'relative' }} ref={anchorRef}>
                 <TextField
                   fullWidth
-                  placeholder={searchPlaceholder}
+                  placeholder={searchPlaceholder || t('search.defaultPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
                   onFocus={handleFocus}
+                  inputProps={{ autoComplete: 'off' }}
                   InputProps={{
                     startAdornment: <InputAdornment position="start"><Search sx={{ color: 'rgba(255, 255, 255, 0.4)' }} /></InputAdornment>,
                     endAdornment: (searchTerm || isInitialLoading) && (
@@ -293,20 +286,32 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
                       background: 'rgba(30, 30, 30, 0.98)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '12px',
-                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+                      // Custom scrollbar
+                      '&::-webkit-scrollbar': { width: 6 },
+                      '&::-webkit-scrollbar-track': { background: 'transparent' },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: 'rgba(255,255,255,0.15)',
+                        borderRadius: 3,
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: 'rgba(16,185,129,0.5)',
+                      },
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'rgba(255,255,255,0.15) transparent',
                     }}
                   >
                     {isInitialLoading ? (
                       <Box sx={{ p: 3, textAlign: 'center' }}>
                         <CircularProgress size={24} sx={{ color: PCF_PRIMARY }} />
                         <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255, 255, 255, 0.5)', mt: 1 }}>
-                          Loading catalog parts...
+                          {t('search.loadingParts')}
                         </Typography>
                       </Box>
                     ) : filteredResults.length === 0 ? (
                       <Box sx={{ p: 3, textAlign: 'center' }}>
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          No matching parts found
+                          {t('search.noMatchingParts')}
                         </Typography>
                       </Box>
                     ) : (
@@ -386,7 +391,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
                 '&:disabled': { background: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.3)' }
               }}
             >
-              {searchButtonText}
+              {searchButtonText || t('search.defaultButtonText')}
             </Button>
           </CardContent>
         </Card>

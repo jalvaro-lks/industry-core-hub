@@ -22,6 +22,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -67,10 +68,7 @@ import {
 } from '@mui/icons-material';
 import { CatalogPartSearch, CatalogPartSearchResult, PartInfoHeader, PcfDataEditor } from '../../shared/components';
 import {
-  getPcfData,
-  publishPcfData,
-  ManagedPart,
-  PcfDataRecord
+  ManagedPart
 } from '../../pcf-exchange/api/pcfExchangeApi';
 import { PcfDetailsDialog, PcfEditDialog } from '../../pcf-exchange/components';
 import {
@@ -121,15 +119,16 @@ interface LoadingStep {
 }
 
 const LOADING_STEPS: LoadingStep[] = [
-  { id: 'search', label: 'Searching', icon: Search, description: 'Locating catalog part in registry' },
-  { id: 'pcf', label: 'Loading PCF', icon: Downloading, description: 'Fetching PCF data' },
-  { id: 'validate', label: 'Validating', icon: Security, description: 'Validating PCF structure' },
-  { id: 'complete', label: 'Ready', icon: VerifiedUser, description: 'Data loaded successfully' }
+  { id: 'search', label: 'loading.searchingPart', icon: Search, description: 'loading.searchingPartDesc' },
+  { id: 'pcf', label: 'loading.loadingPcf', icon: Downloading, description: 'loading.loadingPcfDesc' },
+  { id: 'validate', label: 'loading.validating', icon: Security, description: 'loading.validatingDesc' },
+  { id: 'complete', label: 'loading.ready', icon: VerifiedUser, description: 'loading.dataLoadedDesc' }
 ];
 
 type PageState = 'search' | 'loading' | 'visualization' | 'error';
 
 const PcfManagementPage: React.FC = () => {
+  const { t } = useTranslation('pcf');
   const navigate = useNavigate();
   const params = useParams();
 
@@ -143,7 +142,7 @@ const PcfManagementPage: React.FC = () => {
 
   // Data state
   const [managedPart, setManagedPart] = useState<ManagedPart | null>(null);
-  const [pcfData, setPcfData] = useState<PcfDataRecord | null>(null);
+  const [pcfData, setPcfData] = useState<Record<string, unknown> | null>(null);
   const [manufacturerId, setManufacturerId] = useState<string>('');
   const [rawPcfData, setRawPcfData] = useState<Record<string, unknown> | null>(null);
 
@@ -265,9 +264,8 @@ const PcfManagementPage: React.FC = () => {
       setManagedPart(part);
       setRawPcfData(pcfDataRecord || null);
       
-      // Convert raw PCF data to PcfDataRecord format for display
-      const pcf = await getPcfData(part.catenaXId);
-      setPcfData(pcf);
+      // Use the real backend PCF data for display (no mock layer)
+      setPcfData(pcfDataRecord || null);
       setPageState('visualization');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load part data';
@@ -277,12 +275,12 @@ const PcfManagementPage: React.FC = () => {
   };
 
   // Handle selecting a part from search
+  // Only navigate — the useEffect watching URL params triggers loadPartData to avoid a double call
   const handlePartSelect = (part: CatalogPartSearchResult) => {
     const encodedManufacturerId = encodeURIComponent(part.manufacturerId);
     const encodedPartId = encodeURIComponent(part.manufacturerPartId);
     setManufacturerId(part.manufacturerId);
     navigate(`/pcf/management/${encodedManufacturerId}/${encodedPartId}`);
-    loadPartData(part.manufacturerId, part.manufacturerPartId);
   };
 
   // Handle back to search
@@ -339,14 +337,14 @@ const PcfManagementPage: React.FC = () => {
 
   // Handle upload/publish PCF (when PCF already exists)
   const handleUploadPcf = async () => {
-    if (!pcfData || !managedPart) return;
+    if (!rawPcfData || !managedPart) return;
 
     setIsPcfLoading(true);
     try {
       // Update the PCF and get list of interested participants
       const participants = await updatePcfAndGetParticipants(
         managedPart.manufacturerPartId,
-        rawPcfData || {}
+        rawPcfData
       );
       
       if (participants && participants.length > 0) {
@@ -354,9 +352,10 @@ const PcfManagementPage: React.FC = () => {
         setAvailableParticipants(participants);
         setParticipantDialogOpen(true);
       } else {
-        // No participants, just update the display
-        const updatedPcf = await publishPcfData(pcfData.id);
-        setPcfData(updatedPcf);
+        // No participants — just refresh from backend
+        if (manufacturerId) {
+          await loadPartData(manufacturerId, managedPart.manufacturerPartId);
+        }
       }
     } catch (err) {
       console.error('Failed to upload PCF:', err);
@@ -399,7 +398,7 @@ const PcfManagementPage: React.FC = () => {
   const renderLoading = () => (
     <Box
       sx={{
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: 'calc(100vh - 68.8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -420,7 +419,7 @@ const PcfManagementPage: React.FC = () => {
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-              Loading Catalog Part
+              {t('loading.title')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace' }}>
               {partIdFromUrl && decodeURIComponent(partIdFromUrl)}
@@ -469,7 +468,7 @@ const PcfManagementPage: React.FC = () => {
                       )}
                     </Box>
                     <Typography variant="caption" sx={{ color: isActive || isCompleted ? '#fff' : 'rgba(255, 255, 255, 0.5)', fontWeight: isActive ? 600 : 500, mt: 1 }}>
-                      {step.label}
+                      {t(step.label)}
                     </Typography>
                   </Box>
                   {index < LOADING_STEPS.length - 1 && (
@@ -482,7 +481,7 @@ const PcfManagementPage: React.FC = () => {
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Button variant="outlined" onClick={handleBackToSearch} sx={{ borderColor: 'rgba(255, 255, 255, 0.2)', color: 'rgba(255, 255, 255, 0.7)', textTransform: 'none', px: 4, borderRadius: '10px' }}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </Box>
         </CardContent>
@@ -492,12 +491,12 @@ const PcfManagementPage: React.FC = () => {
 
   // Render error state
   const renderError = () => (
-    <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 68.8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
       <Card sx={{ maxWidth: '500px', width: '100%', background: 'rgba(30, 30, 30, 0.95)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px' }}>
         <CardContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>{error}</Typography>
           <Button variant="contained" onClick={handleBackToSearch} sx={{ background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`, textTransform: 'none', borderRadius: '10px' }}>
-            Back to Search
+            {t('common.backToSearch')}
           </Button>
         </CardContent>
       </Card>
@@ -509,16 +508,35 @@ const PcfManagementPage: React.FC = () => {
     if (!managedPart) return null;
 
     const hasPcf = managedPart.hasPcf && pcfData;
-    const isDraft = pcfData?.status === 'DRAFT';
-    const isPublished = pcfData?.status === 'PUBLISHED';
+    // The backend PCF JSON uses Catena-X 9.0.0 nested structure.
+    // These helpers safely extract fields used for the dashboard display.
+    const pcfVersion   = (pcfData as Record<string, unknown[]> | null)?.pcfAssessmentAndMethodology?.[0] as Record<string, unknown[]> | undefined;
+    const versionBlock = pcfVersion?.idAndVersion?.[0] as Record<string, unknown> | undefined;
+    const timeBlock    = pcfVersion?.time?.[0] as Record<string, unknown> | undefined;
+    const qualityBlock = pcfVersion?.dataSourcesAndQuality?.[0] as Record<string, unknown> | undefined;
+    const geoBlock     = pcfVersion?.geography?.[0] as Record<string, unknown> | undefined;
+    const carbonBlock  = ((pcfData as Record<string, unknown[]> | null)?.productLifeCycleStagesAndEmissions?.[0] as Record<string, unknown[]> | undefined)?.productionStage?.[0] as Record<string, unknown> | undefined;
+    const scopeBlock   = ((pcfData as Record<string, unknown[]> | null)?.scopeOfPcfForm?.[0]) as Record<string, unknown> | undefined;
+
+    const pcfExclBio    = Number(carbonBlock?.pcfExcludingBiogenicUptake ?? 0);
+    const pcfInclBio    = Number(carbonBlock?.pcfIncludingBiogenicUptake ?? 0);
+    const primaryData   = Number(qualityBlock?.primaryDataShare ?? 0);
+    const geoCountry    = String(geoBlock?.geographyCountry ?? 'N/A');
+    const refStart      = timeBlock?.referencePeriodStart as string | undefined;
+    const refEnd        = timeBlock?.referencePeriodEnd as string | undefined;
+    const specVersion   = String(scopeBlock?.specVersion ?? 'N/A');
+    const version       = Number(versionBlock?.version ?? 1);
+    const status        = String(versionBlock?.status ?? 'Active');
+    const isPublished   = status === 'Active';
+    const isDraft       = !isPublished;
 
     return (
-      <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header - Passport Provisioning style */}
         <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, pb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             {/* Back Button */}
-            <Tooltip title="New Search">
+            <Tooltip title={t('common.newSearch')}>
               <IconButton
                 onClick={handleBackToSearch}
                 sx={{
@@ -555,7 +573,7 @@ const PcfManagementPage: React.FC = () => {
                   fontSize: { xs: '1.5rem', sm: '2rem', md: '2.25rem' }
                 }}
               >
-                PCF Management
+                {t('management.title')}
               </Typography>
               <Typography
                 variant="body1"
@@ -564,7 +582,7 @@ const PcfManagementPage: React.FC = () => {
                   fontSize: { xs: '0.875rem', sm: '1rem' }
                 }}
               >
-                Manage and upload Product Carbon Footprint data for your catalog parts
+                {t('management.subtitle')}
               </Typography>
             </Box>
             {/* Right side: Part info and refresh */}
@@ -577,7 +595,7 @@ const PcfManagementPage: React.FC = () => {
                   hideOnSmallScreens={false}
                 />
               </Box>
-              <Tooltip title="Refresh">
+              <Tooltip title={t('common.refresh')}>
                 <IconButton
                   onClick={handleRefresh}
                   disabled={isRefreshing}
@@ -612,10 +630,10 @@ const PcfManagementPage: React.FC = () => {
                   </Box>
                   <Box>
                     <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
-                      PCF Data
+                      {t('management.pcfData')}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                      Product Carbon Footprint information for this part
+                      {t('management.pcfDataSubtitle')}
                     </Typography>
                   </Box>
                 </Box>
@@ -624,7 +642,7 @@ const PcfManagementPage: React.FC = () => {
                 {hasPcf && (
                   <Chip
                     icon={isPublished ? <CheckCircle sx={{ fontSize: 14 }} /> : <DraftsOutlined sx={{ fontSize: 14 }} />}
-                    label={isPublished ? 'Published' : 'Draft'}
+                    label={isPublished ? t('common.published') : t('common.draft')}
                     size="small"
                     sx={{
                       backgroundColor: isPublished ? alpha(PCF_PRIMARY, 0.15) : alpha('#eab308', 0.15),
@@ -690,15 +708,15 @@ const PcfManagementPage: React.FC = () => {
                         )}
                       >
                         <Typography sx={{ color: partReadiness !== 'draft' ? PCF_PRIMARY : '#fff', fontWeight: 600 }}>
-                          Register Catalog Part
+                          {t('management.stepRegister')}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          Part must be registered in catalog
+                          {t('management.stepRegisterDesc')}
                         </Typography>
                       </StepLabel>
                     </Step>
 
-                    {/* Step 2: Create PCF Submodel */}
+                    {/* Step 2: Upload PCF Data */}
                     <Step completed={partReadiness === 'has-pcf'}>
                       <StepLabel
                         StepIconComponent={({ active, completed }) => (
@@ -728,10 +746,10 @@ const PcfManagementPage: React.FC = () => {
                         )}
                       >
                         <Typography sx={{ color: partReadiness === 'has-pcf' ? PCF_PRIMARY : partReadiness === 'registered-no-pcf' ? '#fff' : 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}>
-                          Create PCF Submodel
+                          {t('management.stepUpload')}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          Add PCF data to the part
+                          {t('management.stepUploadDesc')}
                         </Typography>
                       </StepLabel>
                     </Step>
@@ -766,22 +784,25 @@ const PcfManagementPage: React.FC = () => {
                         )}
                       >
                         <Typography sx={{ color: partReadiness === 'has-pcf' ? PCF_PRIMARY : 'rgba(255, 255, 255, 0.4)', fontWeight: 600 }}>
-                          PCF Data
+                          {t('management.stepPcfData')}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          View and manage PCF
+                          {t('management.stepPcfDataDesc')}
                         </Typography>
                       </StepLabel>
                     </Step>
                   </Stepper>
 
-                  {/* Action Card based on current step */}
+                  {/* Action Card based on current step.
+                       Increased background opacity and backdrop blur so it reads
+                       clearly over the page background. */}
                   <Box
                     sx={{
                       p: 3,
                       borderRadius: '12px',
-                      background: alpha(PCF_PRIMARY, 0.05),
-                      border: `1px solid ${alpha(PCF_PRIMARY, 0.15)}`,
+                      background: alpha(PCF_PRIMARY, 0.12),
+                      border: `1px solid ${alpha(PCF_PRIMARY, 0.25)}`,
+                      backdropFilter: 'blur(8px)',
                       textAlign: 'center'
                     }}
                   >
@@ -801,10 +822,10 @@ const PcfManagementPage: React.FC = () => {
                           />
                         </Box>
                         <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-                          Register Your Catalog Part
+                          {t('management.registerTitle')}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 3, maxWidth: 400, mx: 'auto' }}>
-                          This part is currently in draft status. Register it in the catalog to enable PCF data management.
+                          {t('management.registerDescription')}
                         </Typography>
                         <Button
                           variant="contained"
@@ -821,7 +842,7 @@ const PcfManagementPage: React.FC = () => {
                             '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` }
                           }}
                         >
-                          Go to Catalog Management
+                          {t('management.goToCatalog')}
                         </Button>
                       </>
                     )}
@@ -831,7 +852,7 @@ const PcfManagementPage: React.FC = () => {
                         <Box sx={{ mb: 2 }}>
                           <Chip
                             icon={<CheckCircle sx={{ fontSize: 14 }} />}
-                            label="Registered Part"
+                            label={t('management.registeredPart')}
                             size="small"
                             sx={{
                               backgroundColor: alpha(PCF_PRIMARY, 0.15),
@@ -842,10 +863,10 @@ const PcfManagementPage: React.FC = () => {
                           />
                         </Box>
                         <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-                          Create PCF Submodel
+                          {t('management.uploadTitle')}
                         </Typography>
                         <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 3, maxWidth: 400, mx: 'auto' }}>
-                          Your catalog part is registered. Add a PCF submodel to enable carbon footprint tracking and sharing.
+                          {t('management.uploadDescription')}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
                           <Button
@@ -863,28 +884,7 @@ const PcfManagementPage: React.FC = () => {
                               '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` }
                             }}
                           >
-                            {isUploading ? 'Uploading...' : 'Upload PCF Data'}
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            startIcon={<AddBox />}
-                            endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
-                            onClick={() => navigate(`/submodel-creator?partId=${encodeURIComponent(managedPart.manufacturerPartId)}&type=pcf`)}
-                            sx={{
-                              px: 3,
-                              py: 1.5,
-                              borderRadius: '10px',
-                              textTransform: 'none',
-                              fontWeight: 600,
-                              borderColor: alpha(PCF_PRIMARY, 0.4),
-                              color: PCF_PRIMARY,
-                              '&:hover': { 
-                                borderColor: PCF_PRIMARY,
-                                background: alpha(PCF_PRIMARY, 0.08)
-                              }
-                            }}
-                          >
-                            Submodel Creator
+                            {isUploading ? t('management.uploading') : t('management.uploadButton')}
                           </Button>
                         </Box>
                       </>
@@ -894,7 +894,7 @@ const PcfManagementPage: React.FC = () => {
               )}
 
               {/* Has PCF Data */}
-              {hasPcf && !isPcfLoading && pcfData && (
+              {hasPcf && !isPcfLoading && rawPcfData && (
                 <>
                   {/* PCF Values Grid */}
                   <Box
@@ -913,13 +913,13 @@ const PcfManagementPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                         <Co2 sx={{ fontSize: 14, color: PCF_PRIMARY }} />
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          PCF (excl. biogenic)
+                          {t('management.pcfExclBiogenic')}
                         </Typography>
                       </Box>
                       <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-                        {pcfData.pcfExcludingBiogenic.toFixed(1)}
+                        {pcfExclBio.toFixed(1)}
                         <Typography component="span" variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', ml: 0.5 }}>
-                          kg CO2e
+                          {t('common.kgCo2e')}
                         </Typography>
                       </Typography>
                     </Box>
@@ -929,13 +929,13 @@ const PcfManagementPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                         <Co2 sx={{ fontSize: 14, color: '#3b82f6' }} />
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          PCF (incl. biogenic)
+                          {t('management.pcfInclBiogenic')}
                         </Typography>
                       </Box>
                       <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-                        {pcfData.pcfIncludingBiogenic.toFixed(1)}
+                        {pcfInclBio.toFixed(1)}
                         <Typography component="span" variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', ml: 0.5 }}>
-                          kg CO2e
+                          {t('common.kgCo2e')}
                         </Typography>
                       </Typography>
                     </Box>
@@ -945,16 +945,16 @@ const PcfManagementPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                         <Speed sx={{ fontSize: 14, color: '#a855f7' }} />
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          Primary Data
+                          {t('management.primaryData')}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-                          {pcfData.primaryDataShare.toFixed(0)}%
+                          {primaryData.toFixed(0)}%
                         </Typography>
                         <LinearProgress
                           variant="determinate"
-                          value={pcfData.primaryDataShare}
+                          value={primaryData}
                           sx={{
                             flex: 1,
                             height: 6,
@@ -963,9 +963,9 @@ const PcfManagementPage: React.FC = () => {
                             '& .MuiLinearProgress-bar': {
                               borderRadius: 3,
                               backgroundColor:
-                                pcfData.primaryDataShare >= 70
+                                primaryData >= 70
                                   ? PCF_PRIMARY
-                                  : pcfData.primaryDataShare >= 50
+                                  : primaryData >= 50
                                   ? '#eab308'
                                   : '#ef4444'
                             }
@@ -979,11 +979,11 @@ const PcfManagementPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                         <Public sx={{ fontSize: 14, color: '#f97316' }} />
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          Geography
+                          {t('management.geography')}
                         </Typography>
                       </Box>
                       <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-                        {pcfData.geographyCountry}
+                        {geoCountry}
                       </Typography>
                     </Box>
                   </Box>
@@ -1002,19 +1002,19 @@ const PcfManagementPage: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <CalendarMonth sx={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.4)' }} />
                       <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        Reference: {formatDate(pcfData.referencePeriodStart)} - {formatDate(pcfData.referencePeriodEnd)}
+                        {t('management.reference')}{formatDate(refStart)} - {formatDate(refEnd)}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <Info sx={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.4)' }} />
                       <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        Spec Version: {pcfData.specVersion}
+                        {t('management.specVersion')}{specVersion}
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Tooltip title={`Created: ${formatDate(pcfData.created)}, Updated: ${formatDate(pcfData.updated)}`}>
+                      <Tooltip title={`${t('management.status')}${status}`}>
                         <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', cursor: 'help' }}>
-                          Version {pcfData.version}
+                          {t('management.version')}{version}
                         </Typography>
                       </Tooltip>
                     </Box>
@@ -1035,7 +1035,7 @@ const PcfManagementPage: React.FC = () => {
                       }}
                     >
                       <Typography variant="body2" sx={{ color: '#eab308' }}>
-                        This PCF is in draft status. Upload it to make it available for sharing with customers.
+                        {t('management.draftAlert')}
                       </Typography>
                     </Alert>
                   )}
@@ -1062,7 +1062,7 @@ const PcfManagementPage: React.FC = () => {
                         }
                       }}
                     >
-                      View Details
+                      {t('management.viewDetails')}
                     </Button>
                     <Button
                       variant="outlined"
@@ -1084,7 +1084,7 @@ const PcfManagementPage: React.FC = () => {
                         }
                       }}
                     >
-                      Update
+                      {t('management.update')}
                     </Button>
                     {isDraft && (
                       <Button
@@ -1101,7 +1101,7 @@ const PcfManagementPage: React.FC = () => {
                           '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` }
                         }}
                       >
-                        Upload
+                        {t('management.upload')}
                       </Button>
                     )}
                   </Box>
@@ -1111,11 +1111,14 @@ const PcfManagementPage: React.FC = () => {
           </Card>
         </Box>
 
-        {/* Dialogs */}
+        {/* Dialogs
+            Note: PcfDetailsDialog and PcfEditDialog expect PcfDataRecord (mock type).
+            They receive null here since pcfData is now raw backend JSON.
+            They need their own refactoring to use real backend data. */}
         <PcfDetailsDialog
           open={pcfDetailsDialogOpen}
           onClose={() => setPcfDetailsDialogOpen(false)}
-          pcfData={pcfData}
+          pcfData={null}
           part={managedPart}
         />
 
@@ -1125,7 +1128,7 @@ const PcfManagementPage: React.FC = () => {
           onSave={async (data) => {
             console.log('Saving PCF data:', data);
           }}
-          pcfData={pcfData}
+          pcfData={null}
           part={managedPart}
         />
 
@@ -1179,11 +1182,11 @@ const PcfManagementPage: React.FC = () => {
   const renderSearch = () => (
     <CatalogPartSearch
       icon={<CloudUploadIcon sx={{ fontSize: 36, color: '#fff' }} />}
-      title="PCF Management"
-      subtitle="Manage and upload Product Carbon Footprint data for your catalog parts"
+      title={t('management.title')}
+      subtitle={t('management.searchSubtitle')}
       onPartSelect={handlePartSelect}
-      searchPlaceholder="Enter Manufacturer Part ID..."
-      searchButtonText="Manage PCF"
+      searchPlaceholder={t('management.searchPlaceholder')}
+      searchButtonText={t('management.searchButton')}
     />
   );
 

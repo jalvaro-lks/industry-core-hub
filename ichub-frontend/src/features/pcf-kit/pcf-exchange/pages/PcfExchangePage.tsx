@@ -76,6 +76,7 @@ import {
   PcfNotification,
   PcfNotificationStatus
 } from '../api/pcfExchangeApi';
+import { refreshPcfForRequest } from '../../services/pcfApi';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -331,6 +332,23 @@ const PcfExchangePage: React.FC = () => {
     }
   };
 
+  // Refresh PCF location for a single pending request and reload the part's notifications
+  const handleRefreshPcf = async (notificationId: string) => {
+    try {
+      await refreshPcfForRequest(notificationId);
+      if (managedPart) {
+        const [updatedNotifications, counts] = await Promise.all([
+          getNotificationsForPart(managedPart.catenaXId),
+          getNotificationCounts()
+        ]);
+        setNotifications(updatedNotifications);
+        setNotificationCounts(counts);
+      }
+    } catch (err) {
+      console.error('Failed to refresh PCF for request:', notificationId, err);
+    }
+  };
+
   // Handle publish PCF
   const handlePublishPcf = async () => {
     if (!pcfData) return;
@@ -390,7 +408,7 @@ const PcfExchangePage: React.FC = () => {
   const renderLoading = () => (
     <Box
       sx={{
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: 'calc(100vh - 68.8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -483,7 +501,7 @@ const PcfExchangePage: React.FC = () => {
 
   // Render error state
   const renderError = () => (
-    <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
+    <Box sx={{ minHeight: 'calc(100vh - 68.8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 3 }}>
       <Card sx={{ maxWidth: '500px', width: '100%', background: 'rgba(30, 30, 30, 0.95)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px' }}>
         <CardContent sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" sx={{ color: '#fff', mb: 2 }}>{error}</Typography>
@@ -500,7 +518,7 @@ const PcfExchangePage: React.FC = () => {
     if (!managedPart) return null;
 
     return (
-      <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header - Similar to Eco Pass KIT Provisioning */}
         <Box
           sx={{
@@ -739,6 +757,7 @@ const PcfExchangePage: React.FC = () => {
                     notification={notification}
                     onAccept={handleAcceptNotification}
                     onReject={handleOpenRejectDialog}
+                    onRefreshPcf={handleRefreshPcf}
                     isProcessing={processingNotificationId === notification.id}
                     viewMode={viewMode}
                   />
@@ -784,7 +803,7 @@ const PcfExchangePage: React.FC = () => {
 
   // Render search state
   const renderSearch = () => (
-    <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3, md: 4 } }}>
+    <Box sx={{ minHeight: 'calc(100vh - 68.8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3, md: 4 } }}>
       <Box sx={{ width: '100%', maxWidth: '700px', textAlign: 'center' }}>
         <Box sx={{ mb: 5 }}>
           <Box

@@ -21,6 +21,7 @@
  ********************************************************************************/
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogTitle,
@@ -50,15 +51,6 @@ interface RejectDialogProps {
   partName: string;
 }
 
-// Predefined rejection reasons
-const QUICK_REASONS = [
-  'No business relationship',
-  'Data not yet available',
-  'Access not authorized',
-  'Incorrect part reference',
-  'Request already processed'
-];
-
 const RejectDialog: React.FC<RejectDialogProps> = ({
   open,
   onClose,
@@ -67,6 +59,15 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
   requesterName,
   partName
 }) => {
+  const { t } = useTranslation('pcf');
+  const { t: tCommon } = useTranslation('common');
+  const QUICK_REASONS = [
+    t('rejectDialog.quickReasons.noBusinessRelation'),
+    t('rejectDialog.quickReasons.dataNotAvailable'),
+    t('rejectDialog.quickReasons.accessNotAuthorized'),
+    t('rejectDialog.quickReasons.incorrectPartRef'),
+    t('rejectDialog.quickReasons.alreadyProcessed'),
+  ];
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +82,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
 
   const handleConfirm = async () => {
     if (!reason.trim()) {
-      setError('Please provide a rejection reason');
+      setError(t('rejectDialog.reasonRequired'));
       return;
     }
 
@@ -92,7 +93,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
       await onConfirm(reason.trim());
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reject request');
+      setError(err instanceof Error ? err.message : t('rejectDialog.failedToReject'));
     } finally {
       setIsSubmitting(false);
     }
@@ -140,10 +141,10 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
           </Box>
           <Box>
             <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700 }}>
-              Reject PCF Request
+              {t('rejectDialog.title')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-              Provide a reason for rejecting this request
+              {t('rejectDialog.subtitle')}
             </Typography>
           </Box>
         </Box>
@@ -165,7 +166,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
           {/* Left column - Request Info */}
           <Box sx={{ flex: '0 0 280px' }}>
             <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.5)', mb: 2, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.75rem' }}>
-              Request Details
+              {t('rejectDialog.requestDetails')}
             </Typography>
             <Box
               sx={{
@@ -177,7 +178,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
             >
               <Box sx={{ mb: 3 }}>
                 <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', display: 'block', mb: 0.5 }}>
-                  Requester
+                  {t('rejectDialog.requester')}
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#fff', fontWeight: 600 }}>
                   {requesterName}
@@ -185,7 +186,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
               </Box>
               <Box>
                 <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.4)', display: 'block', mb: 0.5 }}>
-                  Part
+                  {t('rejectDialog.part')}
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#fff', fontWeight: 600, fontFamily: 'monospace' }}>
                   {partName}
@@ -209,10 +210,10 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
               <Warning sx={{ color: '#eab308', fontSize: 20, mt: 0.25 }} />
               <Box>
                 <Typography variant="body2" sx={{ color: '#eab308', fontWeight: 600, mb: 0.5 }}>
-                  Cannot be undone
+                  {t('rejectDialog.cannotBeUndone')}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                  The requester will be notified.
+                  {t('rejectDialog.requesterNotified')}
                 </Typography>
               </Box>
             </Box>
@@ -221,13 +222,13 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
           {/* Right column - Rejection Form */}
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle2" sx={{ color: 'rgba(255, 255, 255, 0.5)', mb: 2, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.75rem' }}>
-              Rejection Reason
+              {t('rejectDialog.rejectionReason')}
             </Typography>
 
             {/* Quick Reasons */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 1.5 }}>
-                Select a common reason or write your own below
+                {t('rejectDialog.selectOrWrite')}
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {QUICK_REASONS.map((quickReason) => (
@@ -267,15 +268,15 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
               fullWidth
               multiline
               rows={5}
-              label="Rejection Reason"
+              label={t('rejectDialog.rejectionReason')}
               value={reason}
               onChange={(e) => {
                 setReason(e.target.value);
                 setError('');
               }}
-              placeholder="Provide a detailed reason for rejecting this request..."
+              placeholder={t('rejectDialog.reasonPlaceholder')}
               error={!!error}
-              helperText={error || 'This message will be visible to the requester'}
+              helperText={error || t('rejectDialog.reasonHelper')}
               disabled={isSubmitting}
               sx={{
                 '& .MuiOutlinedInput-root': {
@@ -322,7 +323,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
             '&:hover': { color: '#fff', backgroundColor: 'rgba(255, 255, 255, 0.05)' }
           }}
         >
-          Cancel
+          {tCommon('cancel')}
         </Button>
         <Button
           variant="contained"
@@ -352,7 +353,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
             }
           }}
         >
-          {isSubmitting ? 'Rejecting...' : 'Reject Request'}
+          {isSubmitting ? t('rejectDialog.rejecting') : t('rejectDialog.rejectRequest')}
         </Button>
       </DialogActions>
     </Dialog>

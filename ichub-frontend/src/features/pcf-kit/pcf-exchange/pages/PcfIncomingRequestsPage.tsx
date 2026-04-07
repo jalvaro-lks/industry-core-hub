@@ -21,6 +21,7 @@
  ********************************************************************************/
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -45,6 +46,7 @@ import {
 import {
   getProviderRequests,
   acceptRequest,
+  refreshPcfForRequest,
   countRequestsByStatus,
   PcfExchangeModel,
   mapStatusToUi
@@ -76,11 +78,13 @@ function toUiNotification(model: PcfExchangeModel): PcfNotification {
     requesterName: model.requestingBpn, // Could be resolved to company name
     requestDate: new Date().toISOString(), // API should provide this
     status: mapStatusToUi(model.status) as PcfNotificationStatus,
-    message: model.message
+    message: model.message,
+    pcfLocation: model.pcfLocation ?? null
   };
 }
 
 const PcfIncomingRequestsPage: React.FC = () => {
+  const { t } = useTranslation('pcf');
   // Data state
   const [notifications, setNotifications] = useState<PcfNotification[]>([]);
   const [notificationCounts, setNotificationCounts] = useState<Record<PcfNotificationStatus, number>>({
@@ -132,7 +136,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
       setNotificationCounts(mapApiCountsToUi(counts));
     } catch (err) {
       console.error('Failed to load notifications:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load PCF requests');
+      setError(err instanceof Error ? err.message : t('error.failedToLoadRequests'));
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +155,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
       setNotificationCounts(mapApiCountsToUi(counts));
     } catch (err) {
       console.error('Failed to refresh data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh PCF requests');
+      setError(err instanceof Error ? err.message : t('error.failedToRefreshRequests'));
     } finally {
       setIsRefreshing(false);
     }
@@ -166,7 +170,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
       await handleRefresh();
     } catch (err) {
       console.error('Failed to accept notification:', err);
-      setError(err instanceof Error ? err.message : 'Failed to accept request');
+      setError(err instanceof Error ? err.message : t('error.failedToAcceptRequest'));
     } finally {
       setProcessingNotificationId(null);
     }
@@ -186,12 +190,24 @@ const PcfIncomingRequestsPage: React.FC = () => {
       // TODO: Implement reject endpoint when available in backend
       // For now, just log and close the dialog
       console.log('Rejecting notification:', rejectingNotificationId, 'Reason:', reason);
-      setError('Reject functionality not yet implemented in backend');
+      setError(t('error.rejectNotImplemented'));
       await handleRefresh();
     } finally {
       setProcessingNotificationId(null);
       setRejectDialogOpen(false);
       setRejectingNotificationId(null);
+    }
+  };
+
+  // Refresh PCF location for a single pending request.
+  // Calls the backend refresh-pcf endpoint, then reloads the list so the
+  // updated pcfLocation (if now present) is reflected in the card.
+  const handleRefreshPcf = async (notificationId: string) => {
+    try {
+      await refreshPcfForRequest(notificationId);
+      await handleRefresh();
+    } catch (err) {
+      console.error('Failed to refresh PCF for request:', notificationId, err);
     }
   };
 
@@ -226,7 +242,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header - Passport Provisioning style */}
       <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, pb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -255,7 +271,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
                 fontSize: { xs: '1.5rem', sm: '2rem', md: '2.25rem' }
               }}
             >
-              PCF Requests
+              {t('requests.title')}
             </Typography>
             <Typography
               variant="body1"
@@ -264,11 +280,11 @@ const PcfIncomingRequestsPage: React.FC = () => {
                 fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
             >
-              Manage incoming PCF data requests from your partners and customers
+              {t('requests.subtitle')}
             </Typography>
           </Box>
           {/* Refresh button */}
-          <Tooltip title="Refresh">
+          <Tooltip title={t('common.refresh')}>
             <IconButton
               onClick={handleRefresh}
               disabled={isRefreshing}
@@ -295,7 +311,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
         }}
       >
         <TextField
-          placeholder="Search by Part ID, Part Name, or Requester..."
+          placeholder={t('requests.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           size="small"
@@ -337,8 +353,12 @@ const PcfIncomingRequestsPage: React.FC = () => {
             }
           }}
         >
-          <ToggleButton value="card"><ViewModule sx={{ fontSize: 18 }} /></ToggleButton>
-          <ToggleButton value="list"><ViewList sx={{ fontSize: 18 }} /></ToggleButton>
+          <Tooltip title={t('requests.cardView')}>
+            <ToggleButton value="card"><ViewModule sx={{ fontSize: 18 }} /></ToggleButton>
+          </Tooltip>
+          <Tooltip title={t('requests.listView')}>
+            <ToggleButton value="list"><ViewList sx={{ fontSize: 18 }} /></ToggleButton>
+          </Tooltip>
         </ToggleButtonGroup>
       </Box>
 
@@ -393,10 +413,10 @@ const PcfIncomingRequestsPage: React.FC = () => {
               <InboxIcon sx={{ fontSize: 48, color: 'rgba(255, 255, 255, 0.2)', mb: 2 }} />
               <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                 {searchQuery 
-                  ? 'No requests match your search' 
+                  ? t('requests.noMatchSearch') 
                   : selectedStatus === 'ALL' 
-                    ? 'No PCF requests' 
-                    : `No ${selectedStatus.toLowerCase()} requests`
+                    ? t('requests.noRequests') 
+                    : t('requests.noStatusRequests', { status: selectedStatus.toLowerCase() })
                 }
               </Typography>
             </Card>
@@ -407,6 +427,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
                 notification={notification}
                 onAccept={handleAcceptNotification}
                 onReject={handleOpenRejectDialog}
+                onRefreshPcf={handleRefreshPcf}
                 isProcessing={processingNotificationId === notification.id}
                 viewMode={viewMode}
               />

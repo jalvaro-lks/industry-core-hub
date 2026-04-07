@@ -35,13 +35,12 @@ import {
 } from '@mui/material';
 import {
   CloudUpload,
-  Add,
   CheckCircle,
-  Edit,
   Code as CodeIcon,
   Warning
 } from '@mui/icons-material';
 import { getSchemaByNamespaceAndVersion } from '@/schemas';
+import { createSchemaKey } from '@/schemas/schemaLoader';
 import SubmodelCreator from '@/components/submodel-creation/SubmodelCreator';
 
 // PCF Green Theme
@@ -88,7 +87,6 @@ type ValidationStatus = 'idle' | 'success' | 'error';
  * Supports:
  * - Drag & drop JSON file upload
  * - Manual file selection
- * - Form-based creation using SubmodelCreator
  * - JSON validation against PCF schema
  */
 export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
@@ -102,10 +100,10 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
   // State
   const [pcfData, setPcfData] = useState<Record<string, unknown> | null>(initialData || null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showSubmodelCreator, setShowSubmodelCreator] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>('idle');
   const [isValidating, setIsValidating] = useState(false);
-  const [showSubmodelCreator, setShowSubmodelCreator] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -250,13 +248,6 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
     await onSave(pcfData);
   };
 
-  // Handle SubmodelCreator form submission
-  const handleSubmodelCreatorSave = async (data: Record<string, unknown>) => {
-    setPcfData(data);
-    setValidationStatus('success'); // Already validated by SubmodelCreator
-    setShowSubmodelCreator(false);
-  };
-
   // Clear data and start over
   const handleClear = () => {
     setPcfData(null);
@@ -265,22 +256,13 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
     setSuccessMessage(null);
   };
 
-  // If SubmodelCreator is open, render it
-  if (showSubmodelCreator && pcfSchema) {
-    return (
-      <SubmodelCreator
-        open={true}
-        onClose={() => setShowSubmodelCreator(false)}
-        onBack={() => setShowSubmodelCreator(false)}
-        onCreateSubmodel={handleSubmodelCreatorSave}
-        selectedSchema={pcfSchema}
-        schemaKey={`${PCF_NAMESPACE}:${PCF_VERSION}`}
-        manufacturerPartId={manufacturerPartId}
-        initialData={initialData}
-        saveButtonLabel={mode === 'create' ? 'Create PCF' : 'Save Changes'}
-      />
-    );
-  }
+  // Handle SubmodelCreator form save — load the JSON into the editor pre-validated
+  const handleSubmodelCreatorSave = async (submodelData: Record<string, unknown>) => {
+    setPcfData(submodelData);
+    setValidationStatus('success');
+    setSuccessMessage('PCF data created with Form Builder and ready to save.');
+    setShowSubmodelCreator(false);
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -311,10 +293,15 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
               border: isDragging ? `2px dashed ${PCF_PRIMARY}` : '2px dashed rgba(255,255,255,0.2)',
               background: isDragging 
                 ? alpha(PCF_PRIMARY, 0.08)
-                : 'rgba(255,255,255,0.02)',
+                : 'rgba(30, 30, 30, 0.85)',
+              backdropFilter: 'blur(12px)',
               transition: 'all 0.3s ease',
               cursor: 'pointer',
-              borderRadius: '16px'
+              borderRadius: '16px',
+              '&:hover': {
+                borderColor: alpha(PCF_PRIMARY, 0.6),
+                background: isDragging ? alpha(PCF_PRIMARY, 0.08) : alpha(PCF_PRIMARY, 0.05)
+              }
             }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -370,52 +357,6 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
             </Alert>
           )}
 
-          {/* Divider with OR */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Divider sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.1)' }} />
-            <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>OR</Typography>
-            <Divider sx={{ flex: 1, bgcolor: 'rgba(255,255,255,0.1)' }} />
-          </Box>
-
-          {/* Create from Form Button */}
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<Add />}
-            onClick={() => setShowSubmodelCreator(true)}
-            disabled={!pcfSchema}
-            sx={{
-              py: 2,
-              fontSize: '1rem',
-              background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontWeight: 600,
-              '&:hover': {
-                background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)`
-              },
-              '&:disabled': {
-                background: 'rgba(255,255,255,0.1)',
-                color: 'rgba(255,255,255,0.3)'
-              }
-            }}
-          >
-            Create PCF from Form
-          </Button>
-
-          {!pcfSchema && (
-            <Alert 
-              severity="warning" 
-              sx={{ 
-                bgcolor: 'rgba(245, 158, 11, 0.1)', 
-                color: '#f59e0b',
-                borderRadius: '10px'
-              }}
-            >
-              PCF schema not found. Form-based creation is not available.
-            </Alert>
-          )}
-
           {/* Cancel Button */}
           <Button
             variant="outlined"
@@ -427,11 +368,36 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
               borderRadius: '10px',
               '&:hover': {
                 borderColor: 'rgba(255,255,255,0.4)',
-                backgroundColor: 'rgba(255,255,255,0.05)'
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: 'rgba(255,255,255,0.7)'
               }
             }}
           >
-            Cancel
+            {t('common.cancel')}
+          </Button>
+
+          {/* OR divider + Form Builder option */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Divider sx={{ flex: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+            <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>{t('editor.or')}</Typography>
+            <Divider sx={{ flex: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+          </Box>
+          <Button
+            variant="contained"
+            onClick={() => setShowSubmodelCreator(true)}
+            startIcon={<CodeIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
+              color: '#fff',
+              textTransform: 'none',
+              borderRadius: '10px',
+              fontWeight: 600,
+              '&:hover': {
+                background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)`
+              }
+            }}
+          >
+            {t('editor.formBuilder')}
           </Button>
         </>
       ) : (
@@ -447,7 +413,8 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
               : 'rgba(255,255,255,0.1)',
             transition: 'border-color 0.3s ease',
             borderRadius: '16px',
-            background: 'rgba(255,255,255,0.02)'
+            background: 'rgba(30, 30, 30, 0.85)',
+            backdropFilter: 'blur(12px)'
           }}
         >
           <CardContent sx={{ p: 3 }}>
@@ -462,19 +429,19 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
               )}
               <Typography variant="h6" sx={{ color: '#fff' }}>
                 {validationStatus === 'success' 
-                  ? 'PCF Data Validated' 
+                  ? t('editor.validatedTitle') 
                   : validationStatus === 'error' 
-                  ? 'Validation Failed' 
-                  : 'PCF Data Loaded'}
+                  ? t('editor.validationFailedTitle') 
+                  : t('editor.loadedTitle')}
               </Typography>
             </Box>
 
             <Typography sx={{ color: 'rgba(255,255,255,0.6)', mb: 2 }}>
               {validationStatus === 'success'
-                ? 'Your PCF data has been validated and is ready to be saved.'
+                ? t('editor.validatedMsg')
                 : validationStatus === 'error'
-                ? 'The PCF data does not match the expected schema. Please fix the errors or upload a new file.'
-                : 'Please validate the PCF data before saving.'}
+                ? t('editor.validationFailedMsg')
+                : t('editor.pendingMsg')}
             </Typography>
 
             {/* Messages */}
@@ -533,33 +500,10 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
                 }}
               >
                 {isValidating 
-                  ? 'Validating...' 
+                  ? t('editor.validating') 
                   : validationStatus === 'success' 
-                  ? 'Validated' 
-                  : 'Validate'}
-              </Button>
-
-              {/* Edit Button */}
-              <Button
-                variant="outlined"
-                onClick={() => setShowSubmodelCreator(true)}
-                startIcon={<Edit />}
-                disabled={!pcfSchema}
-                sx={{
-                  flex: 1,
-                  minWidth: 150,
-                  borderColor: 'rgba(255,255,255,0.2)',
-                  color: 'rgba(255,255,255,0.8)',
-                  borderRadius: '10px',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': {
-                    borderColor: PCF_PRIMARY,
-                    backgroundColor: alpha(PCF_PRIMARY, 0.1)
-                  }
-                }}
-              >
-                Edit in Form
+                  ? t('editor.validated') 
+                  : t('editor.validate')}
               </Button>
 
               {/* Clear Button */}
@@ -578,7 +522,7 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
                   }
                 }}
               >
-                Clear
+                {t('editor.clear')}
               </Button>
             </Box>
 
@@ -607,7 +551,7 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
                   }
                 }}
               >
-                {isSaving ? 'Saving...' : mode === 'create' ? 'Upload PCF' : 'Save Changes'}
+                {isSaving ? t('editor.saving') : mode === 'create' ? t('editor.uploadPcf') : t('editor.saveChanges')}
               </Button>
 
               <Button
@@ -622,15 +566,29 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
                   px: 4,
                   '&:hover': {
                     borderColor: 'rgba(255,255,255,0.4)',
-                    backgroundColor: 'rgba(255,255,255,0.05)'
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: 'rgba(255,255,255,0.7)'
                   }
                 }}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </Box>
           </CardContent>
         </Card>
+      )}
+      {/* SubmodelCreator dialog — Form-based PCF creation */}
+      {pcfSchema && (
+        <SubmodelCreator
+          open={showSubmodelCreator}
+          onClose={() => setShowSubmodelCreator(false)}
+          onBack={() => setShowSubmodelCreator(false)}
+          onCreateSubmodel={handleSubmodelCreatorSave}
+          selectedSchema={pcfSchema}
+          schemaKey={createSchemaKey(pcfSchema.metadata.semanticId)}
+          manufacturerPartId={manufacturerPartId}
+          saveButtonLabel="Use as PCF Data"
+        />
       )}
     </Box>
   );

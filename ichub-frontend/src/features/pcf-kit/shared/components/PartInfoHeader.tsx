@@ -22,6 +22,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -71,6 +72,7 @@ export const PartInfoHeader: React.FC<PartInfoHeaderProps> = ({
   customNavigationUrl
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation('pcf');
 
   const handleClick = () => {
     const url = customNavigationUrl || `/product/${encodeURIComponent(manufacturerId)}/${encodeURIComponent(manufacturerPartId)}`;
@@ -78,7 +80,7 @@ export const PartInfoHeader: React.FC<PartInfoHeaderProps> = ({
   };
 
   return (
-    <Tooltip title="Click to view part details" placement="bottom">
+    <Tooltip title={t('partInfoHeader.viewDetails')} placement="bottom">
       <Box 
         onClick={handleClick}
         sx={{ 
@@ -110,7 +112,7 @@ export const PartInfoHeader: React.FC<PartInfoHeaderProps> = ({
                 letterSpacing: 0.5 
               }}
             >
-              Manufacturer ID
+              {t('partInfoHeader.manufacturerId')}
             </Typography>
             <Typography 
               variant="body2" 
@@ -143,7 +145,7 @@ export const PartInfoHeader: React.FC<PartInfoHeaderProps> = ({
                 letterSpacing: 0.5 
               }}
             >
-              Manufacturer Part ID
+              {t('partInfoHeader.manufacturerPartId')}
             </Typography>
             <Typography 
               variant="body2" 
@@ -175,7 +177,7 @@ export const PartInfoHeader: React.FC<PartInfoHeaderProps> = ({
                 letterSpacing: 0.5 
               }}
             >
-              Part Name
+              {t('partInfoHeader.partName')}
             </Typography>
             <Typography 
               variant="body2" 

@@ -20,7 +20,8 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogTitle,
@@ -34,15 +35,18 @@ import {
   CircularProgress,
   alpha,
   IconButton,
-  FormHelperText
+  FormHelperText,
+  Autocomplete
 } from '@mui/material';
 import {
-  Business,
   Inventory,
   Close,
-  LinkOutlined
+  LinkOutlined,
+  OpenInNew
 } from '@mui/icons-material';
 import { AddSubpartFormData } from '../api/pcfRequestApi';
+import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -61,11 +65,26 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
   onSubmit,
   parentManufacturerPartId
 }) => {
+  const { t } = useTranslation('pcf');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Partners for BPN autocomplete
+  const [partners, setPartners] = useState<PartnerInstance[]>([]);
+  const [isLoadingPartners, setIsLoadingPartners] = useState(false);
 
   // Form state
   const [supplierBpn, setSupplierBpn] = useState('');
   const [manufacturerPartId, setManufacturerPartId] = useState('');
+
+  // Load partners when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    setIsLoadingPartners(true);
+    fetchPartners()
+      .then(data => setPartners(data))
+      .catch(() => { /* silently ignore; no partners will be shown in dropdown */ })
+      .finally(() => setIsLoadingPartners(false));
+  }, [open]);
 
   // Validation errors
   const [bpnError, setBpnError] = useState('');
@@ -85,8 +104,8 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
   };
 
   const validateBpn = (bpn: string): boolean => {
-    // Basic BPN validation: BPNL or BPNS followed by 12 alphanumeric characters
-    const pattern = /^BPN[LS][0-9A-Z]{12}$/;
+    // Basic BPN validation: BPNL or BPNS followed by 12 alphanumeric characters (case-insensitive)
+    const pattern = /^BPN[LS][0-9A-Z]{12}$/i;
     return pattern.test(bpn.trim());
   };
 
@@ -95,10 +114,10 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
 
     // Validate BPN
     if (!supplierBpn.trim()) {
-      setBpnError('Supplier BPN is required');
+      setBpnError(t('addSubpartDialog.bpnRequired'));
       isValid = false;
     } else if (!validateBpn(supplierBpn)) {
-      setBpnError('Invalid BPN format. Expected: BPNL or BPNS followed by 12 alphanumeric characters');
+      setBpnError(t('addSubpartDialog.bpnInvalidFormat'));
       isValid = false;
     } else {
       setBpnError('');
@@ -106,7 +125,7 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
 
     // Validate Manufacturer Part ID
     if (!manufacturerPartId.trim()) {
-      setPartIdError('Manufacturer Part ID is required');
+      setPartIdError(t('addSubpartDialog.partIdRequired'));
       isValid = false;
     } else {
       setPartIdError('');
@@ -124,7 +143,7 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
 
     // Close dialog immediately and let parent handle loading
     const formData = {
-      supplierBpn: supplierBpn.trim(),
+      supplierBpn: supplierBpn.trim().toUpperCase(),
       manufacturerPartId: manufacturerPartId.trim()
     };
     
@@ -171,10 +190,10 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
           </Box>
           <Box>
             <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700 }}>
-              Add Subpart Relation
+              {t('addSubpartDialog.title')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-              Parent Part: <Box component="span" sx={{ fontFamily: 'monospace', color: PCF_PRIMARY }}>{parentManufacturerPartId}</Box>
+              {t('addSubpartDialog.parentPart')} <Box component="span" sx={{ fontFamily: 'monospace', color: PCF_PRIMARY }}>{parentManufacturerPartId}</Box>
             </Typography>
           </Box>
         </Box>
@@ -192,117 +211,203 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ p: 4 }}>
           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', mb: 4 }}>
-            Enter the supplier BPN and manufacturer part ID to create a subpart relation and enable PCF data requests.
+            {t('addSubpartDialog.description')}
           </Typography>
 
-          {/* Two-column form layout */}
-          <Box sx={{ display: 'flex', gap: 4 }}>
-            {/* Supplier BPN Field */}
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ color: '#fff', mb: 1.5, fontWeight: 600 }}>
-                Supplier BPN *
-              </Typography>
-            <TextField
-              fullWidth
-              placeholder="BPNL00000001SUPP"
-              value={supplierBpn}
-              onChange={(e) => {
-                setSupplierBpn(e.target.value.toUpperCase());
-                setBpnError('');
-              }}
-              error={!!bpnError}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Business sx={{ color: 'rgba(255, 255, 255, 0.4)' }} />
-                  </InputAdornment>
-                )
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '12px',
-                  '& fieldset': {
-                    borderColor: bpnError ? '#ef4444' : 'rgba(255, 255, 255, 0.1)'
-                  },
-                  '&:hover fieldset': {
-                    borderColor: bpnError ? '#ef4444' : 'rgba(255, 255, 255, 0.2)'
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: bpnError ? '#ef4444' : PCF_PRIMARY
-                  }
-                },
-                '& .MuiInputBase-input': {
-                  color: '#fff',
-                  fontFamily: 'monospace',
-                  '&::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.3)'
-                  }
-                }
-              }}
-            />
-            {bpnError && (
-              <FormHelperText sx={{ color: '#ef4444', mt: 0.5 }}>
-                {bpnError}
-              </FormHelperText>
-            )}
-            <FormHelperText sx={{ color: 'rgba(255, 255, 255, 0.4)', mt: 0.5 }}>
-              Business Partner Number (BPNL or BPNS)
-            </FormHelperText>
-          </Box>
+          {/* Vertical form layout: BPN on top, Part ID below */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 
-          {/* Manufacturer Part ID Field */}
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle2" sx={{ color: '#fff', mb: 1.5, fontWeight: 600 }}>
-              Manufacturer Part ID *
-            </Typography>
-            <TextField
-              fullWidth
-              placeholder="Enter supplier's part ID"
-              value={manufacturerPartId}
-              onChange={(e) => {
-                setManufacturerPartId(e.target.value);
-                setPartIdError('');
-              }}
-              error={!!partIdError}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Inventory sx={{ color: 'rgba(255, 255, 255, 0.4)' }} />
-                  </InputAdornment>
-                )
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '12px',
-                  '& fieldset': {
-                    borderColor: partIdError ? '#ef4444' : 'rgba(255, 255, 255, 0.1)'
-                  },
-                  '&:hover fieldset': {
-                    borderColor: partIdError ? '#ef4444' : 'rgba(255, 255, 255, 0.2)'
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: partIdError ? '#ef4444' : PCF_PRIMARY
-                  }
-                },
-                '& .MuiInputBase-input': {
-                  color: '#fff',
-                  '&::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.3)'
-                  }
+            {/* Supplier BPN — inline dark-themed Autocomplete */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: '#fff', mb: 1.5, fontWeight: 600 }}>
+                {t('addSubpartDialog.supplierBpn')} *
+              </Typography>
+              <Autocomplete<PartnerInstance, false, boolean, true>
+                freeSolo
+                disableClearable={!supplierBpn}
+                options={partners}
+                loading={isLoadingPartners}
+                getOptionLabel={(option) =>
+                  typeof option === 'string' ? option : option.bpnl
                 }
-              }}
-            />
-            {partIdError && (
-              <FormHelperText sx={{ color: '#ef4444', mt: 0.5 }}>
-                {partIdError}
+                value={supplierBpn}
+                onChange={(_, newValue) => {
+                  if (typeof newValue === 'string') {
+                    setSupplierBpn(newValue);
+                  } else if (newValue) {
+                    setSupplierBpn(newValue.bpnl);
+                  } else {
+                    setSupplierBpn('');
+                  }
+                  setBpnError('');
+                }}
+                onInputChange={(_, newInputValue) => {
+                  setSupplierBpn(newInputValue || '');
+                  setBpnError('');
+                }}
+                renderOption={(props, option) => (
+                  <Box
+                    component="li"
+                    {...props}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start !important',
+                      py: '10px !important',
+                      px: '16px !important',
+                      cursor: 'pointer',
+                      '&:hover': { background: `${alpha(PCF_PRIMARY, 0.12)} !important` },
+                      '&[aria-selected="true"]': { background: `${alpha(PCF_PRIMARY, 0.2)} !important` },
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#fff' }}>
+                      {option.name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
+                      {option.bpnl}
+                    </Typography>
+                  </Box>
+                )}
+                slotProps={{
+                  paper: {
+                    sx: {
+                      background: '#1e1e2e',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      mt: 0.5,
+                      '& .MuiAutocomplete-listbox': { p: 0.5 },
+                      '& .MuiAutocomplete-noOptions': { color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' },
+                      '& .MuiAutocomplete-loading': { color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' },
+                    }
+                  },
+                  clearIndicator: { sx: { color: 'rgba(255,255,255,0.4)', background: 'none !important', '&:hover': { background: 'none !important', color: '#fff' } } },
+                  popupIndicator: { sx: { color: 'rgba(255,255,255,0.4)', background: 'none !important', '&:hover': { background: 'none !important', color: '#fff' } } },
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder={t('addSubpartDialog.supplierBpnPlaceholder')}
+                    error={!!bpnError}
+                    slotProps={{
+                      input: {
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {isLoadingPartners && <CircularProgress size={16} sx={{ color: PCF_PRIMARY, mr: 0.5 }} />}
+                            {params.InputProps.endAdornment}
+                          </>
+                        )
+                      }
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        background: 'rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        '& fieldset': { borderColor: bpnError ? '#ef4444' : 'rgba(255,255,255,0.1)' },
+                        '&:hover fieldset': { borderColor: bpnError ? '#ef4444' : 'rgba(255,255,255,0.2)' },
+                        '&.Mui-focused fieldset': { borderColor: bpnError ? '#ef4444' : PCF_PRIMARY },
+                      },
+                      '& .MuiInputBase-input': {
+                        color: '#fff',
+                        fontFamily: 'monospace',
+                        '&::placeholder': { color: 'rgba(255,255,255,0.3)' }
+                      },
+                    }}
+                  />
+                )}
+              />
+              {bpnError && (
+                <FormHelperText sx={{ color: '#ef4444', mt: 0.5 }}>
+                  {bpnError}
+                </FormHelperText>
+              )}
+              <FormHelperText sx={{ color: 'rgba(255,255,255,0.4)', mt: 0.5 }}>
+                {t('addSubpartDialog.supplierBpnHelper')}
               </FormHelperText>
-            )}
-            <FormHelperText sx={{ color: 'rgba(255, 255, 255, 0.4)', mt: 0.5 }}>
-              The part ID as assigned by the supplier
-            </FormHelperText>
-          </Box>
+              {/* Link to Contact List — inline with label */}
+              <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
+                  {t('addSubpartDialog.contactNotFound')}
+                </Typography>
+                <Button
+                  size="small"
+                  endIcon={<OpenInNew sx={{ fontSize: 12 }} />}
+                  onClick={() => window.open('/partners', '_blank')}
+                  sx={{
+                    p: 0,
+                    minWidth: 0,
+                    color: PCF_PRIMARY,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    lineHeight: 1.5,
+                    '&:hover': { background: 'none', textDecoration: 'underline' }
+                  }}
+                >
+                  {t('addSubpartDialog.createInContactList')}
+                </Button>
+              </Box>
+            </Box>
+
+            {/* Manufacturer Part ID Field */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: '#fff', mb: 1.5, fontWeight: 600 }}>
+                {t('addSubpartDialog.manufacturerPartId')} *
+              </Typography>
+              <TextField
+                fullWidth
+                placeholder={t('addSubpartDialog.manufacturerPartIdPlaceholder')}
+                value={manufacturerPartId}
+                onChange={(e) => {
+                  setManufacturerPartId(e.target.value);
+                  setPartIdError('');
+                }}
+                error={!!partIdError}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Inventory sx={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: manufacturerPartId ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => { setManufacturerPartId(''); setPartIdError(''); }}
+                        sx={{
+                          color: 'rgba(255,255,255,0.4)',
+                          background: 'none',
+                          '&:hover': { background: 'none', color: '#fff' }
+                        }}
+                      >
+                        <Close sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '12px',
+                    '& fieldset': { borderColor: partIdError ? '#ef4444' : 'rgba(255,255,255,0.1)' },
+                    '&:hover fieldset': { borderColor: partIdError ? '#ef4444' : 'rgba(255,255,255,0.2)' },
+                    '&.Mui-focused fieldset': { borderColor: partIdError ? '#ef4444' : PCF_PRIMARY },
+                  },
+                  '& .MuiInputBase-input': {
+                    color: '#fff',
+                    '&::placeholder': { color: 'rgba(255,255,255,0.3)' }
+                  }
+                }}
+              />
+              {partIdError && (
+                <FormHelperText sx={{ color: '#ef4444', mt: 0.5 }}>
+                  {partIdError}
+                </FormHelperText>
+              )}
+              <FormHelperText sx={{ color: 'rgba(255,255,255,0.4)', mt: 0.5 }}>
+                {t('addSubpartDialog.manufacturerPartIdHelper')}
+              </FormHelperText>
+            </Box>
+
           </Box>
         </DialogContent>
 
@@ -329,7 +434,7 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
               }
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="submit"
@@ -353,7 +458,7 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
               }
             }}
           >
-            {isSubmitting ? 'Adding...' : 'Add Subpart Relation'}
+            {isSubmitting ? t('addSubpartDialog.adding') : t('addSubpartDialog.addSubpartRelation')}
           </Button>
         </DialogActions>
       </form>

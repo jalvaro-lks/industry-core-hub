@@ -21,6 +21,7 @@
  ********************************************************************************/
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -90,47 +91,48 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
   counts,
   onStatusChange
 }) => {
+  const { t } = useTranslation('pcf');
   const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
   const statuses: Array<{ key: PcfNotificationStatus | 'ALL'; label: string; count: number; icon: React.ElementType; color: string }> = [
     {
       key: 'ALL',
-      label: 'All',
+      label: t('notifications.statusAll'),
       count: totalCount,
       icon: Notifications,
       color: PCF_PRIMARY
     },
     {
       key: 'PENDING',
-      label: 'Pending',
+      label: t('notifications.statusPending'),
       count: counts.PENDING,
       icon: NOTIFICATION_STATUS_CONFIG.PENDING.icon,
       color: NOTIFICATION_STATUS_CONFIG.PENDING.color
     },
     {
       key: 'ACCEPTED',
-      label: 'Accepted',
+      label: t('notifications.statusAccepted'),
       count: counts.ACCEPTED,
       icon: NOTIFICATION_STATUS_CONFIG.ACCEPTED.icon,
       color: NOTIFICATION_STATUS_CONFIG.ACCEPTED.color
     },
     {
       key: 'DELIVERED',
-      label: 'Delivered',
+      label: t('notifications.statusDelivered'),
       count: counts.DELIVERED,
       icon: NOTIFICATION_STATUS_CONFIG.DELIVERED.icon,
       color: NOTIFICATION_STATUS_CONFIG.DELIVERED.color
     },
     {
       key: 'REJECTED',
-      label: 'Rejected',
+      label: t('notifications.statusRejected'),
       count: counts.REJECTED,
       icon: NOTIFICATION_STATUS_CONFIG.REJECTED.icon,
       color: NOTIFICATION_STATUS_CONFIG.REJECTED.color
     },
     {
       key: 'FAILED',
-      label: 'Failed',
+      label: t('notifications.statusFailed'),
       count: counts.FAILED,
       icon: NOTIFICATION_STATUS_CONFIG.FAILED.icon,
       color: NOTIFICATION_STATUS_CONFIG.FAILED.color

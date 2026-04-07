@@ -107,6 +107,11 @@ export interface PcfNotification {
   responseDate?: string;
   rejectReason?: string;
   
+  // PCF location URI — present when the provider has already resolved the PCF data location.
+  // A PENDING request without this field means the PCF is not yet findable; Accept should be
+  // blocked until the location is resolved (via the refresh-pcf endpoint).
+  pcfLocation?: string | null;
+
   // Metadata
   message?: string;         // Optional message from requester
   priority?: 'LOW' | 'NORMAL' | 'HIGH';

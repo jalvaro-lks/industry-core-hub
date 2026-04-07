@@ -21,6 +21,7 @@
  ********************************************************************************/
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Card,
@@ -30,7 +31,9 @@ import {
   Chip,
   Collapse,
   Tooltip,
-  alpha
+  alpha,
+  IconButton,
+  CircularProgress
 } from '@mui/material';
 import {
   Business,
@@ -43,7 +46,9 @@ import {
   Message,
   PriorityHigh,
   LocalShipping,
-  Info
+  Info,
+  Refresh,
+  Link as LinkIcon
 } from '@mui/icons-material';
 import { PcfNotification } from '../api/pcfExchangeApi';
 import { NOTIFICATION_STATUS_CONFIG } from './NotificationFilters';
@@ -56,6 +61,8 @@ interface NotificationCardProps {
   notification: PcfNotification;
   onAccept: (notificationId: string) => Promise<void>;
   onReject: (notificationId: string) => void;  // Opens reject dialog
+  /** Called when user clicks the Refresh button on a PENDING request without a pcfLocation. */
+  onRefreshPcf?: (notificationId: string) => Promise<void>;
   isProcessing?: boolean;
   viewMode?: 'card' | 'list';
 }
@@ -64,14 +71,22 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
   notification,
   onAccept,
   onReject,
+  onRefreshPcf,
   isProcessing = false,
   viewMode = 'card'
 }) => {
+  const { t } = useTranslation('pcf');
   const [expanded, setExpanded] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isRefreshingPcf, setIsRefreshingPcf] = useState(false);
 
   const statusConfig = NOTIFICATION_STATUS_CONFIG[notification.status];
   const StatusIcon = statusConfig.icon;
+
+  // Accept is only allowed for PENDING requests that already have a resolved pcfLocation.
+  // When pcfLocation is absent, the provider needs to use the Refresh button to re-check.
+  const isPending = notification.status === 'PENDING';
+  const canAccept = isPending && !!notification.pcfLocation;
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -80,11 +95,11 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      return t('notifications.today', { time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
     } else if (diffDays === 1) {
-      return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      return t('notifications.yesterday', { time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return t('notifications.daysAgo', { count: diffDays });
     } else {
       return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     }
@@ -108,7 +123,15 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
     }
   };
 
-  const isPending = notification.status === 'PENDING';
+  const handleRefreshPcf = async () => {
+    if (!onRefreshPcf) return;
+    setIsRefreshingPcf(true);
+    try {
+      await onRefreshPcf(notification.id);
+    } finally {
+      setIsRefreshingPcf(false);
+    }
+  };
 
   // List View - Structured two-row layout
   if (viewMode === 'list') {
@@ -162,12 +185,31 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                 <Inventory sx={{ fontSize: 16, color: PCF_PRIMARY }} />
                 <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
-                  {notification.partName || 'Unknown Part'}
+                  {notification.partName || t('notifications.unknownPart')}
                 </Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontFamily: 'monospace', pl: 3 }}>
                 {notification.manufacturerPartId} · {notification.partInstanceId}
               </Typography>
+              {notification.pcfLocation && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, pl: 3 }}>
+                  <LinkIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }} />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.45)',
+                      fontFamily: 'monospace',
+                      fontSize: '0.7rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: 260
+                    }}
+                  >
+                    {notification.pcfLocation}
+                  </Typography>
+                </Box>
+              )}
             </Box>
 
             {/* Right Section: Actions & Status */}
@@ -180,56 +222,91 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                 pl: 0
               }}
             >
-              {/* Action Buttons */}
+              {/* Action Buttons for PENDING requests */}
               {isPending && (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={<CheckCircle sx={{ fontSize: 16 }} />}
-                    onClick={handleAccept}
-                    disabled={isProcessing || isAccepting}
-                    sx={{
-                      px: 2.5,
-                      py: 0.75,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
-                      '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` },
-                      '&.Mui-disabled': { background: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.3)' }
-                    }}
-                  >
-                    Accept
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Cancel sx={{ fontSize: 16 }} />}
-                    onClick={() => onReject(notification.id)}
-                    disabled={isProcessing || isAccepting}
-                    sx={{
-                      px: 2.5,
-                      py: 0.75,
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      borderColor: 'rgba(255, 255, 255, 0.2)',
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      '&:hover': { borderColor: '#ef4444', color: '#ef4444', background: alpha('#ef4444', 0.08) }
-                    }}
-                  >
-                    Reject
-                  </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                  {/* Refresh button — shown when pcfLocation is not yet resolved */}
+                  {!notification.pcfLocation && onRefreshPcf && (
+                    <>
+                      <Tooltip title={t('notifications.recheckPcf')}>
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={handleRefreshPcf}
+                            disabled={isProcessing || isRefreshingPcf}
+                            sx={{
+                              color: PCF_PRIMARY,
+                              border: `1px solid ${alpha(PCF_PRIMARY, 0.3)}`,
+                              borderRadius: '8px',
+                              mr: 1,
+                              '&:hover': { background: alpha(PCF_PRIMARY, 0.1) },
+                              '&.Mui-disabled': { color: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.1)' }
+                            }}
+                          >
+                            {isRefreshingPcf
+                              ? <CircularProgress size={16} sx={{ color: PCF_PRIMARY }} />
+                              : <Refresh sx={{ fontSize: 16 }} />}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      {/* Vertical divider */}
+                      <Box sx={{ width: '1px', height: 28, background: 'rgba(255,255,255,0.12)', mx: 1 }} />
+                    </>
+                  )}
+
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title={!canAccept ? t('notifications.pcfLocationNotResolved') : ''}>
+                      <span>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<CheckCircle sx={{ fontSize: 16 }} />}
+                          onClick={handleAccept}
+                          disabled={!canAccept || isProcessing || isAccepting}
+                          sx={{
+                            px: 2.5,
+                            py: 0.75,
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.8rem',
+                            background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
+                            '&:hover': { background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)` },
+                            '&.Mui-disabled': { background: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.3)' }
+                          }}
+                        >
+                          {isAccepting ? t('notifications.accepting') : t('notifications.accept')}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<Cancel sx={{ fontSize: 16 }} />}
+                      onClick={() => onReject(notification.id)}
+                      disabled={isProcessing || isAccepting}
+                      sx={{
+                        px: 2.5,
+                        py: 0.75,
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        borderColor: 'rgba(255, 255, 255, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        '&:hover': { borderColor: '#ef4444', color: '#ef4444', background: alpha('#ef4444', 0.08) }
+                      }}
+                    >
+                      {t('notifications.reject')}
+                    </Button>
+                  </Box>
                 </Box>
               )}
 
               {/* Status Badge */}
               <Chip
                 icon={<StatusIcon sx={{ fontSize: 14 }} />}
-                label={statusConfig.label}
+                label={t(`notifications.status${notification.status.charAt(0)}${notification.status.slice(1).toLowerCase()}`)}
                 size="small"
                 sx={{
                   minWidth: 100,
@@ -267,7 +344,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                 </>
               ) : (
                 <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.3)' }}>
-                  No message provided
+                  {t('notifications.noMessage')}
                 </Typography>
               )}
             </Box>
@@ -348,13 +425,13 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
           {/* Status Badge & Priority */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {notification.priority === 'HIGH' && (
-              <Tooltip title="High Priority">
+              <Tooltip title={t('notifications.highPriority')}>
                 <PriorityHigh sx={{ fontSize: 20, color: '#ef4444' }} />
               </Tooltip>
             )}
             <Chip
               icon={<StatusIcon sx={{ fontSize: 14 }} />}
-              label={statusConfig.label}
+              label={t(`notifications.status${notification.status.charAt(0)}${notification.status.slice(1).toLowerCase()}`)}
               size="small"
               sx={{
                 backgroundColor: statusConfig.bgColor,
@@ -391,6 +468,25 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
           >
             {notification.manufacturerPartId}:{notification.partInstanceId}
           </Typography>
+          {notification.pcfLocation && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, ml: 3 }}>
+              <LinkIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }} />
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255,255,255,0.45)',
+                  fontFamily: 'monospace',
+                  fontSize: '0.7rem',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: 220
+                }}
+              >
+                {notification.pcfLocation}
+              </Typography>
+            </Box>
+          )}
         </Box>
 
         {/* Request Details */}
@@ -398,7 +494,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <AccessTime sx={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.4)' }} />
             <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-              Requested {formatDate(notification.requestDate)}
+              {t('notifications.requestedOn', { date: formatDate(notification.requestDate) })}
             </Typography>
           </Box>
           {notification.priority && (
@@ -458,7 +554,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
               onClick={() => setExpanded(!expanded)}
             >
               <Typography variant="caption">
-                {expanded ? 'Hide details' : 'Show details'}
+                {expanded ? t('notifications.hideDetails') : t('notifications.showDetails')}
               </Typography>
               {expanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
             </Box>
@@ -469,13 +565,13 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <CheckCircle sx={{ fontSize: 14, color: statusConfig.color }} />
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                      Responded on {new Date(notification.responseDate).toLocaleDateString([], {
+                      {t('notifications.respondedOn', { date: new Date(notification.responseDate).toLocaleDateString([], {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                      })}
+                      }) })}
                     </Typography>
                   </Box>
                 )}
@@ -483,7 +579,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                     <Info sx={{ fontSize: 14, color: '#9ca3af', mt: 0.25 }} />
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                      Reason: {notification.rejectReason}
+                      {t('notifications.reason')}: {notification.rejectReason}
                     </Typography>
                   </Box>
                 )}
@@ -491,7 +587,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <LocalShipping sx={{ fontSize: 14, color: PCF_PRIMARY }} />
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                      PCF data has been delivered to the requester
+                      {t('notifications.pcfDelivered')}
                     </Typography>
                   </Box>
                 )}
@@ -502,37 +598,70 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 
         {/* Action Buttons (for pending only) - Always at bottom */}
         {isPending && (
-          <Box sx={{ display: 'flex', gap: 1.5, mt: 'auto', pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 'auto', pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            {/* Refresh button — shown when pcfLocation is not yet resolved.
+                The user clicks this to trigger a backend re-check before accepting. */}
+            {!notification.pcfLocation && onRefreshPcf && (
+              <>
+                <Tooltip title={t('notifications.recheckPcf')}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={handleRefreshPcf}
+                      disabled={isProcessing || isRefreshingPcf}
+                      sx={{
+                        color: PCF_PRIMARY,
+                        border: `1px solid ${alpha(PCF_PRIMARY, 0.3)}`,
+                        borderRadius: '8px',
+                        '&:hover': { background: alpha(PCF_PRIMARY, 0.1) },
+                        '&.Mui-disabled': { color: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.1)' }
+                      }}
+                    >
+                      {isRefreshingPcf
+                        ? <CircularProgress size={16} sx={{ color: PCF_PRIMARY }} />
+                        : <Refresh sx={{ fontSize: 18 }} />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                {/* Vertical divider between refresh and accept/reject */}
+                <Box sx={{ width: '1px', height: 32, background: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+              </>
+            )}
+
+            <Tooltip title={!canAccept ? t('notifications.pcfLocationNotResolved') : ''} sx={{ flex: 1 }}>
+              <span style={{ flex: 1 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={<CheckCircle />}
+                  onClick={handleAccept}
+                  disabled={!canAccept || isProcessing || isAccepting}
+                  sx={{
+                    py: 1,
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
+                    '&:hover': {
+                      background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)`
+                    },
+                    '&.Mui-disabled': {
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'rgba(255, 255, 255, 0.3)'
+                    }
+                  }}
+                >
+                  {isAccepting ? t('notifications.accepting') : t('notifications.accept')}
+                </Button>
+              </span>
+            </Tooltip>
             <Button
-              fullWidth
-              variant="contained"
-              startIcon={<CheckCircle />}
-              onClick={handleAccept}
-              disabled={isProcessing || isAccepting}
-              sx={{
-                py: 1,
-                borderRadius: '10px',
-                textTransform: 'none',
-                fontWeight: 600,
-                background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
-                '&:hover': {
-                  background: `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)`
-                },
-                '&.Mui-disabled': {
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: 'rgba(255, 255, 255, 0.3)'
-                }
-              }}
-            >
-              {isAccepting ? 'Accepting...' : 'Accept'}
-            </Button>
-            <Button
-              fullWidth
               variant="outlined"
               startIcon={<Cancel />}
               onClick={() => onReject(notification.id)}
               disabled={isProcessing || isAccepting}
               sx={{
+                flex: 1,
                 py: 1,
                 borderRadius: '10px',
                 textTransform: 'none',
@@ -546,7 +675,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                 }
               }}
             >
-              Reject
+              {t('notifications.reject')}
             </Button>
           </Box>
         )}

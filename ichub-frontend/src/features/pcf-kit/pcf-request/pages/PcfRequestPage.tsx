@@ -20,8 +20,9 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -32,7 +33,8 @@ import {
   CircularProgress,
   alpha,
   Tooltip,
-  Collapse
+  Collapse,
+  Alert
 } from '@mui/material';
 import {
   Calculate as CalculateIcon,
@@ -65,6 +67,12 @@ import {
   SubpartPcfResponse,
   AddSubpartFormData
 } from '../api/pcfRequestApi';
+import {
+  getPcfStatus,
+  downloadPcfData,
+  PcfSpecificStateModel
+} from '../../services/pcfApi';
+import { downloadJson } from '@/utils/downloadJson';
 import AddSubpartDialog from '../components/AddSubpartDialog';
 
 // PCF Green Theme
@@ -80,15 +88,16 @@ interface LoadingStep {
 }
 
 const LOADING_STEPS: LoadingStep[] = [
-  { id: 'search', label: 'Searching Part', icon: Search, description: 'Locating catalog part in registry' },
-  { id: 'subparts', label: 'Loading Subparts', icon: Downloading, description: 'Fetching linked subpart relations' },
-  { id: 'status', label: 'Checking Status', icon: Security, description: 'Retrieving PCF request statuses' },
-  { id: 'complete', label: 'Ready', icon: VerifiedUser, description: 'Part data loaded successfully' }
+  { id: 'search', label: 'loading.searchingPart', icon: Search, description: 'loading.searchingPartDesc' },
+  { id: 'subparts', label: 'loading.loadingSubparts', icon: Downloading, description: 'loading.loadingSubpartsDesc' },
+  { id: 'status', label: 'loading.checkingStatus', icon: Security, description: 'loading.checkingStatusDesc' },
+  { id: 'complete', label: 'loading.ready', icon: VerifiedUser, description: 'loading.readyDesc' }
 ];
 
 type PageState = 'search' | 'loading' | 'visualization' | 'error';
 
 const PcfRequestPage: React.FC = () => {
+  const { t } = useTranslation('pcf');
   const navigate = useNavigate();
   const params = useParams();
 
@@ -99,6 +108,15 @@ const PcfRequestPage: React.FC = () => {
 
   // Data state
   const [partData, setPartData] = useState<CatalogPartPcfResponse | null>(null);
+  // PCF assembly progress from backend (overrides local calculation when available)
+  const [pcfStatus, setPcfStatus] = useState<PcfSpecificStateModel | null>(null);
+
+  // Download state
+  const [isDownloading, setIsDownloading] = useState(false);
+  // Non-null when backend fails to return PCF collection status
+  const [pcfStatusError, setPcfStatusError] = useState<string | null>(null);
+  // Non-null when the PCF data download API call fails
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Dialog state
   const [addSubpartDialogOpen, setAddSubpartDialogOpen] = useState(false);
@@ -109,6 +127,10 @@ const PcfRequestPage: React.FC = () => {
 
   // Expanded subparts
   const [expandedSubparts, setExpandedSubparts] = useState<Set<string>>(new Set());
+
+  // Sending/polling state per subpartId: 'sending' while API call in flight, 'polling' while waiting for status change
+  const [subpartSendingState, setSubpartSendingState] = useState<Map<string, 'sending' | 'polling'>>(new Map());
+  const pollingIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
   // Parse part ID and manufacturer ID from URL
   const partIdFromUrl = params?.partId;
@@ -121,9 +143,19 @@ const PcfRequestPage: React.FC = () => {
     }
   }, [partIdFromUrl]);
 
+  // Cleanup all polling intervals when the component unmounts
+  useEffect(() => {
+    return () => {
+      pollingIntervalsRef.current.forEach(intervalId => clearInterval(intervalId));
+      pollingIntervalsRef.current.clear();
+    };
+  }, []);
+
   const loadPartData = async (manufacturerPartId: string) => {
     setPageState('loading');
     setError(null);
+    setPcfStatusError(null);
+    setDownloadError(null);
     setCurrentStep(0);
 
     try {
@@ -149,6 +181,18 @@ const PcfRequestPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 400));
 
       setPartData(partWithSubparts);
+
+      // Fetch PCF assembly progress from backend.
+      // A failure sets pcfStatusError which is shown in the UI — no local fallback.
+      try {
+        const status = await getPcfStatus(manufacturerPartId);
+        setPcfStatus(status);
+        setPcfStatusError(null);
+      } catch {
+        setPcfStatus(null);
+        setPcfStatusError('Could not retrieve PCF collection status from the server. Refresh to retry.');
+      }
+
       setPageState('visualization');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load part data';
@@ -169,6 +213,35 @@ const PcfRequestPage: React.FC = () => {
   const handleRefresh = async () => {
     if (partData) {
       await loadPartData(partData.manufacturerPartId);
+      await handleRefreshProgress(partData.manufacturerPartId);
+    }
+  };
+
+  // Silently refresh PCF assembly progress without reloading the whole page
+  const handleRefreshProgress = async (manufacturerPartId: string) => {
+    try {
+      const status = await getPcfStatus(manufacturerPartId);
+      setPcfStatus(status);
+      setPcfStatusError(null);
+    } catch {
+      setPcfStatus(null);
+      setPcfStatusError('Could not retrieve PCF collection status from the server. Refresh to retry.');
+    }
+  };
+
+  // Handle downloading the aggregated PCF JSON
+  const handleDownloadJson = async () => {
+    if (!partData || isDownloading) return;
+    setIsDownloading(true);
+    setDownloadError(null);
+    try {
+      const data = await downloadPcfData(partData.manufacturerPartId);
+      downloadJson(data, `pcf-data-${partData.manufacturerPartId}.json`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unexpected error';
+      setDownloadError(`Download failed: ${message}. Please check the backend and try again.`);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -237,14 +310,59 @@ const PcfRequestPage: React.FC = () => {
   };
 
   // Handle request PCF for single subpart
+  // Starts polling every 5 s until pcfStatus changes from 'pending' (max 30 iterations)
+  const startPollingSubpart = (manufacturerPartId: string, subpartId: string) => {
+    let iterations = 0;
+    const MAX_ITERATIONS = 30;
+    const intervalId = setInterval(async () => {
+      iterations++;
+      if (iterations > MAX_ITERATIONS) {
+        clearInterval(intervalId);
+        pollingIntervalsRef.current.delete(subpartId);
+        setSubpartSendingState(prev => {
+          const next = new Map(prev);
+          next.delete(subpartId);
+          return next;
+        });
+        return;
+      }
+      try {
+        const updatedPart = await getCatalogPartWithSubparts(manufacturerPartId);
+        if (updatedPart) {
+          const updatedSubpart = updatedPart.subparts.find(s => s.id === subpartId);
+          if (updatedSubpart && updatedSubpart.pcfStatus !== 'pending') {
+            clearInterval(intervalId);
+            pollingIntervalsRef.current.delete(subpartId);
+            setSubpartSendingState(prev => {
+              const next = new Map(prev);
+              next.delete(subpartId);
+              return next;
+            });
+            setPartData(updatedPart);
+          }
+        }
+      } catch (err) {
+        console.error('Polling error for subpart:', subpartId, err);
+      }
+    }, 5000);
+    pollingIntervalsRef.current.set(subpartId, intervalId);
+  };
+
   const handleRequestPcf = async (subpartId: string) => {
     if (!partData) return;
-    
+
+    setSubpartSendingState(prev => new Map(prev).set(subpartId, 'sending'));
     try {
       await requestSubpartPcf(partData.manufacturerPartId, subpartId);
-      await handleSilentRefresh();
+      setSubpartSendingState(prev => new Map(prev).set(subpartId, 'polling'));
+      startPollingSubpart(partData.manufacturerPartId, subpartId);
     } catch (err) {
       console.error('Failed to request PCF:', err);
+      setSubpartSendingState(prev => {
+        const next = new Map(prev);
+        next.delete(subpartId);
+        return next;
+      });
     }
   };
 
@@ -267,7 +385,7 @@ const PcfRequestPage: React.FC = () => {
   const renderLoading = () => (
     <Box 
       sx={{ 
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: 'calc(100vh - 68.8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -289,7 +407,7 @@ const PcfRequestPage: React.FC = () => {
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-              Loading Catalog Part
+              {t('loading.title')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace' }}>
               {partIdFromUrl ? decodeURIComponent(partIdFromUrl) : ''}
@@ -368,7 +486,7 @@ const PcfRequestPage: React.FC = () => {
                           display: { xs: 'none', sm: 'block' }
                         }}
                       >
-                        {step.label}
+                        {t(step.label)}
                       </Typography>
                     </Box>
 
@@ -413,7 +531,7 @@ const PcfRequestPage: React.FC = () => {
                     fontSize: { xs: '0.85rem', sm: '0.9rem' }
                   }}
                 >
-                  {LOADING_STEPS[currentStep].label}
+                  {t(LOADING_STEPS[currentStep].label)}
                 </Typography>
                 <Typography
                   variant="caption"
@@ -422,7 +540,7 @@ const PcfRequestPage: React.FC = () => {
                     fontSize: { xs: '0.75rem', sm: '0.8rem' }
                   }}
                 >
-                  {LOADING_STEPS[currentStep].description}
+                  {t(LOADING_STEPS[currentStep].description)}
                 </Typography>
               </Box>
             )}
@@ -446,7 +564,7 @@ const PcfRequestPage: React.FC = () => {
                 }
               }}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </Box>
         </CardContent>
@@ -458,7 +576,7 @@ const PcfRequestPage: React.FC = () => {
   const renderError = () => (
     <Box 
       sx={{ 
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: 'calc(100vh - 68.8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -493,7 +611,7 @@ const PcfRequestPage: React.FC = () => {
               <ErrorIcon sx={{ fontSize: 32, color: '#ef4444' }} />
             </Box>
             <Typography variant="h6" sx={{ color: '#fff', mb: 1 }}>
-              Failed to Load Part
+              {t('error.failedToLoadPart')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mb: 3 }}>
               {error}
@@ -507,7 +625,7 @@ const PcfRequestPage: React.FC = () => {
                 borderRadius: '10px'
               }}
             >
-              Back to Search
+              {t('common.backToSearch')}
             </Button>
           </Box>
         </CardContent>
@@ -520,7 +638,7 @@ const PcfRequestPage: React.FC = () => {
     if (!partData) return null;
 
     return (
-      <Box sx={{ minHeight: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header - Similar to PCF Exchange */}
         <Box
           sx={{
@@ -533,7 +651,7 @@ const PcfRequestPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             {/* Left: Back button, icon, title, subtitle */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Tooltip title="New Search">
+              <Tooltip title={t('common.newSearch')}>
                 <IconButton
                   onClick={handleBackToSearch}
                   sx={{
@@ -568,7 +686,7 @@ const PcfRequestPage: React.FC = () => {
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.25rem' }
                   }}
                 >
-                  PCF Precalculation
+                  {t('precalculation.title')}
                 </Typography>
                 <Typography
                   variant="body1"
@@ -577,7 +695,7 @@ const PcfRequestPage: React.FC = () => {
                     fontSize: { xs: '0.875rem', sm: '1rem' }
                   }}
                 >
-                  Calculate product carbon footprint from subpart components
+                  {t('precalculation.subtitle')}
                 </Typography>
               </Box>
             </Box>
@@ -592,7 +710,7 @@ const PcfRequestPage: React.FC = () => {
                   hideOnSmallScreens={false}
                 />
               </Box>
-              <Tooltip title="Refresh">
+              <Tooltip title={t('common.refresh')}>
                 <IconButton
                   onClick={handleRefresh}
                   sx={{ 
@@ -620,7 +738,7 @@ const PcfRequestPage: React.FC = () => {
                   }
                 }}
               >
-                Add Subpart Relation
+                {t('precalculation.addSubpartRelation')}
               </Button>
             </Box>
           </Box>
@@ -628,84 +746,128 @@ const PcfRequestPage: React.FC = () => {
 
         {/* Progress Bar for Main Part */}
         <Box sx={{ px: 3, pt: 2, pb: 2 }}>
-          {/* Progress Header with Download Button */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-            <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600 }}>
-              PCF Collection Progress
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600 }}>
-                {stats.progress}%
-              </Typography>
-              <Tooltip title={stats.progress === 100 ? "Download aggregated PCF as JSON" : "Complete all PCF requests to download"}>
-                <span>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<Download />}
-                    disabled={stats.progress !== 100}
-                    sx={{
-                      background: stats.progress === 100 
-                        ? `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`
-                        : 'rgba(255,255,255,0.1)',
-                      textTransform: 'none',
-                      borderRadius: '8px',
-                      px: 2,
-                      py: 0.5,
-                      fontWeight: 600,
-                      fontSize: '0.75rem',
-                      '&:hover': {
-                        background: stats.progress === 100 
-                          ? `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)`
-                          : 'rgba(255,255,255,0.1)'
-                      },
-                      '&.Mui-disabled': {
-                        color: 'rgba(255,255,255,0.3)',
-                        background: 'rgba(255,255,255,0.05)'
-                      }
-                    }}
+          {/* Progress Header with Download Button
+              Progress and completion state are driven exclusively by the backend pcf-status endpoint.
+              If the backend call fails, pcfStatusError is shown and the Download button stays disabled. */}
+          {(() => {
+            // Source of truth is the backend only — no local fallback.
+            const displayProgress = pcfStatus?.progressPercentage ?? 0;
+            const isComplete = pcfStatus?.overallStatus === 'COMPLETED';
+            return (
+              <>
+                {/* Backend status error — shown when getPcfStatus fails */}
+                {pcfStatusError && (
+                  <Alert
+                    severity="warning"
+                    onClose={() => setPcfStatusError(null)}
+                    sx={{ mb: 1.5, borderRadius: '8px', fontSize: '0.8rem' }}
                   >
-                    Download JSON
-                  </Button>
-                </span>
-              </Tooltip>
-            </Box>
-          </Box>
-          
-          {/* Progress Bar */}
-          <Box sx={{ 
-            height: 8, 
-            borderRadius: 4, 
-            background: 'rgba(255,255,255,0.1)',
-            overflow: 'hidden',
-            mb: 2
-          }}>
-            <Box sx={{
-              height: '100%',
-              width: `${stats.progress}%`,
-              background: `linear-gradient(90deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
-              borderRadius: 4,
-              transition: 'width 0.5s ease'
-            }} />
-          </Box>
+                    {pcfStatusError}
+                  </Alert>
+                )}
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600 }}>
+                    {t('precalculation.collectionProgress')}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {!pcfStatusError && (
+                      <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600 }}>
+                        {displayProgress}%
+                      </Typography>
+                    )}
+                    <Tooltip title={
+                      pcfStatusError
+                        ? t('precalculation.statusUnavailable')
+                        : isComplete
+                          ? t('precalculation.downloadAggregated')
+                          : t('precalculation.completeToDownload')
+                    }>
+                      <span>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={isDownloading
+                            ? <CircularProgress size={14} sx={{ color: 'inherit' }} />
+                            : <Download />}
+                          disabled={!isComplete || isDownloading || !!pcfStatusError}
+                          onClick={handleDownloadJson}
+                          sx={{
+                            background: isComplete && !pcfStatusError
+                              ? `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`
+                              : 'rgba(255,255,255,0.1)',
+                            textTransform: 'none',
+                            borderRadius: '8px',
+                            px: 2,
+                            py: 0.5,
+                            fontWeight: 600,
+                            fontSize: '0.75rem',
+                            '&:hover': {
+                              background: isComplete && !pcfStatusError
+                                ? `linear-gradient(135deg, ${PCF_SECONDARY} 0%, ${PCF_PRIMARY} 100%)`
+                                : 'rgba(255,255,255,0.1)'
+                            },
+                            '&.Mui-disabled': {
+                              color: 'rgba(255,255,255,0.3)',
+                              background: 'rgba(255,255,255,0.05)'
+                            }
+                          }}
+                        >
+                          {isDownloading ? t('precalculation.downloading') : t('precalculation.downloadJson')}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                </Box>
+
+                {/* Progress Bar */}
+                <Box sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  background: 'rgba(255,255,255,0.1)',
+                  overflow: 'hidden',
+                  mb: 2
+                }}>
+                  <Box sx={{
+                    height: '100%',
+                    width: `${displayProgress}%`,
+                    background: `linear-gradient(90deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
+                    borderRadius: 4,
+                    transition: 'width 0.5s ease'
+                  }} />
+                </Box>
+
+                {/* Download error — shown when downloadPcfData API call fails */}
+                {downloadError && (
+                  <Alert
+                    severity="error"
+                    onClose={() => setDownloadError(null)}
+                    sx={{ mb: 1, borderRadius: '8px', fontSize: '0.8rem' }}
+                  >
+                    {downloadError}
+                  </Alert>
+                )}
+              </>
+            );
+          })()}
 
           {/* Stats Cards */}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Card sx={{ flex: 1, minWidth: 140, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px' }}>
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>Total Subparts</Typography>
+                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>{t('precalculation.totalSubparts')}</Typography>
                 <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700 }}>{stats.total}</Typography>
               </CardContent>
             </Card>
             <Card sx={{ flex: 1, minWidth: 140, background: alpha(PCF_PRIMARY, 0.1), border: `1px solid ${alpha(PCF_PRIMARY, 0.2)}`, borderRadius: '12px' }}>
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="caption" sx={{ color: PCF_PRIMARY }}>Delivered</Typography>
+                <Typography variant="caption" sx={{ color: PCF_PRIMARY }}>{t('precalculation.delivered')}</Typography>
                 <Typography variant="h4" sx={{ color: PCF_PRIMARY, fontWeight: 700 }}>{stats.delivered}</Typography>
               </CardContent>
             </Card>
             <Card sx={{ flex: 1, minWidth: 140, background: alpha('#f59e0b', 0.1), border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '12px' }}>
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="caption" sx={{ color: '#f59e0b' }}>Pending</Typography>
+                <Typography variant="caption" sx={{ color: '#f59e0b' }}>{t('precalculation.pending')}</Typography>
                 <Typography variant="h4" sx={{ color: '#f59e0b', fontWeight: 700 }}>{stats.pending}</Typography>
               </CardContent>
             </Card>
@@ -718,7 +880,7 @@ const PcfRequestPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <AccountTree sx={{ color: PCF_PRIMARY, fontSize: 22 }} />
               <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
-                Subpart Relations
+                {t('precalculation.subpartRelations')}
               </Typography>
               {isAddingSubpart && (
                 <CircularProgress size={18} sx={{ color: PCF_PRIMARY, ml: 1 }} />
@@ -797,10 +959,10 @@ const PcfRequestPage: React.FC = () => {
                 >
                   <Category sx={{ fontSize: 36, color: 'rgba(255,255,255,0.2)', mb: 1 }} />
                   <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.6)', mb: 0.5 }}>
-                    No Subparts Added
+                    {t('precalculation.noSubpartsAdded')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', mb: 2 }}>
-                    Add subpart relations to request PCF data
+                    {t('precalculation.addSubpartsHint')}
                   </Typography>
                   <Button
                     variant="contained"
@@ -812,7 +974,7 @@ const PcfRequestPage: React.FC = () => {
                       borderRadius: '10px'
                     }}
                   >
-                    Add Subpart
+                    {t('precalculation.addSubpart')}
                   </Button>
                 </Card>
               </Box>
@@ -951,48 +1113,59 @@ const PcfRequestPage: React.FC = () => {
 
                           {/* Actions */}
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
-                            {/* Request button for pending status */}
-                            {subpart.pcfStatus === 'pending' && (
-                              <Tooltip title="Request PCF">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRequestPcf(subpart.id)}
-                                  sx={{
-                                    color: '#fff',
-                                    background: alpha(PCF_PRIMARY, 0.2),
-                                    '&:hover': { background: alpha(PCF_PRIMARY, 0.4) }
-                                  }}
-                                >
-                                  <Send sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {/* Retry button for error status */}
-                            {subpart.pcfStatus === 'error' && (
-                              <Tooltip title={`Retry Request${subpart.errorMessage ? `: ${subpart.errorMessage}` : ''}`}>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRequestPcf(subpart.id)}
-                                  sx={{
-                                    color: '#fff',
-                                    background: alpha('#ef4444', 0.2),
-                                    '&:hover': { background: alpha('#ef4444', 0.4) }
-                                  }}
-                                >
-                                  <Send sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            {subpart.pcfStatus === 'delivered' && (
+                            {subpartSendingState.has(subpart.id) ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CircularProgress size={18} sx={{ color: PCF_PRIMARY }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>
+                                  {subpartSendingState.get(subpart.id) === 'sending' ? t('precalculation.sending') : t('precalculation.awaitingResponse')}
+                                </Typography>
+                              </Box>
+                            ) : (
                               <>
-                                <Tooltip title="Download PCF">
-                                  <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: PCF_PRIMARY } }}>
-                                    <Download sx={{ fontSize: 18 }} />
-                                  </IconButton>
-                                </Tooltip>
-                                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                  {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                                </IconButton>
+                                {/* Request button for pending status */}
+                                {subpart.pcfStatus === 'pending' && (
+                                  <Tooltip title={t('precalculation.requestPcf')}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleRequestPcf(subpart.id)}
+                                      sx={{
+                                        color: '#fff',
+                                        background: alpha(PCF_PRIMARY, 0.2),
+                                        '&:hover': { background: alpha(PCF_PRIMARY, 0.4) }
+                                      }}
+                                    >
+                                      <Send sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                                {/* Retry button for error status */}
+                                {subpart.pcfStatus === 'error' && (
+                                  <Tooltip title={`${t('precalculation.retryRequest')}${subpart.errorMessage ? `: ${subpart.errorMessage}` : ''}`}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleRequestPcf(subpart.id)}
+                                      sx={{
+                                        color: '#fff',
+                                        background: alpha('#ef4444', 0.2),
+                                        '&:hover': { background: alpha('#ef4444', 0.4) }
+                                      }}
+                                    >
+                                      <Send sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                                {subpart.pcfStatus === 'delivered' && (
+                                  <>
+                                    <Tooltip title={t('precalculation.downloadPcf')}>
+                                      <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: PCF_PRIMARY } }}>
+                                        <Download sx={{ fontSize: 18 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                                      {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                                    </IconButton>
+                                  </>
+                                )}
                               </>
                             )}
                           </Box>
@@ -1002,12 +1175,12 @@ const PcfRequestPage: React.FC = () => {
                         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                           <Box sx={{ px: 2, pb: 2, pt: 1, borderTop: '1px solid rgba(255,255,255,0.05)', background: alpha(PCF_PRIMARY, 0.03) }}>
                             <Typography variant="subtitle2" sx={{ color: PCF_PRIMARY, mb: 1.5, fontWeight: 600 }}>
-                              PCF Details
+                              {t('precalculation.pcfDetails')}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 4 }}>
                               <Box>
                                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                  Requested At
+                                  {t('precalculation.requestedAt')}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: '#fff' }}>
                                   {subpart.requestedAt ? new Date(subpart.requestedAt).toLocaleString() : '—'}
@@ -1015,7 +1188,7 @@ const PcfRequestPage: React.FC = () => {
                               </Box>
                               <Box>
                                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                  Delivered At
+                                  {t('precalculation.deliveredAt')}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: '#fff' }}>
                                   {subpart.deliveredAt ? new Date(subpart.deliveredAt).toLocaleString() : '—'}
@@ -1023,7 +1196,7 @@ const PcfRequestPage: React.FC = () => {
                               </Box>
                               <Box>
                                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                  Carbon Footprint
+                                  {t('precalculation.carbonFootprint')}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600 }}>
                                   {subpart.pcfValue} {subpart.pcfUnit}
@@ -1079,7 +1252,7 @@ const PcfRequestPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <CircularProgress size={20} sx={{ color: PCF_PRIMARY }} />
                         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                          Creating subpart relation...
+                          {t('precalculation.creatingSubpart')}
                         </Typography>
                       </Box>
                     </Card>
@@ -1154,7 +1327,7 @@ const PcfRequestPage: React.FC = () => {
                           transition: 'color 0.2s ease'
                         }}
                       >
-                        Add Subpart Relation
+                        {t('precalculation.addSubpartGhost')}
                       </Typography>
                     </Box>
                   </Box>
@@ -1186,11 +1359,11 @@ const PcfRequestPage: React.FC = () => {
     return (
       <CatalogPartSearch
         icon={<CalculateIcon sx={{ fontSize: 36, color: '#fff' }} />}
-        title="PCF Precalculation"
-        subtitle="Calculate Product Carbon Footprint from subpart PCF data collected from your suppliers"
+        title={t('precalculation.title')}
+        subtitle={t('precalculation.searchSubtitle')}
         onPartSelect={handlePartSelect}
-        searchPlaceholder="Enter Manufacturer Part ID..."
-        searchButtonText="Calculate PCF"
+        searchPlaceholder={t('precalculation.searchPlaceholder')}
+        searchButtonText={t('precalculation.searchButton')}
       />
     );
   };
