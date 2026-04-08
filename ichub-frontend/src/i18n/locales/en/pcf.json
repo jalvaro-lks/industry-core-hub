@@ -59,8 +59,6 @@
     "noSubpartsAdded": "No Subparts Added",
     "addSubpartsHint": "Add subpart relations to request PCF data",
     "addSubpart": "Add Subpart",
-    "sending": "Sending...",
-    "awaitingResponse": "Awaiting response...",
     "requestPcf": "Request PCF",
     "retryRequest": "Retry Request",
     "downloadPcf": "Download PCF",
@@ -69,7 +67,18 @@
     "deliveredAt": "Delivered At",
     "carbonFootprint": "Carbon Footprint",
     "creatingSubpart": "Creating subpart relation...",
-    "addSubpartGhost": "Add Subpart Relation"
+    "addSubpartGhost": "Add Subpart Relation",
+    "subpartTooltip": {
+      "sending": "Sending PCF request to supplier...",
+      "polling": "Awaiting response from supplier...",
+      "pending": "PCF request pending — use the send button to request PCF data from this supplier.",
+      "deliveredWithValue": "PCF delivered: {{value}} {{unit}} — click to expand details.",
+      "deliveredNoValue": "PCF data received from supplier — click to expand details.",
+      "rejectedWithReason": "Request rejected by supplier: {{reason}}",
+      "rejectedNoReason": "Request was rejected by the supplier.",
+      "errorWithMessage": "Request failed: {{error}}",
+      "errorNoMessage": "An error occurred while processing the PCF request — use the retry button."
+    }
   },
   "addSubpartDialog": {
     "title": "Add Subpart Relation",

@@ -59,8 +59,6 @@
     "noSubpartsAdded": "未添加子零件",
     "addSubpartsHint": "添加子零件关系以请求PCF数据",
     "addSubpart": "添加子零件",
-    "sending": "发送中...",
-    "awaitingResponse": "等待响应...",
     "requestPcf": "请求PCF",
     "retryRequest": "重试请求",
     "downloadPcf": "下载PCF",
@@ -69,7 +67,18 @@
     "deliveredAt": "交付时间",
     "carbonFootprint": "碳足迹",
     "creatingSubpart": "正在创建子零件关系...",
-    "addSubpartGhost": "添加子零件关系"
+    "addSubpartGhost": "添加子零件关系",
+    "subpartTooltip": {
+      "sending": "正在向供应商发送PCF请求...",
+      "polling": "等待供应商响应...",
+      "pending": "PCF请求待处理 — 使用发送按钮从该供应商请求PCF数据。",
+      "deliveredWithValue": "PCF已交付：{{value}} {{unit}} — 单击展开详情。",
+      "deliveredNoValue": "已从供应商收到PCF数据 — 单击展开详情。",
+      "rejectedWithReason": "供应商拒绝了请求：{{reason}}",
+      "rejectedNoReason": "该请求已被供应商拒绝。",
+      "errorWithMessage": "请求失败：{{error}}",
+      "errorNoMessage": "处理PCF请求时出现错误 — 使用重试按钮。"
+    }
   },
   "addSubpartDialog": {
     "title": "添加子零件关系",

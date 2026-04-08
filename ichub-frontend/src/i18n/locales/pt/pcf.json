@@ -59,8 +59,6 @@
     "noSubpartsAdded": "Nenhum Subcomponente Adicionado",
     "addSubpartsHint": "Adicione relações de subcomponentes para solicitar dados PCF",
     "addSubpart": "Adicionar Subcomponente",
-    "sending": "Enviando...",
-    "awaitingResponse": "Aguardando resposta...",
     "requestPcf": "Solicitar PCF",
     "retryRequest": "Tentar Novamente",
     "downloadPcf": "Baixar PCF",
@@ -69,7 +67,18 @@
     "deliveredAt": "Entregue em",
     "carbonFootprint": "Pegada de Carbono",
     "creatingSubpart": "Criando relação de subcomponente...",
-    "addSubpartGhost": "Adicionar Relação de Subcomponente"
+    "addSubpartGhost": "Adicionar Relação de Subcomponente",
+    "subpartTooltip": {
+      "sending": "Enviando solicitação de PCF para o fornecedor...",
+      "polling": "Aguardando resposta do fornecedor...",
+      "pending": "Solicitação de PCF pendente — use o botão enviar para solicitar dados PCF deste fornecedor.",
+      "deliveredWithValue": "PCF entregue: {{value}} {{unit}} — clique para expandir detalhes.",
+      "deliveredNoValue": "Dados PCF recebidos do fornecedor — clique para expandir detalhes.",
+      "rejectedWithReason": "Solicitação rejeitada pelo fornecedor: {{reason}}",
+      "rejectedNoReason": "A solicitação foi rejeitada pelo fornecedor.",
+      "errorWithMessage": "Erro na solicitação: {{error}}",
+      "errorNoMessage": "Ocorreu um erro ao processar a solicitação de PCF — use o botão tentar novamente."
+    }
   },
   "addSubpartDialog": {
     "title": "Adicionar Relação de Subcomponente",

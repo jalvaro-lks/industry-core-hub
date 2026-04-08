@@ -59,8 +59,6 @@
     "noSubpartsAdded": "サブパーツ未追加",
     "addSubpartsHint": "サブパーツ関係を追加してPCFデータをリクエスト",
     "addSubpart": "サブパーツを追加",
-    "sending": "送信中...",
-    "awaitingResponse": "応答待ち...",
     "requestPcf": "PCFをリクエスト",
     "retryRequest": "リクエストを再試行",
     "downloadPcf": "PCFをダウンロード",
@@ -69,7 +67,18 @@
     "deliveredAt": "配信日時",
     "carbonFootprint": "カーボンフットプリント",
     "creatingSubpart": "サブパーツ関係を作成中...",
-    "addSubpartGhost": "サブパーツ関係を追加"
+    "addSubpartGhost": "サブパーツ関係を追加",
+    "subpartTooltip": {
+      "sending": "PCFリクエストをサプライヤーに送信中...",
+      "polling": "サプライヤーからの応答を待機中...",
+      "pending": "PCFリクエストは保留中 — 送信ボタンを使用してこのサプライヤーからPCFデータをリクエストしてください。",
+      "deliveredWithValue": "PCF配信済み: {{value}} {{unit}} — クリックして詳細を展開します。",
+      "deliveredNoValue": "サプライヤーからPCFデータを受信しました — クリックして詳細を展開します。",
+      "rejectedWithReason": "サプライヤーがリクエストを拒否しました：{{reason}}",
+      "rejectedNoReason": "リクエストはサプライヤーによって拒否されました。",
+      "errorWithMessage": "リクエスト失敗: {{error}}",
+      "errorNoMessage": "PCFリクエストの処理中にエラーが発生しました — 再試行ボタンを使用してください。"
+    }
   },
   "addSubpartDialog": {
     "title": "サブパーツ関係を追加",

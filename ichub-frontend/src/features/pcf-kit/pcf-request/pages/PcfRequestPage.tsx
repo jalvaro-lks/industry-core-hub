@@ -309,6 +309,37 @@ const PcfRequestPage: React.FC = () => {
     }
   };
 
+  /** Returns a contextual tooltip message for the subpart row based on its current state */
+  const getSubpartRowTooltip = (subpart: SubpartPcfResponse, sendingState?: 'sending' | 'polling'): string => {
+    if (sendingState === 'sending') return t('precalculation.subpartTooltip.sending');
+    if (sendingState === 'polling') return t('precalculation.subpartTooltip.polling');
+    switch (subpart.pcfStatus) {
+      case 'pending':
+        return t('precalculation.subpartTooltip.pending');
+      case 'delivered':
+        return subpart.pcfValue
+          ? t('precalculation.subpartTooltip.deliveredWithValue', {
+              value: subpart.pcfValue,
+              unit: subpart.pcfUnit || 'kg CO₂e'
+            })
+          : t('precalculation.subpartTooltip.deliveredNoValue');
+      case 'rejected':
+        return subpart.rejectReason
+          ? t('precalculation.subpartTooltip.rejectedWithReason', {
+              reason: subpart.rejectReason
+            })
+          : t('precalculation.subpartTooltip.rejectedNoReason');
+      case 'error':
+        return subpart.errorMessage
+          ? t('precalculation.subpartTooltip.errorWithMessage', {
+              error: subpart.errorMessage
+            })
+          : t('precalculation.subpartTooltip.errorNoMessage');
+      default:
+        return '';
+    }
+  };
+
   // Handle request PCF for single subpart
   // Starts polling every 5 s until pcfStatus changes from 'pending' (max 30 iterations)
   const startPollingSubpart = (manufacturerPartId: string, subpartId: string) => {
@@ -1039,6 +1070,12 @@ const PcfRequestPage: React.FC = () => {
                           }
                         }}
                       >
+                        <Tooltip
+                          title={getSubpartRowTooltip(subpart, subpartSendingState.get(subpart.id))}
+                          placement="top"
+                          arrow
+                          enterDelay={500}
+                        >
                         <Box
                           sx={{
                             p: 2,
@@ -1081,21 +1118,9 @@ const PcfRequestPage: React.FC = () => {
                           {/* Status */}
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 150px' }}>
                             <StatusIcon sx={{ fontSize: 18, color: statusInfo.color }} />
-                            <Box>
-                              <Typography variant="body2" sx={{ color: statusInfo.color, fontWeight: 500 }}>
-                                {statusInfo.label}
-                              </Typography>
-                              {subpart.pcfStatus === 'rejected' && subpart.rejectReason && (
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.65rem' }}>
-                                  {subpart.rejectReason}
-                                </Typography>
-                              )}
-                              {subpart.pcfStatus === 'error' && subpart.errorMessage && (
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.65rem' }}>
-                                  {subpart.errorMessage}
-                                </Typography>
-                              )}
-                            </Box>
+                            <Typography variant="body2" sx={{ color: statusInfo.color, fontWeight: 500 }}>
+                              {statusInfo.label}
+                            </Typography>
                           </Box>
 
                           {/* PCF Value */}
@@ -1114,12 +1139,7 @@ const PcfRequestPage: React.FC = () => {
                           {/* Actions */}
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
                             {subpartSendingState.has(subpart.id) ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <CircularProgress size={18} sx={{ color: PCF_PRIMARY }} />
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>
-                                  {subpartSendingState.get(subpart.id) === 'sending' ? t('precalculation.sending') : t('precalculation.awaitingResponse')}
-                                </Typography>
-                              </Box>
+                              <CircularProgress size={18} sx={{ color: PCF_PRIMARY }} />
                             ) : (
                               <>
                                 {/* Request button for pending status */}
@@ -1170,6 +1190,7 @@ const PcfRequestPage: React.FC = () => {
                             )}
                           </Box>
                         </Box>
+                        </Tooltip>
 
                         {/* Expanded Details */}
                         <Collapse in={isExpanded} timeout="auto" unmountOnExit>

@@ -59,8 +59,6 @@
     "noSubpartsAdded": "Keine Unterteile hinzugefügt",
     "addSubpartsHint": "Fügen Sie Unterteil-Beziehungen hinzu, um PCF-Daten anzufordern",
     "addSubpart": "Unterteil hinzufügen",
-    "sending": "Wird gesendet...",
-    "awaitingResponse": "Warte auf Antwort...",
     "requestPcf": "PCF anfordern",
     "retryRequest": "Anfrage wiederholen",
     "downloadPcf": "PCF herunterladen",
@@ -69,7 +67,18 @@
     "deliveredAt": "Geliefert am",
     "carbonFootprint": "CO2-Fußabdruck",
     "creatingSubpart": "Unterteil-Beziehung wird erstellt...",
-    "addSubpartGhost": "Unterteil-Beziehung hinzufügen"
+    "addSubpartGhost": "Unterteil-Beziehung hinzufügen",
+    "subpartTooltip": {
+      "sending": "Sende PCF-Anfrage an Lieferant...",
+      "polling": "Warte auf Antwort vom Lieferanten...",
+      "pending": "PCF-Anfrage ausstehend — verwende den Senden-Button, um PCF-Daten von diesem Lieferanten anzufordern.",
+      "deliveredWithValue": "PCF geliefert: {{value}} {{unit}} — klicke zum Erweitern der Details.",
+      "deliveredNoValue": "PCF-Daten vom Lieferanten erhalten — klicke zum Erweitern der Details.",
+      "rejectedWithReason": "Anfrage von Lieferant abgelehnt: {{reason}}",
+      "rejectedNoReason": "Die Anfrage wurde vom Lieferanten abgelehnt.",
+      "errorWithMessage": "Anfrage fehlgeschlagen: {{error}}",
+      "errorNoMessage": "Bei der Verarbeitung der PCF-Anfrage ist ein Fehler aufgetreten — verwende den Wiederholungsbutton."
+    }
   },
   "addSubpartDialog": {
     "title": "Unterteil-Beziehung hinzufügen",

@@ -317,7 +317,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
                     ) : (
                       filteredResults.map((result) => (
                         <Box
-                          key={result.manufacturerPartId}
+                          key={`${result.manufacturerPartId}-${result.partName}`}
                           onClick={() => handleSelectPart(result)}
                           sx={{
                             p: 2,

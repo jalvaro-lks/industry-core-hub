@@ -159,6 +159,7 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
       onClose={handleClose}
       maxWidth="md"
       fullWidth
+      disableRestoreFocus
       PaperProps={{
         sx: {
           backgroundColor: '#1a1a1a',
@@ -245,29 +246,34 @@ const AddSubpartDialog: React.FC<AddSubpartDialogProps> = ({
                   setSupplierBpn(newInputValue || '');
                   setBpnError('');
                 }}
-                renderOption={(props, option) => (
-                  <Box
-                    component="li"
-                    {...props}
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start !important',
-                      py: '10px !important',
-                      px: '16px !important',
-                      cursor: 'pointer',
-                      '&:hover': { background: `${alpha(PCF_PRIMARY, 0.12)} !important` },
-                      '&[aria-selected="true"]': { background: `${alpha(PCF_PRIMARY, 0.2)} !important` },
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#fff' }}>
-                      {option.name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
-                      {option.bpnl}
-                    </Typography>
-                  </Box>
-                )}
+                renderOption={(props, option) => {
+                  // Destructure key to avoid React warning about spreading key as a prop
+                  const { key, ...optionProps } = props as typeof props & { key: React.Key };
+                  return (
+                    <Box
+                      key={key}
+                      component="li"
+                      {...optionProps}
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start !important',
+                        py: '10px !important',
+                        px: '16px !important',
+                        cursor: 'pointer',
+                        '&:hover': { background: `${alpha(PCF_PRIMARY, 0.12)} !important` },
+                        '&[aria-selected="true"]': { background: `${alpha(PCF_PRIMARY, 0.2)} !important` },
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#fff' }}>
+                        {option.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
+                        {option.bpnl}
+                      </Typography>
+                    </Box>
+                  );
+                }}
                 slotProps={{
                   paper: {
                     sx: {
