@@ -106,7 +106,6 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [allParts, setAllParts] = useState<CatalogPartSearchResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<CatalogPartSearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);

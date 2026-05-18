@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -101,6 +102,22 @@ interface PartSearchBarProps {
    * Default is true
    */
   showHeader?: boolean;
+  /**
+   * Label for the search button (centered mode)
+   */
+  searchButtonLabel?: string;
+  /**
+   * Label for the search button (top mode)
+   */
+  searchButtonLabelCompact?: string;
+  /**
+   * Helper text displayed below search in centered mode
+   */
+  helperText?: string;
+  /**
+   * Tooltip text for back button
+   */
+  backButtonTooltip?: string;
 }
 
 export const PartSearchBar = ({
@@ -116,9 +133,20 @@ export const PartSearchBar = ({
   currentPartId,
   isSearchDisabled = false,
   showHeader = true,
+  searchButtonLabel,
+  searchButtonLabelCompact,
+  helperText,
+  backButtonTooltip,
 }: PartSearchBarProps) => {
+  const { t } = useTranslation('pcf');
   const [isFocused, setIsFocused] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  
+  // Use i18n defaults if not provided
+  const finalSearchButtonLabel = searchButtonLabel || t('search.searchButton', { defaultValue: 'Search Part' });
+  const finalSearchButtonLabelCompact = searchButtonLabelCompact || t('search.searchButtonCompact', { defaultValue: 'Search' });
+  const finalHelperText = helperText || t('search.helperText', { defaultValue: 'Enter a part number to get started' });
+  const finalBackButtonTooltip = backButtonTooltip || t('search.backButtonTooltip', { defaultValue: 'Back to search' });
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -304,7 +332,7 @@ export const PartSearchBar = ({
                     },
                   }}
                 >
-                  Search Part
+                  {finalSearchButtonLabel}
                 </Box>
               </Box>
             </Paper>
@@ -318,7 +346,7 @@ export const PartSearchBar = ({
                 textAlign: 'center',
               }}
             >
-              Enter a part number to get started
+              {finalHelperText}
             </Typography>
           </Box>
         </Fade>
@@ -353,7 +381,7 @@ export const PartSearchBar = ({
           >
             {/* Back Button */}
             {onBack && (
-              <Tooltip title="Back to search">
+              <Tooltip title={finalBackButtonTooltip}>
                 <IconButton
                   onClick={onBack}
                   sx={{
@@ -447,7 +475,7 @@ export const PartSearchBar = ({
         >
           {/* Back Button (if no header shown) */}
           {!showHeader && onBack && (
-            <Tooltip title="Back to search">
+            <Tooltip title={finalBackButtonTooltip}>
               <IconButton
                 onClick={onBack}
                 sx={{
@@ -537,7 +565,7 @@ export const PartSearchBar = ({
               },
             }}
           >
-            Search
+            {finalSearchButtonLabelCompact}
           </Box>
         </Box>
       </Box>
