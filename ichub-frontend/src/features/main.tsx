@@ -37,9 +37,6 @@ import {
   Badge,
   Policy,
   PostAdd,
-  BarChart,
-  Co2,
-  Insights,
   Calculate,
   CloudUpload,
   Inbox

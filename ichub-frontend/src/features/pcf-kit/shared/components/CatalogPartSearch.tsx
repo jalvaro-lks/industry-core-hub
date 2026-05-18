@@ -45,7 +45,7 @@ import {
   Category,
   DraftsOutlined
 } from '@mui/icons-material';
-import { fetchCatalogParts, CatalogPart } from '../../../industry-core-kit/catalog-management/api';
+import { fetchCatalogParts } from '../../../industry-core-kit/catalog-management/api';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
