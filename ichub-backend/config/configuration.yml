@@ -20,16 +20,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
  
-hostname: "https://hackathon2-ichub-backend.esauto-x.com/v1"
+hostname: "http://localhost:9000"
  
 authorization:
-  enabled: false
+  enabled: true
   api_key:
     key: "X-Api-Key"
     value: <<example>>
   keycloak:
-    enabled: false
-    auth_url: "https://ichub-keycloak.tx.test/auth/"
+    enabled: true
+    auth_url: "http://localhost:8080"
     realm: "ICHub"
     client_id: "industry-core-hub-api"
     client_secret: "ichub-client-secret-2024"
@@ -191,7 +191,7 @@ cors:
     - "http://127.0.0.1:5173"     # Alternative localhost notation
     - "http://127.0.0.1:3000"
     - "http://127.0.0.1:8080"
-    - "https://ichub-frontend.tx.test"  # Deployed frontend
+    - "http://localhost:4173"  # Deployed frontend
   allow_credentials: true
   allow_methods:
     - "GET"
@@ -217,14 +217,14 @@ server:
 consumer:
   discovery:
     discovery_finder:
-      url: "https://semantics.esauto-x.com/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
+      url: "https://<discovery-finder-url>/discoveryfinder/api/v1.0/administration/connectors/discovery/search"
     connector_discovery:
       key: "bpn"
     oauth:
-      url: "https://centralidp.esauto-x.com/auth/"
-      realm: "CX-Central"
-      client_id: "sa4"
-      client_secret: "4iqIcPYNNdwNLNnXlii54V1PI11B5ND8"
+      url: "https://<central-idp-url>/auth/"
+      realm: "<realm>"
+      client_id: "<client-id>"
+      client_secret: "<client-secret>"
     digitalTwinRegistry:
       dct_type_key: "dct:type"
       dct_type_filter:
@@ -235,9 +235,9 @@ consumer:
     dataspace:
       version: "saturn"
     controlplane:
-      hostname: "https://hackathon2-connector-controlplane.esauto-x.com"
+      hostname: "https://<edc-consumer-control-hostname>"
       apiKeyHeader: "X-Api-Key"
-      apiKey: "HACKATHON2"
+      apiKey: "<consumer-edc-api-key>"
       managementPath: "/management"
       protocolPath: "/api/v1/dsp"
       catalogPath: "/catalog"
@@ -247,16 +247,16 @@ provider:
     dataspace:
       version: "saturn"
     controlplane:
-      hostname: "https://hackathon2-connector-controlplane.esauto-x.com"
+      hostname: "https://<edc-provider-control-hostname>"
       apiKeyHeader: "X-Api-Key"
-      apiKey: "HACKATHON2"
+      apiKey: "<provider-edc-api-key>"
       managementPath: "/management"
       protocolPath: "/api/v1/dsp"
     dataplane:
-      hostname: "https://hackathon2-connector-dataplane.esauto-x.com"
+      hostname: "https://<edc-provider-dataplane-hostname>"
       publicPath: "/api/public"
   digitalTwinRegistry:
-    hostname: "https://hackathon2-connector-dtr.esauto-x.com"
+    hostname: "https://<dtr-hostname>"
     apiPath: "/api/v3"
     uri: ""
     asset_config:
@@ -344,24 +344,24 @@ provider:
   # -- Submodel Dispatcher configuration
   submodel_dispatcher:
     # -- Storage mode: "filesystem" (local storage) or "http" (external service)
-    mode: "http"
+    mode: "filesystem"
     # -- Local filesystem path for submodels (used when mode=filesystem)
     path: "./data/submodels"
     apiPath: "/submodel-dispatcher"
     # -- External HTTP submodel service configuration (used when mode=http)
     http:
       # -- Base URL of the external ICHub-compatible submodel service
-      base_url: "https://hackathon2-ichub-backend.esauto-x.com"
+      base_url: "https://<external-submodel-service-url>"
       # -- Optional API path prefix
       api_path: "/v1/submodel-dispatcher"
       # -- Authentication configuration
       auth:
         # -- Enable authentication
-        enabled: true
+        enabled: false
         # -- Authentication type: "bearer" or "apikey"
         type: "apikey"
         # -- Authentication token/key (can use $KUBE_ENV_VAR syntax for secrets)
-        token: "HACKATHON2-HACKATHON2-HACKATHON2"
+        token: ""
         # -- Header name for API key (required when type="apikey")
         key_name: "X-Api-Key"
       # -- Request timeout in seconds
