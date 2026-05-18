@@ -22,6 +22,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useEffect, ReactNode } from 'react';
 import { kits } from '@/features/main';
+import { useTranslatedKits } from '@/hooks/useTranslatedKits';
 import { FeatureConfig } from '@/types/routing';
 
 interface FeatureState {
@@ -39,6 +40,9 @@ const FeatureContext = createContext<FeatureContextType | undefined>(undefined);
 const FEATURE_STORAGE_KEY = 'ichub_feature_states';
 
 export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Use translated kits for display
+  const translatedKits = useTranslatedKits();
+  
   // Initialize feature states from localStorage or kits configuration
   const [featureStates, setFeatureStates] = useState<FeatureState>(() => {
     // Get default states from kits configuration
@@ -71,7 +75,7 @@ export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const toggleFeature = (kitId: string, featureId: string, enabled: boolean) => {
     // Find the feature to check if it's a default feature
-    const kit = kits.find(k => k.id === kitId);
+    const kit = translatedKits.find(k => k.id === kitId);
     const feature = kit?.features.find(f => f.id === featureId);
     
     // Don't allow toggling default features
@@ -86,7 +90,7 @@ export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const enabledFeatures = useMemo(() => {
-    const features = kits
+    const features = translatedKits
       .flatMap(kit => kit.features)
       .filter(feature => featureStates[feature.id] && feature.module)
       .map(feature => ({
@@ -96,7 +100,7 @@ export const FeatureProvider: React.FC<{ children: ReactNode }> = ({ children })
       }));
     
     return features;
-  }, [featureStates]);
+  }, [featureStates, translatedKits]);
 
   return (
     <FeatureContext.Provider value={{ featureStates, toggleFeature, enabledFeatures }}>

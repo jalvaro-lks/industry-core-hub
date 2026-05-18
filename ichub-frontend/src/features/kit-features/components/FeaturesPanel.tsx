@@ -21,6 +21,7 @@
 ********************************************************************************/
 
 import React, { useState, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   Box, 
   Typography, 
@@ -39,8 +40,9 @@ import {
   ExpandMore,
   ExpandLess
 } from '@mui/icons-material';
-import { kits } from '@/features/main';
+import { useTranslatedKits } from '@/hooks/useTranslatedKits';
 import { useFeatures } from '@/contexts/FeatureContext';
+import { useTranslation } from 'react-i18next';
 
 interface FeaturesPanelProps {
   isOpen: boolean;
@@ -51,6 +53,9 @@ interface FeaturesPanelProps {
 const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatureToggle }) => {
   const [expandedKits, setExpandedKits] = useState<string[]>([]);
   const { featureStates } = useFeatures();
+  const kits = useTranslatedKits();
+  const { t } = useTranslation('kits');
+  const { t: tCommon } = useTranslation('common');
 
   // Filter kits to show only those that have non-default features or are coming-soon
   const availableKits = useMemo(() => 
@@ -61,7 +66,7 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
       // Show kits that have at least one non-default feature
       return kit.features.some(feature => !feature.default);
     }),
-    []
+    [kits]
   );
 
   const handleKitToggle = (kitId: string) => {
@@ -91,14 +96,30 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
 
   if (!isOpen) return null;
 
-  return (
-    <Box
+  return ReactDOM.createPortal(
+    <>
+      {/* Transparent backdrop — catches clicks outside to close the panel */}
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1000000,
+          backgroundColor: 'transparent'
+        }}
+        onClick={onClose}
+      />
+      <Box
       sx={{
         position: 'fixed',
         left: '72px', // Position next to the fixed-width sidebar
         top: '50%',
         transform: 'translateY(-50%)',
         width: '320px',
+        maxHeight: 'calc(100vh - 80px)',
+        overflowY: 'auto',
         backgroundColor: 'rgba(0, 42, 126, 0.95)',
         backdropFilter: 'blur(10px)',
         borderRadius: '12px',
@@ -128,7 +149,7 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
             fontSize: '1.1rem'
           }}
         >
-          Available Features
+          {t('featuresPanel.title')}
         </Typography>
         <IconButton
           onClick={onClose}
@@ -195,7 +216,7 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
                         {kit.name}
                       </Typography>
                       <Chip
-                        label={kit.status === 'available' ? 'Available' : kit.status === 'coming-soon' ? 'Coming Soon' : 'Beta'}
+                        label={kit.status === 'available' ? tCommon('status.available') : kit.status === 'coming-soon' ? tCommon('status.comingSoon') : tCommon('status.beta')}
                         size="small"
                         sx={{
                           height: isComingSoon ? '16px' : '18px',
@@ -294,7 +315,7 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
                               </Typography>
                               {isDefaultFeature && (
                                 <Chip
-                                  label="Default"
+                                  label={tCommon('labels.default')}
                                   size="small"
                                   sx={{
                                     height: '16px',
@@ -371,7 +392,7 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
             textAlign: 'center'
           }}
         >
-          Expand KITs to enable/disable features
+          {t('featuresPanel.footer')}
         </Typography>
       </Box>
 
@@ -390,6 +411,8 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
         `}
       </style>
     </Box>
+    </>,
+    document.body
   );
 };
 

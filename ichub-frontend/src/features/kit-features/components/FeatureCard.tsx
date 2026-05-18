@@ -23,6 +23,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -34,7 +35,6 @@ import {
   Button
 } from '@mui/material';
 import { Lock, Visibility } from '@mui/icons-material';
-import { useFeatures } from '@/contexts/FeatureContext';
 
 interface Feature {
   id: string;
@@ -53,6 +53,8 @@ interface FeatureCardProps {
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation('kits');
+  const { t: tCommon } = useTranslation('common');
 
   const handleGoToView = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -77,22 +79,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
           backgroundColor: 'rgba(10, 10, 10, 0.5)',
           transform: 'translateY(-4px)',
           boxShadow: feature.enabled ? '0 8px 24px rgba(66, 165, 245, 0.3)' : '0 8px 24px rgba(128, 128, 128, 0.2)',
-          borderColor: feature.enabled ? 'rgba(66, 165, 245, 0.7)' : 'rgba(255, 255, 255, 0.25)',
-          '& .icon-glow::before': feature.enabled ? {
-            content: '""',
-            position: 'absolute',
-            inset: '-200px',
-            background: 'radial-gradient(circle, rgba(66, 165, 245, 0.25) 0%, rgba(66, 165, 245, 0.15) 20%, rgba(66, 165, 245, 0.05) 35%, transparent 45%)',
-            zIndex: -1,
-            pointerEvents: 'none'
-          } : {
-            content: '""',
-            position: 'absolute',
-            inset: '-200px',
-            background: 'radial-gradient(circle, rgba(128, 128, 128, 0.15) 0%, rgba(128, 128, 128, 0.08) 20%, rgba(128, 128, 128, 0.03) 35%, transparent 45%)',
-            zIndex: -1,
-            pointerEvents: 'none'
-          }
+          borderColor: feature.enabled ? 'rgba(66, 165, 245, 0.7)' : 'rgba(255, 255, 255, 0.25)'
         }
       }}
     >
@@ -190,7 +177,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
             zIndex: 1}}>
           {feature.default && (
             <Chip
-              label="Default"
+              label={tCommon('labels.default')}
               size="small"
               sx={{
                 height: 24,
@@ -202,7 +189,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
             />
           )}
           <Tooltip 
-            title={feature.default ? "Default features cannot be disabled" : ""} 
+            title={feature.default ? t('featureCard.defaultTooltip') : ""} 
             arrow
             disableHoverListener={!feature.default}
           >
@@ -230,7 +217,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
             </Box>
           </Tooltip>
           {feature.default && (
-            <Tooltip title="Default features cannot be disabled" arrow>
+            <Tooltip title={t('featureCard.defaultTooltip')} arrow>
               <Box sx={{ display: 'flex', alignItems: 'center', color: '#42a5f5' }}>
                 <Lock sx={{ fontSize: '1.2rem' }} />
               </Box>
@@ -260,7 +247,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, onToggle }) => {
               }
             }}
           >
-            View
+            {tCommon('actions.view')}
           </Button>
         )}
       </CardContent>

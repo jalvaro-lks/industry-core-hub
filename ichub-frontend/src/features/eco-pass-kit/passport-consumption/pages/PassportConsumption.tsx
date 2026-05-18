@@ -22,6 +22,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -44,6 +45,7 @@ import {
   Storage
 } from '@mui/icons-material';
 import { PassportTypeRegistry } from '../passport-types';
+import { kitThemes } from '@/theme/colors';
 
 interface LoadingStep {
   id: string;
@@ -61,6 +63,7 @@ const LOADING_STEPS: LoadingStep[] = [
 ];
 
 const PassportConsumption: React.FC = () => {
+  const { t } = useTranslation(['passportConsumption', 'common']);
   const [passportId, setPassportId] = useState('');
   const [showVisualization, setShowVisualization] = useState(false);
   const [passportData, setPassportData] = useState<Record<string, unknown> | null>(null);
@@ -81,12 +84,12 @@ const PassportConsumption: React.FC = () => {
   const handleSearch = async () => {
     const trimmedId = passportId.trim();
     if (!trimmedId) {
-      setValidationError('Please enter a Discovery ID');
+      setValidationError(t('page.validationRequired'));
       return;
     }
     
     if (!isValidDiscoveryId(trimmedId)) {
-      setValidationError('Invalid format. Expected: CX:<manufacturerPartId>:<partInstanceId>');
+      setValidationError(t('page.validationFormat'));
       return;
     }
     
@@ -114,7 +117,7 @@ const PassportConsumption: React.FC = () => {
     // Get generic passport mock data
     const genericConfig = PassportTypeRegistry.get('generic');
     if (!genericConfig || !genericConfig.mockData) {
-      throw new Error('No mock data available');
+      throw new Error(t('errors.noMockData'));
     }
     
     return {
@@ -166,14 +169,14 @@ const PassportConsumption: React.FC = () => {
           setIsLoading(false);
           setShowVisualization(true);
         } catch (error) {
-          setLoadingError(error instanceof Error ? error.message : 'Failed to load passport');
+          setLoadingError(error instanceof Error ? error.message : t('errors.loadFailed'));
           setIsLoading(false);
         }
       };
       
       loadPassport();
     }
-  }, [params?.id]);
+  }, [params?.id, t]);
 
   // Show visualization if data is loaded
   if (showVisualization && passportData) {
@@ -184,10 +187,10 @@ const PassportConsumption: React.FC = () => {
       return (
         <Box sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="error">
-            Unable to determine passport type. Please check the data format.
+            {t('visualization.unableToDetermineType')}
           </Typography>
           <Button onClick={handleBack} sx={{ mt: 2 }}>
-            Go Back
+            {t('common:actions.goBack')}
           </Button>
         </Box>
       );
@@ -232,7 +235,7 @@ const PassportConsumption: React.FC = () => {
             {/* Header */}
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <Typography variant="h5" sx={{ color: '#fff', fontWeight: 600, mb: 1 }}>
-                Loading Passport
+                {t('loading.title')}
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'monospace' }}>
                 {passportId}
@@ -272,19 +275,19 @@ const PassportConsumption: React.FC = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             background: isCompleted
-                              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                              ? `linear-gradient(135deg, ${kitThemes.ecoPass.gradientStart} 0%, ${kitThemes.ecoPass.gradientEnd} 100%)`
                               : isActive
-                              ? 'rgba(102, 126, 234, 0.2)'
+                              ? 'rgba(16, 185, 129, 0.2)'
                               : 'rgba(255, 255, 255, 0.05)',
-                            border: isActive ? '2px solid #667eea' : 'none',
+                            border: isActive ? `2px solid ${kitThemes.ecoPass.gradientStart}` : 'none',
                             transition: 'all 0.3s ease',
                             position: 'relative',
                             zIndex: 2,
                             ...(isActive && {
                               animation: 'pulse 2s ease-in-out infinite',
                               '@keyframes pulse': {
-                                '0%, 100%': { boxShadow: '0 0 0 0 rgba(102, 126, 234, 0.4)' },
-                                '50%': { boxShadow: '0 0 0 8px rgba(102, 126, 234, 0)' }
+                                '0%, 100%': { boxShadow: '0 0 0 0 rgba(16, 185, 129, 0.4)' },
+                                '50%': { boxShadow: '0 0 0 8px rgba(16, 185, 129, 0)' }
                               }
                             })
                           }}
@@ -292,7 +295,7 @@ const PassportConsumption: React.FC = () => {
                           {isCompleted ? (
                             <CheckCircle sx={{ fontSize: { xs: 20, sm: 24 }, color: '#fff' }} />
                           ) : isActive ? (
-                            <Icon sx={{ fontSize: { xs: 20, sm: 24 }, color: '#667eea' }} />
+                            <Icon sx={{ fontSize: { xs: 20, sm: 24 }, color: kitThemes.ecoPass.gradientStart }} />
                           ) : (
                             <RadioButtonUnchecked sx={{ fontSize: { xs: 20, sm: 24 }, color: 'rgba(255, 255, 255, 0.3)' }} />
                           )}
@@ -323,7 +326,7 @@ const PassportConsumption: React.FC = () => {
                             flex: 1,
                             mx: { xs: 0.5, sm: 1 },
                             background: isCompleted
-                              ? 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
+                              ? `linear-gradient(90deg, ${kitThemes.ecoPass.gradientStart} 0%, ${kitThemes.ecoPass.gradientEnd} 100%)`
                               : 'rgba(255, 255, 255, 0.1)',
                             transition: 'all 0.5s ease',
                             position: 'relative',
@@ -343,8 +346,8 @@ const PassportConsumption: React.FC = () => {
                     textAlign: 'center',
                     p: 2,
                     borderRadius: '10px',
-                    background: 'rgba(102, 126, 234, 0.1)',
-                    border: '1px solid rgba(102, 126, 234, 0.2)'
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.2)'
                   }}
                 >
                   <Typography
@@ -389,7 +392,7 @@ const PassportConsumption: React.FC = () => {
                   }
                 }}
               >
-                Cancel
+                {t('common:actions.cancel')}
               </Button>
             </Box>
 
@@ -434,13 +437,13 @@ const PassportConsumption: React.FC = () => {
               width: { xs: 48, sm: 56, md: 64 },
               height: { xs: 48, sm: 56, md: 64 },
               borderRadius: { xs: '12px', md: '16px' },
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: `linear-gradient(135deg, ${kitThemes.ecoPass.gradientStart} 0%, ${kitThemes.ecoPass.gradientEnd} 100%)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto',
               mb: { xs: 1.5, md: 2 },
-              boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)'
+              boxShadow: `0 8px 24px ${kitThemes.ecoPass.shadowColor}`
             }}
           >
             <QrCodeScanner sx={{ fontSize: { xs: 28, sm: 32, md: 36 }, color: '#fff' }} />
@@ -455,7 +458,7 @@ const PassportConsumption: React.FC = () => {
               fontSize: { xs: '1.75rem', sm: '2.25rem', md: '3rem' }
             }}
           >
-            Digital Product Passport
+            {t('page.title')}
           </Typography>
           <Typography 
             variant="body1" 
@@ -465,7 +468,7 @@ const PassportConsumption: React.FC = () => {
               px: { xs: 2, sm: 0 }
             }}
           >
-            Retrieve and visualize product passports from the dataspace
+            {t('page.subtitle')}
           </Typography>
         </Box>
 
@@ -489,7 +492,7 @@ const PassportConsumption: React.FC = () => {
             <Box sx={{ position: 'relative', mb: 2 }}>
               <TextField
                 fullWidth
-                placeholder="CX:XYZ78901:BAT-XYZ789"
+                placeholder={t('page.searchPlaceholder')}
                 value={passportId}
                 onChange={(e) => {
                   setPassportId(e.target.value);
@@ -532,12 +535,12 @@ const PassportConsumption: React.FC = () => {
                       borderWidth: '2px'
                     },
                     '&:hover fieldset': {
-                      borderColor: validationError ? 'rgba(244, 67, 54, 0.7)' : 'rgba(102, 126, 234, 0.5)'
+                      borderColor: validationError ? 'rgba(244, 67, 54, 0.7)' : 'rgba(16, 185, 129, 0.5)'
                     },
                     '&.Mui-focused': {
                       backgroundColor: 'rgba(255, 255, 255, 0.08)',
                       '& fieldset': {
-                        borderColor: validationError ? '#f44336' : '#667eea',
+                        borderColor: validationError ? '#f44336' : kitThemes.ecoPass.gradientStart,
                         borderWidth: '2px'
                       }
                     }
@@ -567,18 +570,18 @@ const PassportConsumption: React.FC = () => {
                 onClick={handleSearch}
                 disabled={!passportId.trim()}
                 sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: `linear-gradient(135deg, ${kitThemes.ecoPass.gradientStart} 0%, ${kitThemes.ecoPass.gradientEnd} 100%)`,
                   color: '#fff',
                   py: { xs: 1.5, sm: 1.8 },
                   borderRadius: { xs: '10px', md: '12px' },
                   fontSize: { xs: '14px', sm: '15px' },
                   fontWeight: 600,
                   textTransform: 'none',
-                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+                  boxShadow: `0 4px 16px ${kitThemes.ecoPass.shadowColor}`,
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
-                    boxShadow: '0 6px 24px rgba(102, 126, 234, 0.4)',
+                    filter: 'brightness(1.1)',
+                    boxShadow: `0 6px 24px ${kitThemes.ecoPass.shadowColor}`,
                     transform: 'translateY(-1px)'
                   },
                   '&:disabled': {
@@ -587,7 +590,7 @@ const PassportConsumption: React.FC = () => {
                   }
                 }}
               >
-                Search
+                {t('common:actions.search')}
               </Button>
               <Button
                 variant="outlined"
@@ -603,8 +606,8 @@ const PassportConsumption: React.FC = () => {
                   color: '#fff',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    borderColor: '#667eea',
-                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderColor: kitThemes.ecoPass.gradientStart,
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: '2px'
                   },
                   '& .MuiSvgIcon-root': {
@@ -648,13 +651,13 @@ const PassportConsumption: React.FC = () => {
                   }}
                 />
                 <Box component="span">
-                  Want to find out more? Take a look at all our{' '}
+                  {t('page.learnMore')}{' '}
                   <Box
                     component="a"
                     href="/kit-features/eco-pass"
-                    sx={{ color: '#667eea', cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
+                    sx={{ color: kitThemes.ecoPass.gradientStart, cursor: 'pointer', fontWeight: 500, textDecoration: 'none' }}
                   >
-                    Eco Pass KIT Features
+                    {t('page.ecoPassFeatures')}
                   </Box>
                 </Box>
               </Typography>

@@ -38,14 +38,13 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import ViewListIcon from '@mui/icons-material/ViewList';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import IosShare from '@mui/icons-material/IosShare';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SerializedPart } from '@/features/industry-core-kit/serialized-parts/types';
 import { SerializedPartTwinRead } from '@/features/industry-core-kit/serialized-parts/types/twin-types';
 import { createSerializedPartTwin, shareSerializedPartTwin, unshareSerializedPartTwin, deleteSerializedPart, fetchAllSerializedPartTwins } from '@/features/industry-core-kit/serialized-parts/api';
@@ -64,14 +63,17 @@ interface SerializedPartsTableProps {
   parts: SerializedPart[];
   onView?: (part: SerializedPart) => void;
   onRefresh?: () => void;
+  isAddDialogOpen?: boolean;
+  onAddDialogClose?: () => void;
 }
 
-const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) => {
+const SerializedPartsTable = ({ parts, onRefresh, isAddDialogOpen, onAddDialogClose }: SerializedPartsTableProps) => {
+  const { t } = useTranslation(['serializedParts', 'common']);
   const [rows, setRows] = useState<SerializedPartWithStatus[]>([]);
   const [allTwins, setAllTwins] = useState<SerializedPartTwinRead[]>([]);
   const [hasFetchedTwins, setHasFetchedTwins] = useState<boolean>(false); // Track if we've attempted to fetch twins
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true); // For initial data load
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false); // For refresh operations
+  const [_isRefreshing, setIsRefreshing] = useState<boolean>(false); // For refresh operations
   const [twinCreatingId, setTwinCreatingId] = useState<number | null>(null);
   const [twinSharingId, setTwinSharingId] = useState<number | null>(null);
   const [twinUnsharingId, setTwinUnsharingId] = useState<number | null>(null);
@@ -108,11 +110,6 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   // Close delete confirmation dialog
   const closeDeleteConfirmation = () => {
     setDeleteConfirmDialog({ open: false, row: null });
-  };
-
-  // Handle opening the Add Serialized Part dialog
-  const handleAddClick = () => {
-    setAddDialogOpen(true);
   };
 
   // Handle closing the Add Serialized Part dialog
@@ -169,11 +166,13 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       return { status: StatusVariants.draft };
     }
 
-    if (twin.shares && twin.shares.length > 0) {
-      return { status: StatusVariants.shared, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
-    }
-
-    return { status: StatusVariants.registered, globalId: twin.globalId?.toString(), dtrAasId: twin.dtrAasId?.toString() };
+    // If twin has shares, it's shared; otherwise it's only registered
+    const hasShares = twin.shares && twin.shares.length > 0;
+    return {
+      status: hasShares ? StatusVariants.shared : StatusVariants.registered,
+      globalId: twin.globalId?.toString(),
+      dtrAasId: twin.dtrAasId?.toString(),
+    };
   };
 
   useEffect(() => {
@@ -263,14 +262,14 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   const handleCreateTwin = async (row: SerializedPartWithStatus) => {
     setTwinCreatingId(row.id);
     try {
+      // Register the twin in the DTR
       await createSerializedPartTwin({
         manufacturerId: row.manufacturerId,
         manufacturerPartId: row.manufacturerPartId,
         partInstanceId: row.partInstanceId,
       });
       
-      // Refresh twin data after successful creation - re-fetch all twins to get the new one
-      
+      // Refresh twin data after successful registration
       const updatedTwins = await fetchTwinsOnce();
       const relevantTwins = getRelevantTwins(updatedTwins);
       
@@ -289,7 +288,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       setRows(rowsWithStatus);
       
       // Show success message
-      showSuccess('Twin registered successfully!');
+      showSuccess(t('table.messages.twinRegistered'));
     } catch (error) {
       console.error("Error creating twin:", error);
       // After error (e.g., 404), refetch and decide success vs error based on updated status
@@ -318,8 +317,8 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
             r.manufacturerPartId === row.manufacturerPartId &&
             r.partInstanceId === row.partInstanceId
         );
-        if (updatedRow && updatedRow.twinStatus === StatusVariants.registered) {
-          showSuccess('Twin registered successfully!');
+        if (updatedRow && (updatedRow.twinStatus === StatusVariants.shared || updatedRow.twinStatus === StatusVariants.registered)) {
+          showSuccess(t('table.messages.twinRegistered'));
           return; // suppress original error
         }
       } catch (recheckError) {
@@ -327,15 +326,15 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       }
 
       // Extract meaningful error message if status remains draft
-      let errorMessage = 'Failed to register twin. Please try again.';
+      let errorMessage = t('table.messages.registerFailed');
       if (error instanceof Error) {
-        errorMessage = `Registration failed: ${error.message}`;
+        errorMessage = `${t('table.messages.registerFailed')}: ${error.message}`;
       } else if (typeof error === 'object' && error !== null && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
         if (axiosError.response?.data?.message) {
-          errorMessage = `Registration failed: ${axiosError.response.data.message}`;
+          errorMessage = `${t('table.messages.registerFailed')}: ${axiosError.response.data.message}`;
         } else if (axiosError.response?.data?.error) {
-          errorMessage = `Registration failed: ${axiosError.response.data.error}`;
+          errorMessage = `${t('table.messages.registerFailed')}: ${axiosError.response.data.error}`;
         }
       }
       showError(errorMessage);
@@ -375,21 +374,21 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       setRows(rowsWithStatus);
       
       // Show success message
-      showSuccess('Twin shared successfully!');
+      showSuccess(t('table.messages.twinShared'));
     } catch (error) {
       console.error("Error sharing twin:", error);
       
       // Extract meaningful error message
-      let errorMessage = 'Failed to share twin. Please try again.';
+      let errorMessage = t('table.messages.shareFailed');
       
       if (error instanceof Error) {
-        errorMessage = `Sharing failed: ${error.message}`;
+        errorMessage = `${t('table.messages.shareFailed')}: ${error.message}`;
       } else if (typeof error === 'object' && error !== null && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
         if (axiosError.response?.data?.message) {
-          errorMessage = `Sharing failed: ${axiosError.response.data.message}`;
+          errorMessage = `${t('table.messages.shareFailed')}: ${axiosError.response.data.message}`;
         } else if (axiosError.response?.data?.error) {
-          errorMessage = `Sharing failed: ${axiosError.response.data.error}`;
+          errorMessage = `${t('table.messages.shareFailed')}: ${axiosError.response.data.error}`;
         }
       }
       
@@ -446,21 +445,21 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       setRows(rowsWithStatus);
       
       // Show success message
-      showSuccess('Twin unshared successfully!');
+      showSuccess(t('table.messages.twinUnshared'));
     } catch (error) {
       console.error("Error unsharing twin:", error);
       
       // Extract meaningful error message
-      let errorMessage = 'Failed to unshare twin. Please try again.';
+      let errorMessage = t('table.messages.unshareFailed');
       
       if (error instanceof Error) {
-        errorMessage = `Unsharing failed: ${error.message}`;
+        errorMessage = `${t('table.messages.unshareFailed')}: ${error.message}`;
       } else if (typeof error === 'object' && error !== null && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
         if (axiosError.response?.data?.message) {
-          errorMessage = `Unsharing failed: ${axiosError.response.data.message}`;
+          errorMessage = `${t('table.messages.unshareFailed')}: ${axiosError.response.data.message}`;
         } else if (axiosError.response?.data?.error) {
-          errorMessage = `Unsharing failed: ${axiosError.response.data.error}`;
+          errorMessage = `${t('table.messages.unshareFailed')}: ${axiosError.response.data.error}`;
         }
       }
       
@@ -507,7 +506,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       
       
       // Show success message
-      showSuccess('Serialized part deleted successfully!');
+      showSuccess(t('table.messages.partDeleted'));
       
       // Close the confirmation dialog
       closeDeleteConfirmation();
@@ -515,16 +514,16 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       console.error("Error deleting serialized part:", error);
       
       // Extract meaningful error message
-      let errorMessage = 'Failed to delete part. Please try again.';
+      let errorMessage = t('table.messages.deleteFailed');
       
       if (error instanceof Error) {
-        errorMessage = `Deletion failed: ${error.message}`;
+        errorMessage = `${t('table.messages.deleteFailed')}: ${error.message}`;
       } else if (typeof error === 'object' && error !== null && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
         if (axiosError.response?.data?.message) {
-          errorMessage = `Deletion failed: ${axiosError.response.data.message}`;
+          errorMessage = `${t('table.messages.deleteFailed')}: ${axiosError.response.data.message}`;
         } else if (axiosError.response?.data?.error) {
-          errorMessage = `Deletion failed: ${axiosError.response.data.error}`;
+          errorMessage = `${t('table.messages.deleteFailed')}: ${axiosError.response.data.error}`;
         }
       }
       
@@ -557,21 +556,21 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
       }
       
       // Show success message
-      showSuccess('Data refreshed successfully!');
+      showSuccess(t('table.messages.dataRefreshed'));
     } catch (error) {
       console.error('Error refreshing data:', error);
       
       // Extract meaningful error message
-      let errorMessage = 'Failed to refresh data. Please try again.';
+      let errorMessage = t('table.messages.refreshFailed');
       
       if (error instanceof Error) {
-        errorMessage = `Refresh failed: ${error.message}`;
+        errorMessage = `${t('table.messages.refreshFailed')}: ${error.message}`;
       } else if (typeof error === 'object' && error !== null && 'response' in error) {
         const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
         if (axiosError.response?.data?.message) {
-          errorMessage = `Refresh failed: ${axiosError.response.data.message}`;
+          errorMessage = `${t('table.messages.refreshFailed')}: ${axiosError.response.data.message}`;
         } else if (axiosError.response?.data?.error) {
-          errorMessage = `Refresh failed: ${axiosError.response.data.error}`;
+          errorMessage = `${t('table.messages.refreshFailed')}: ${axiosError.response.data.error}`;
         }
       }
       
@@ -603,7 +602,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
   const columns: GridColDef[] = [
     {
       field: 'twinStatus',
-      headerName: 'Status',
+      headerName: t('common:fields.status'),
       width: 140,
       headerAlign: 'center',
       align: 'center',
@@ -617,7 +616,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
     {
       field: 'actions',
-      headerName: 'Actions',
+      headerName: t('common:actions.title'),
       width: 100,
       headerAlign: 'center',
       align: 'center',
@@ -628,7 +627,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
         if (row.twinStatus === StatusVariants.draft) {
           actions.push(
-            <Tooltip title="Register Twin" key="register" arrow>
+            <Tooltip title={t('common:tooltips.registerTwin')} key="register" arrow>
               <IconButton
                 size="small"
                 onClick={() => handleCreateTwin(row)}
@@ -665,7 +664,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
         if (row.twinStatus === StatusVariants.registered) {
           actions.push(
-            <Tooltip title="Share Twin" key="share" arrow>
+            <Tooltip title={t('common:tooltips.shareTwin')} key="share" arrow>
               <IconButton
                 size="small"
                 onClick={() => handleShareTwin(row)}
@@ -697,7 +696,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           
           // Add delete button for registered twins
           actions.push(
-            <Tooltip title="Delete Serialized Part" key="delete" arrow>
+            <Tooltip title={t('table.tooltips.deleteSerializedPart')} key="delete" arrow>
               <IconButton
                 size="small"
                 onClick={() => {
@@ -733,7 +732,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
         if (row.twinStatus === StatusVariants.shared) {
           actions.push(
-            <Tooltip title="Unshare Twin" key="unshare" arrow>
+            <Tooltip title={t('common:tooltips.unshareTwin')} key="unshare" arrow>
               <IconButton
                 size="small"
                 onClick={() => handleUnshareTwin(row)}
@@ -765,7 +764,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           
           // Add delete button for shared twins
           actions.push(
-            <Tooltip title="Delete Serialized Part" key="delete" arrow>
+            <Tooltip title={t('table.tooltips.deleteSerializedPart')} key="delete" arrow>
               <IconButton
                 size="small"
                 onClick={() => {
@@ -808,7 +807,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'partInstanceId',
-      headerName: 'Part Instance ID',
+      headerName: t('common:fields.partInstanceId'),
       width: 270,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -825,7 +824,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'name',
-      headerName: 'Name',
+      headerName: t('common:fields.name'),
       width: 150,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -842,7 +841,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'category',
-      headerName: 'Category',
+      headerName: t('common:fields.category'),
       width: 140,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -859,7 +858,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'customerPartId',
-      headerName: 'Customer Part ID',
+      headerName: t('common:fields.customerPartId'),
       width: 260,
       align: 'left',
       headerAlign: 'center',
@@ -878,7 +877,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'globalId',
-      headerName: 'Global Asset ID',
+      headerName: t('common:fields.globalAssetId'),
       width: 200,
       align: 'left',
       headerAlign: 'left',
@@ -894,16 +893,16 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
               setTimeout(() => {
                 setCopyAnimations(prev => ({ ...prev, [`${params.row.id}-globalId`]: false }));
               }, 600);
-              setSnackbar({ open: true, message: 'Global Asset ID copied!', severity: 'success' });
+              setSnackbar({ open: true, message: t('table.messages.globalAssetIdCopied'), severity: 'success' });
             }).catch(() => {
-              setSnackbar({ open: true, message: 'Failed to copy', severity: 'error' });
+              setSnackbar({ open: true, message: t('table.messages.failedToCopy'), severity: 'error' });
             });
           }
         };
 
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 1 }}>
-            <Tooltip title={displayValue || 'No Global Asset ID'} arrow>
+            <Tooltip title={displayValue || t('common:tooltips.noGlobalAssetId')} arrow>
               <Typography 
                 variant="body2" 
                 sx={{ 
@@ -941,7 +940,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'dtrAasId',
-      headerName: 'AAS ID',
+      headerName: t('common:fields.aasId'),
       width: 200,
       align: 'left',
       headerAlign: 'left',
@@ -957,16 +956,16 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
               setTimeout(() => {
                 setCopyAnimations(prev => ({ ...prev, [`${params.row.id}-dtrAasId`]: false }));
               }, 600);
-              setSnackbar({ open: true, message: 'AAS ID copied!', severity: 'success' });
+              setSnackbar({ open: true, message: t('table.messages.aasIdCopied'), severity: 'success' });
             }).catch(() => {
-              setSnackbar({ open: true, message: 'Failed to copy', severity: 'error' });
+              setSnackbar({ open: true, message: t('table.messages.failedToCopy'), severity: 'error' });
             });
           }
         };
 
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 1 }}>
-            <Tooltip title={displayValue || 'No AAS ID'} arrow>
+            <Tooltip title={displayValue || t('common:tooltips.noAasId')} arrow>
               <Typography 
                 variant="body2" 
                 sx={{ 
@@ -1004,7 +1003,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'businessPartnerName',
-      headerName: 'Business Partner',
+      headerName: t('common:fields.businessPartner'),
       width: 180,
       renderCell: (params) => (        
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -1022,7 +1021,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'businessPartnerBpnl',
-      headerName: 'Business Partner BPNL',
+      headerName: t('table.columns.businessPartnerBpnl'),
       width: 200,
       renderCell: (params) => (        
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -1040,7 +1039,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'manufacturerId',
-      headerName: 'Manufacturer ID',
+      headerName: t('common:fields.manufacturerId'),
       width: 170,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -1057,7 +1056,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'manufacturerPartId',
-      headerName: 'Manufacturer Part ID',
+      headerName: t('common:fields.manufacturerPartId'),
       width: 180,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -1075,7 +1074,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     
     {
       field: 'bpns',
-      headerName: 'BPNS',
+      headerName: t('common:fields.bpns'),
       width: 180,
       align: 'center',
       headerAlign: 'center',
@@ -1095,7 +1094,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
     },
     {
       field: 'van',
-      headerName: 'VAN',
+      headerName: t('common:fields.van'),
       width: 150,
       align: 'center',
       headerAlign: 'center',
@@ -1117,110 +1116,6 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
 
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Modern Header Section */}
-      <Box sx={{ 
-        mb: 3,
-        p: 3,
-        background: 'rgba(35, 35, 38, 0.95)',
-        borderRadius: '16px 16px 0 0',
-        borderLeft: '4px solid #1976d2',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        backdropFilter: 'blur(10px)',
-      }}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          mb: 1
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{
-              width: 40,
-              height: 40,
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
-            }}>
-              <ViewListIcon sx={{ color: 'white', fontSize: 20 }} />
-            </Box>
-            <Box>
-              <Typography
-                variant="h5"
-                sx={{ 
-                  color: 'rgb(248, 249, 250)',
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                Serialized Parts
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{ 
-                  color: 'rgba(248, 249, 250, 0.7)',
-                  mt: 0.5,
-                }}
-              >
-                View and manage serialized part instances ({displayRows.length} total)
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddClick}
-              sx={{ 
-                background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
-                borderRadius: '10px',
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
-                },
-                transition: 'all 0.2s ease-in-out',
-              }}
-            >
-              Add Serialized Part
-            </Button>
-            
-            <Button
-              variant="contained"
-              startIcon={isRefreshing ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <RefreshIcon />}
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              sx={{ 
-                background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
-                borderRadius: '10px',
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 4px 16px rgba(25, 118, 210, 0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
-                },
-                '&:disabled': {
-                  background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
-                  opacity: 0.7,
-                  transform: 'none',
-                },
-                transition: 'all 0.2s ease-in-out',
-              }}
-            >
-              {isRefreshing ? 'Refreshing...' : 'Refresh'}
-            </Button>
-          </Box>
-        </Box>
-      </Box>
-
       {/* Modern Table Container */}
       <Paper 
         sx={{ 
@@ -1417,10 +1312,10 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                     }} 
                   />
                   <Typography variant="h6" sx={{ color: 'rgb(248, 249, 250)', fontWeight: 600 }}>
-                    Loading twins data...
+                    {t('table.loading.title')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(248, 249, 250, 0.6)', textAlign: 'center', maxWidth: 300 }}>
-                    Fetching twin information for serialized parts
+                    {t('table.loading.subtitle')}
                   </Typography>
                 </Box>
               ),
@@ -1447,10 +1342,10 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                     <ViewListIcon sx={{ fontSize: 32, color: 'rgba(25, 118, 210, 0.8)' }} />
                   </Box>
                   <Typography variant="h6" sx={{ color: 'rgb(248, 249, 250)', fontWeight: 600 }}>
-                    No serialized parts found
+                    {t('table.empty.title')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: 'rgba(248, 249, 250, 0.6)', textAlign: 'center', maxWidth: 300 }}>
-                    There are currently no serialized parts to display. Parts will appear here once they are created.
+                    {t('table.empty.subtitle')}
                   </Typography>
                 </Box>
               ),
@@ -1536,7 +1431,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
           fontSize: '1.5rem',
           fontWeight: 600,
         }}>
-          Delete Serialized Part
+          {t('table.deleteDialog.title')}
         </DialogTitle>
         <DialogContent sx={{ pb: 2 }}>
           <DialogContentText id="delete-dialog-description" sx={{ 
@@ -1544,7 +1439,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
             fontSize: '1rem',
             mb: 2
           }}>
-            Are you sure you want to delete this serialized part?
+            {t('table.deleteDialog.confirmation')}
           </DialogContentText>
           {deleteConfirmDialog.row && (
             <Box sx={{ 
@@ -1560,7 +1455,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                 display: 'flex',
                 justifyContent: 'space-between'
               }}>
-                <span style={{ fontWeight: 600 }}>Part Instance ID:</span>
+                <span style={{ fontWeight: 600 }}>{t('common:fields.partInstanceId')}:</span>
                 <span>{deleteConfirmDialog.row.partInstanceId}</span>
               </Typography>
               <Typography variant="body2" sx={{ 
@@ -1568,7 +1463,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
                 display: 'flex',
                 justifyContent: 'space-between'
               }}>
-                <span style={{ fontWeight: 600 }}>Manufacturer ID:</span>
+                <span style={{ fontWeight: 600 }}>{t('common:fields.manufacturerId')}:</span>
                 <span>{deleteConfirmDialog.row.manufacturerId}</span>
               </Typography>
             </Box>
@@ -1583,7 +1478,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
             background: 'rgba(244, 67, 54, 0.1)',
             border: '1px solid rgba(244, 67, 54, 0.2)',
           }}>
-            ⚠️ This action cannot be undone.
+            ⚠️ {t('table.deleteDialog.warning')}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ 
@@ -1608,7 +1503,7 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
               }
             }}
           >
-            CANCEL
+            {t('common:actions.cancel')}
           </Button>
           <Button 
             onClick={() => {
@@ -1636,15 +1531,15 @@ const SerializedPartsTable = ({ parts, onRefresh }: SerializedPartsTableProps) =
               }
             }}
           >
-            {partDeletingId === deleteConfirmDialog.row?.id ? 'DELETING...' : 'DELETE'}
+            {partDeletingId === deleteConfirmDialog.row?.id ? t('common:actions.deleting') : t('common:actions.delete')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Add Serialized Part Dialog */}
       <AddSerializedPartDialog
-        open={addDialogOpen}
-        onClose={handleCloseAddDialog}
+        open={isAddDialogOpen !== undefined ? isAddDialogOpen : addDialogOpen}
+        onClose={onAddDialogClose ?? handleCloseAddDialog}
         onSuccess={handleRefresh}
       />
     </Box>

@@ -22,11 +22,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { PartnerInstance } from "@/features/business-partner-kit/partner-management/types/types";
 import TablePagination from '@mui/material/TablePagination';
-import { Typography, Grid2, Button, Alert } from '@mui/material';
+import { Grid2, Button, Alert, Box } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import PageSectionHeader from '@/components/common/PageSectionHeader';
+import { kitThemes } from '@/theme/colors';
 import { PartnerCard } from "@/features/business-partner-kit/partner-management/components/partners-list/PartnerCard";
 import CreatePartnerDialog from "@/features/business-partner-kit/partner-management/components/general/CreatePartnerDialog";
 import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
@@ -34,6 +38,7 @@ import {ErrorNotFound} from '@/components/general/ErrorNotFound';
 import LoadingSpinner from '@/components/general/LoadingSpinner';
 
 const PartnersList = () => {
+  const { t } = useTranslation(['partnerManagement', 'common']);
   const [partnerList, setPartnerList] = useState<PartnerInstance[]>([]);
   const [editingPartner, setEditingPartner] = useState<PartnerInstance | undefined>(undefined);
   const [initialPartnerList, setInitialPartnerList] = useState<PartnerInstance[]>([]);
@@ -90,7 +95,7 @@ const PartnersList = () => {
       
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+        setTimeout(() => reject(new Error(t('page.requestTimeout'))), 30000);
       });
       
       const data = await Promise.race([
@@ -110,7 +115,7 @@ const PartnersList = () => {
       setError(
         error instanceof Error 
           ? error.message 
-          : 'Failed to load partners. Please check backend connectivity.'
+          : t('page.loadError')
       );
       setPartnerList([]);
       setInitialPartnerList([]);
@@ -174,17 +179,37 @@ const PartnersList = () => {
   }
 
   return (
-    <>
-      <Grid2 className="product-catalog" container spacing={1} direction="row">
-        <Grid2 className="title flex flex-content-center">
-          <Typography className="text">
-            Contact List
-          </Typography>
-        </Grid2>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      <Box sx={{ mb: 4 }}>
+        <PageSectionHeader
+          icon={<GroupAddIcon />}
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
+          kitTheme={kitThemes.businessPartner}
+          actions={
+            <Button
+              className="add-button"
+              variant="contained"
+              onClick={handleOpenCreatePartnerDialog}
+              startIcon={<AddIcon />}
+              sx={{
+                background: `linear-gradient(135deg, ${kitThemes.businessPartner.gradientStart} 0%, ${kitThemes.businessPartner.gradientEnd} 100%)`,
+                color: '#fff',
+                borderRadius: { xs: '10px', md: '12px' },
+                fontWeight: 600,
+                textTransform: 'none',
+                boxShadow: `0 4px 16px ${kitThemes.businessPartner.shadowColor}`,
+                transition: 'all 0.2s ease',
+                '&:hover': { filter: 'brightness(1.1)', boxShadow: `0 6px 24px ${kitThemes.businessPartner.shadowColor}`, transform: 'translateY(-1px)' }
+              }}
+            >
+              {t('page.createContact')}
+            </Button>
+          }
+        />
+      </Box>
 
-        <Grid2 size={12} container justifyContent="flex-end" marginRight={6} marginBottom={2}>
-          <Button className="add-button" variant="outlined" size="small" onClick={handleOpenCreatePartnerDialog} startIcon={<AddIcon />} >New</Button>
-        </Grid2>
+      <Grid2 className="product-catalog" container spacing={1} direction="row">
 
         {/* Error State */}
         {error && (
@@ -209,7 +234,7 @@ const PartnersList = () => {
                     '&:hover': { borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' }
                   }}
                 >
-                  {isRetrying ? 'Retrying...' : 'Retry'}
+                  {isRetrying ? t('common:actions.retrying') : t('common:errors.retry')}
                 </Button>
               }
             >
@@ -221,7 +246,7 @@ const PartnersList = () => {
         {/* No Partners State */}
         {!error && partnerList.length === 0 ? (
           <Grid2 className="flex flex-content-center" size={12}>
-            <ErrorNotFound icon={ReportProblemIcon} message="No partners were added yet, use the green button above to create one."/>
+            <ErrorNotFound icon={ReportProblemIcon} message={t('page.noPartnersYet')}/>
           </Grid2>
         ) : !error && (
           <>
@@ -253,7 +278,7 @@ const PartnersList = () => {
       </Grid2>
       
       <CreatePartnerDialog open={createPartnerDialogOpen} onClose={handleCloseCreatePartnerDialog} onSave={handleCreatePartner} partnerData={editingPartner}/>
-    </>
+    </Box>
   );
 };
 

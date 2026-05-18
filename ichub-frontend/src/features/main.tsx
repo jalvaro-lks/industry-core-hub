@@ -20,6 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
+import i18n from '@/i18n';
 import { 
   Assignment,
   Hub,
@@ -66,8 +67,8 @@ import { certificateManagementFeature } from './ccm-kit/certificate-management/r
 export const kits: KitFeature[] = [
   {
     id: 'industry-core',
-    name: 'Industry Core KIT',
-    description: 'Core functionality for industrial data management, partner discovery, and catalog management.',
+    name: i18n.t('industryCore.name', { ns: 'kits' }),
+    description: i18n.t('industryCore.description', { ns: 'kits' }),
     status: 'available',
     icon: <Hub />,
     image: IndustryCoreKitImage,
@@ -75,8 +76,8 @@ export const kits: KitFeature[] = [
       {
         module: catalogManagementFeature,
         id: 'catalog-management',
-        name: 'Provide Catalog/Type Parts',
-        description: 'Provide, Share and Manage Parts in Catalog / Type Level.',
+        name: i18n.t('industryCore.features.catalogManagement.name', { ns: 'kits' }),
+        description: i18n.t('industryCore.features.catalogManagement.description', { ns: 'kits' }),
         icon: <Storefront />,
         enabled: true,
         default: true
@@ -84,8 +85,8 @@ export const kits: KitFeature[] = [
       {
         module: serializedPartsFeature,
         id: 'serialized-parts',
-        name: 'Provide Serialized/Instance Parts',
-        description: 'Provide, Share and Manage Parts in Serialized / Instance Level',
+        name: i18n.t('industryCore.features.serializedParts.name', { ns: 'kits' }),
+        description: i18n.t('industryCore.features.serializedParts.description', { ns: 'kits' }),
         icon: <Dashboard />,
         enabled: true,
         default: true
@@ -93,8 +94,8 @@ export const kits: KitFeature[] = [
       {
         module: partDiscoveryFeature,
         id: 'dataspace-discovery',
-        name: 'Consume Data via Dataspace Discovery',
-        description: 'Search, Discover and Visualize Digital Twins & Submodels from your partners connected to the same dataspace as you',
+        name: i18n.t('industryCore.features.dataspaceDiscovery.name', { ns: 'kits' }),
+        description: i18n.t('industryCore.features.dataspaceDiscovery.description', { ns: 'kits' }),
         icon: <FindInPage />,
         enabled: true,
         default: true
@@ -108,8 +109,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'business-partner',
-    name: 'Business Partner KIT',
-    description: 'Comprehensive business partners data management, contact list and validation of participants.',
+    name: i18n.t('businessPartner.name', { ns: 'kits' }),
+    description: i18n.t('businessPartner.description', { ns: 'kits' }),
     status: 'available',
     icon: <Group />,
     image: BusinessPartnerKitImage,
@@ -117,8 +118,8 @@ export const kits: KitFeature[] = [
         {
         module: partnerManagementFeature,
         id: 'participants',
-        name: 'Contact List',
-        description: 'Manage your simple dataspace partner contact list, to enable easier consumption and collaboration.',
+        name: i18n.t('businessPartner.features.participants.name', { ns: 'kits' }),
+        description: i18n.t('businessPartner.features.participants.description', { ns: 'kits' }),
         icon: <GroupAdd />,
         enabled: true,
         default: true
@@ -132,8 +133,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'eco-pass',
-    name: 'Eco Pass KIT',
-    description: "Leverage the transparency of digital product passports to strengthen sustainability & compliance.",
+    name: i18n.t('ecoPass.name', { ns: 'kits' }),
+    description: i18n.t('ecoPass.description', { ns: 'kits' }),
     status: 'available',
     icon: <Recycling />,
     image: EcoPassKitImage,
@@ -141,8 +142,8 @@ export const kits: KitFeature[] = [
       {
         module: passportConsumptionFeature,
         id: 'pass-consumption',
-        name: 'Passport Consumption & Visualization',
-        description: 'Retrieve passport from a dataspace participant via QR code or ID and display it.',
+        name: i18n.t('ecoPass.features.passConsumption.name', { ns: 'kits' }),
+        description: i18n.t('ecoPass.features.passConsumption.description', { ns: 'kits' }),
         icon: <Badge />,
         enabled: false,
         default: false
@@ -150,8 +151,8 @@ export const kits: KitFeature[] = [
       {
         module: passportProvisionFeature,
         id: 'pass-provision',
-        name: 'Passport Provision & Management',
-        description: 'Create, manage, and share digital product passports with dataspace partners.',
+        name: i18n.t('ecoPass.features.passProvision.name', { ns: 'kits' }),
+        description: i18n.t('ecoPass.features.passProvision.description', { ns: 'kits' }),
         icon: <PostAdd />,
         enabled: false,
         default: false
@@ -164,8 +165,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'data-governance',
-    name: 'Data Governance KIT',
-    description: 'Manage your data sovereignty, policies, contracts, compliance, and governance.',
+    name: i18n.t('dataGovernance.name', { ns: 'kits' }),
+    description: i18n.t('dataGovernance.description', { ns: 'kits' }),
     status: 'coming-soon',
     icon: <Policy />,
     image: DataGovernanceKitImage,
@@ -176,8 +177,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'pcf',
-    name: 'PCF KIT',
-    description: 'Product Carbon Footprint calculation and lifecycle assessment tools.',
+    name: i18n.t('pcf.name', { ns: 'kits' }),
+    description: i18n.t('pcf.description', { ns: 'kits' }),
     status: 'coming-soon',
     icon: <EnergySavingsLeaf />,
     image: PcfKitImage,
@@ -188,8 +189,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'data-chain',
-    name: 'Data Chain KIT',
-    description: 'Access data distributed across the dataspace.',
+    name: i18n.t('dataChain.name', { ns: 'kits' }),
+    description: i18n.t('dataChain.description', { ns: 'kits' }),
     status: 'coming-soon',
     icon: <Link />,
     image: DataChainKitImage,
@@ -200,8 +201,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'dcm',
-    name: 'DCM KIT',
-    description: 'Demand and Capacity Management for optimizing supply chain operations.',
+    name: i18n.t('dcm.name', { ns: 'kits' }),
+    description: i18n.t('dcm.description', { ns: 'kits' }),
     status: 'coming-soon',
     icon: <DeviceHub />,
     image: DcmKitImage,
@@ -212,8 +213,8 @@ export const kits: KitFeature[] = [
   },
   {
     id: 'traceability',
-    name: 'Traceability KIT',
-    description: 'End-to-end traceability of parts, alerts and components throughout the supply chain.',
+    name: i18n.t('traceability.name', { ns: 'kits' }),
+    description: i18n.t('traceability.description', { ns: 'kits' }),
     status: 'coming-soon',
     icon: <Timeline />,
     image: TraceabilityKitImage,
@@ -263,7 +264,7 @@ export const allFeatures: FeatureConfig[] = [
   ...getEnabledFeatures(),
   // Add placeholder for additional features (disabled - opens features panel)
   {
-    name: 'Add Features',
+    name: i18n.t('features.addFeatures'),
     icon: <Assignment />,
     navigationPath: '/add-features',
     disabled: true,
