@@ -297,13 +297,13 @@ provider:
           - action: "use"
             constraint:
               and:
-                - leftOperand: "FrameworkAgreement"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/FrameworkAgreement"
                   operator: "eq"
                   rightOperand: "DataExchangeGovernance:1.0"
-                - leftOperand: "Membership"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/Membership"
                   operator: "eq"
                   rightOperand: "active"
-                - leftOperand: "UsagePurpose"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/UsagePurpose"
                   operator: "isAnyOf"
                   rightOperand: "cx.core.digitalTwinRegistry:1"
         prohibitions: []
@@ -316,7 +316,7 @@ provider:
         permissions:
           - action: "access"
             constraint:
-              leftOperand: "Membership"
+              leftOperand: "https://w3id.org/catenax/2025/9/policy/Membership"
               operator: "eq"
               rightOperand: "active"
         prohibitions: []
@@ -340,13 +340,13 @@ provider:
           - action: "use"
             constraint:
               and:
-                - leftOperand: "FrameworkAgreement"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/FrameworkAgreement"
                   operator: "eq"
                   rightOperand: "DataExchangeGovernance:1.0"
-                - leftOperand: "Membership"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/Membership"
                   operator: "eq"
                   rightOperand: "active"
-                - leftOperand: "UsagePurpose"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/UsagePurpose"
                   operator: "isAnyOf"
                   rightOperand: "cx.core.industrycore:1"
         prohibitions: []
@@ -357,9 +357,9 @@ provider:
           - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
           - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         permissions:
-          - action: "use"
+          - action: "access"
             constraint:
-              leftOperand: "Membership"
+              leftOperand: "https://w3id.org/catenax/2025/9/policy/Membership"
               operator: "eq"
               rightOperand: "active"
         prohibitions: []
@@ -380,13 +380,13 @@ provider:
           - action: use
             constraint:
               and:
-                - leftOperand: "FrameworkAgreement"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/FrameworkAgreement"
                   operator: "eq"
                   rightOperand: "DataExchangeGovernance:1.0"
-                - leftOperand: "Membership"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/Membership"
                   operator: "eq"
                   rightOperand: "active"
-                - leftOperand: "UsagePurpose"
+                - leftOperand: "https://w3id.org/catenax/2025/9/policy/UsagePurpose"
                   operator: "isAnyOf"
                   rightOperand: "cx.pcf.base:1"
         prohibition: []
@@ -397,9 +397,9 @@ provider:
           - "https://w3id.org/catenax/2025/9/policy/context.jsonld"
           - "@vocab": "https://w3id.org/edc/v0.0.1/ns/"
         permission:
-          - action: "use"
+          - action: "access"
             constraint:
-              leftOperand: "Membership"
+              leftOperand: "https://w3id.org/catenax/2025/9/policy/Membership"
               operator: "eq"
               rightOperand: "active"
         prohibitions: []
