@@ -82,6 +82,7 @@ class PcfExchangeEntity(SQLModel, table=True):
         correlation_id: Optional ID to correlate with external systems.
     """
     __tablename__ = "pcf_exchanges"
+    __table_args__ = {"schema": "public"}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     request_id: UUID = Field(
@@ -156,6 +157,7 @@ class PcfExchangeEntity(SQLModel, table=True):
 class PcfRelationshipEntity(SQLModel, table=True):
 
     __tablename__ = "pcf_relationships"
+    __table_args__ = {"schema": "public"}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     main_manufacturer_part_id: str = Field(
