@@ -22,7 +22,7 @@
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
+import {
   Assignment,
   Hub,
   Recycling,
@@ -37,7 +37,9 @@ import {
   GroupAdd,
   Badge,
   Policy,
-  PostAdd
+  PostAdd,
+  MarkunreadMailbox,
+  WorkspacePremium as WorkspacePremiumIcon
 } from '@mui/icons-material';
 import { KitFeature } from '@/features/kit-features/types';
 import { FeatureConfig } from '@/types/routing';
@@ -51,6 +53,7 @@ import PcfKitImage from '@/features/kit-features/assets/kit-images/pcf-kit.svg';
 import DataChainKitImage from '@/features/kit-features/assets/kit-images/data-chain-kit.svg';
 import DcmKitImage from '@/features/kit-features/assets/kit-images/dcm-kit.svg';
 import TraceabilityKitImage from '@/features/kit-features/assets/kit-images/traceability-kit.svg';
+import CcmKitImage from '@/features/kit-features/assets/kit-images/certificate-management-kit.svg';
 
 // Import feature modules
 import { catalogManagementFeature } from '@/features/industry-core-kit/catalog-management/routes';
@@ -59,6 +62,8 @@ import { partnerManagementFeature } from '@/features/business-partner-kit/partne
 import { serializedPartsFeature } from '@/features/industry-core-kit/serialized-parts/routes';
 import { passportConsumptionFeature } from '@/features/eco-pass-kit/passport-consumption/routes';
 import { passportProvisionFeature } from '@/features/eco-pass-kit/passport-provision/routes';
+import { certificateManagementFeature } from '@/features/ccm-kit/certificate-management/routes';
+import { shareCertificatesFeature } from '@/features/ccm-kit/share-certificates/routes';
 
 /**
  * Hook that returns translated KIT configurations.
@@ -167,18 +172,6 @@ export const useTranslatedKits = (): KitFeature[] => {
       documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/eco-pass-kit/adoption-view'
     },
     {
-      id: 'data-governance',
-      name: t('items.dataGovernance.name'),
-      description: t('items.dataGovernance.description'),
-      status: 'coming-soon',
-      icon: <Policy />,
-      image: DataGovernanceKitImage,
-      features: [],
-      domain: 'dataspace-foundation' as const,
-      version: '0.0.0',
-      documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/data-governance-kit/adoption-view'
-    },
-    {
       id: 'pcf',
       name: t('items.pcf.name'),
       description: t('items.pcf.description'),
@@ -189,6 +182,49 @@ export const useTranslatedKits = (): KitFeature[] => {
       domain: 'sustainability',
       version: '0.0.0',
       documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/product-carbon-footprint-exchange-kit/adoption-view'
+    },
+    {
+      id: 'ccm',
+      name: t('items.ccm.name'),
+      description: t('items.ccm.description'),
+      status: 'available',
+      icon: <WorkspacePremiumIcon />,
+      image: CcmKitImage,
+      features: [
+        {
+          module: certificateManagementFeature,
+          id: 'certificate-management',
+          name: t('items.ccm.features.certificateManagement.name'),
+          description: t('items.ccm.features.certificateManagement.description'),
+          icon: <WorkspacePremiumIcon />,
+          enabled: true,
+          default: false
+        },
+        {
+          module: shareCertificatesFeature,
+          id: 'share-certificates',
+          name: t('items.ccm.features.shareCertificates.name'),
+          description: t('items.ccm.features.shareCertificates.description'),
+          icon: <MarkunreadMailbox />,
+          enabled: true,
+          default: false
+        }
+      ],
+      version: '1.0.0',
+      domain: 'compliance',
+      documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/certificate-management-kit/adoption-view'
+    },
+    {
+      id: 'data-governance',
+      name: t('items.dataGovernance.name'),
+      description: t('items.dataGovernance.description'),
+      status: 'coming-soon',
+      icon: <Policy />,
+      image: DataGovernanceKitImage,
+      features: [],
+      domain: 'dataspace-foundation' as const,
+      version: '0.0.0',
+      documentation: 'https://eclipse-tractusx.github.io/docs-kits/kits/data-governance-kit/adoption-view'
     },
     {
       id: 'data-chain',

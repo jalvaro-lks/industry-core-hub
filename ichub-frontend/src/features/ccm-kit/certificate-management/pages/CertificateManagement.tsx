@@ -1,7 +1,7 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -14,206 +14,175 @@
  * distributed under the License is distributed on an "AS IS" BASIS
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the
- * License for the specific language govern in permissions and limitations
+ * License for the specific language governing permissions and limitations
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Box,
-  Typography,
-  Grid2,
-  Tabs,
-  Tab,
-  Button,
-  TextField,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Alert,
-  Snackbar,
-  SelectChangeEvent
-} from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import { Box, Button, Alert, Snackbar } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import ReceiptLong from '@mui/icons-material/ReceiptLong';
-import { Certificate, CertificateStats, CertificateFilter } from '../types/types';
+import SearchIcon from '@mui/icons-material/Search';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import {
+  Certificate,
+  CertificateStats,
+  CertificateFilter,
+  CertificateStatus,
+} from '../types/types';
 import { CertificateFormData } from '../types/dialog-types';
 import { fetchAllCertificates, createCertificate, shareCertificate } from '../api';
-import { certificateManagementConfig } from '../config';
-import { StatsCard } from '../components/certificate-list/StatsCard';
 import { CertificateTable } from '../components/certificate-list/CertificateTable';
+import { CertificateCardGrid } from '../components/certificate-list/CertificateCardGrid';
+import { SummaryStatsBar } from '../components/summary/SummaryStatsBar';
+import { SearchFilterBar } from '../components/filters/SearchFilterBar';
 import { UploadCertificateDialog } from '../components/dialogs/UploadCertificateDialog';
 import { ShareCertificateDialog } from '../components/dialogs/ShareCertificateDialog';
-import { ViewCertificateDialog } from '../components/dialogs/ViewCertificateDialog';
 import { DeleteCertificateDialog } from '../components/dialogs/DeleteCertificateDialog';
+import { CertificatePDFViewer } from '../components/dialogs/CertificatePDFViewer';
+import { DiscoverPartnerDialog } from '../components/dialogs/DiscoverPartnerDialog';
+import PageSectionHeader from '@/components/common/PageSectionHeader';
+import { kitThemes } from '@/theme/colors';
 import LoadingSpinner from '@/components/general/LoadingSpinner';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`certificate-tabpanel-${index}`}
-      aria-labelledby={`certificate-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ pt: 1.25 }}>{children}</Box>}
-    </div>
+const calculateStats = (certs: Certificate[]): CertificateStats => {
+  const today = new Date();
+  const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+  return certs.reduce(
+    (acc, cert) => {
+      const validUntil = new Date(cert.validUntil);
+      acc.total++;
+      if (validUntil <= today) acc.expired++;
+      else if (validUntil <= thirtyDaysFromNow) acc.expiring++;
+      else acc.valid++;
+      return acc;
+    },
+    { total: 0, valid: 0, expiring: 0, expired: 0 },
   );
-}
+};
 
 const CertificateManagement = () => {
-  // State
-  const [activeTab, setActiveTab] = useState(0);
+  const { t } = useTranslation('certificateManagement');
+
+  // ── Data ──────────────────────────────────────────────────────────────────
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [stats, setStats] = useState<CertificateStats>({ total: 0, valid: 0, expiring: 0, expired: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Filter state
-  const [filters, setFilters] = useState<CertificateFilter>({
-    search: '',
-    type: '',
-    status: '',
-    shared: ''
-  });
 
-  // Dialog states
+  // ── Filters — text/type/status from SearchFilterBar + status from SummaryStatsBar ──
+  const [filters, setFilters] = useState<CertificateFilter>({ search: '', type: '', status: '', shared: '' });
+  const [statusQuickFilter, setStatusQuickFilter] = useState<CertificateStatus | ''>('');
+
+  // ── View mode ─────────────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+
+  // ── Dialog states ─────────────────────────────────────────────────────────
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [discoverDialogOpen, setDiscoverDialogOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
 
-  // Snackbar state
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({ open: false, message: '', severity: 'success' });
+  // suppress unused state warning — keep detailDialogOpen for legacy
+  void detailDialogOpen; void setDetailDialogOpen;
 
-  // Calculate stats from certificates list
-  const calculateStats = (certs: Certificate[]): CertificateStats => {
-    const today = new Date();
-    const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-    
-    return certs.reduce(
-      (acc, cert) => {
-        const validUntil = new Date(cert.validUntil);
-        acc.total++;
-        
-        if (validUntil <= today) {
-          acc.expired++;
-        } else if (validUntil <= thirtyDaysFromNow) {
-          acc.expiring++;
-        } else {
-          acc.valid++;
-        }
-        
-        return acc;
-      },
-      { total: 0, valid: 0, expiring: 0, expired: 0 }
-    );
-  };
+  // ── Snackbar ──────────────────────────────────────────────────────────────
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
 
-  // Load data
+  // ── Data loading ──────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      
       const certificatesData = await fetchAllCertificates();
-      
       setCertificates(certificatesData);
       setStats(calculateStats(certificatesData));
     } catch (err) {
       console.error('Error loading certificates:', err);
-      setError('Failed to load certificates. Please try again.');
+      setError(t('messages.loadFailed'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Filter certificates
+  // ── Filtering ─────────────────────────────────────────────────────────────
+  // The status quick-filter from SummaryStatsBar takes precedence when active;
+  // if SearchFilterBar also has a status set, both are respected (AND logic).
   const filteredCertificates = useMemo(() => {
-    return certificates.filter(cert => {
-      // Search filter
+    return certificates.filter((cert) => {
       if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch = 
-          cert.name.toLowerCase().includes(searchLower) ||
-          cert.bpn.toLowerCase().includes(searchLower) ||
-          cert.issuer.toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
+        const q = filters.search.toLowerCase();
+        if (
+          !cert.name.toLowerCase().includes(q) &&
+          !cert.bpn.toLowerCase().includes(q) &&
+          !cert.issuer.toLowerCase().includes(q)
+        )
+          return false;
       }
-      
-      // Type filter
       if (filters.type && cert.type !== filters.type) return false;
-      
-      // Status filter
-      if (filters.status && cert.status !== filters.status) return false;
-      
+      const effectiveStatus = statusQuickFilter || filters.status;
+      if (effectiveStatus && cert.status !== effectiveStatus) return false;
       return true;
     });
-  }, [certificates, filters]);
+  }, [certificates, filters, statusQuickFilter]);
 
-  // Handlers
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+  const handleStatFilterChange = (status: CertificateStatus | '') => {
+    setStatusQuickFilter(status);
+    // Keep SearchFilterBar status in sync so the dropdown reflects the active filter
+    setFilters((prev) => ({ ...prev, status: status }));
   };
 
-  const handleFilterChange = (field: keyof CertificateFilter, value: string) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
+  const handleFilterBarChange = (newFilters: CertificateFilter) => {
+    setFilters(newFilters);
+    // If the SearchFilterBar explicitly changes status, clear the quick-filter shortcut
+    if (newFilters.status !== statusQuickFilter) {
+      setStatusQuickFilter(newFilters.status as CertificateStatus | '');
+    }
   };
 
+  // ── Action handlers ───────────────────────────────────────────────────────
   const handleUploadCertificate = async (data: CertificateFormData) => {
     try {
       await createCertificate(data);
-      setSnackbar({ open: true, message: 'Certificate uploaded successfully!', severity: 'success' });
+      setSnackbar({ open: true, message: t('messages.uploadSuccess'), severity: 'success' });
       setUploadDialogOpen(false);
       loadData();
     } catch (err) {
       console.error('Error uploading certificate:', err);
-      setSnackbar({ open: true, message: 'Failed to upload certificate.', severity: 'error' });
+      setSnackbar({ open: true, message: t('messages.uploadFailed'), severity: 'error' });
     }
   };
 
   const handleShareCertificate = async (certificateId: string, partnerBpn: string, method: 'PULL' | 'PUSH') => {
     try {
       await shareCertificate(certificateId, partnerBpn, method);
-      setSnackbar({ open: true, message: 'Certificate shared successfully!', severity: 'success' });
+      setSnackbar({ open: true, message: t('messages.shareSuccess'), severity: 'success' });
       setShareDialogOpen(false);
       loadData();
     } catch (err) {
       console.error('Error sharing certificate:', err);
-      setSnackbar({ open: true, message: 'Failed to share certificate.', severity: 'error' });
+      setSnackbar({ open: true, message: t('messages.shareFailed'), severity: 'error' });
     }
   };
 
-  // Note: Delete endpoint not available yet
   const handleDeleteCertificate = async (_certificateId: string) => {
-    // TODO: Implement when DELETE /api/ccm/certificates/{id} endpoint is available
-    setSnackbar({ open: true, message: 'Delete functionality not yet available.', severity: 'error' });
+    // TODO: Implement when DELETE endpoint is available
+    setSnackbar({ open: true, message: t('messages.deleteNotAvailable'), severity: 'error' });
     setDeleteDialogOpen(false);
   };
 
   const handleView = (certificate: Certificate) => {
     setSelectedCertificate(certificate);
-    setViewDialogOpen(true);
+    setPdfViewerOpen(true);
   };
 
   const handleShare = (certificate: Certificate) => {
@@ -226,151 +195,119 @@ const CertificateManagement = () => {
     setDeleteDialogOpen(true);
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (isLoading) return <LoadingSpinner />;
 
   return (
-    <Box className="certificate-management">
-      {/* Header */}
-      <Grid2 container spacing={0} alignItems="center" justifyContent="space-between" className="certificate-management__header">
-        <Grid2>
-          <Box className="certificate-management__title-container">
-            <Box className="certificate-management__icon-box">
-              <ReceiptLong className="certificate-management__icon" />
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+      {/* Page header */}
+      <Box sx={{ mb: 4 }}>
+        <PageSectionHeader
+          icon={<WorkspacePremiumIcon />}
+          title={t('page.title')}
+          subtitle={t('page.subtitle')}
+          kitTheme={kitThemes.ccm}
+          actions={
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              <Button
+                variant="outlined"
+                startIcon={<SearchIcon />}
+                onClick={() => setDiscoverDialogOpen(true)}
+                sx={{
+                  borderColor: kitThemes.ccm.gradientEnd,
+                  color: kitThemes.ccm.gradientEnd,
+                  borderRadius: { xs: '10px', md: '12px' },
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: kitThemes.ccm.gradientEnd,
+                    color: kitThemes.ccm.gradientEnd,
+                    backgroundColor: 'rgba(245, 158, 11, 0.06)',
+                  },
+                }}
+              >
+                Discover Partners
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setUploadDialogOpen(true)}
+                sx={{
+                  background: `linear-gradient(135deg, ${kitThemes.ccm.gradientStart} 0%, ${kitThemes.ccm.gradientEnd} 100%)`,
+                  color: '#fff',
+                  borderRadius: { xs: '10px', md: '12px' },
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  boxShadow: `0 4px 16px ${kitThemes.ccm.shadowColor}`,
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    filter: 'brightness(1.1)',
+                    boxShadow: `0 6px 24px ${kitThemes.ccm.shadowColor}`,
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                {t('page.uploadCertificate')}
+              </Button>
             </Box>
-            <Box>
-              <Typography variant="h5" className="certificate-management__title">
-                Certificate Management
-              </Typography>
-              <Typography variant="body1" className="certificate-management__subtitle">
-                Manage, share and consume certificates across the supply chain
-              </Typography>
-            </Box>
-          </Box>
-        </Grid2>
-        
-        {/* Stats Cards */}
-        <Grid2>
-          <Grid2 container spacing={1}>
-            <Grid2>
-              <StatsCard label="Total" value={stats.total} color="#2196f3" />
-            </Grid2>
-            <Grid2>
-              <StatsCard label="Valid" value={stats.valid} color="#4caf50" />
-            </Grid2>
-            <Grid2>
-              <StatsCard label="Expiring" value={stats.expiring} color="#ff9800" />
-            </Grid2>
-            <Grid2>
-              <StatsCard label="Expired" value={stats.expired} color="#f44336" />
-            </Grid2>
-          </Grid2>
-        </Grid2>
-      </Grid2>
-
-      {/* Tabs */}
-      <Box className="certificate-management__tabs">
-        <Tabs 
-          value={activeTab} 
-          onChange={handleTabChange}
-        >
-          <Tab label="Upload Certificate" />
-          <Tab label="Share Certificate" />
-          <Tab label="Consume Certificate" />
-        </Tabs>
+          }
+        />
       </Box>
 
-      {/* Tab Content */}
-      <TabPanel value={activeTab} index={0}>
-        {/* Filters and Upload Button */}
-        <Grid2 container spacing={2} alignItems="center" className="certificate-management__filters">
-          <Grid2 size={{ xs: 12, sm: 3 }}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Search certificates..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-          </Grid2>
-          <Grid2 size={{ xs: 6, sm: 2 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Type</InputLabel>
-              <Select
-                value={filters.type}
-                label="Type"
-                onChange={(e: SelectChangeEvent) => handleFilterChange('type', e.target.value)}
-              >
-                <MenuItem value="">All</MenuItem>
-                {certificateManagementConfig.certificateTypes.map(type => (
-                  <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid2>
-          <Grid2 size={{ xs: 6, sm: 2 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={filters.status}
-                label="Status"
-                onChange={(e: SelectChangeEvent) => handleFilterChange('status', e.target.value)}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="valid">Valid</MenuItem>
-                <MenuItem value="expiring">Expiring</MenuItem>
-                <MenuItem value="expired">Expired</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid2>
-          <Grid2 size={{ xs: 12, sm: 5 }} className="certificate-management__filters-actions">
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={() => setUploadDialogOpen(true)}
-            >
-              Upload Certificate
-            </Button>
-          </Grid2>
-        </Grid2>
+      {/* Stats summary */}
+      <SummaryStatsBar
+        stats={stats}
+        activeStatusFilter={statusQuickFilter}
+        onFilterByStatus={handleStatFilterChange}
+      />
 
-        {/* Error Alert */}
-        {error && (
-          <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-            {error}
-          </Alert>
-        )}
+      {/* Search & filters */}
+      <SearchFilterBar
+        filters={filters}
+        onChange={handleFilterBarChange}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
-        {/* Certificate Table */}
+      {/* Error banner */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Certificate list / card grid */}
+      {viewMode === 'list' ? (
         <CertificateTable
           certificates={filteredCertificates}
           onView={handleView}
           onShare={handleShare}
           onDelete={handleDelete}
+          onRefresh={loadData}
         />
-      </TabPanel>
+      ) : (
+        <CertificateCardGrid
+          certificates={filteredCertificates}
+          onView={handleView}
+          onShare={handleShare}
+          onDelete={handleDelete}
+          onRefresh={loadData}
+        />
+      )}
 
-      <TabPanel value={activeTab} index={1}>
-        <Typography className="certificate-management__tab-placeholder">
-          Share certificates tab - View and manage shared certificates with partners.
-        </Typography>
-        {/* TODO: Implement shared certificates view */}
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={2}>
-        <Typography className="certificate-management__tab-placeholder">
-          Consume certificates tab - View incoming certificates from partners.
-        </Typography>
-        {/* TODO: Implement incoming certificates view */}
-      </TabPanel>
-
-      {/* Dialogs */}
+      {/* ── Dialogs ────────────────────────────────────────────────────────── */}
       <UploadCertificateDialog
         open={uploadDialogOpen}
         onClose={() => setUploadDialogOpen(false)}
         onSave={handleUploadCertificate}
+      />
+
+      <CertificatePDFViewer
+        open={pdfViewerOpen}
+        certificate={selectedCertificate}
+        onClose={() => setPdfViewerOpen(false)}
+        onShare={handleShare}
+        onDelete={handleDelete}
       />
 
       <ShareCertificateDialog
@@ -380,12 +317,6 @@ const CertificateManagement = () => {
         onShare={handleShareCertificate}
       />
 
-      <ViewCertificateDialog
-        open={viewDialogOpen}
-        onClose={() => setViewDialogOpen(false)}
-        certificate={selectedCertificate}
-      />
-
       <DeleteCertificateDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -393,13 +324,19 @@ const CertificateManagement = () => {
         onConfirm={handleDeleteCertificate}
       />
 
-      {/* Snackbar */}
+      <DiscoverPartnerDialog
+        open={discoverDialogOpen}
+        onClose={() => setDiscoverDialogOpen(false)}
+        certificates={certificates}
+      />
+
+      {/* Global snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        autoHideDuration={5000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}>
           {snackbar.message}
         </Alert>
       </Snackbar>
@@ -408,3 +345,4 @@ const CertificateManagement = () => {
 };
 
 export default CertificateManagement;
+

@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "Certificate Management",
+    "subtitle": "Manage, share and consume compliance certificates across the Catena-X dataspace",
+    "uploadCertificate": "Upload Certificate"
+  },
+  "tabs": {
+    "myCertificates": "My Certificates",
+    "shareOutbox": "Share & Outbox",
+    "discoverConsume": "Discover & Consume"
+  },
+  "compliance": {
+    "title": "Compliance Overview",
+    "score": "Compliance Score",
+    "validOf": "{{valid}} of {{total}} certificates valid",
+    "valid": "Valid",
+    "expiringSoon": "Expiring Soon",
+    "expired": "Expired",
+    "sharedWith": "{{count}} of {{total}} shared with partners",
+    "registeredInDtr": "{{count}} of {{total}} registered in DTR",
+    "allValid": "All certificates are valid",
+    "collapse": "Collapse",
+    "expand": "Expand"
+  },
+  "table": {
+    "subtitle": "Manage your compliance certificates ({{count}} total)",
+    "columns": {
+      "name": "Certificate",
+      "type": "Type",
+      "issuer": "Issuer",
+      "validFrom": "Valid From",
+      "validUntil": "Valid Until",
+      "status": "Status",
+      "shared": "Shared",
+      "certId": "Cert. ID",
+      "dtr": "DTR"
+    },
+    "status": {
+      "valid": "Valid",
+      "expiring": "Expiring",
+      "expired": "Expired"
+    },
+    "dtr": {
+      "registered": "Registered in DTR",
+      "pending": "DTR registration pending",
+      "notRegistered": "Not registered in DTR",
+      "registerAction": "Register in DTR"
+    },
+    "actions": {
+      "view": "View",
+      "share": "Share",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No certificates found",
+      "subtitle": "Upload your first compliance certificate to get started."
+    }
+  },
+  "messages": {
+    "uploadSuccess": "Certificate uploaded successfully!",
+    "uploadFailed": "Failed to upload certificate.",
+    "shareSuccess": "Certificate shared successfully!",
+    "shareFailed": "Failed to share certificate.",
+    "deleteNotAvailable": "Delete functionality not yet available.",
+    "registerDtrSuccess": "Certificate registered in DTR successfully!",
+    "registerDtrFailed": "Failed to register certificate in DTR.",
+    "loadFailed": "Failed to load certificates. Please try again."
+  },
+  "filters": {
+    "searchPlaceholder": "Search by name, BPN or issuer...",
+    "allTypes": "All Types",
+    "allStatuses": "All Statuses",
+    "type": "Type",
+    "status": "Status"
+  },
+  "dialogs": {
+    "upload": {
+      "title": "Upload Certificate",
+      "editTitle": "Edit Certificate"
+    },
+    "share": {
+      "title": "Share Certificate"
+    },
+    "view": {
+      "title": "Certificate Details"
+    },
+    "delete": {
+      "title": "Delete Certificate",
+      "confirmation": "Are you sure you want to delete this certificate?",
+      "warning": "This action cannot be undone."
+    }
+  },
+  "shareOutbox": {
+    "title": "Sharing Outbox",
+    "pushSection": "Push Notification to Partner",
+    "columns": {
+      "certificate": "Certificate",
+      "partner": "Partner",
+      "method": "Method",
+      "sharedOn": "Shared On",
+      "edcContract": "EDC Contract",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "pending": "Pending",
+      "revoked": "Revoked"
+    },
+    "revoke": "Revoke",
+    "sendPush": "Send Push Notification",
+    "targetBpn": "Target Partner BPN",
+    "selectCertificate": "Select Certificate",
+    "empty": "No sharing records yet."
+  },
+  "consumer": {
+    "discoveryTitle": "Partner Certificate Discovery",
+    "inboxTitle": "Incoming Certificate Notifications",
+    "searchBpn": "Search by BPN",
+    "search": "Search",
+    "stepper": {
+      "bpnLookup": "BPN Lookup",
+      "dtrResolution": "DTR Resolution",
+      "assetDiscovery": "Asset Discovery"
+    },
+    "negotiation": {
+      "requestAccess": "Request Access",
+      "viewCertificate": "View Certificate",
+      "retry": "Retry"
+    },
+    "inbox": {
+      "columns": {
+        "sender": "Sender",
+        "type": "Certificate Type",
+        "issuer": "Issuer",
+        "received": "Received",
+        "status": "Status"
+      },
+      "status": {
+        "pending": "Pending",
+        "acknowledged": "Acknowledged",
+        "rejected": "Rejected"
+      },
+      "acknowledge": "Acknowledge",
+      "reject": "Reject",
+      "empty": "No incoming certificate notifications."
+    }
+  }
+}

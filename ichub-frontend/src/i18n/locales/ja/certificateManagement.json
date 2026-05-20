@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "証明書管理",
+    "subtitle": "Catena-Xデータスペース全体でコンプライアンス証明書を管理、共有、利用する",
+    "uploadCertificate": "証明書をアップロード"
+  },
+  "tabs": {
+    "myCertificates": "マイ証明書",
+    "shareOutbox": "共有 & 送信トレイ",
+    "discoverConsume": "発見 & 利用"
+  },
+  "compliance": {
+    "title": "コンプライアンス概要",
+    "score": "コンプライアンススコア",
+    "validOf": "{{total}}件中{{valid}}件の証明書が有効",
+    "valid": "有効",
+    "expiringSoon": "まもなく期限切れ",
+    "expired": "期限切れ",
+    "sharedWith": "{{total}}件中{{count}}件をパートナーと共有済み",
+    "registeredInDtr": "{{total}}件中{{count}}件がDTRに登録済み",
+    "allValid": "すべての証明書が有効です",
+    "collapse": "折りたたむ",
+    "expand": "展開する"
+  },
+  "table": {
+    "subtitle": "コンプライアンス証明書を管理（合計{{count}}件）",
+    "columns": {
+      "name": "証明書",
+      "type": "種類",
+      "issuer": "発行機関",
+      "validFrom": "有効開始日",
+      "validUntil": "有効期限",
+      "status": "ステータス",
+      "shared": "共有済み",
+      "certId": "証明書ID",
+      "dtr": "DTR"
+    },
+    "status": {
+      "valid": "有効",
+      "expiring": "期限切れ間近",
+      "expired": "期限切れ"
+    },
+    "dtr": {
+      "registered": "DTRに登録済み",
+      "pending": "DTR登録待ち",
+      "notRegistered": "DTR未登録",
+      "registerAction": "DTRに登録"
+    },
+    "actions": {
+      "view": "表示",
+      "share": "共有",
+      "delete": "削除"
+    },
+    "empty": {
+      "title": "証明書が見つかりません",
+      "subtitle": "最初のコンプライアンス証明書をアップロードして始めましょう。"
+    }
+  },
+  "messages": {
+    "uploadSuccess": "証明書を正常にアップロードしました！",
+    "uploadFailed": "証明書のアップロードに失敗しました。",
+    "shareSuccess": "証明書を正常に共有しました！",
+    "shareFailed": "証明書の共有に失敗しました。",
+    "deleteNotAvailable": "削除機能はまだ利用できません。",
+    "registerDtrSuccess": "証明書をDTRに正常に登録しました！",
+    "registerDtrFailed": "証明書のDTR登録に失敗しました。",
+    "loadFailed": "証明書の読み込みに失敗しました。もう一度お試しください。"
+  },
+  "filters": {
+    "searchPlaceholder": "名前、BPN、発行機関で検索...",
+    "allTypes": "すべての種類",
+    "allStatuses": "すべてのステータス",
+    "type": "種類",
+    "status": "ステータス"
+  },
+  "dialogs": {
+    "upload": {
+      "title": "証明書をアップロード",
+      "editTitle": "証明書を編集"
+    },
+    "share": {
+      "title": "証明書を共有"
+    },
+    "view": {
+      "title": "証明書の詳細"
+    },
+    "delete": {
+      "title": "証明書を削除",
+      "confirmation": "この証明書を削除してもよろしいですか？",
+      "warning": "この操作は元に戻せません。"
+    }
+  },
+  "shareOutbox": {
+    "title": "送信トレイ",
+    "pushSection": "パートナーへのプッシュ通知",
+    "columns": {
+      "certificate": "証明書",
+      "partner": "パートナー",
+      "method": "方式",
+      "sharedOn": "共有日",
+      "edcContract": "EDC契約",
+      "status": "ステータス"
+    },
+    "status": {
+      "active": "アクティブ",
+      "pending": "保留中",
+      "revoked": "取り消し済み"
+    },
+    "revoke": "取り消す",
+    "sendPush": "プッシュ通知を送信",
+    "targetBpn": "対象パートナーBPN",
+    "selectCertificate": "証明書を選択",
+    "empty": "共有記録はまだありません。"
+  },
+  "consumer": {
+    "discoveryTitle": "パートナー証明書の発見",
+    "inboxTitle": "受信証明書通知",
+    "searchBpn": "BPNで検索",
+    "search": "検索",
+    "stepper": {
+      "bpnLookup": "BPN検索",
+      "dtrResolution": "DTR解決",
+      "assetDiscovery": "アセット発見"
+    },
+    "negotiation": {
+      "requestAccess": "アクセスを要求",
+      "viewCertificate": "証明書を表示",
+      "retry": "再試行"
+    },
+    "inbox": {
+      "columns": {
+        "sender": "送信者",
+        "type": "証明書種類",
+        "issuer": "発行機関",
+        "received": "受信日時",
+        "status": "ステータス"
+      },
+      "status": {
+        "pending": "保留中",
+        "acknowledged": "確認済み",
+        "rejected": "却下済み"
+      },
+      "acknowledge": "確認",
+      "reject": "却下",
+      "empty": "受信証明書通知はありません。"
+    }
+  }
+}

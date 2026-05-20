@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "Zertifikatsverwaltung",
+    "subtitle": "Compliance-Zertifikate im Catena-X Datenspeicher verwalten, teilen und abrufen",
+    "uploadCertificate": "Zertifikat hochladen"
+  },
+  "tabs": {
+    "myCertificates": "Meine Zertifikate",
+    "shareOutbox": "Teilen & Ausgang",
+    "discoverConsume": "Entdecken & Abrufen"
+  },
+  "compliance": {
+    "title": "Compliance-Übersicht",
+    "score": "Compliance-Score",
+    "validOf": "{{valid}} von {{total}} Zertifikaten gültig",
+    "valid": "Gültig",
+    "expiringSoon": "Läuft bald ab",
+    "expired": "Abgelaufen",
+    "sharedWith": "{{count}} von {{total}} mit Partnern geteilt",
+    "registeredInDtr": "{{count}} von {{total}} im DTR registriert",
+    "allValid": "Alle Zertifikate sind gültig",
+    "collapse": "Einklappen",
+    "expand": "Ausklappen"
+  },
+  "table": {
+    "subtitle": "Verwalten Sie Ihre Compliance-Zertifikate ({{count}} gesamt)",
+    "columns": {
+      "name": "Zertifikat",
+      "type": "Typ",
+      "issuer": "Aussteller",
+      "validFrom": "Gültig ab",
+      "validUntil": "Gültig bis",
+      "status": "Status",
+      "shared": "Geteilt",
+      "certId": "Zert.-ID",
+      "dtr": "DTR"
+    },
+    "status": {
+      "valid": "Gültig",
+      "expiring": "Läuft ab",
+      "expired": "Abgelaufen"
+    },
+    "dtr": {
+      "registered": "Im DTR registriert",
+      "pending": "DTR-Registrierung ausstehend",
+      "notRegistered": "Nicht im DTR registriert",
+      "registerAction": "Im DTR registrieren"
+    },
+    "actions": {
+      "view": "Anzeigen",
+      "share": "Teilen",
+      "delete": "Löschen"
+    },
+    "empty": {
+      "title": "Keine Zertifikate gefunden",
+      "subtitle": "Laden Sie Ihr erstes Compliance-Zertifikat hoch, um zu beginnen."
+    }
+  },
+  "messages": {
+    "uploadSuccess": "Zertifikat erfolgreich hochgeladen!",
+    "uploadFailed": "Zertifikat konnte nicht hochgeladen werden.",
+    "shareSuccess": "Zertifikat erfolgreich geteilt!",
+    "shareFailed": "Zertifikat konnte nicht geteilt werden.",
+    "deleteNotAvailable": "Löschfunktion noch nicht verfügbar.",
+    "registerDtrSuccess": "Zertifikat erfolgreich im DTR registriert!",
+    "registerDtrFailed": "Zertifikat konnte nicht im DTR registriert werden.",
+    "loadFailed": "Zertifikate konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+  },
+  "filters": {
+    "searchPlaceholder": "Nach Name, BPN oder Aussteller suchen...",
+    "allTypes": "Alle Typen",
+    "allStatuses": "Alle Status",
+    "type": "Typ",
+    "status": "Status"
+  },
+  "dialogs": {
+    "upload": {
+      "title": "Zertifikat hochladen",
+      "editTitle": "Zertifikat bearbeiten"
+    },
+    "share": {
+      "title": "Zertifikat teilen"
+    },
+    "view": {
+      "title": "Zertifikatdetails"
+    },
+    "delete": {
+      "title": "Zertifikat löschen",
+      "confirmation": "Möchten Sie dieses Zertifikat wirklich löschen?",
+      "warning": "Diese Aktion kann nicht rückgängig gemacht werden."
+    }
+  },
+  "shareOutbox": {
+    "title": "Ausgang",
+    "pushSection": "Push-Benachrichtigung an Partner",
+    "columns": {
+      "certificate": "Zertifikat",
+      "partner": "Partner",
+      "method": "Methode",
+      "sharedOn": "Geteilt am",
+      "edcContract": "EDC-Vertrag",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Aktiv",
+      "pending": "Ausstehend",
+      "revoked": "Widerrufen"
+    },
+    "revoke": "Widerrufen",
+    "sendPush": "Push-Benachrichtigung senden",
+    "targetBpn": "Ziel-Partner-BPN",
+    "selectCertificate": "Zertifikat auswählen",
+    "empty": "Noch keine Teilungsdatensätze vorhanden."
+  },
+  "consumer": {
+    "discoveryTitle": "Zertifikatsuche bei Partnern",
+    "inboxTitle": "Eingehende Zertifikatsbenachrichtigungen",
+    "searchBpn": "Nach BPN suchen",
+    "search": "Suchen",
+    "stepper": {
+      "bpnLookup": "BPN-Suche",
+      "dtrResolution": "DTR-Auflösung",
+      "assetDiscovery": "Asset-Entdeckung"
+    },
+    "negotiation": {
+      "requestAccess": "Zugriff anfordern",
+      "viewCertificate": "Zertifikat anzeigen",
+      "retry": "Wiederholen"
+    },
+    "inbox": {
+      "columns": {
+        "sender": "Absender",
+        "type": "Zertifikatstyp",
+        "issuer": "Aussteller",
+        "received": "Empfangen",
+        "status": "Status"
+      },
+      "status": {
+        "pending": "Ausstehend",
+        "acknowledged": "Bestätigt",
+        "rejected": "Abgelehnt"
+      },
+      "acknowledge": "Bestätigen",
+      "reject": "Ablehnen",
+      "empty": "Keine eingehenden Zertifikatsbenachrichtigungen."
+    }
+  }
+}

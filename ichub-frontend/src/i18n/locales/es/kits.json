@@ -83,6 +83,16 @@
     "traceability": {
       "name": "Traceability KIT",
       "description": "Trazabilidad de extremo a extremo de piezas, alertas y componentes a lo largo de la cadena de suministro."
+    },
+    "ccm": {
+      "name": "CCM KIT",
+      "description": "Gestiona, comparte y consume certificados de cumplimiento a través de EDC y notificaciones con socios del dataspace.",
+      "features": {
+        "certificateManagement": {
+          "name": "Gestión de Certificados",
+          "description": "Sube, gestiona, comparte y consume certificados de cumplimiento a lo largo de la cadena de suministro."
+        }
+      }
     }
   }
 }

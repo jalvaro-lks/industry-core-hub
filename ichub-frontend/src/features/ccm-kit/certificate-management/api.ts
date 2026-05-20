@@ -29,9 +29,23 @@ import {
   CertificateFilter,
   PaginationParams,
   SortParams,
-  PaginatedResponse
+  PaginatedResponse,
+  PartnerCertificateSearchResult,
+  IncomingCertificateNotification,
+  NegotiationStatus,
 } from './types/types';
 import { CertificateFormData } from './types/dialog-types';
+import {
+  mockFetchCertificates,
+  mockFetchCertificateDetail,
+  mockFetchSharingRecords,
+  mockFetchIncomingNotifications,
+  mockSearchPartnerCertificates,
+  mockInitiateNegotiation,
+  mockCheckNegotiationStatus,
+  mockFetchTransferredCertificate,
+  mockRegisterInDtr,
+} from './mocks/mockData';
 
 /**
  * CCM API base path following CX-0135 standard
@@ -113,8 +127,8 @@ export const fetchCertificates = async (
 export const fetchAllCertificates = async (): Promise<Certificate[]> => {
   try {
     if (!backendUrl) {
-      console.warn('Backend URL not configured, returning empty certificates list');
-      return [];
+      console.warn('[CCM] Backend URL not configured — using mock certificates');
+      return mockFetchCertificates();
     }
     
     const response = await httpClient.get<PaginatedResponse<Certificate>>(
@@ -122,8 +136,8 @@ export const fetchAllCertificates = async (): Promise<Certificate[]> => {
     );
     return response.data.data || [];
   } catch (error) {
-    console.error('Failed to fetch certificates:', error);
-    return [];
+    console.warn('[CCM] Certificates API unavailable — using mock data', error);
+    return mockFetchCertificates();
   }
 };
 
@@ -139,8 +153,8 @@ export const fetchAllCertificates = async (): Promise<Certificate[]> => {
 export const fetchCertificateById = async (certificateId: string): Promise<CertificateDetail | null> => {
   try {
     if (!backendUrl) {
-      console.warn('Backend URL not configured');
-      return null;
+      console.warn('[CCM] Backend URL not configured — using mock certificate detail');
+      return mockFetchCertificateDetail(certificateId);
     }
     
     const response = await httpClient.get<CertificateDetail>(
@@ -183,6 +197,19 @@ export const createCertificate = async (certificateData: CertificateFormData): P
   formData.append('validFrom', certificateData.validFrom);
   formData.append('validUntil', certificateData.validUntil);
   
+  if (certificateData.certificateIdentifier) {
+    formData.append('certificateIdentifier', certificateData.certificateIdentifier);
+  }
+
+  if (certificateData.certificateScope) {
+    formData.append('certificateScope', certificateData.certificateScope);
+  }
+
+  if (certificateData.enclosedSitesBpn?.length) {
+    // Send as JSON array string — backend expects JSON-encoded list
+    formData.append('enclosedSitesBpn', JSON.stringify(certificateData.enclosedSitesBpn));
+  }
+
   if (certificateData.description) {
     formData.append('description', certificateData.description);
   }
@@ -244,4 +271,169 @@ export const revokeShare = async (certificateId: string, shareId: string): Promi
   await httpClient.delete(
     `${backendUrl}${CCM_BASE_PATH}/certificates/${certificateId}/share/${shareId}`
   );
+};
+
+// ─── Sharing Outbox ───────────────────────────────────────────────────────────
+
+/**
+ * Fetch all sharing records (outbox) across all certificates.
+ * GET /api/ccm/certificates/shares
+ */
+export const fetchSharingRecords = async (): Promise<SharedCertificate[]> => {
+  try {
+    if (!backendUrl) {
+      console.warn('[CCM] Backend URL not configured — using mock sharing records');
+      return mockFetchSharingRecords();
+    }
+    const response = await httpClient.get<SharedCertificate[]>(
+      `${backendUrl}${CCM_BASE_PATH}/certificates/shares`
+    );
+    return response.data;
+  } catch (error) {
+    console.warn('[CCM] Sharing records API unavailable — using mock data', error);
+    return mockFetchSharingRecords();
+  }
+};
+
+// ─── DTR Registration ─────────────────────────────────────────────────────────
+
+/**
+ * Trigger DTR registration for a certificate.
+ * Creates the Submodel Descriptor in the Digital Twin Registry and the
+ * corresponding EDC Asset + Access/Usage Policies.
+ * POST /api/ccm/certificates/{id}/register-dtr
+ */
+export const registerCertificateInDtr = async (
+  certificateId: string,
+): Promise<{ dtrStatus: 'registered'; edcAssetId: string }> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — using mock DTR registration');
+    return mockRegisterInDtr(certificateId);
+  }
+  const response = await httpClient.post<{ dtrStatus: 'registered'; edcAssetId: string }>(
+    `${backendUrl}${CCM_BASE_PATH}/certificates/${certificateId}/register-dtr`
+  );
+  return response.data;
+};
+
+// ─── Consumer / Discovery ─────────────────────────────────────────────────────
+
+/**
+ * Search for a partner's certificates by BPN.
+ * Triggers the full discovery flow: BPN Lookup → DTR Resolution → Asset Discovery.
+ * POST /api/ccm/consumer/search
+ */
+export const searchPartnerCertificates = async (
+  partnerBpn: string,
+): Promise<PartnerCertificateSearchResult> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — using mock partner search');
+    return mockSearchPartnerCertificates(partnerBpn);
+  }
+  const response = await httpClient.post<PartnerCertificateSearchResult>(
+    `${backendUrl}${CCM_BASE_PATH}/consumer/search`,
+    { partnerBpn }
+  );
+  return response.data;
+};
+
+/**
+ * Initiate EDC contract negotiation to access a partner certificate.
+ * POST /api/ccm/consumer/negotiate
+ */
+export const initiateNegotiation = async (
+  partnerBpn: string,
+  edcAssetId: string,
+): Promise<{ negotiationId: string }> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — using mock negotiation');
+    return mockInitiateNegotiation(partnerBpn, edcAssetId);
+  }
+  const response = await httpClient.post<{ negotiationId: string }>(
+    `${backendUrl}${CCM_BASE_PATH}/consumer/negotiate`,
+    { partnerBpn, edcAssetId }
+  );
+  return response.data;
+};
+
+/**
+ * Poll the status of an ongoing EDC contract negotiation.
+ * GET /api/ccm/consumer/negotiate/{negotiationId}/status
+ *
+ * @param callCount - number of times this has been called; used by mock to simulate progression
+ */
+export const checkNegotiationStatus = async (
+  negotiationId: string,
+  callCount: number = 0,
+): Promise<{ status: NegotiationStatus; transferId?: string }> => {
+  if (!backendUrl) {
+    return mockCheckNegotiationStatus(negotiationId, callCount);
+  }
+  const response = await httpClient.get<{ status: NegotiationStatus; transferId?: string }>(
+    `${backendUrl}${CCM_BASE_PATH}/consumer/negotiate/${negotiationId}/status`
+  );
+  return response.data;
+};
+
+/**
+ * Fetch the certificate payload retrieved after a successful EDC transfer.
+ * GET /api/ccm/consumer/transfer/{transferId}
+ */
+export const fetchTransferredCertificate = async (
+  transferId: string,
+): Promise<Record<string, unknown>> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — using mock transferred certificate');
+    return mockFetchTransferredCertificate(transferId);
+  }
+  const response = await httpClient.get<Record<string, unknown>>(
+    `${backendUrl}${CCM_BASE_PATH}/consumer/transfer/${transferId}`
+  );
+  return response.data;
+};
+
+// ─── Incoming Notifications ───────────────────────────────────────────────────
+
+/**
+ * Fetch all incoming certificate push notifications.
+ * GET /api/ccm/notifications/incoming
+ */
+export const fetchIncomingNotifications = async (): Promise<IncomingCertificateNotification[]> => {
+  try {
+    if (!backendUrl) {
+      console.warn('[CCM] Backend URL not configured — using mock incoming notifications');
+      return mockFetchIncomingNotifications();
+    }
+    const response = await httpClient.get<IncomingCertificateNotification[]>(
+      `${backendUrl}${CCM_BASE_PATH}/notifications/incoming`
+    );
+    return response.data;
+  } catch (error) {
+    console.warn('[CCM] Notifications API unavailable — using mock data', error);
+    return mockFetchIncomingNotifications();
+  }
+};
+
+/**
+ * Acknowledge an incoming certificate notification.
+ * POST /api/ccm/notifications/incoming/{id}/acknowledge
+ */
+export const acknowledgeNotification = async (notificationId: string): Promise<void> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — mock acknowledge');
+    return;
+  }
+  await httpClient.post(`${backendUrl}${CCM_BASE_PATH}/notifications/incoming/${notificationId}/acknowledge`);
+};
+
+/**
+ * Reject an incoming certificate notification.
+ * POST /api/ccm/notifications/incoming/{id}/reject
+ */
+export const rejectNotification = async (notificationId: string): Promise<void> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — mock reject');
+    return;
+  }
+  await httpClient.post(`${backendUrl}${CCM_BASE_PATH}/notifications/incoming/${notificationId}/reject`);
 };

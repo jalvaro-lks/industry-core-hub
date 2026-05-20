@@ -21,7 +21,7 @@
 ********************************************************************************/
 
 import i18n from '@/i18n';
-import { 
+import {
   Assignment,
   Hub,
   Recycling,
@@ -37,7 +37,8 @@ import {
   Badge,
   Policy,
   PostAdd,
-  ReceiptLong
+  MarkunreadMailbox,
+  WorkspacePremium as WorkspacePremiumIcon
 } from '@mui/icons-material';
 import { kitFeaturesFeature } from './kit-features/routes';
 import { FeatureConfig, NavigationItem } from '@/types/routing';
@@ -62,6 +63,7 @@ import { serializedPartsFeature } from './industry-core-kit/serialized-parts/rou
 import { passportConsumptionFeature } from './eco-pass-kit/passport-consumption/routes';
 import { passportProvisionFeature } from './eco-pass-kit/passport-provision/routes';
 import { certificateManagementFeature } from './ccm-kit/certificate-management/routes';
+import { shareCertificatesFeature } from './ccm-kit/share-certificates/routes';
 
 // KIT configurations with feature toggles
 export const kits: KitFeature[] = [
@@ -228,7 +230,7 @@ export const kits: KitFeature[] = [
     name: 'CCM KIT',
     description: 'Manage, share and consume compliance certificates via EDC and notifications with dataspace partners.',
     status: 'available',
-    icon: <ReceiptLong />,
+    icon: <WorkspacePremiumIcon />,
     image: CcmKitImage,
     features: [
       {
@@ -236,9 +238,18 @@ export const kits: KitFeature[] = [
         id: 'certificate-management',
         name: 'Certificate Management',
         description: 'Upload, manage, share and consume compliance certificates across the supply chain.',
-        icon: <ReceiptLong />,
+        icon: <WorkspacePremiumIcon />,
         enabled: true,
-        default: true
+        default: false
+      },
+      {
+        module: shareCertificatesFeature,
+        id: 'share-certificates',
+        name: 'Share Certificates',
+        description: 'Manage outgoing certificate shares and incoming notifications from your Catena-X partners.',
+        icon: <MarkunreadMailbox />,
+        enabled: true,
+        default: false
       }
     ],
     version: '1.0.0',

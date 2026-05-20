@@ -27,15 +27,18 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  Typography,
+  Box,
+  IconButton,
   TextField,
   FormControl,
   FormLabel,
   RadioGroup,
   FormControlLabel,
   Radio,
-  Typography,
-  Box
 } from '@mui/material';
+import ShareIcon from '@mui/icons-material/Share';
+import CloseIcon from '@mui/icons-material/Close';
 import { ShareCertificateDialogProps } from '../../types/dialog-types';
 import { certificateManagementConfig } from '../../config';
 
@@ -43,7 +46,7 @@ export const ShareCertificateDialog = ({
   open,
   onClose,
   certificate,
-  onShare
+  onShare,
 }: ShareCertificateDialogProps) => {
   const [partnerBpn, setPartnerBpn] = useState('');
   const [method, setMethod] = useState<'PULL' | 'PUSH'>('PULL');
@@ -73,18 +76,52 @@ export const ShareCertificateDialog = ({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Share Certificate</DialogTitle>
-      <DialogContent>
-        {certificate && (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="body2" color="textSecondary">
-              Sharing certificate:
+      <DialogTitle
+        sx={{
+          backgroundColor: 'primary.main',
+          color: 'primary.contrastText',
+          px: 3,
+          py: 2,
+          pr: 6,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <ShareIcon sx={{ fontSize: 22, color: 'inherit' }} />
+          <Box>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 600, color: 'inherit', lineHeight: 1.2 }}
+            >
+              Share Certificate
             </Typography>
-            <Typography variant="subtitle1" fontWeight={600}>
-              {certificate.name}
-            </Typography>
+            {certificate && (
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)' }}>
+                {certificate.name}
+              </Typography>
+            )}
           </Box>
-        )}
+        </Box>
+        <IconButton
+          size="small"
+          onClick={handleClose}
+          aria-label="close"
+          sx={{
+            position: 'absolute',
+            right: 12,
+            top: 12,
+            color: 'primary.contrastText',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
+          }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent sx={{ backgroundColor: 'background.paper', px: 3, py: 3 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Enter the Business Partner Number of the partner you want to share this
+          certificate with. They will receive it via EDC notification.
+        </Typography>
 
         <TextField
           fullWidth
@@ -95,8 +132,9 @@ export const ShareCertificateDialog = ({
             setError('');
           }}
           error={!!error}
-          helperText={error}
+          helperText={error || 'e.g. BPNL0000000000XX'}
           placeholder="BPNL..."
+          size="small"
           sx={{ mb: 3 }}
         />
 
@@ -133,10 +171,30 @@ export const ShareCertificateDialog = ({
           </RadioGroup>
         </FormControl>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
-        <Button onClick={handleShare} variant="contained" color="primary">
-          Share
+
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'grey.50',
+          gap: 1,
+        }}
+      >
+        <Button
+          onClick={handleClose}
+          variant="outlined"
+          sx={{ textTransform: 'none' }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleShare}
+          variant="contained"
+          sx={{ textTransform: 'none', fontWeight: 600 }}
+        >
+          Share Certificate
         </Button>
       </DialogActions>
     </Dialog>

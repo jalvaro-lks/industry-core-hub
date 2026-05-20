@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "Gestión de Certificados",
+    "subtitle": "Gestiona, comparte y consume certificados de cumplimiento a través del dataspace de Catena-X",
+    "uploadCertificate": "Subir Certificado"
+  },
+  "tabs": {
+    "myCertificates": "Mis Certificados",
+    "shareOutbox": "Compartir y Bandeja de Salida",
+    "discoverConsume": "Descubrir y Consumir"
+  },
+  "compliance": {
+    "title": "Resumen de Cumplimiento",
+    "score": "Puntuación de Cumplimiento",
+    "validOf": "{{valid}} de {{total}} certificados válidos",
+    "valid": "Válidos",
+    "expiringSoon": "Por vencer",
+    "expired": "Caducados",
+    "sharedWith": "{{count}} de {{total}} compartidos con socios",
+    "registeredInDtr": "{{count}} de {{total}} registrados en DTR",
+    "allValid": "Todos los certificados son válidos",
+    "collapse": "Contraer",
+    "expand": "Expandir"
+  },
+  "table": {
+    "subtitle": "Gestiona tus certificados de cumplimiento ({{count}} en total)",
+    "columns": {
+      "name": "Certificado",
+      "type": "Tipo",
+      "issuer": "Emisor",
+      "validFrom": "Válido desde",
+      "validUntil": "Válido hasta",
+      "status": "Estado",
+      "shared": "Compartido",
+      "certId": "ID Cert.",
+      "dtr": "DTR"
+    },
+    "status": {
+      "valid": "Válido",
+      "expiring": "Por vencer",
+      "expired": "Caducado"
+    },
+    "dtr": {
+      "registered": "Registrado en DTR",
+      "pending": "Registro DTR pendiente",
+      "notRegistered": "No registrado en DTR",
+      "registerAction": "Registrar en DTR"
+    },
+    "actions": {
+      "view": "Ver",
+      "share": "Compartir",
+      "delete": "Eliminar"
+    },
+    "empty": {
+      "title": "No se encontraron certificados",
+      "subtitle": "Sube tu primer certificado de cumplimiento para comenzar."
+    }
+  },
+  "messages": {
+    "uploadSuccess": "¡Certificado subido con éxito!",
+    "uploadFailed": "No se pudo subir el certificado.",
+    "shareSuccess": "¡Certificado compartido con éxito!",
+    "shareFailed": "No se pudo compartir el certificado.",
+    "deleteNotAvailable": "La función de eliminación aún no está disponible.",
+    "registerDtrSuccess": "¡Certificado registrado en DTR con éxito!",
+    "registerDtrFailed": "No se pudo registrar el certificado en DTR.",
+    "loadFailed": "No se pudieron cargar los certificados. Por favor, inténtelo de nuevo."
+  },
+  "filters": {
+    "searchPlaceholder": "Buscar por nombre, BPN o emisor...",
+    "allTypes": "Todos los tipos",
+    "allStatuses": "Todos los estados",
+    "type": "Tipo",
+    "status": "Estado"
+  },
+  "dialogs": {
+    "upload": {
+      "title": "Subir Certificado",
+      "editTitle": "Editar Certificado"
+    },
+    "share": {
+      "title": "Compartir Certificado"
+    },
+    "view": {
+      "title": "Detalles del Certificado"
+    },
+    "delete": {
+      "title": "Eliminar Certificado",
+      "confirmation": "¿Estás seguro de que deseas eliminar este certificado?",
+      "warning": "Esta acción no se puede deshacer."
+    }
+  },
+  "shareOutbox": {
+    "title": "Bandeja de Salida",
+    "pushSection": "Notificación Push a Socio",
+    "columns": {
+      "certificate": "Certificado",
+      "partner": "Socio",
+      "method": "Método",
+      "sharedOn": "Fecha de Compartición",
+      "edcContract": "Contrato EDC",
+      "status": "Estado"
+    },
+    "status": {
+      "active": "Activo",
+      "pending": "Pendiente",
+      "revoked": "Revocado"
+    },
+    "revoke": "Revocar",
+    "sendPush": "Enviar Notificación Push",
+    "targetBpn": "BPN del Socio Destino",
+    "selectCertificate": "Seleccionar Certificado",
+    "empty": "Aún no hay registros de compartición."
+  },
+  "consumer": {
+    "discoveryTitle": "Descubrimiento de Certificados de Socios",
+    "inboxTitle": "Notificaciones de Certificados Entrantes",
+    "searchBpn": "Buscar por BPN",
+    "search": "Buscar",
+    "stepper": {
+      "bpnLookup": "Búsqueda BPN",
+      "dtrResolution": "Resolución DTR",
+      "assetDiscovery": "Descubrimiento de Activos"
+    },
+    "negotiation": {
+      "requestAccess": "Solicitar Acceso",
+      "viewCertificate": "Ver Certificado",
+      "retry": "Reintentar"
+    },
+    "inbox": {
+      "columns": {
+        "sender": "Remitente",
+        "type": "Tipo de Certificado",
+        "issuer": "Emisor",
+        "received": "Recibido",
+        "status": "Estado"
+      },
+      "status": {
+        "pending": "Pendiente",
+        "acknowledged": "Reconocido",
+        "rejected": "Rechazado"
+      },
+      "acknowledge": "Reconocer",
+      "reject": "Rechazar",
+      "empty": "No hay notificaciones de certificados entrantes."
+    }
+  }
+}

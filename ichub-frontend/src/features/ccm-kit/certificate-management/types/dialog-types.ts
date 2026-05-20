@@ -38,6 +38,16 @@ export interface CertificateFormData {
   issuer: string;  // Issuer / Certification Body
   validFrom: string;  // Valid From date
   validUntil: string;  // Valid Until date
+  /** Physical certificate number / registration ID per CX-0135 */
+  certificateIdentifier?: string;
+  /**
+   * Certificate scope selector:
+   * - 'BPNL': Certificate applies to the whole legal entity (default)
+   * - 'BPNS': Certificate applies to specific sites only
+   */
+  certificateScope: 'BPNL' | 'BPNS';
+  /** List of BPNS values — only relevant when certificateScope is 'BPNS' */
+  enclosedSitesBpn: string[];
   description?: string;  // Optional description
   document?: File;  // PDF file (will be converted to BASE64)
 }

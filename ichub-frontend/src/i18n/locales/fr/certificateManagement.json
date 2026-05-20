@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "Gestion des Certificats",
+    "subtitle": "Gérez, partagez et consommez des certificats de conformité sur le dataspace Catena-X",
+    "uploadCertificate": "Télécharger un Certificat"
+  },
+  "tabs": {
+    "myCertificates": "Mes Certificats",
+    "shareOutbox": "Partage & Boîte d'envoi",
+    "discoverConsume": "Découvrir & Consommer"
+  },
+  "compliance": {
+    "title": "Vue d'ensemble Conformité",
+    "score": "Score de Conformité",
+    "validOf": "{{valid}} sur {{total}} certificats valides",
+    "valid": "Valides",
+    "expiringSoon": "Expirant bientôt",
+    "expired": "Expirés",
+    "sharedWith": "{{count}} sur {{total}} partagés avec des partenaires",
+    "registeredInDtr": "{{count}} sur {{total}} enregistrés dans le DTR",
+    "allValid": "Tous les certificats sont valides",
+    "collapse": "Réduire",
+    "expand": "Développer"
+  },
+  "table": {
+    "subtitle": "Gérez vos certificats de conformité ({{count}} au total)",
+    "columns": {
+      "name": "Certificat",
+      "type": "Type",
+      "issuer": "Émetteur",
+      "validFrom": "Valide à partir du",
+      "validUntil": "Valide jusqu'au",
+      "status": "Statut",
+      "shared": "Partagé",
+      "certId": "ID Cert.",
+      "dtr": "DTR"
+    },
+    "status": {
+      "valid": "Valide",
+      "expiring": "Expirant",
+      "expired": "Expiré"
+    },
+    "dtr": {
+      "registered": "Enregistré dans le DTR",
+      "pending": "Enregistrement DTR en attente",
+      "notRegistered": "Non enregistré dans le DTR",
+      "registerAction": "Enregistrer dans le DTR"
+    },
+    "actions": {
+      "view": "Voir",
+      "share": "Partager",
+      "delete": "Supprimer"
+    },
+    "empty": {
+      "title": "Aucun certificat trouvé",
+      "subtitle": "Téléchargez votre premier certificat de conformité pour commencer."
+    }
+  },
+  "messages": {
+    "uploadSuccess": "Certificat téléchargé avec succès !",
+    "uploadFailed": "Échec du téléchargement du certificat.",
+    "shareSuccess": "Certificat partagé avec succès !",
+    "shareFailed": "Échec du partage du certificat.",
+    "deleteNotAvailable": "La fonctionnalité de suppression n'est pas encore disponible.",
+    "registerDtrSuccess": "Certificat enregistré dans le DTR avec succès !",
+    "registerDtrFailed": "Échec de l'enregistrement du certificat dans le DTR.",
+    "loadFailed": "Échec du chargement des certificats. Veuillez réessayer."
+  },
+  "filters": {
+    "searchPlaceholder": "Rechercher par nom, BPN ou émetteur...",
+    "allTypes": "Tous les types",
+    "allStatuses": "Tous les statuts",
+    "type": "Type",
+    "status": "Statut"
+  },
+  "dialogs": {
+    "upload": {
+      "title": "Télécharger un Certificat",
+      "editTitle": "Modifier le Certificat"
+    },
+    "share": {
+      "title": "Partager le Certificat"
+    },
+    "view": {
+      "title": "Détails du Certificat"
+    },
+    "delete": {
+      "title": "Supprimer le Certificat",
+      "confirmation": "Êtes-vous sûr de vouloir supprimer ce certificat ?",
+      "warning": "Cette action est irréversible."
+    }
+  },
+  "shareOutbox": {
+    "title": "Boîte d'envoi",
+    "pushSection": "Notification Push au Partenaire",
+    "columns": {
+      "certificate": "Certificat",
+      "partner": "Partenaire",
+      "method": "Méthode",
+      "sharedOn": "Partagé le",
+      "edcContract": "Contrat EDC",
+      "status": "Statut"
+    },
+    "status": {
+      "active": "Actif",
+      "pending": "En attente",
+      "revoked": "Révoqué"
+    },
+    "revoke": "Révoquer",
+    "sendPush": "Envoyer une Notification Push",
+    "targetBpn": "BPN du Partenaire Cible",
+    "selectCertificate": "Sélectionner un Certificat",
+    "empty": "Aucun enregistrement de partage pour l'instant."
+  },
+  "consumer": {
+    "discoveryTitle": "Découverte des Certificats Partenaires",
+    "inboxTitle": "Notifications de Certificats Entrants",
+    "searchBpn": "Rechercher par BPN",
+    "search": "Rechercher",
+    "stepper": {
+      "bpnLookup": "Recherche BPN",
+      "dtrResolution": "Résolution DTR",
+      "assetDiscovery": "Découverte d'Actifs"
+    },
+    "negotiation": {
+      "requestAccess": "Demander l'Accès",
+      "viewCertificate": "Voir le Certificat",
+      "retry": "Réessayer"
+    },
+    "inbox": {
+      "columns": {
+        "sender": "Expéditeur",
+        "type": "Type de Certificat",
+        "issuer": "Émetteur",
+        "received": "Reçu",
+        "status": "Statut"
+      },
+      "status": {
+        "pending": "En attente",
+        "acknowledged": "Accusé de réception",
+        "rejected": "Rejeté"
+      },
+      "acknowledge": "Accuser réception",
+      "reject": "Rejeter",
+      "empty": "Aucune notification de certificat entrant."
+    }
+  }
+}

@@ -101,6 +101,15 @@ import ptPartDiscovery from './locales/pt/partDiscovery.json';
 import ptSerializedParts from './locales/pt/serializedParts.json';
 import ptNotifications from './locales/pt/notifications.json';
 
+// Certificate Management
+import enCertificateManagement from './locales/en/certificateManagement.json';
+import esCertificateManagement from './locales/es/certificateManagement.json';
+import deCertificateManagement from './locales/de/certificateManagement.json';
+import frCertificateManagement from './locales/fr/certificateManagement.json';
+import zhCertificateManagement from './locales/zh/certificateManagement.json';
+import jaCertificateManagement from './locales/ja/certificateManagement.json';
+import ptCertificateManagement from './locales/pt/certificateManagement.json';
+
 export const defaultNS = 'common';
 export const resources = {
   en: {
@@ -112,7 +121,8 @@ export const resources = {
     passportProvision: enPassportProvision,
     partDiscovery: enPartDiscovery,
     serializedParts: enSerializedParts,
-    notifications: enNotifications
+    notifications: enNotifications,
+    certificateManagement: enCertificateManagement
   },
   es: {
     common: esCommon,
@@ -123,7 +133,8 @@ export const resources = {
     passportProvision: esPassportProvision,
     partDiscovery: esPartDiscovery,
     serializedParts: esSerializedParts,
-    notifications: esNotifications
+    notifications: esNotifications,
+    certificateManagement: esCertificateManagement
   },
   de: {
     common: deCommon,
@@ -134,7 +145,8 @@ export const resources = {
     passportProvision: dePassportProvision,
     partDiscovery: dePartDiscovery,
     serializedParts: deSerializedParts,
-    notifications: deNotifications
+    notifications: deNotifications,
+    certificateManagement: deCertificateManagement
   },
   fr: {
     common: frCommon,
@@ -145,7 +157,8 @@ export const resources = {
     passportProvision: frPassportProvision,
     partDiscovery: frPartDiscovery,
     serializedParts: frSerializedParts,
-    notifications: frNotifications
+    notifications: frNotifications,
+    certificateManagement: frCertificateManagement
   },
   zh: {
     common: zhCommon,
@@ -156,7 +169,8 @@ export const resources = {
     passportProvision: zhPassportProvision,
     partDiscovery: zhPartDiscovery,
     serializedParts: zhSerializedParts,
-    notifications: zhNotifications
+    notifications: zhNotifications,
+    certificateManagement: zhCertificateManagement
   },
   ja: {
     common: jaCommon,
@@ -167,7 +181,8 @@ export const resources = {
     passportProvision: jaPassportProvision,
     partDiscovery: jaPartDiscovery,
     serializedParts: jaSerializedParts,
-    notifications: jaNotifications
+    notifications: jaNotifications,
+    certificateManagement: jaCertificateManagement
   },
   pt: {
     common: ptCommon,
@@ -178,7 +193,8 @@ export const resources = {
     passportProvision: ptPassportProvision,
     partDiscovery: ptPartDiscovery,
     serializedParts: ptSerializedParts,
-    notifications: ptNotifications
+    notifications: ptNotifications,
+    certificateManagement: ptCertificateManagement
   }
 } as const;
 
@@ -196,7 +212,7 @@ i18n
     fallbackLng: 'en',
     supportedLngs: supportedLanguages,
     defaultNS,
-    ns: ['common', 'kits', 'catalogManagement', 'partnerManagement', 'passportConsumption', 'passportProvision', 'partDiscovery', 'notifications'],
+    ns: ['common', 'kits', 'catalogManagement', 'partnerManagement', 'passportConsumption', 'passportProvision', 'partDiscovery', 'notifications', 'certificateManagement'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

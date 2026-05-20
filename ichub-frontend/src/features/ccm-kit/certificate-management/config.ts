@@ -50,6 +50,11 @@ export const certificateManagementConfig = {
       pattern: /^BPN[LSA][A-Z0-9]{10}[A-Z0-9]{2}/,
       errorMessage: 'BPN must follow format BPNL followed by 10 alphanumeric characters and 2 checksum characters.',
     },
+    bpns: {
+      // BPN-S format: BPNS followed by 12 alphanumeric characters
+      pattern: /^BPNS[A-Z0-9]{12}$/,
+      errorMessage: 'BPNS must follow format BPNS followed by 12 alphanumeric characters.',
+    },
     certificateName: {
       minLength: 3,
       maxLength: 100,

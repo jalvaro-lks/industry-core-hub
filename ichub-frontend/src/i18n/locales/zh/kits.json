@@ -83,6 +83,16 @@
     "traceability": {
       "name": "可追溯性KIT",
       "description": "整个供应链中零件、警报和组件的端到端可追溯性。"
+    },
+    "ccm": {
+      "name": "CCM KIT",
+      "description": "通过EDC和通知与数据空间合作伙伴管理、共享和使用合规证书。",
+      "features": {
+        "certificateManagement": {
+          "name": "证书管理",
+          "description": "在整个供应链中上传、管理、共享和使用合规证书。"
+        }
+      }
     }
   }
 }

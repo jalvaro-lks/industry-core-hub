@@ -1,7 +1,7 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -14,29 +14,27 @@
  * distributed under the License is distributed on an "AS IS" BASIS
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the
- * License for the specific language govern in permissions and limitations
+ * License for the specific language governing permissions and limitations
  * under the License.
  *
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import { Box, Typography } from '@mui/material';
+import ShareCertificates from './pages/ShareCertificates';
+import { FeatureConfig } from '@/types/routing';
 
-interface StatsCardProps {
-  label: string;
-  value: number;
-  color: string;
-}
-
-export const StatsCard = ({ label, value, color }: StatsCardProps) => {
-  return (
-    <Box className="stats-card">
-      <Typography className="stats-card__value" style={{ color }}>
-        {value}
-      </Typography>
-      <Typography className="stats-card__label">
-        {label}
-      </Typography>
-    </Box>
-  );
+export const shareCertificatesFeature: FeatureConfig = {
+  name: 'shareCertificates',
+  navigationPath: '/share-certificates',
+  disabled: false,
+  routes: [
+    {
+      path: '/share-certificates',
+      element: <ShareCertificates />,
+      meta: {
+        title: 'Share Certificates',
+        description: 'Manage outgoing certificate shares and incoming notifications',
+      },
+    },
+  ],
 };

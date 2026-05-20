@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "证书管理",
+    "subtitle": "在 Catena-X 数据空间中管理、共享和使用合规证书",
+    "uploadCertificate": "上传证书"
+  },
+  "tabs": {
+    "myCertificates": "我的证书",
+    "shareOutbox": "共享与发件箱",
+    "discoverConsume": "发现与使用"
+  },
+  "compliance": {
+    "title": "合规概览",
+    "score": "合规评分",
+    "validOf": "{{total}} 个证书中有 {{valid}} 个有效",
+    "valid": "有效",
+    "expiringSoon": "即将到期",
+    "expired": "已过期",
+    "sharedWith": "{{total}} 个中有 {{count}} 个已与合作伙伴共享",
+    "registeredInDtr": "{{total}} 个中有 {{count}} 个已在 DTR 中注册",
+    "allValid": "所有证书均有效",
+    "collapse": "收起",
+    "expand": "展开"
+  },
+  "table": {
+    "subtitle": "管理您的合规证书（共 {{count}} 个）",
+    "columns": {
+      "name": "证书",
+      "type": "类型",
+      "issuer": "颁发机构",
+      "validFrom": "有效期自",
+      "validUntil": "有效期至",
+      "status": "状态",
+      "shared": "已共享",
+      "certId": "证书 ID",
+      "dtr": "DTR"
+    },
+    "status": {
+      "valid": "有效",
+      "expiring": "即将到期",
+      "expired": "已过期"
+    },
+    "dtr": {
+      "registered": "已在 DTR 中注册",
+      "pending": "DTR 注册待处理",
+      "notRegistered": "未在 DTR 中注册",
+      "registerAction": "在 DTR 中注册"
+    },
+    "actions": {
+      "view": "查看",
+      "share": "共享",
+      "delete": "删除"
+    },
+    "empty": {
+      "title": "未找到证书",
+      "subtitle": "上传您的第一个合规证书以开始使用。"
+    }
+  },
+  "messages": {
+    "uploadSuccess": "证书上传成功！",
+    "uploadFailed": "证书上传失败。",
+    "shareSuccess": "证书共享成功！",
+    "shareFailed": "证书共享失败。",
+    "deleteNotAvailable": "删除功能暂不可用。",
+    "registerDtrSuccess": "证书已成功在 DTR 中注册！",
+    "registerDtrFailed": "证书在 DTR 中注册失败。",
+    "loadFailed": "证书加载失败，请重试。"
+  },
+  "filters": {
+    "searchPlaceholder": "按名称、BPN 或颁发机构搜索...",
+    "allTypes": "所有类型",
+    "allStatuses": "所有状态",
+    "type": "类型",
+    "status": "状态"
+  },
+  "dialogs": {
+    "upload": {
+      "title": "上传证书",
+      "editTitle": "编辑证书"
+    },
+    "share": {
+      "title": "共享证书"
+    },
+    "view": {
+      "title": "证书详情"
+    },
+    "delete": {
+      "title": "删除证书",
+      "confirmation": "您确定要删除此证书吗？",
+      "warning": "此操作无法撤销。"
+    }
+  },
+  "shareOutbox": {
+    "title": "共享发件箱",
+    "pushSection": "向合作伙伴发送推送通知",
+    "columns": {
+      "certificate": "证书",
+      "partner": "合作伙伴",
+      "method": "方式",
+      "sharedOn": "共享时间",
+      "edcContract": "EDC 合约",
+      "status": "状态"
+    },
+    "status": {
+      "active": "活跃",
+      "pending": "待处理",
+      "revoked": "已撤销"
+    },
+    "revoke": "撤销",
+    "sendPush": "发送推送通知",
+    "targetBpn": "目标合作伙伴 BPN",
+    "selectCertificate": "选择证书",
+    "empty": "暂无共享记录。"
+  },
+  "consumer": {
+    "discoveryTitle": "合作伙伴证书发现",
+    "inboxTitle": "传入证书通知",
+    "searchBpn": "按 BPN 搜索",
+    "search": "搜索",
+    "stepper": {
+      "bpnLookup": "BPN 查询",
+      "dtrResolution": "DTR 解析",
+      "assetDiscovery": "资产发现"
+    },
+    "negotiation": {
+      "requestAccess": "请求访问",
+      "viewCertificate": "查看证书",
+      "retry": "重试"
+    },
+    "inbox": {
+      "columns": {
+        "sender": "发送方",
+        "type": "证书类型",
+        "issuer": "颁发机构",
+        "received": "接收时间",
+        "status": "状态"
+      },
+      "status": {
+        "pending": "待处理",
+        "acknowledged": "已确认",
+        "rejected": "已拒绝"
+      },
+      "acknowledge": "确认",
+      "reject": "拒绝",
+      "empty": "暂无传入证书通知。"
+    }
+  }
+}
