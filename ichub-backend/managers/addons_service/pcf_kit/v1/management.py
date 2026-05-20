@@ -875,9 +875,17 @@ class PcfManagementManager:
 
         logger.info(f"[PCF EDC] Discovering connectors for BPN [{target_bpn}]")
 
-        # Remove stale EDR from database to ensure fresh EDR negotiation
+        # Remove stale EDR from the PostgreSQL table AND from the SDK's in-memory
+        # cache (open_connections). Without clearing both, the SDK returns the old
+        # transfer_id cached in memory → get_edr() fails with "EDC response was not
+        # successful" because the EDR has already expired on the connector side.
         with RepositoryManagerFactory.create() as repos:
             remove_existing_edr(repos, target_bpn, "ichub:asset:pcf-exchange:%")
+
+        # Also evict the stale entry from the SDK connection manager's in-memory cache.
+        if hasattr(consumer_connector_service, 'connection_manager'):
+            consumer_connector_service.connection_manager.open_connections.pop(target_bpn, None)
+            logger.debug(f"[PCF EDC] Cleared in-memory EDR cache for BPN [{target_bpn}]")
 
         connectors = connector_consumer_manager.get_connectors(target_bpn)
         if not connectors:
