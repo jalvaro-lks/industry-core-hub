@@ -75,6 +75,7 @@ NOTIFICATIONS_POLL_INTERVAL \
 json_vars=" \
 GOVERNANCE_CONFIG \
 DTR_POLICIES_CONFIG \
+PCF_EXCHANGE_POLICIES_CONFIG \
 "
 
 # Start by removing javascript comments from source file
