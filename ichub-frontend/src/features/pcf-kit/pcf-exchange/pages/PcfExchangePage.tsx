@@ -571,7 +571,7 @@ const PcfExchangePage: React.FC = () => {
             {/* Right: Part info and refresh */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               <Box 
-                onClick={() => navigate(`/catalog-management/parts/${encodeURIComponent(managedPart.manufacturerPartId)}`)}
+                onClick={() => navigate(`/product/${encodeURIComponent(managedPart.manufacturerId)}/${encodeURIComponent(managedPart.manufacturerPartId)}`)}
                 sx={{ 
                   cursor: 'pointer',
                   p: 1.5,

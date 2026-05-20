@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React, { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -108,6 +109,7 @@ export const PcfDataEditor: React.FC<PcfDataEditorProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation('pcf');
 
   // Get PCF schema
   const pcfSchema = getSchemaByNamespaceAndVersion(PCF_NAMESPACE, PCF_VERSION);

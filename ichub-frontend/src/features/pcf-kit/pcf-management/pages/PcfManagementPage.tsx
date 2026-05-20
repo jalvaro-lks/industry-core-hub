@@ -832,7 +832,7 @@ const PcfManagementPage: React.FC = () => {
                           variant="contained"
                           startIcon={<Inventory />}
                           endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
-                          onClick={() => navigate(`/catalog-management/parts/${encodeURIComponent(managedPart.manufacturerPartId)}`)}
+                          onClick={() => navigate(`/product/${encodeURIComponent(manufacturerId)}/${encodeURIComponent(managedPart.manufacturerPartId)}`)}
                           sx={{
                             px: 4,
                             py: 1.5,
