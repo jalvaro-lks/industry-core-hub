@@ -69,7 +69,8 @@ import {
 } from '@mui/icons-material';
 import { CatalogPartSearch, CatalogPartSearchResult, PartInfoHeader, PcfDataEditor } from '../../shared/components';
 import {
-  ManagedPart
+  ManagedPart,
+  PcfDataRecord
 } from '../../pcf-exchange/api/pcfExchangeApi';
 import { PcfDetailsDialog, PcfEditDialog } from '../../pcf-exchange/components';
 import {
@@ -80,6 +81,40 @@ import {
 } from '../../services/pcfApi';
 import { fetchCatalogPart } from '@/features/industry-core-kit/catalog-management/api';
 import { ParticipantSelectionDialog } from '../components';
+
+/** Map raw backend PCF JSON (nested Catena-X 9.0.0 format) to the flat PcfDataRecord expected by dialogs. */
+const toPcfDataRecord = (raw: Record<string, unknown> | null): PcfDataRecord | null => {
+  if (!raw) return null;
+  const pcfVersion = (raw as Record<string, unknown[]>)?.pcfAssessmentAndMethodology?.[0] as Record<string, unknown[]> | undefined;
+  const versionBlock = pcfVersion?.idAndVersion?.[0] as Record<string, unknown> | undefined;
+  const timeBlock = pcfVersion?.time?.[0] as Record<string, unknown> | undefined;
+  const qualityBlock = pcfVersion?.dataSourcesAndQuality?.[0] as Record<string, unknown> | undefined;
+  const geoBlock = pcfVersion?.geography?.[0] as Record<string, unknown> | undefined;
+  const carbonBlock = ((raw as Record<string, unknown[]>)?.productLifeCycleStagesAndEmissions?.[0] as Record<string, unknown[]> | undefined)?.productionStage?.[0] as Record<string, unknown> | undefined;
+  const scopeBlock = (raw as Record<string, unknown[]>)?.scopeOfPcfForm?.[0] as Record<string, unknown> | undefined;
+  const statusStr = String(versionBlock?.status ?? 'Active');
+  return {
+    id: (raw.id as string) ?? '',
+    partCatenaXId: (raw.partCatenaXId as string) ?? '',
+    version: Number(versionBlock?.version ?? 1),
+    specVersion: (scopeBlock?.specVersion as string) ?? 'N/A',
+    status: statusStr === 'Active' ? 'PUBLISHED' : 'DRAFT',
+    created: ((raw.createdAt ?? raw.created) as string) ?? '',
+    updated: ((raw.updatedAt ?? raw.updated) as string) ?? '',
+    companyName: (raw.companyName as string) ?? '',
+    companyBpn: (raw.companyBpn as string) ?? '',
+    productDescription: (raw.productDescription as string) ?? '',
+    productName: (raw.productName as string) ?? '',
+    pcfExcludingBiogenic: Number(carbonBlock?.pcfExcludingBiogenicUptake ?? 0),
+    pcfIncludingBiogenic: Number(carbonBlock?.pcfIncludingBiogenicUptake ?? 0),
+    fossilGhgEmissions: Number(carbonBlock?.fossilGhgEmissions ?? 0),
+    biogenicCarbonContent: Number(carbonBlock?.biogenicCarbonContent ?? 0),
+    referencePeriodStart: (timeBlock?.referencePeriodStart as string) ?? '',
+    referencePeriodEnd: (timeBlock?.referencePeriodEnd as string) ?? '',
+    primaryDataShare: Number(qualityBlock?.primaryDataShare ?? 0),
+    geographyCountry: (geoBlock?.geographyCountry as string) ?? 'N/A',
+  };
+};
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -337,6 +372,49 @@ const PcfManagementPage: React.FC = () => {
   };
 
   // Handle upload/publish PCF (when PCF already exists)
+  // Handle saving edited PCF fields from PcfEditDialog
+  const handleEditSave = async (data: Partial<PcfDataRecord>) => {
+    if (!rawPcfData || !managedPart) return;
+
+    // Deep-clone and patch the nested backend structure with the edited flat fields
+    const updated = JSON.parse(JSON.stringify(rawPcfData)) as Record<string, unknown[]>;
+
+    const carbonBlock = updated?.productLifeCycleStagesAndEmissions?.[0] as Record<string, unknown[]> | undefined;
+    const prodStage = carbonBlock?.productionStage?.[0] as Record<string, unknown> | undefined;
+    if (prodStage) {
+      if (data.pcfExcludingBiogenic !== undefined) prodStage.pcfExcludingBiogenicUptake = data.pcfExcludingBiogenic;
+      if (data.pcfIncludingBiogenic !== undefined) prodStage.pcfIncludingBiogenicUptake = data.pcfIncludingBiogenic;
+    }
+
+    const pcfVer = updated?.pcfAssessmentAndMethodology?.[0] as Record<string, unknown[]> | undefined;
+    const qualityBlock = pcfVer?.dataSourcesAndQuality?.[0] as Record<string, unknown> | undefined;
+    if (qualityBlock && data.primaryDataShare !== undefined) qualityBlock.primaryDataShare = data.primaryDataShare;
+
+    const geoBlock = pcfVer?.geography?.[0] as Record<string, unknown> | undefined;
+    if (geoBlock && data.geographyCountry !== undefined) geoBlock.geographyCountry = data.geographyCountry;
+
+    setIsUpdating(true);
+    try {
+      const participants = await updatePcfAndGetParticipants(
+        managedPart.manufacturerPartId,
+        updated
+      );
+      setRawPcfData(updated);
+      setPcfData(updated);
+      setPcfEditDialogOpen(false);
+      if (participants && participants.length > 0) {
+        setAvailableParticipants(participants);
+        setParticipantDialogOpen(true);
+      } else if (manufacturerId) {
+        await loadPartData(manufacturerId, managedPart.manufacturerPartId);
+      }
+    } catch (err) {
+      console.error('Failed to update PCF:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleUploadPcf = async () => {
     if (!rawPcfData || !managedPart) return;
 
@@ -1112,24 +1190,18 @@ const PcfManagementPage: React.FC = () => {
           </Card>
         </Box>
 
-        {/* Dialogs
-            Note: PcfDetailsDialog and PcfEditDialog expect PcfDataRecord (mock type).
-            They receive null here since pcfData is now raw backend JSON.
-            They need their own refactoring to use real backend data. */}
         <PcfDetailsDialog
           open={pcfDetailsDialogOpen}
           onClose={() => setPcfDetailsDialogOpen(false)}
-          pcfData={null}
+          pcfData={toPcfDataRecord(pcfData)}
           part={managedPart}
         />
 
         <PcfEditDialog
           open={pcfEditDialogOpen}
           onClose={() => setPcfEditDialogOpen(false)}
-          onSave={async (data) => {
-            console.log('Saving PCF data:', data);
-          }}
-          pcfData={null}
+          onSave={handleEditSave}
+          pcfData={toPcfDataRecord(pcfData)}
           part={managedPart}
         />
 

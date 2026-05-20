@@ -389,7 +389,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
         transition: 'all 0.2s ease',
         display: 'flex',
         flexDirection: 'column',
-        height: 280,
+        minHeight: 280,
         '&:hover': {
           borderColor: 'rgba(255, 255, 255, 0.15)',
           backgroundColor: 'rgba(255, 255, 255, 0.07)'
