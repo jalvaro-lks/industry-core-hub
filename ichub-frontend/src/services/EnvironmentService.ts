@@ -322,6 +322,14 @@ export const getDtrPoliciesConfig = (): DtrPolicyConfig => {
   );
 };
 
+export const getPcfExchangePoliciesConfig = (): DtrPolicyConfig => {
+  return parseConfig<DtrPolicyConfig>(
+    'PCF_EXCHANGE_POLICIES_CONFIG',
+    'VITE_PCF_EXCHANGE_POLICIES_CONFIG',
+    []
+  );
+};
+
 // New enhanced service exports
 export const isAuthEnabled = () => {
   const service = new EnvironmentService();

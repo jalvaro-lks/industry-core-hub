@@ -23,14 +23,14 @@
 
 """PCF Consumption API - Data Consumer endpoints for requesting PCF data."""
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import consumption_manager
-from models.services.addons.pcf_kit.v1.management import SendPcfRequestModel
+from models.services.addons.pcf_kit.v1.management import SendPcfRequestModel, GovernanceBodyModel
 from models.services.addons.pcf_kit.v1.models import PcfSubPartModel, PcfRelationshipModel, PcfExchangeModel, PcfSpecificStateModel
 
 
@@ -56,7 +56,7 @@ async def send_pcf_request(body: SendPcfRequestModel):
             requesting_bpn=body.requesting_bpn,
             target_bpn=body.target_bpn,
             message=body.message,
-            list_policies=body.list_policies,
+            list_policies=body.governance,
         )
         return JSONResponse(status_code=201, content=result)
     except ValueError as e:
@@ -105,7 +105,7 @@ async def add_subpart_and_create_request(
 @router.post("/requests/{requestId}/send")
 async def send_pcf_request_to_participant(
     request_id: str = Path(..., alias="requestId"),
-    list_policies: List[Dict] = None) -> Dict[str, Any]:
+    body: GovernanceBodyModel = None) -> Dict[str, Any]:
     """
     Send a new PCF request to a data provider.
 
@@ -113,7 +113,7 @@ async def send_pcf_request_to_participant(
     manufacturerPartId or customerPartId must be provided.
     """
     try:
-        result = consumption_manager.send_pcf_request_to_participant(request_id=request_id, list_policies=list_policies)
+        result = consumption_manager.send_pcf_request_to_participant(request_id=request_id, list_policies=body.governance if body else None)
         return JSONResponse(status_code=201, content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -142,20 +142,20 @@ async def consult_pcf_response(request_id: str = Path(..., alias="requestId")) -
 @router.post("/requests/{requestId}/retry")
 async def retry_pcf_request_sending(
     request_id: str = Path(..., alias="requestId"),
-    list_policies: List[Dict] = None) -> Dict[str, Any]:
+    body: GovernanceBodyModel = None) -> Dict[str, Any]:
     """
     Retry sending a PCF request to a data provider.
 
-    This method is intended to be called when a previous attempt to send a PCF request has failed. It will retry the request using the provided list of policies.
+    This method is intended to be called when a previous attempt to send a PCF request has failed. It will retry the request using the provided governance policies.
 
     Args:
         request_id: The ID of the PCF request to retry.
-        list_policies: Optional list of policies to apply when retrying the request.
+        body: Optional body containing governance policies to apply when retrying the request.
     Raises:
         ValueError: If the request does not exist, is not in a retryable status, or if the retry fails.
     """
     try:
-        result = consumption_manager.send_pcf_request_to_participant(request_id=request_id, list_policies=list_policies)
+        result = consumption_manager.send_pcf_request_to_participant(request_id=request_id, list_policies=body.governance if body else None)
         return JSONResponse(status_code=201, content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

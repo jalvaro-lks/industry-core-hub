@@ -29,7 +29,8 @@
  */
 
 import httpClient from '@/services/HttpClient';
-import { getIchubBackendUrl } from '@/services/EnvironmentService';
+import { getIchubBackendUrl, getPcfExchangePoliciesConfig } from '@/services/EnvironmentService';
+import { generatePoliciesFromDefinition } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 
 // =============================================================================
 // API Configuration
@@ -138,6 +139,18 @@ export interface ProviderRequest extends PcfExchangeModel {
  * Default ODRL policies for PCF data exchange
  * These follow the Catena-X PCF standard policies
  */
+/**
+ * Returns the configured PCF Exchange policies from the environment (values.yaml → PCF_EXCHANGE_POLICIES_CONFIG).
+ * Falls back to DEFAULT_PCF_POLICIES if no configuration is provided.
+ */
+const getDefaultPcfPolicies = (): object[] => {
+  const configured = getPcfExchangePoliciesConfig();
+  if (configured.length > 0) {
+    return configured.flatMap(def => generatePoliciesFromDefinition(def));
+  }
+  return DEFAULT_PCF_POLICIES;
+};
+
 export const DEFAULT_PCF_POLICIES: OdrlPolicy[] = [
   {
     'odrl:permission': {
@@ -235,7 +248,7 @@ export async function notifyParticipants(
     `${getBaseUrl()}/provider/pcfs/${encodeURIComponent(manufacturerPartId)}/notify-update`,
     {
       list_bpns: bpns,
-      list_policies: policies || DEFAULT_PCF_POLICIES
+      governance: policies || getDefaultPcfPolicies()
     }
   );
   return response.data;
@@ -269,7 +282,7 @@ export async function acceptRequest(
 ): Promise<Record<string, unknown>> {
   const response = await httpClient.post<Record<string, unknown>>(
     `${getBaseUrl()}/provider/requests/${encodeURIComponent(requestId)}/accept`,
-    policies || DEFAULT_PCF_POLICIES
+    { governance: policies || getDefaultPcfPolicies() }
   );
   return response.data;
 }
@@ -295,7 +308,7 @@ export async function retryResponseSending(
 ): Promise<Record<string, unknown>> {
   const response = await httpClient.post<Record<string, unknown>>(
     `${getBaseUrl()}/provider/requests/${encodeURIComponent(requestId)}/response/retry`,
-    policies || DEFAULT_PCF_POLICIES
+    { governance: policies || getDefaultPcfPolicies() }
   );
   return response.data;
 }
@@ -339,7 +352,7 @@ export async function sendPcfRequest(
 ): Promise<Record<string, unknown>> {
   const response = await httpClient.post<Record<string, unknown>>(
     `${getBaseUrl()}/consumption/requests/${encodeURIComponent(requestId)}/send`,
-    policies || DEFAULT_PCF_POLICIES
+    { governance: policies || getDefaultPcfPolicies() }
   );
   return response.data;
 }
@@ -353,7 +366,7 @@ export async function retrySendPcfRequest(
 ): Promise<Record<string, unknown>> {
   const response = await httpClient.post<Record<string, unknown>>(
     `${getBaseUrl()}/consumption/requests/${encodeURIComponent(requestId)}/retry`,
-    policies || DEFAULT_PCF_POLICIES
+    { governance: policies || getDefaultPcfPolicies() }
   );
   return response.data;
 }

@@ -60,10 +60,9 @@ class SendPcfRequestModel(BaseModel):
         default=None,
         description="Optional message to include with the request."
     )
-    list_policies: Optional[List[Dict]] = Field(
-        alias="listPolicies",
-        default=None,
-        description="List of allowed policies for contract negotiation."
+    governance: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Governance policies for contract negotiation."
     )
 
 
@@ -86,10 +85,29 @@ class SendOrUpdatePcfResponseModel(BaseModel):
         default=None,
         description="Optional message to include with the response."
     )
-    list_policies: Optional[List[Dict]] = Field(
-        alias="listPolicies",
-        default=None,
-        description="List of allowed policies for contract negotiation."
+    governance: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Governance policies for contract negotiation."
+    )
+
+
+class GovernanceBodyModel(BaseModel):
+    """Request body model for endpoints that only require governance policies."""
+    governance: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Governance policies for contract negotiation."
+    )
+
+
+class NotifyUpdateModel(BaseModel):
+    """Request body model for the notify-update endpoint."""
+    list_bpns: List[str] = Field(
+        default=[],
+        description="List of BPNs to notify."
+    )
+    governance: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Governance policies for contract negotiation."
     )
 
 

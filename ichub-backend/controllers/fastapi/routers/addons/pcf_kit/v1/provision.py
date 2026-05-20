@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import provision_manager
-from models.services.addons.pcf_kit.v1.management import SendOrUpdatePcfResponseModel
+from models.services.addons.pcf_kit.v1.management import SendOrUpdatePcfResponseModel, GovernanceBodyModel, NotifyUpdateModel
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
 
 
@@ -58,7 +58,7 @@ async def send_or_update_pcf_response(
             responding_bpn=body.responding_bpn,
             status=body.status.value if body.status else "delivered",
             message=body.message,
-            list_policies=body.list_policies,
+            list_policies=body.governance,
         )
         status_code = 200 if result.get("isUpdate") else 201
         return JSONResponse(status_code=status_code, content=result)
@@ -119,14 +119,13 @@ async def update_pcf_and_get_participants(
 @router.post("/pcfs/{manufacturerPartId}/notify-update")
 async def confirm_and_send_update_to_participants(
     manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
-    list_bpns: List[str] = [],
-    list_policies: List[Dict] = None
+    body: NotifyUpdateModel = None
 ) -> Dict[str, Any]:
     try:
         result = provision_manager.confirm_and_send_update_to_participants(
             manufacturer_part_id=manufacturer_part_id,
-            list_bpns=list_bpns,
-            list_policies=list_policies
+            list_bpns=body.list_bpns if body else [],
+            list_policies=body.governance if body else None
         )
         return JSONResponse(status_code=200, content=result)
     except ValueError as e:
@@ -153,10 +152,10 @@ async def list_provider_notifications(
 @router.post("/requests/{requestId}/accept")
 async def accept_request_and_send_response(
     request_id: str = Path(..., alias="requestId"),
-    list_policies: List[Dict] = None
+    body: GovernanceBodyModel = None
 ) -> Dict[str, Any]:
     try:
-        result = provision_manager.accept_request_and_send_response(request_id=request_id, list_policies=list_policies)
+        result = provision_manager.accept_request_and_send_response(request_id=request_id, list_policies=body.governance if body else None)
         return JSONResponse(status_code=200, content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
@@ -191,10 +190,10 @@ async def consult_sent_pcf_response(
 @router.post("/requests/{requestId}/response/retry")
 async def retry_response_sending(
     request_id: str = Path(..., alias="requestId"),
-    list_policies: List[Dict] = None
+    body: GovernanceBodyModel = None
 ) -> Dict[str, Any]:
     try:
-        result = provision_manager.accept_request_and_send_response(request_id=request_id, list_policies=list_policies)
+        result = provision_manager.accept_request_and_send_response(request_id=request_id, list_policies=body.governance if body else None)
         return JSONResponse(status_code=200, content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
