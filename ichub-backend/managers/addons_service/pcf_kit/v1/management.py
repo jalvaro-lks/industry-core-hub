@@ -892,8 +892,8 @@ class PcfManagementManager:
                 )
 
                 if http_method.upper() == "GET":
-                    response = consumer_connector_service.do_get_by_dct_type(
-                        counter_party_id=target_bpn,
+                    response = consumer_connector_service.do_get_by_dct_type_with_bpnl(
+                        bpnl=target_bpn,
                         counter_party_address=connector_url,
                         dct_type=asset_type,
                         policies=list_policies,
@@ -901,12 +901,11 @@ class PcfManagementManager:
                         params=params if params else None,
                     )
                 elif http_method.upper() == "PUT":
-                    response = self._do_put_by_dct_type(
-                        consumer_connector_service=consumer_connector_service,
-                        counter_party_id=target_bpn,
+                    response = consumer_connector_service.do_put_by_dct_type_with_bpnl(
+                        bpnl=target_bpn,
                         counter_party_address=connector_url,
                         dct_type=asset_type,
-                        json_data=json_data,
+                        json=json_data if json_data is not None else {},
                         policies=list_policies,
                         path=path,
                     )
@@ -944,8 +943,8 @@ class PcfManagementManager:
                     )
                     
                     if http_method.upper() == "GET":
-                        response = consumer_connector_service.do_get_by_dct_type(
-                            counter_party_id=target_bpn,
+                        response = consumer_connector_service.do_get_by_dct_type_with_bpnl(
+                            bpnl=target_bpn,
                             counter_party_address=connector_url,
                             dct_type=asset_type,
                             policies=list_policies,
@@ -953,12 +952,11 @@ class PcfManagementManager:
                             params=params if params else None,
                         )
                     elif http_method.upper() == "PUT":
-                        response = self._do_put_by_dct_type(
-                            consumer_connector_service=consumer_connector_service,
-                            counter_party_id=target_bpn,
+                        response = consumer_connector_service.do_put_by_dct_type_with_bpnl(
+                            bpnl=target_bpn,
                             counter_party_address=connector_url,
                             dct_type=asset_type,
-                            json_data=json_data,
+                            json=json_data if json_data is not None else {},
                             policies=list_policies,
                             path=path,
                         )
@@ -985,65 +983,6 @@ class PcfManagementManager:
 
         raise ValueError(
             f"Failed to send PCF data via EDC to any connector for BPN [{target_bpn}]: {last_error}"
-        )
-
-    def _do_put_by_dct_type(
-        self,
-        consumer_connector_service,
-        counter_party_id: str,
-        counter_party_address: str,
-        dct_type: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        policies: Optional[List[Dict]] = None,
-        path: str = "/",
-        dct_type_key: str = "'http://purl.org/dc/terms/type'.'@id'",
-        operator: str = "=",
-        **kwargs,
-    ):
-        """
-        Temporary wrapper for do_put_by_dct_type (not yet in SDK).
-        
-        Executes an HTTP PUT request to an asset behind an EDC, filtered by DCT type.
-        This is a local wrapper that will be replaced once do_put_by_dct_type is
-        merged into the tractusx SDK.
-
-        Parameters:
-        counter_party_id (str): Business Partner Number of the target organization.
-        counter_party_address (str): The URL of the EDC provider's DSP endpoint.
-        dct_type (str): The DCT type to filter assets by (e.g., "PcfExchange").
-        json_data (dict, optional): The JSON data to be sent in the PUT request.
-        policies (list, optional): List of allowed policies for contract negotiation.
-        path (str, optional): The path to be appended to the dataplane URL. Defaults to "/".
-        dct_type_key (str, optional): The JSON path key for DCT type filtering.
-        operator (str, optional): The comparison operator for filtering. Defaults to "=".
-        **kwargs: Additional keyword arguments (headers, timeout, verify, etc).
-
-        Returns:
-        Response: The HTTP response from the PUT request to the dataplane.
-
-        Raises:
-        RuntimeError: If EDR negotiation fails or dataplane details cannot be retrieved.
-        ConnectionError: If catalog retrieval or HTTP request fails.
-        """
-        # Create filter expression matching the asset property structure
-        filter_expression = [{
-            "operandLeft": dct_type_key,
-            "operator": operator,
-            "operandRight": dct_type,
-        }]
-
-        
-
-        # Call do_put with the filter expression
-        # Only override json to ensure it's never None (SDK requirement)
-        return consumer_connector_service.do_put(
-            counter_party_id=counter_party_id,
-            counter_party_address=counter_party_address,
-            filter_expression=filter_expression,
-            path=path,
-            json=json_data if json_data is not None else {},
-            policies=policies,
-            headers={}
         )
 
     def _get_connector_services(self):
