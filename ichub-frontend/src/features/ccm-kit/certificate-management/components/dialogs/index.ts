@@ -24,3 +24,4 @@ export { UploadCertificateDialog } from './UploadCertificateDialog';
 export { ShareCertificateDialog } from './ShareCertificateDialog';
 export { ViewCertificateDialog } from './ViewCertificateDialog';
 export { DeleteCertificateDialog } from './DeleteCertificateDialog';
+export { UpdatePdfDialog } from './UpdatePdfDialog';

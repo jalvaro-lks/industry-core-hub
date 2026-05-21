@@ -183,9 +183,6 @@ export const SearchFilterBar = ({ filters, onChange, viewMode, onViewModeChange 
         </Button>
       )}
 
-      {/* Spacer */}
-      <Box sx={{ flex: 1 }} />
-
       {/* List / Card view toggle */}
       <Box
         sx={{
@@ -197,14 +194,14 @@ export const SearchFilterBar = ({ filters, onChange, viewMode, onViewModeChange 
           gap: '2px',
         }}
       >
-        <Tooltip title="Card view" arrow>
-          <IconButton size="small" onClick={() => onViewModeChange('card')} sx={toggleBtnSx(viewMode === 'card')}>
-            <ViewModuleIcon sx={{ fontSize: 18 }} />
-          </IconButton>
-        </Tooltip>
         <Tooltip title="List view" arrow>
           <IconButton size="small" onClick={() => onViewModeChange('list')} sx={toggleBtnSx(viewMode === 'list')}>
             <TableRowsIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Card view" arrow>
+          <IconButton size="small" onClick={() => onViewModeChange('card')} sx={toggleBtnSx(viewMode === 'card')}>
+            <ViewModuleIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>
       </Box>

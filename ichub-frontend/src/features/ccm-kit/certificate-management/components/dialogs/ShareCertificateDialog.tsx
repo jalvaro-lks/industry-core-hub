@@ -31,11 +31,6 @@ import {
   Box,
   IconButton,
   TextField,
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
 } from '@mui/material';
 import ShareIcon from '@mui/icons-material/Share';
 import CloseIcon from '@mui/icons-material/Close';
@@ -49,7 +44,6 @@ export const ShareCertificateDialog = ({
   onShare,
 }: ShareCertificateDialogProps) => {
   const [partnerBpn, setPartnerBpn] = useState('');
-  const [method, setMethod] = useState<'PULL' | 'PUSH'>('PULL');
   const [error, setError] = useState('');
 
   const handleShare = () => {
@@ -62,14 +56,13 @@ export const ShareCertificateDialog = ({
       return;
     }
     if (certificate) {
-      onShare(certificate.id, partnerBpn, method);
+      onShare(certificate.id, partnerBpn, 'PUSH');
       handleClose();
     }
   };
 
   const handleClose = () => {
     setPartnerBpn('');
-    setMethod('PULL');
     setError('');
     onClose();
   };
@@ -108,7 +101,8 @@ export const ShareCertificateDialog = ({
           sx={{
             position: 'absolute',
             right: 12,
-            top: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
             color: 'primary.contrastText',
             '&:hover': { backgroundColor: 'rgba(255,255,255,0.15)' },
           }}
@@ -117,7 +111,7 @@ export const ShareCertificateDialog = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ backgroundColor: 'background.paper', px: 3, py: 3 }}>
+      <DialogContent sx={{ backgroundColor: 'background.paper', px: 3, pt: 4, pb: 3 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Enter the Business Partner Number of the partner you want to share this
           certificate with. They will receive it via EDC notification.
@@ -135,41 +129,8 @@ export const ShareCertificateDialog = ({
           helperText={error || 'e.g. BPNL0000000000XX'}
           placeholder="BPNL..."
           size="small"
-          sx={{ mb: 3 }}
+          sx={{ mb: 2 }}
         />
-
-        <FormControl component="fieldset">
-          <FormLabel component="legend">Sharing Method</FormLabel>
-          <RadioGroup
-            value={method}
-            onChange={(e) => setMethod(e.target.value as 'PULL' | 'PUSH')}
-          >
-            <FormControlLabel
-              value="PULL"
-              control={<Radio />}
-              label={
-                <Box>
-                  <Typography variant="body1">EDC Pull</Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    Partner will pull the certificate via EDC connector
-                  </Typography>
-                </Box>
-              }
-            />
-            <FormControlLabel
-              value="PUSH"
-              control={<Radio />}
-              label={
-                <Box>
-                  <Typography variant="body1">Notification Push</Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    Certificate will be sent to partner via notification
-                  </Typography>
-                </Box>
-              }
-            />
-          </RadioGroup>
-        </FormControl>
       </DialogContent>
 
       <DialogActions
@@ -194,7 +155,7 @@ export const ShareCertificateDialog = ({
           variant="contained"
           sx={{ textTransform: 'none', fontWeight: 600 }}
         >
-          Share Certificate
+          Share
         </Button>
       </DialogActions>
     </Dialog>

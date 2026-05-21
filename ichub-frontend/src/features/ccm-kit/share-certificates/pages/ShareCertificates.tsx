@@ -41,9 +41,8 @@ import {
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
 import SendIcon from '@mui/icons-material/Send';
-import HistoryIcon from '@mui/icons-material/History';
-import InboxIcon from '@mui/icons-material/Inbox';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import CancelIcon from '@mui/icons-material/Cancel';
 import MarkunreadMailboxIcon from '@mui/icons-material/MarkunreadMailbox';
 
@@ -54,7 +53,6 @@ import {
 import {
   fetchSharingRecords,
   fetchIncomingNotifications,
-  acknowledgeNotification,
   rejectNotification,
   revokeShare,
 } from '../../certificate-management/api';
@@ -71,10 +69,11 @@ const ShareCertificates = () => {
   const [sharingRecords, setSharingRecords] = useState<SharedCertificate[]>([]);
   const [notifications, setNotifications] = useState<IncomingCertificateNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [outboxPage, setOutboxPage] = useState(0);
-  const outboxRowsPerPage = 10;
   const [revokingIds, setRevokingIds] = useState<Set<string>>(new Set());
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [outboxPage, setOutboxPage] = useState(0);
+  const [inboxPage, setInboxPage] = useState(0);
+  const ROWS_PER_PAGE = 10;
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -122,22 +121,6 @@ const ShareCertificates = () => {
     }
   };
 
-  const handleAcknowledge = async (notif: IncomingCertificateNotification) => {
-    try {
-      await acknowledgeNotification(notif.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, status: 'acknowledged' as const } : n))
-      );
-      setSnackbar({ open: true, message: 'Notification acknowledged.', severity: 'success' });
-    } catch {
-      setSnackbar({
-        open: true,
-        message: 'Failed to acknowledge notification.',
-        severity: 'error',
-      });
-    }
-  };
-
   const handleReject = async (notif: IncomingCertificateNotification) => {
     try {
       await rejectNotification(notif.id);
@@ -151,10 +134,8 @@ const ShareCertificates = () => {
   };
 
   const pendingCount = notifications.filter((n) => n.status === 'pending').length;
-  const visibleOutboxRows = sharingRecords.slice(
-    outboxPage * outboxRowsPerPage,
-    (outboxPage + 1) * outboxRowsPerPage
-  );
+  const visibleOutboxRows = sharingRecords.slice(outboxPage * ROWS_PER_PAGE, (outboxPage + 1) * ROWS_PER_PAGE);
+  const visibleInboxRows = notifications.slice(inboxPage * ROWS_PER_PAGE, (inboxPage + 1) * ROWS_PER_PAGE);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -200,7 +181,7 @@ const ShareCertificates = () => {
           <Paper sx={{ backgroundColor: '#1a2332', borderRadius: 3, overflow: 'hidden' }}>
             {/* Section header */}
             <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid', borderColor: 'rgba(255,255,255,0.1)', backgroundColor: '#1e2d3d', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <HistoryIcon sx={{ color: '#64b5f6', fontSize: 20 }} />
+              <ArrowUpwardIcon sx={{ color: '#64b5f6', fontSize: 20 }} />
               <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, color: '#e8eaf6' }}>
                 Sharing Outbox
               </Typography>
@@ -219,12 +200,12 @@ const ShareCertificates = () => {
               </Box>
             ) : (
               <>
-                <TableContainer>
-                  <Table size="small" sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.08)' } }}>
+                <TableContainer sx={{ maxHeight: 'calc(50vh - 120px)', overflow: 'auto' }}>
+                  <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.08)' } }}>
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                        {['Certificate', 'Partner', 'Shared On', 'Status', 'Action'].map((h) => (
-                          <TableCell key={h} sx={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)' }}>
+                      <TableRow>
+                        {['Certificate', 'Partner', 'Shared On', 'Status'].map((h) => (
+                          <TableCell key={h} sx={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)', backgroundColor: '#1e2d3d' }}>
                             {h}
                           </TableCell>
                         ))}
@@ -256,34 +237,19 @@ const ShareCertificates = () => {
                               }}
                             />
                           </TableCell>
-                          <TableCell>
-                            <Tooltip title={record.edcContractId}>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                color="error"
-                                startIcon={revokingIds.has(record.id) ? <CircularProgress size={12} /> : undefined}
-                                disabled={record.status !== 'Active' || revokingIds.has(record.id)}
-                                onClick={() => void handleRevoke(record)}
-                                sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-                              >
-                                Revoke
-                              </Button>
-                            </Tooltip>
-                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
                 <TablePagination
-                  rowsPerPageOptions={[outboxRowsPerPage]}
+                  rowsPerPageOptions={[]}
                   component="div"
                   count={sharingRecords.length}
-                  rowsPerPage={outboxRowsPerPage}
+                  rowsPerPage={ROWS_PER_PAGE}
                   page={outboxPage}
                   onPageChange={(_, p) => setOutboxPage(p)}
-                  sx={{ color: 'rgba(255,255,255,0.6)', borderTop: '1px solid rgba(255,255,255,0.08)', '& .MuiIconButton-root': { color: 'rgba(255,255,255,0.6)' } }}
+                  sx={{ color: 'rgba(255,255,255,0.6)', borderTop: '1px solid rgba(255,255,255,0.08)', '& .MuiIconButton-root': { color: 'rgba(255,255,255,0.6)' }, '& .MuiIconButton-root.Mui-disabled': { color: 'rgba(255,255,255,0.2)' } }}
                 />
               </>
             )}
@@ -295,7 +261,7 @@ const ShareCertificates = () => {
           <Paper sx={{ backgroundColor: '#1a2332', borderRadius: 3, overflow: 'hidden' }}>
             {/* Section header */}
             <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid', borderColor: 'rgba(255,255,255,0.1)', backgroundColor: '#1e2d3d', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <InboxIcon sx={{ color: '#64b5f6', fontSize: 20 }} />
+              <ArrowDownwardIcon sx={{ color: '#64b5f6', fontSize: 20 }} />
               <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, color: '#e8eaf6' }}>
                 Incoming Certificate Shares
               </Typography>
@@ -315,77 +281,62 @@ const ShareCertificates = () => {
                 </Typography>
               </Box>
             ) : (
-              <TableContainer>
-                  <Table size="small" sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.08)' } }}>
+              <>
+                <TableContainer sx={{ maxHeight: 'calc(50vh - 120px)', overflow: 'auto' }}>
+                  <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.08)' } }}>
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                        {['Sender', 'Certificate Type', 'Received', 'Status', 'Actions'].map((h) => (
-                          <TableCell key={h} sx={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)' }}>
-                          {h}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {notifications.map((notif) => (
-                      <TableRow key={notif.id} sx={{ '&:last-child td': { border: 0 }, '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' } }}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={500} sx={{ color: 'rgba(255,255,255,0.87)' }}>{notif.senderName ?? '—'}</Typography>
-                          <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)' }}>{notif.senderBpn}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.87)' }}>
-                            {certificateManagementConfig.certificateTypes.find((t) => t.value === notif.certificateType)?.label ?? notif.certificateType}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>{formatDate(notif.receivedAt)}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={notif.status}
-                            size="small"
-                            sx={{
-                              fontWeight: 600,
-                              fontSize: '0.7rem',
-                              textTransform: 'capitalize',
-                              ...(notif.status === 'acknowledged' && { backgroundColor: 'rgba(76,175,80,0.15)', color: '#81c784', border: '1px solid rgba(76,175,80,0.3)' }),
-                              ...(notif.status === 'pending' && { backgroundColor: 'rgba(255,167,38,0.15)', color: '#ffb74d', border: '1px solid rgba(255,167,38,0.3)' }),
-                              ...(notif.status !== 'acknowledged' && notif.status !== 'pending' && { backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)' }),
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="success"
-                              startIcon={<CheckCircleIcon fontSize="small" />}
-                              disabled={notif.status !== 'pending'}
-                              onClick={() => void handleAcknowledge(notif)}
-                              sx={{ textTransform: 'none', fontSize: '0.72rem' }}
-                            >
-                              Ack
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              startIcon={<CancelIcon fontSize="small" />}
-                              disabled={notif.status !== 'pending'}
-                              onClick={() => void handleReject(notif)}
-                              sx={{ textTransform: 'none', fontSize: '0.72rem' }}
-                            >
-                              Reject
-                            </Button>
-                          </Box>
-                        </TableCell>
+                      <TableRow>
+                        {['Sender', 'Certificate Type', 'Received', 'Status'].map((h) => (
+                          <TableCell key={h} sx={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'rgba(255,255,255,0.5)', backgroundColor: '#1e2d3d' }}>
+                            {h}
+                          </TableCell>
+                        ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {visibleInboxRows.map((notif) => (
+                        <TableRow key={notif.id} sx={{ '&:last-child td': { border: 0 }, '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' } }}>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={500} sx={{ color: 'rgba(255,255,255,0.87)' }}>{notif.senderName ?? '—'}</Typography>
+                            <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)' }}>{notif.senderBpn}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.87)' }}>
+                              {certificateManagementConfig.certificateTypes.find((t) => t.value === notif.certificateType)?.label ?? notif.certificateType}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>{formatDate(notif.receivedAt)}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={notif.status}
+                              size="small"
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: '0.7rem',
+                                textTransform: 'capitalize',
+                                ...(notif.status === 'acknowledged' && { backgroundColor: 'rgba(76,175,80,0.15)', color: '#81c784', border: '1px solid rgba(76,175,80,0.3)' }),
+                                ...(notif.status === 'pending' && { backgroundColor: 'rgba(255,167,38,0.15)', color: '#ffb74d', border: '1px solid rgba(255,167,38,0.3)' }),
+                                ...(notif.status !== 'acknowledged' && notif.status !== 'pending' && { backgroundColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.15)' }),
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <TablePagination
+                  rowsPerPageOptions={[]}
+                  component="div"
+                  count={notifications.length}
+                  rowsPerPage={ROWS_PER_PAGE}
+                  page={inboxPage}
+                  onPageChange={(_, p) => setInboxPage(p)}
+                  sx={{ color: 'rgba(255,255,255,0.6)', borderTop: '1px solid rgba(255,255,255,0.08)', '& .MuiIconButton-root': { color: 'rgba(255,255,255,0.6)' }, '& .MuiIconButton-root.Mui-disabled': { color: 'rgba(255,255,255,0.2)' } }}
+                />
+              </>
             )}
           </Paper>
         </Grid2>

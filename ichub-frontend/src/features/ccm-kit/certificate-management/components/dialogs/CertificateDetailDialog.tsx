@@ -40,26 +40,23 @@ import {
   TableContainer,
   Tooltip,
   IconButton,
-  CircularProgress,
   Alert,
   Snackbar,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import CloudDoneIcon from '@mui/icons-material/CloudDone';
-import CloudOffIcon from '@mui/icons-material/CloudOff';
-import SyncIcon from '@mui/icons-material/Sync';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import BlockIcon from '@mui/icons-material/Block';
 import ShareIcon from '@mui/icons-material/Share';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { Certificate, SharingRecord } from '../../types/types';
 import { certificateManagementConfig } from '../../config';
-import { registerCertificateInDtr, revokeShare } from '../../api';
+import { revokeShare } from '../../api';
 
 interface CertificateDetailDialogProps {
   open: boolean;
   onClose: () => void;
   certificate: Certificate | null;
   onShare: (certificate: Certificate) => void;
+  onUpdate: (certificate: Certificate) => void;
   onRefresh: () => void;
 }
 
@@ -92,9 +89,9 @@ export const CertificateDetailDialog = ({
   onClose,
   certificate,
   onShare,
+  onUpdate,
   onRefresh,
 }: CertificateDetailDialogProps) => {
-  const [isRegistering, setIsRegistering] = useState(false);
   const [revokingIds, setRevokingIds] = useState<Set<string>>(new Set());
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -105,19 +102,6 @@ export const CertificateDetailDialog = ({
   if (!certificate) return null;
 
   const statusColor = getStatusColor(certificate.status);
-
-  const handleRegisterDtr = async () => {
-    setIsRegistering(true);
-    try {
-      await registerCertificateInDtr(certificate.id);
-      setSnackbar({ open: true, message: 'Certificate registered in DTR successfully.', severity: 'success' });
-      onRefresh();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to register certificate in DTR.', severity: 'error' });
-    } finally {
-      setIsRegistering(false);
-    }
-  };
 
   const handleRevoke = async (record: SharingRecord) => {
     setRevokingIds((prev) => new Set(prev).add(record.id));
@@ -226,65 +210,6 @@ export const CertificateDetailDialog = ({
 
           <Divider sx={{ mb: 3 }} />
 
-          {/* ── Section: Digital Twin Registry ─────────────────────────── */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-            <Box>
-              <Typography
-                variant="caption"
-                sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
-              >
-                Digital Twin Registry
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {certificate.dtrStatus === 'registered' && (
-                  <>
-                    <CloudDoneIcon sx={{ color: 'success.main', fontSize: 20 }} />
-                    <Typography variant="body2" color="success.main">Registered as Submodel Descriptor</Typography>
-                  </>
-                )}
-                {certificate.dtrStatus === 'pending' && (
-                  <>
-                    <SyncIcon sx={{ color: 'warning.main', fontSize: 20 }} />
-                    <Typography variant="body2" color="warning.main">Registration pending…</Typography>
-                  </>
-                )}
-                {certificate.dtrStatus === 'not_registered' && (
-                  <>
-                    <CloudOffIcon sx={{ color: 'text.disabled', fontSize: 20 }} />
-                    <Typography variant="body2" color="text.secondary">Not registered in DTR</Typography>
-                  </>
-                )}
-              </Box>
-            </Box>
-            {certificate.dtrStatus === 'not_registered' && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={isRegistering ? <CircularProgress size={14} /> : <CloudDoneIcon fontSize="small" />}
-                disabled={isRegistering}
-                onClick={handleRegisterDtr}
-                sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
-              >
-                {isRegistering ? 'Registering…' : 'Register in DTR'}
-              </Button>
-            )}
-            {certificate.documentUrl && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<OpenInNewIcon fontSize="small" />}
-                href={certificate.documentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
-              >
-                View Document
-              </Button>
-            )}
-          </Box>
-
-          <Divider sx={{ mb: 3 }} />
-
           {/* ── Section: Sharing History ────────────────────────────────── */}
           <Typography
             variant="caption"
@@ -380,6 +305,17 @@ export const CertificateDetailDialog = ({
         <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
           <Button onClick={onClose} sx={{ textTransform: 'none' }}>
             Close
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => {
+              onClose();
+              onUpdate(certificate);
+            }}
+            sx={{ textTransform: 'none' }}
+          >
+            Update PDF
           </Button>
           <Button
             variant="contained"

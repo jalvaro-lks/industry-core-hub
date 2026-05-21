@@ -87,8 +87,8 @@ export const DeleteCertificateDialog = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ backgroundColor: 'background.paper', px: 3, pt: 8, pb: 3 }}>
-        <Typography variant="body1" sx={{ mb: certificate ? 2 : 0 }}>
+      <DialogContent sx={{ backgroundColor: 'background.paper', px: 3, pt: 3, pb: 3 }}>
+        <Typography variant="body1" sx={{ mb: certificate ? 2 : 0, mt: 3 }}>
           Are you sure you want to delete this certificate?
         </Typography>
         {certificate && (

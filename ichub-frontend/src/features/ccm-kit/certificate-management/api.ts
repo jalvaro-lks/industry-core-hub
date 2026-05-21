@@ -231,6 +231,30 @@ export const createCertificate = async (certificateData: CertificateFormData): P
 };
 
 /**
+ * Replace the PDF document of an existing certificate.
+ * PUT /api/ccm/certificates/{id}/document
+ *
+ * @param certificateId - ID of the certificate to update
+ * @param document - New PDF file
+ */
+export const updateCertificateDocument = async (
+  certificateId: string,
+  document: File,
+): Promise<void> => {
+  if (!backendUrl) {
+    console.warn('[CCM] Backend URL not configured — mock update document');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('document', document);
+  await httpClient.put(
+    `${backendUrl}${CCM_BASE_PATH}/certificates/${certificateId}/document`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+};
+
+/**
  * Share a certificate with a partner via EDC
  * POST /api/ccm/certificates/{id}/share
  * 

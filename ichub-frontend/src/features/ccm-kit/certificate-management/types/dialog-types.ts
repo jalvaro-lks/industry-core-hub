@@ -62,6 +62,22 @@ export interface ShareCertificateDialogProps {
   onShare: (certificateId: string, partnerBpn: string, method: 'PULL' | 'PUSH') => void;
 }
 
+export interface UpdatePdfDialogProps {
+  open: boolean;
+  onClose: () => void;
+  certificate: {
+    id: string;
+    name: string;
+    sharingRecords?: Array<{
+      id: string;
+      partnerBpn: string;
+      partnerName?: string;
+      status: string;
+    }>;
+  } | null;
+  onUpdate: (certificateId: string, newDocument: File, notifyPartnerBpns: string[]) => Promise<void>;
+}
+
 export interface ViewCertificateDialogProps {
   open: boolean;
   onClose: () => void;

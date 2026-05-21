@@ -328,7 +328,7 @@ export const DiscoverPartnerDialog = ({
 
         <DialogContent sx={{ backgroundColor: 'background.paper', px: 3, pt: 6, pb: 3 }}>
           {/* BPN Search */}
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 2 }}>
             Enter a partner BPN or select from your contact list to discover their compliance
             certificates in the Catena-X dataspace.
           </Typography>

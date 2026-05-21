@@ -31,6 +31,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ShareIcon from '@mui/icons-material/Share';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { Certificate } from '../../types/types';
@@ -41,6 +42,7 @@ interface CertificatePDFViewerProps {
   certificate: Certificate | null;
   onClose: () => void;
   onShare: (certificate: Certificate) => void;
+  onUpdate: (certificate: Certificate) => void;
   onDelete: (certificate: Certificate) => void;
 }
 
@@ -60,6 +62,7 @@ export const CertificatePDFViewer = ({
   certificate,
   onClose,
   onShare,
+  onUpdate,
   onDelete,
 }: CertificatePDFViewerProps) => {
   if (!certificate) return null;
@@ -172,6 +175,22 @@ export const CertificatePDFViewer = ({
             }}
           >
             Share
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<RefreshIcon fontSize="small" />}
+            onClick={() => onUpdate(certificate)}
+            sx={{
+              borderColor: 'rgba(129,199,132,0.5)',
+              color: '#81c784',
+              textTransform: 'none',
+              fontWeight: 500,
+              borderRadius: 1.5,
+              '&:hover': { borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,0.12)', color: '#fff' },
+            }}
+          >
+            Update PDF
           </Button>
           <Button
             size="small"
