@@ -1,0 +1,36 @@
+// PcfDetailsPage — host container for the full-screen PCF visualization
+.pcf-details-page {
+  height: 100%;
+  width: 100%;
+  position: relative;
+
+  // Loading / error states share the same centered layout
+  &__loading,
+  &__error {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0d0d0d;
+    padding: 24px;
+  }
+
+  // Edit FAB — fixed position so it floats above the scrollable content
+  &__edit-fab {
+    position: fixed !important;
+    bottom: 28px;
+    right: 28px;
+    z-index: 1200;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+
+    &:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6) !important;
+      transform: translateY(-2px);
+    }
+  }
+}

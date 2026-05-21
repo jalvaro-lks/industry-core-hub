@@ -1124,7 +1124,7 @@ const PcfManagementPage: React.FC = () => {
                     <Button
                       variant="outlined"
                       startIcon={<Visibility />}
-                      onClick={() => setPcfDetailsDialogOpen(true)}
+                      onClick={() => navigate(`/pcf/management/details/${managedPart?.manufacturerPartId}`)}
                       sx={{
                         flex: 1,
                         py: 1.25,
@@ -1146,7 +1146,7 @@ const PcfManagementPage: React.FC = () => {
                     <Button
                       variant="outlined"
                       startIcon={<Edit />}
-                      onClick={() => setPcfEditDialogOpen(true)}
+                      onClick={() => navigate(`/pcf/management/edit/${managedPart?.manufacturerPartId}`)}
                       sx={{
                         flex: 1,
                         py: 1.25,

@@ -24,6 +24,8 @@
 import { CloudUpload } from '@mui/icons-material';
 import { FeatureConfig } from '@/types/routing';
 import PcfManagementPage from './pages/PcfManagementPage';
+import PcfDetailsPage from './pages/PcfDetailsPage';
+import PcfEditPage from './pages/PcfEditPage';
 
 /**
  * PCF Management feature configuration.
@@ -38,6 +40,15 @@ export const pcfManagementFeature: FeatureConfig = {
     {
       path: '/pcf/management',
       element: <PcfManagementPage />
+    },
+    // Static routes must come before the dynamic :manufacturerId/:partId route
+    {
+      path: '/pcf/management/details/:manufacturerPartId',
+      element: <PcfDetailsPage />
+    },
+    {
+      path: '/pcf/management/edit/:manufacturerPartId',
+      element: <PcfEditPage />
     },
     {
       path: '/pcf/management/:manufacturerId/:partId',
