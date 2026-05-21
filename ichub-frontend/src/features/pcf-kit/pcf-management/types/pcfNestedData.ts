@@ -255,211 +255,152 @@ export interface PcfNestedData {
 }
 
 // ---------------------------------------------------------------------------
-// Flat form values type for the Edit page
+// Factory functions for creating empty entities (used by the Edit page)
 // ---------------------------------------------------------------------------
 
-/**
- * Flat representation of the PCF fields that can be edited via the Update form.
- * Covers the most relevant fields for recalculation and updates, organised by section.
- */
-export interface PcfEditFormValues {
-  // Scope
-  partialFullPcf: 'Cradle-to-gate' | 'Cradle-to-grave';
-  specVersion: string;
-
-  // Product Information
-  declaredUnitAmount: number;
-  declaredUnitOfMeasurement: string;
-  productMassPerDeclaredUnit: number;
-
-  // Assessment — Data Quality
-  primaryDataShare: number;
-  technologicalDQR: number;
-  temporalDQR: number;
-  geographicalDQR: number;
-
-  // Assessment — Time
-  referencePeriodStart: string;
-  referencePeriodEnd: string;
-  validityPeriodEnd: string;
-
-  // Assessment — Geography
-  geographyCountry: string;
-  geographyRegionOrSubregion: string;
-
-  // Production Stage Emissions
-  pcfIncludingBiogenicUptake: number;
-  pcfExcludingBiogenicUptake: number;
-  fossilGhgEmissions: number;
-  biogenicCO2Uptake: number;
-  landUseChangeGhgEmissions: number;
-  aircraftGhgEmissions: number;
-
-  // Distribution Stage
-  distributionStageIncluded: boolean;
-  distributionStagePcfIncludingBiogenicUptake: number;
-  distributionStagePcfExcludingBiogenicUptake: number;
-
-  // Carbon Content
-  carbonContentTotal: number;
-  fossilCarbonContent: number;
-  biogenicCarbonContent: number;
-  recycledCarbonContent: number;
-
-  // General
-  comment: string;
+export function createEmptyScopeOfPcfForm(): ScopeOfPcfFormEntity {
+  return { specVersion: '', partialFullPcf: 'Cradle-to-gate' };
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export function createEmptyCompanyInformation(): CompanyInformationEntity {
+  return { companyName: '', companyIds: [] };
+}
 
-/**
- * Extract flat form values from the nested PCF data structure.
- * Uses safe optional chaining throughout since any array may be empty.
- */
-export function extractFormValues(data: PcfNestedData): PcfEditFormValues {
-  const scope = data.scopeOfPcfForm?.[0];
-  const productInfo = data.companyAndProductInformation?.[0]?.productInformation?.[0];
-  const assessment = data.pcfAssessmentAndMethodology?.[0];
-  const quality = assessment?.dataSourcesAndQuality?.[0];
-  const assessmentInfo = assessment?.pcfAssessmentInformation?.[0];
-  const time = assessmentInfo?.time?.[0];
-  const geography = assessmentInfo?.geography?.[0];
-  const production = data.productLifeCycleStagesAndEmissions?.[0]?.productionStage?.[0];
-  const distribution = data.productLifeCycleStagesAndEmissions?.[0]?.distributionStage?.[0];
-  const carbon = data.carbonContent?.[0];
-  const general = data.general?.[0];
-
+export function createEmptyProductInformation(): ProductInformationEntity {
   return {
-    // Scope
-    partialFullPcf: (scope?.partialFullPcf as 'Cradle-to-gate' | 'Cradle-to-grave') ?? 'Cradle-to-gate',
-    specVersion: scope?.specVersion ?? '',
-
-    // Product
-    declaredUnitAmount: productInfo?.declaredUnitAmount ?? 0,
-    declaredUnitOfMeasurement: productInfo?.declaredUnitOfMeasurement ?? 'kilogram',
-    productMassPerDeclaredUnit: productInfo?.productMassPerDeclaredUnit ?? 0,
-
-    // Data Quality
-    primaryDataShare: quality?.primaryDataShare ?? 0,
-    technologicalDQR: quality?.technologicalDQR ?? 1,
-    temporalDQR: quality?.temporalDQR ?? 1,
-    geographicalDQR: quality?.geographicalDQR ?? 1,
-
-    // Time
-    referencePeriodStart: time?.referencePeriodStart ?? '',
-    referencePeriodEnd: time?.referencePeriodEnd ?? '',
-    validityPeriodEnd: time?.validityPeriodEnd ?? '',
-
-    // Geography
-    geographyCountry: geography?.geographyCountry ?? '',
-    geographyRegionOrSubregion: geography?.geographyRegionOrSubregion ?? 'Global',
-
-    // Production Stage
-    pcfIncludingBiogenicUptake: production?.pcfIncludingBiogenicUptake ?? 0,
-    pcfExcludingBiogenicUptake: production?.pcfExcludingBiogenicUptake ?? 0,
-    fossilGhgEmissions: production?.fossilGhgEmissions ?? 0,
-    biogenicCO2Uptake: production?.biogenicCO2Uptake ?? 0,
-    landUseChangeGhgEmissions: production?.landUseChangeGhgEmissions ?? 0,
-    aircraftGhgEmissions: production?.aircraftGhgEmissions ?? 0,
-
-    // Distribution Stage
-    distributionStageIncluded: distribution?.distributionStageIncluded ?? false,
-    distributionStagePcfIncludingBiogenicUptake: distribution?.distributionStagePcfIncludingBiogenicUptake ?? 0,
-    distributionStagePcfExcludingBiogenicUptake: distribution?.distributionStagePcfExcludingBiogenicUptake ?? 0,
-
-    // Carbon Content
-    carbonContentTotal: carbon?.carbonContentTotal ?? 0,
-    fossilCarbonContent: carbon?.fossilCarbonContent ?? 0,
-    biogenicCarbonContent: carbon?.biogenicCarbonContent ?? 0,
-    recycledCarbonContent: carbon?.recycledCarbonContent ?? 0,
-
-    // General
-    comment: general?.comment ?? '',
+    productNameCompany: '',
+    productIds: [],
+    declaredUnitOfMeasurement: 'kilogram',
+    declaredUnitAmount: 1,
+    productMassPerDeclaredUnit: 0,
   };
 }
 
-/**
- * Merge form values back into the original nested PCF data structure.
- * Creates a deep copy of the original and patches only the edited paths.
- * Preserves any fields not present in the edit form (e.g., attestation, methodology).
- */
-export function mergePcfFormValues(
-  original: PcfNestedData,
-  form: PcfEditFormValues
-): PcfNestedData {
-  // Deep copy to avoid mutating the original state
-  const merged: PcfNestedData = JSON.parse(JSON.stringify(original));
+export function createEmptyCompanyAndProductInformation(): CompanyAndProductInformationEntity {
+  return {
+    companyInformation: [createEmptyCompanyInformation()],
+    productInformation: [createEmptyProductInformation()],
+  };
+}
 
-  // Scope
-  if (!merged.scopeOfPcfForm?.length) merged.scopeOfPcfForm = [{ specVersion: '', partialFullPcf: 'Cradle-to-gate' }];
-  merged.scopeOfPcfForm[0].partialFullPcf = form.partialFullPcf;
-  merged.scopeOfPcfForm[0].specVersion = form.specVersion;
+export function createEmptyDataSourcesAndQuality(): DataSourcesAndQualityEntity {
+  return {};
+}
 
-  // Product Information
-  if (!merged.companyAndProductInformation?.length) merged.companyAndProductInformation = [{ companyInformation: [], productInformation: [] }];
-  if (!merged.companyAndProductInformation[0].productInformation?.length)
-    merged.companyAndProductInformation[0].productInformation = [{ productNameCompany: '', productIds: [], declaredUnitOfMeasurement: 'kilogram', declaredUnitAmount: 0, productMassPerDeclaredUnit: 0 }];
-  const prodInfo = merged.companyAndProductInformation[0].productInformation[0];
-  prodInfo.declaredUnitAmount = form.declaredUnitAmount;
-  prodInfo.declaredUnitOfMeasurement = form.declaredUnitOfMeasurement as ProductInformationEntity['declaredUnitOfMeasurement'];
-  prodInfo.productMassPerDeclaredUnit = form.productMassPerDeclaredUnit;
+export function createEmptyTechnology(): TechnologyEntity {
+  return { ccsTechnologicalCO2CaptureIncluded: false };
+}
 
-  // PCF Assessment — ensure nested arrays exist
-  if (!merged.pcfAssessmentAndMethodology?.length) merged.pcfAssessmentAndMethodology = [{}];
-  const assessment = merged.pcfAssessmentAndMethodology[0];
+export function createEmptyIdAndVersion(): IdAndVersionEntity {
+  return {
+    id: crypto.randomUUID(),
+    version: 0,
+    status: 'Active',
+    retroOrProspectivePcfType: 'Retrospective PCF',
+  };
+}
 
-  if (!assessment.dataSourcesAndQuality?.length) assessment.dataSourcesAndQuality = [{}];
-  const quality = assessment.dataSourcesAndQuality[0];
-  quality.primaryDataShare = form.primaryDataShare;
-  quality.technologicalDQR = form.technologicalDQR;
-  quality.temporalDQR = form.temporalDQR;
-  quality.geographicalDQR = form.geographicalDQR;
+export function createEmptyBoundarySpecifications(): BoundarySpecificationsEntity {
+  return { exemptedEmissionsPercent: 0 };
+}
 
-  if (!assessment.pcfAssessmentInformation?.length) assessment.pcfAssessmentInformation = [{}];
-  const info = assessment.pcfAssessmentInformation[0];
+export function createEmptyGeography(): GeographyEntity {
+  return { geographyRegionOrSubregion: 'Global' };
+}
 
-  if (!info.time?.length) info.time = [{ referencePeriodStart: '', referencePeriodEnd: '', created: '', validityPeriodEnd: '' }];
-  info.time[0].referencePeriodStart = form.referencePeriodStart;
-  info.time[0].referencePeriodEnd = form.referencePeriodEnd;
-  info.time[0].validityPeriodEnd = form.validityPeriodEnd;
+export function createEmptyTime(): TimeEntity {
+  return {
+    referencePeriodStart: '',
+    referencePeriodEnd: '',
+    created: new Date().toISOString(),
+    validityPeriodEnd: '',
+  };
+}
 
-  if (!info.geography?.length) info.geography = [{ geographyRegionOrSubregion: 'Global' }];
-  info.geography[0].geographyCountry = form.geographyCountry;
-  info.geography[0].geographyRegionOrSubregion = form.geographyRegionOrSubregion;
+export function createEmptyPcfAssessmentInformation(): PcfAssessmentInformationEntity {
+  return {
+    technology: [createEmptyTechnology()],
+    idAndVersion: [createEmptyIdAndVersion()],
+    boundarySpecifications: [createEmptyBoundarySpecifications()],
+    geography: [createEmptyGeography()],
+    time: [createEmptyTime()],
+  };
+}
 
-  // Production Stage
-  if (!merged.productLifeCycleStagesAndEmissions?.length) merged.productLifeCycleStagesAndEmissions = [{}];
-  const lifecycle = merged.productLifeCycleStagesAndEmissions[0];
+export function createEmptyVerification(): VerificationEntity {
+  return {};
+}
 
-  if (!lifecycle.productionStage?.length) lifecycle.productionStage = [{ pcfIncludingBiogenicUptake: 0, pcfExcludingBiogenicUptake: 0 }];
-  const prod = lifecycle.productionStage[0];
-  prod.pcfIncludingBiogenicUptake = form.pcfIncludingBiogenicUptake;
-  prod.pcfExcludingBiogenicUptake = form.pcfExcludingBiogenicUptake;
-  prod.fossilGhgEmissions = form.fossilGhgEmissions;
-  prod.biogenicCO2Uptake = form.biogenicCO2Uptake;
-  prod.landUseChangeGhgEmissions = form.landUseChangeGhgEmissions;
-  prod.aircraftGhgEmissions = form.aircraftGhgEmissions;
+export function createEmptyMassBalancingInformation(): MassBalancingInformationEntity {
+  return {
+    massBalancingUsed: false,
+    freeAttributionInMassBalancing: 'not applicable',
+    massBalancingCertificateScheme: '',
+  };
+}
 
-  // Distribution Stage
-  if (!lifecycle.distributionStage?.length) lifecycle.distributionStage = [{ distributionStageIncluded: false }];
-  const dist = lifecycle.distributionStage[0];
-  dist.distributionStageIncluded = form.distributionStageIncluded;
-  dist.distributionStagePcfIncludingBiogenicUptake = form.distributionStagePcfIncludingBiogenicUptake;
-  dist.distributionStagePcfExcludingBiogenicUptake = form.distributionStagePcfExcludingBiogenicUptake;
+export function createEmptyStandards(): StandardsEntity {
+  return { crossSectoralStandards: [], productOrSectorSpecificRules: [] };
+}
 
-  // Carbon Content
-  if (!merged.carbonContent?.length) merged.carbonContent = [{}];
-  const carbon = merged.carbonContent[0];
-  carbon.carbonContentTotal = form.carbonContentTotal;
-  carbon.fossilCarbonContent = form.fossilCarbonContent;
-  carbon.biogenicCarbonContent = form.biogenicCarbonContent;
-  carbon.recycledCarbonContent = form.recycledCarbonContent;
+export function createEmptyGwpCharacterizationFactorDetails(): GwpCharacterizationFactorDetailsEntity {
+  return { ipccCharacterizationFactors: 'AR6' };
+}
 
-  // General
-  if (!merged.general?.length) merged.general = [{}];
-  merged.general[0].comment = form.comment;
+export function createEmptyAllocationInForeground(): AllocationInForegroundEntity {
+  return { allocationWasteIncineration: 'cut-off' };
+}
 
-  return merged;
+export function createEmptyPcfMethodology(): PcfMethodologyEntity {
+  return {
+    massBalancingInformation: [createEmptyMassBalancingInformation()],
+    standards: [createEmptyStandards()],
+    gwpCharacterizationFactorDetails: [createEmptyGwpCharacterizationFactorDetails()],
+    allocationInForeground: [createEmptyAllocationInForeground()],
+  };
+}
+
+export function createEmptyPcfAssessmentAndMethodology(): PcfAssessmentAndMethodologyEntity {
+  return {
+    dataSourcesAndQuality: [createEmptyDataSourcesAndQuality()],
+    pcfAssessmentInformation: [createEmptyPcfAssessmentInformation()],
+  };
+}
+
+export function createEmptyGeneral(): GeneralEntity {
+  return {};
+}
+
+export function createEmptyCarbonContent(): CarbonContentEntity {
+  return {};
+}
+
+export function createEmptyProductionStage(): ProductionStageEntity {
+  return { pcfIncludingBiogenicUptake: 0, pcfExcludingBiogenicUptake: 0 };
+}
+
+export function createEmptyDistributionStage(): DistributionStageEntity {
+  return { distributionStageIncluded: false };
+}
+
+export function createEmptyPackagingStage(): PackagingStageEntity {
+  return { packagingEmissionsIncluded: true };
+}
+
+export function createEmptyProductLifeCycleStagesAndEmissions(): ProductLifeCycleStagesAndEmissionsEntity {
+  return {
+    productionStage: [createEmptyProductionStage()],
+    distributionStage: [createEmptyDistributionStage()],
+    packagingStage: [createEmptyPackagingStage()],
+  };
+}
+
+export function createEmptyAttestationOfConformance(): AttestationOfConformanceEntity {
+  return {
+    attestationType: '',
+    standardName: '',
+    attestationStandard: '',
+    attestationOfConformanceId: '',
+    providerName: '',
+  };
 }

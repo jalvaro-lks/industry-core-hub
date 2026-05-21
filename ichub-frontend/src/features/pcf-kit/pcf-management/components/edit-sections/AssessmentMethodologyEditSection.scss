@@ -1,0 +1,36 @@
+// Assessment & Methodology sub-accordion styling
+
+.assessment-edit {
+  &__sub-accordion {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px !important;
+    margin-bottom: 8px !important;
+    box-shadow: none !important;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  &__sub-summary {
+    min-height: 36px !important;
+    padding: 0 12px !important;
+
+    .MuiAccordionSummary-content {
+      margin: 6px 0 !important;
+    }
+  }
+
+  &__sub-title {
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  &__sub-details {
+    padding: 8px 12px 12px !important;
+  }
+}

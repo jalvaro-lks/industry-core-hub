@@ -117,6 +117,7 @@ const PcfDetailsPage: React.FC = () => {
         passportVersion={specVersion}
         config={{
           headerCards: [PcfSummaryCard, PcfCompanyCard, PcfPeriodCard],
+          hideActionButtons: ['dataContract', 'exportPdf'],
         }}
       />
 

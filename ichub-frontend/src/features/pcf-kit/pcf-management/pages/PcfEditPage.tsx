@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -28,21 +28,16 @@ import {
   Button,
   CircularProgress,
   Grid2,
-  InputAdornment,
   Menu,
   MenuItem,
   ListItemIcon,
   ListItemText,
   Paper,
   Snackbar,
-  Switch,
   Tab,
   Tabs,
-  TextField,
   Typography,
-  FormControlLabel,
   Chip,
-  Divider,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -50,19 +45,26 @@ import {
   Co2,
   Assessment,
   Factory,
-  LocalShipping,
   Description,
   Science,
   KeyboardArrowDown,
   Inventory,
-  CalendarMonth,
-  Public,
-  BarChart,
+  Business,
+  VerifiedUser,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { getPcfByManufacturerPartId, updatePcfAndGetParticipants, notifyParticipants, DEFAULT_PCF_POLICIES } from '../../services/pcfApi';
-import { PcfNestedData, PcfEditFormValues, extractFormValues, mergePcfFormValues } from '../types/pcfNestedData';
+import { PcfNestedData } from '../types/pcfNestedData';
 import { ParticipantSelectionDialog } from '../components';
+import {
+  ScopeEditSection,
+  CompanyProductEditSection,
+  AssessmentMethodologyEditSection,
+  EmissionsEditSection,
+  CarbonContentEditSection,
+  GeneralEditSection,
+  AttestationEditSection,
+} from '../components/edit-sections';
 import { getPcfExchangePoliciesConfig } from '@/services/EnvironmentService';
 import { generatePoliciesFromDefinition } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 import './PcfEditPage.scss';
@@ -73,31 +75,6 @@ import './PcfEditPage.scss';
 
 const PCF_PRIMARY = '#10b981';
 
-const DECLARED_UNIT_OPTIONS = [
-  'liter', 'kilogram', 'cubic meter', 'kilowatt hour', 'megajoule',
-  'ton kilometer', 'square meter', 'piece', 'hour', 'megabit', 'second',
-] as const;
-
-const PARTIAL_FULL_PCF_OPTIONS = ['Cradle-to-gate', 'Cradle-to-grave'] as const;
-
-const GEOGRAPHY_REGIONS = [
-  'Africa', 'Americas', 'Asia', 'Europe', 'Oceania',
-  'Australia and New Zealand', 'Central Asia', 'Eastern Asia', 'Eastern Europe',
-  'Latin America and the Caribbean', 'Melanesia', 'Micronesia', 'Northern Africa',
-  'Northern America', 'Northern Europe', 'Polynesia', 'South-eastern Asia',
-  'Southern Asia', 'Southern Europe', 'Sub-Saharan Africa', 'Western Asia',
-  'Western Europe', 'Global', 'Several',
-] as const;
-
-// ISO 3166-1 alpha-2 common codes (non-exhaustive but covers the most relevant)
-const COUNTRY_CODES = [
-  'DE', 'US', 'CN', 'JP', 'KR', 'FR', 'GB', 'IT', 'ES', 'NL', 'BE', 'AT',
-  'CH', 'PL', 'CZ', 'SK', 'HU', 'RO', 'SE', 'NO', 'DK', 'FI', 'PT', 'GR',
-  'TR', 'MX', 'BR', 'IN', 'CA', 'AU', 'ZA', 'AR', 'CL', 'TH', 'ID', 'MY',
-  'VN', 'PH', 'SG', 'TW', 'HK', 'SA', 'AE', 'IL', 'EG', 'NG', 'KE',
-] as const;
-
-// Tab definition
 interface EditTab {
   id: string;
   label: string;
@@ -105,58 +82,14 @@ interface EditTab {
 }
 
 const EDIT_TABS: EditTab[] = [
-  { id: 'scope', label: 'Scope & Product', icon: Inventory },
-  { id: 'assessment', label: 'Assessment', icon: Assessment },
+  { id: 'scope', label: 'Scope', icon: Inventory },
+  { id: 'company', label: 'Company & Product', icon: Business },
+  { id: 'assessment', label: 'Assessment & Methodology', icon: Assessment },
   { id: 'emissions', label: 'Emissions', icon: Factory },
   { id: 'carbon', label: 'Carbon Content', icon: Science },
   { id: 'general', label: 'General', icon: Description },
+  { id: 'attestation', label: 'Attestation', icon: VerifiedUser },
 ];
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-interface FieldProps {
-  label: string;
-  unit?: string;
-  children: React.ReactNode;
-  required?: boolean;
-}
-
-/** Wraps a single field with a label and optional unit label. */
-const FieldWrapper: React.FC<FieldProps> = ({ label, unit, children, required }) => (
-  <Box className="pcf-edit-page__field">
-    <Typography className="pcf-edit-page__field-label">
-      {label}{required && <span style={{ color: '#ef4444' }}> *</span>}
-      {unit && (
-        <Typography component="span" className="pcf-edit-page__field-unit">
-          &nbsp;({unit})
-        </Typography>
-      )}
-    </Typography>
-    {children}
-  </Box>
-);
-
-interface SectionProps {
-  title: string;
-  icon?: React.ElementType;
-  children: React.ReactNode;
-}
-
-/** Visual section group inside a tab. */
-const Section: React.FC<SectionProps> = ({ title, icon: Icon, children }) => (
-  <Box className="pcf-edit-page__section">
-    <Box className="pcf-edit-page__section-header">
-      {Icon && <Icon sx={{ fontSize: 18, color: PCF_PRIMARY }} />}
-      <Typography className="pcf-edit-page__section-title">{title}</Typography>
-    </Box>
-    <Divider className="pcf-edit-page__section-divider" />
-    <Grid2 container spacing={2} sx={{ mt: 1 }}>
-      {children}
-    </Grid2>
-  </Box>
-);
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -166,7 +99,7 @@ const Section: React.FC<SectionProps> = ({ title, icon: Icon, children }) => (
  * Full-screen Update form for a PCF (Product Carbon Footprint).
  *
  * Loads the existing PCF via GET, populates the form, and on save:
- *   1. Merges edited values back into the full nested structure.
+ *   1. Sends the full nested structure directly.
  *   2. Calls PUT updatePcfAndGetParticipants → receives a list of BPN participants.
  *   3. Opens ParticipantSelectionDialog for the user to choose who to notify.
  *   4. On confirm → POST notifyParticipants → navigates back to /pcf/management.
@@ -179,19 +112,13 @@ const PcfEditPage: React.FC = () => {
   const { t } = useTranslation('pcf');
 
   // --------------- Data loading ---------------
-  const [originalData, setOriginalData] = useState<PcfNestedData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // --------------- Form state ---------------
-  const [formValues, setFormValues] = useState<PcfEditFormValues | null>(null);
+  // --------------- Form state (full nested structure) ---------------
+  const [formData, setFormData] = useState<PcfNestedData | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [tabMenuAnchor, setTabMenuAnchor] = useState<null | HTMLElement>(null);
-
-  // --------------- Date input refs (for programmatic showPicker()) ---------------
-  const referencePeriodStartRef = useRef<HTMLInputElement>(null);
-  const referencePeriodEndRef   = useRef<HTMLInputElement>(null);
-  const validityPeriodEndRef    = useRef<HTMLInputElement>(null);
 
   // --------------- Save / Notify state ---------------
   const [isSaving, setIsSaving] = useState(false);
@@ -214,9 +141,8 @@ const PcfEditPage: React.FC = () => {
           setLoadError(t('error.pcfNotFound', 'PCF data not found for this part.'));
           return;
         }
-        const nested = raw as unknown as PcfNestedData;
-        setOriginalData(nested);
-        setFormValues(extractFormValues(nested));
+        // Deep clone so edits don't mutate cached data
+        setFormData(structuredClone(raw as unknown as PcfNestedData));
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load PCF data');
       } finally {
@@ -226,21 +152,12 @@ const PcfEditPage: React.FC = () => {
     load();
   }, [manufacturerPartId, t]);
 
-  // Generic field change handler — keeps formValues immutable between renders
-  const handleChange = useCallback(
-    <K extends keyof PcfEditFormValues>(field: K, value: PcfEditFormValues[K]) => {
-      setFormValues((prev) => (prev ? { ...prev, [field]: value } : prev));
+  // Generic section updater — replaces a top-level key in the nested structure
+  const updateSection = useCallback(
+    <K extends keyof PcfNestedData>(key: K, value: PcfNestedData[K]) => {
+      setFormData((prev) => (prev ? { ...prev, [key]: value } : prev));
     },
     []
-  );
-
-  // Handle numeric TextField changes (parses float, defaults to 0)
-  const handleNumberChange = useCallback(
-    (field: keyof PcfEditFormValues, raw: string) => {
-      const parsed = parseFloat(raw);
-      handleChange(field, (isNaN(parsed) ? 0 : parsed) as PcfEditFormValues[typeof field]);
-    },
-    [handleChange]
   );
 
   // Governance policies helper — reuses the same logic as PcfManagementPage
@@ -254,14 +171,13 @@ const PcfEditPage: React.FC = () => {
 
   // --------------- Save handler ---------------
   const handleSave = async () => {
-    if (!formValues || !originalData || !manufacturerPartId) return;
+    if (!formData || !manufacturerPartId) return;
     setIsSaving(true);
     setSaveError(null);
     try {
-      const merged = mergePcfFormValues(originalData, formValues);
       const result = await updatePcfAndGetParticipants(
         manufacturerPartId,
-        merged as unknown as Record<string, unknown>
+        formData as unknown as Record<string, unknown>
       );
       // Normalize: backend may return an object or null instead of a plain string[]
       const bpns = Array.isArray(result) ? result : [];
@@ -311,7 +227,7 @@ const PcfEditPage: React.FC = () => {
     );
   }
 
-  if (loadError || !formValues) {
+  if (loadError || !formData) {
     return (
       <Box className="pcf-edit-page__error">
         <Alert severity="error" sx={{ maxWidth: 520 }}>{loadError}</Alert>
@@ -327,7 +243,7 @@ const PcfEditPage: React.FC = () => {
   }
 
   const productName =
-    originalData?.companyAndProductInformation?.[0]?.productInformation?.[0]?.productNameCompany ??
+    formData?.companyAndProductInformation?.[0]?.productInformation?.[0]?.productNameCompany ??
     manufacturerPartId;
 
   // --------------- Render ---------------
@@ -459,482 +375,47 @@ const PcfEditPage: React.FC = () => {
 
       {/* ─── Tab Content ─── */}
       <Box className="pcf-edit-page__content">
-
-        {/* TAB 0 — Scope & Product */}
         {activeTab === 0 && (
-          <Box>
-            <Section title="PCF Scope" icon={Inventory}>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="PCF Type" required>
-                  <TextField
-                    select
-                    fullWidth
-                    value={formValues.partialFullPcf}
-                    onChange={(e) => handleChange('partialFullPcf', e.target.value as PcfEditFormValues['partialFullPcf'])}
-                    className="pcf-edit-page__input"
-                    size="small"
-                  >
-                    {PARTIAL_FULL_PCF_OPTIONS.map((opt) => (
-                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                    ))}
-                  </TextField>
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Spec Version" required>
-                  <TextField
-                    fullWidth
-                    value={formValues.specVersion}
-                    onChange={(e) => handleChange('specVersion', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    placeholder="e.g. PACT Methodology v2.0.0"
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-
-            <Section title="Product Information" icon={Inventory}>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Declared Unit Amount" required>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.declaredUnitAmount}
-                    onChange={(e) => handleNumberChange('declaredUnitAmount', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0.0001, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Declared Unit of Measurement" required>
-                  <TextField
-                    select
-                    fullWidth
-                    value={formValues.declaredUnitOfMeasurement}
-                    onChange={(e) => handleChange('declaredUnitOfMeasurement', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                  >
-                    {DECLARED_UNIT_OPTIONS.map((opt) => (
-                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                    ))}
-                  </TextField>
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Product Mass per Declared Unit" unit="kg" required>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.productMassPerDeclaredUnit}
-                    onChange={(e) => handleNumberChange('productMassPerDeclaredUnit', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                    InputProps={{ endAdornment: <InputAdornment position="end">kg</InputAdornment> }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-          </Box>
+          <ScopeEditSection
+            items={formData.scopeOfPcfForm ?? []}
+            onChange={(v) => updateSection('scopeOfPcfForm', v)}
+          />
         )}
-
-        {/* TAB 1 — Assessment */}
         {activeTab === 1 && (
-          <Box>
-            <Section title="Data Quality" icon={BarChart}>
-              <Grid2 size={{ xs: 12, sm: 3 }}>
-                <FieldWrapper label="Primary Data Share" unit="%" >
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.primaryDataShare}
-                    onChange={(e) => handleNumberChange('primaryDataShare', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, max: 100, step: 'any' }}
-                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 3 }}>
-                <FieldWrapper label="Technological DQR" unit="1–5">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.technologicalDQR}
-                    onChange={(e) => handleNumberChange('technologicalDQR', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 1, max: 5, step: 0.1 }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 3 }}>
-                <FieldWrapper label="Temporal DQR" unit="1–5">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.temporalDQR}
-                    onChange={(e) => handleNumberChange('temporalDQR', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 1, max: 5, step: 0.1 }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 3 }}>
-                <FieldWrapper label="Geographical DQR" unit="1–5">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.geographicalDQR}
-                    onChange={(e) => handleNumberChange('geographicalDQR', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 1, max: 5, step: 0.1 }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-
-            <Section title="Reference Period & Validity" icon={CalendarMonth}>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Reference Period Start" required>
-                  <TextField
-                    fullWidth
-                    type="datetime-local"
-                    value={formValues.referencePeriodStart ? formValues.referencePeriodStart.slice(0, 16) : ''}
-                    onChange={(e) => handleChange('referencePeriodStart', e.target.value ? `${e.target.value}:00Z` : '')}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    inputRef={referencePeriodStartRef}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <CalendarMonth
-                            onClick={() => referencePeriodStartRef.current?.showPicker()}
-                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Reference Period End" required>
-                  <TextField
-                    fullWidth
-                    type="datetime-local"
-                    value={formValues.referencePeriodEnd ? formValues.referencePeriodEnd.slice(0, 16) : ''}
-                    onChange={(e) => handleChange('referencePeriodEnd', e.target.value ? `${e.target.value}:00Z` : '')}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    inputRef={referencePeriodEndRef}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <CalendarMonth
-                            onClick={() => referencePeriodEndRef.current?.showPicker()}
-                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Validity Period End" required>
-                  <TextField
-                    fullWidth
-                    type="datetime-local"
-                    value={formValues.validityPeriodEnd ? formValues.validityPeriodEnd.slice(0, 16) : ''}
-                    onChange={(e) => handleChange('validityPeriodEnd', e.target.value ? `${e.target.value}:00Z` : '')}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    InputLabelProps={{ shrink: true }}
-                    inputRef={validityPeriodEndRef}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <CalendarMonth
-                            onClick={() => validityPeriodEndRef.current?.showPicker()}
-                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-
-            <Section title="Geography" icon={Public}>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Country" required>
-                  <TextField
-                    select
-                    fullWidth
-                    value={formValues.geographyCountry}
-                    onChange={(e) => handleChange('geographyCountry', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                  >
-                    <MenuItem value=""><em>— None —</em></MenuItem>
-                    {COUNTRY_CODES.map((c) => (
-                      <MenuItem key={c} value={c}>{c}</MenuItem>
-                    ))}
-                  </TextField>
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Region or Subregion" required>
-                  <TextField
-                    select
-                    fullWidth
-                    value={formValues.geographyRegionOrSubregion}
-                    onChange={(e) => handleChange('geographyRegionOrSubregion', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                  >
-                    {GEOGRAPHY_REGIONS.map((r) => (
-                      <MenuItem key={r} value={r}>{r}</MenuItem>
-                    ))}
-                  </TextField>
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-          </Box>
+          <CompanyProductEditSection
+            items={formData.companyAndProductInformation ?? []}
+            onChange={(v) => updateSection('companyAndProductInformation', v)}
+          />
         )}
-
-        {/* TAB 2 — Emissions */}
         {activeTab === 2 && (
-          <Box>
-            <Section title="Production Stage" icon={Factory}>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="PCF Including Biogenic Uptake" unit="kg CO₂e/unit" required>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.pcfIncludingBiogenicUptake}
-                    onChange={(e) => handleNumberChange('pcfIncludingBiogenicUptake', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="PCF Excluding Biogenic Uptake" unit="kg CO₂e/unit" required>
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.pcfExcludingBiogenicUptake}
-                    onChange={(e) => handleNumberChange('pcfExcludingBiogenicUptake', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Fossil GHG Emissions" unit="kg CO₂e/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.fossilGhgEmissions}
-                    onChange={(e) => handleNumberChange('fossilGhgEmissions', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Biogenic CO₂ Uptake" unit="kg CO₂e/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.biogenicCO2Uptake}
-                    onChange={(e) => handleNumberChange('biogenicCO2Uptake', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ step: 'any' }}
-                    helperText="Can be negative (CO₂ absorbed)"
-                    FormHelperTextProps={{ sx: { color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem' } }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Land Use Change GHG Emissions" unit="kg CO₂e/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.landUseChangeGhgEmissions}
-                    onChange={(e) => handleNumberChange('landUseChangeGhgEmissions', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 4 }}>
-                <FieldWrapper label="Aircraft GHG Emissions" unit="kg CO₂e/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.aircraftGhgEmissions}
-                    onChange={(e) => handleNumberChange('aircraftGhgEmissions', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-
-            <Section title="Distribution Stage" icon={LocalShipping}>
-              <Grid2 size={{ xs: 12 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formValues.distributionStageIncluded}
-                      onChange={(e) => handleChange('distributionStageIncluded', e.target.checked)}
-                      sx={{
-                        '& .MuiSwitch-switchBase.Mui-checked': { color: PCF_PRIMARY },
-                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: PCF_PRIMARY },
-                      }}
-                    />
-                  }
-                  label={
-                    <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>
-                      Distribution Stage Included
-                    </Typography>
-                  }
-                  sx={{ mb: 1 }}
-                />
-              </Grid2>
-
-              {formValues.distributionStageIncluded && (
-                <>
-                  <Grid2 size={{ xs: 12, sm: 6 }}>
-                    <FieldWrapper label="Distribution PCF Including Biogenic Uptake" unit="kg CO₂e/unit">
-                      <TextField
-                        fullWidth
-                        type="number"
-                        value={formValues.distributionStagePcfIncludingBiogenicUptake}
-                        onChange={(e) => handleNumberChange('distributionStagePcfIncludingBiogenicUptake', e.target.value)}
-                        className="pcf-edit-page__input"
-                        size="small"
-                        inputProps={{ step: 'any' }}
-                      />
-                    </FieldWrapper>
-                  </Grid2>
-                  <Grid2 size={{ xs: 12, sm: 6 }}>
-                    <FieldWrapper label="Distribution PCF Excluding Biogenic Uptake" unit="kg CO₂e/unit">
-                      <TextField
-                        fullWidth
-                        type="number"
-                        value={formValues.distributionStagePcfExcludingBiogenicUptake}
-                        onChange={(e) => handleNumberChange('distributionStagePcfExcludingBiogenicUptake', e.target.value)}
-                        className="pcf-edit-page__input"
-                        size="small"
-                        inputProps={{ min: 0, step: 'any' }}
-                      />
-                    </FieldWrapper>
-                  </Grid2>
-                </>
-              )}
-            </Section>
-          </Box>
+          <AssessmentMethodologyEditSection
+            items={formData.pcfAssessmentAndMethodology ?? []}
+            onChange={(v) => updateSection('pcfAssessmentAndMethodology', v)}
+          />
         )}
-
-        {/* TAB 3 — Carbon Content */}
         {activeTab === 3 && (
-          <Box>
-            <Section title="Carbon Content Breakdown" icon={Co2}>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Total Carbon Content" unit="kg C/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.carbonContentTotal}
-                    onChange={(e) => handleNumberChange('carbonContentTotal', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Fossil Carbon Content" unit="kg C/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.fossilCarbonContent}
-                    onChange={(e) => handleNumberChange('fossilCarbonContent', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Biogenic Carbon Content" unit="kg C/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.biogenicCarbonContent}
-                    onChange={(e) => handleNumberChange('biogenicCarbonContent', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-              <Grid2 size={{ xs: 12, sm: 6 }}>
-                <FieldWrapper label="Recycled Carbon Content" unit="kg C/unit">
-                  <TextField
-                    fullWidth
-                    type="number"
-                    value={formValues.recycledCarbonContent}
-                    onChange={(e) => handleNumberChange('recycledCarbonContent', e.target.value)}
-                    className="pcf-edit-page__input"
-                    size="small"
-                    inputProps={{ min: 0, step: 'any' }}
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-          </Box>
+          <EmissionsEditSection
+            items={formData.productLifeCycleStagesAndEmissions ?? []}
+            onChange={(v) => updateSection('productLifeCycleStagesAndEmissions', v)}
+          />
         )}
-
-        {/* TAB 4 — General */}
         {activeTab === 4 && (
-          <Box>
-            <Section title="General Information" icon={Description}>
-              <Grid2 size={{ xs: 12 }}>
-                <FieldWrapper label="Comment">
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={6}
-                    value={formValues.comment}
-                    onChange={(e) => handleChange('comment', e.target.value)}
-                    className="pcf-edit-page__input"
-                    placeholder="Additional notes or instructions for the recipient…"
-                  />
-                </FieldWrapper>
-              </Grid2>
-            </Section>
-          </Box>
+          <CarbonContentEditSection
+            items={formData.carbonContent ?? []}
+            onChange={(v) => updateSection('carbonContent', v)}
+          />
+        )}
+        {activeTab === 5 && (
+          <GeneralEditSection
+            items={formData.general ?? []}
+            onChange={(v) => updateSection('general', v)}
+          />
+        )}
+        {activeTab === 6 && (
+          <AttestationEditSection
+            items={formData.attestationOfConformance ?? []}
+            onChange={(v) => updateSection('attestationOfConformance', v)}
+          />
         )}
       </Box>
 
