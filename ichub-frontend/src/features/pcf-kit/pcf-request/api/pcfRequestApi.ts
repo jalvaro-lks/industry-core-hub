@@ -39,7 +39,7 @@ export interface SubpartPcfResponse {
   supplierName: string;
   manufacturerPartId: string;
   partName: string;
-  pcfStatus: 'pending' | 'delivered' | 'rejected' | 'error';
+  pcfStatus: 'pending' | 'delivered' | 'received' | 'rejected' | 'error';
   pcfValue?: number;
   pcfUnit?: string;
   requestedAt?: string;
@@ -241,23 +241,25 @@ export async function searchCatalogPartsByManufacturerPartId(
  * Convert API exchange model to UI subpart response
  */
 function convertToSubpartResponse(exchange: PcfExchangeModel): SubpartPcfResponse {
-  // Map API status to UI status
-  const statusMap: Record<string, SubpartPcfResponse['pcfStatus']> = {
-    'pending': 'pending',
-    'delivered': 'delivered',
-    'responded': 'delivered',
-    'rejected': 'rejected',
-    'failed': 'error',
-    'error': 'error'
-  };
-  
+  // Derive UI status from both backend status and type:
+  // type:"response" + delivered/responded → 'received' (full cycle complete)
+  // type:"request" + delivered/responded → 'delivered' (request delivered to supplier)
+  const s = exchange.status.toLowerCase();
+  const isDelivered = s === 'delivered' || s === 'responded';
+  const isResponse = exchange.type?.toLowerCase() === 'response';
+  const pcfStatus: SubpartPcfResponse['pcfStatus'] = isDelivered
+    ? (isResponse ? 'received' : 'delivered')
+    : s === 'rejected' ? 'rejected'
+    : (s === 'failed' || s === 'error') ? 'error'
+    : 'pending';
+
   return {
     id: exchange.requestId,
     supplierBpn: exchange.targetBpn,
     supplierName: exchange.targetBpn, // Could be resolved to company name
     manufacturerPartId: exchange.manufacturerPartId || exchange.customerPartId || 'Unknown',
     partName: exchange.manufacturerPartId || 'Unknown Part',
-    pcfStatus: statusMap[exchange.status.toLowerCase()] || 'pending',
+    pcfStatus,
     pcfValue: exchange.pcfData?.pcfValue as number | undefined,
     pcfUnit: (exchange.pcfData?.pcfUnit as string) || 'kg CO2e',
     requestedAt: new Date().toISOString(), // API should provide this
