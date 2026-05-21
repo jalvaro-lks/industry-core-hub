@@ -291,6 +291,13 @@
       }
     }
 
+    // Hide native browser calendar/time picker indicator (replaced by MUI icon)
+    input[type="datetime-local"] {
+      &::-webkit-calendar-picker-indicator {
+        display: none !important;
+      }
+    }
+
     // Dropdown arrow and calendar icon
     .MuiSelect-icon {
       color: rgba(255, 255, 255, 0.5) !important;

@@ -20,7 +20,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -187,6 +187,11 @@ const PcfEditPage: React.FC = () => {
   const [formValues, setFormValues] = useState<PcfEditFormValues | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [tabMenuAnchor, setTabMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // --------------- Date input refs (for programmatic showPicker()) ---------------
+  const referencePeriodStartRef = useRef<HTMLInputElement>(null);
+  const referencePeriodEndRef   = useRef<HTMLInputElement>(null);
+  const validityPeriodEndRef    = useRef<HTMLInputElement>(null);
 
   // --------------- Save / Notify state ---------------
   const [isSaving, setIsSaving] = useState(false);
@@ -607,10 +612,14 @@ const PcfEditPage: React.FC = () => {
                     className="pcf-edit-page__input"
                     size="small"
                     InputLabelProps={{ shrink: true }}
+                    inputRef={referencePeriodStartRef}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
-                          <CalendarMonth sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)' }} />
+                          <CalendarMonth
+                            onClick={() => referencePeriodStartRef.current?.showPicker()}
+                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
+                          />
                         </InputAdornment>
                       ),
                     }}
@@ -627,10 +636,14 @@ const PcfEditPage: React.FC = () => {
                     className="pcf-edit-page__input"
                     size="small"
                     InputLabelProps={{ shrink: true }}
+                    inputRef={referencePeriodEndRef}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
-                          <CalendarMonth sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)' }} />
+                          <CalendarMonth
+                            onClick={() => referencePeriodEndRef.current?.showPicker()}
+                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
+                          />
                         </InputAdornment>
                       ),
                     }}
@@ -647,10 +660,14 @@ const PcfEditPage: React.FC = () => {
                     className="pcf-edit-page__input"
                     size="small"
                     InputLabelProps={{ shrink: true }}
+                    inputRef={validityPeriodEndRef}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
-                          <CalendarMonth sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)' }} />
+                          <CalendarMonth
+                            onClick={() => validityPeriodEndRef.current?.showPicker()}
+                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
+                          />
                         </InputAdornment>
                       ),
                     }}
