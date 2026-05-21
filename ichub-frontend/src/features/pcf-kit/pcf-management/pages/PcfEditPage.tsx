@@ -22,87 +22,25 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Grid2,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Paper,
-  Snackbar,
-  Tab,
-  Tabs,
-  Typography,
-  Chip,
-} from '@mui/material';
-import {
-  ArrowBack,
-  Save,
-  Co2,
-  Assessment,
-  Factory,
-  Description,
-  Science,
-  KeyboardArrowDown,
-  Inventory,
-  Business,
-  VerifiedUser,
-} from '@mui/icons-material';
+import { Alert, Box, Button, CircularProgress, Snackbar } from '@mui/material';
+import { ArrowBack } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { getSchemaByNamespaceAndVersion } from '@/schemas';
+import { createSchemaKey } from '@/schemas/schemaLoader';
+import SubmodelCreator from '@/components/submodel-creation/SubmodelCreator';
 import { getPcfByManufacturerPartId, updatePcfAndGetParticipants, notifyParticipants, DEFAULT_PCF_POLICIES } from '../../services/pcfApi';
-import { PcfNestedData } from '../types/pcfNestedData';
 import { ParticipantSelectionDialog } from '../components';
-import {
-  ScopeEditSection,
-  CompanyProductEditSection,
-  AssessmentMethodologyEditSection,
-  EmissionsEditSection,
-  CarbonContentEditSection,
-  GeneralEditSection,
-  AttestationEditSection,
-} from '../components/edit-sections';
 import { getPcfExchangePoliciesConfig } from '@/services/EnvironmentService';
 import { generatePoliciesFromDefinition } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 import './PcfEditPage.scss';
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const PCF_PRIMARY = '#10b981';
-
-interface EditTab {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-}
-
-const EDIT_TABS: EditTab[] = [
-  { id: 'scope', label: 'Scope', icon: Inventory },
-  { id: 'company', label: 'Company & Product', icon: Business },
-  { id: 'assessment', label: 'Assessment & Methodology', icon: Assessment },
-  { id: 'emissions', label: 'Emissions', icon: Factory },
-  { id: 'carbon', label: 'Carbon Content', icon: Science },
-  { id: 'general', label: 'General', icon: Description },
-  { id: 'attestation', label: 'Attestation', icon: VerifiedUser },
-];
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+const PCF_NAMESPACE = 'io.catenax.pcf';
+const PCF_VERSION = '9.0.0';
 
 /**
- * Full-screen Update form for a PCF (Product Carbon Footprint).
- *
- * Loads the existing PCF via GET, populates the form, and on save:
- *   1. Sends the full nested structure directly.
- *   2. Calls PUT updatePcfAndGetParticipants → receives a list of BPN participants.
- *   3. Opens ParticipantSelectionDialog for the user to choose who to notify.
- *   4. On confirm → POST notifyParticipants → navigates back to /pcf/management.
+ * PCF edit page — opens the shared SubmodelCreator (full-screen dialog) pre-populated
+ * with the existing PCF data, then triggers the ParticipantSelectionDialog notification
+ * flow after a successful save.
  *
  * Accessible at: /pcf/management/edit/:manufacturerPartId
  */
@@ -111,25 +49,22 @@ const PcfEditPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('pcf');
 
+  // PCF schema — resolved once at render time (auto-registered at app startup)
+  const pcfSchema = getSchemaByNamespaceAndVersion(PCF_NAMESPACE, PCF_VERSION);
+
   // --------------- Data loading ---------------
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  // --------------- Form state (full nested structure) ---------------
-  const [formData, setFormData] = useState<PcfNestedData | null>(null);
-  const [activeTab, setActiveTab] = useState(0);
-  const [tabMenuAnchor, setTabMenuAnchor] = useState<null | HTMLElement>(null);
+  const [initialData, setInitialData] = useState<Record<string, unknown> | null>(null);
 
   // --------------- Save / Notify state ---------------
   const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [participantBpns, setParticipantBpns] = useState<string[]>([]);
   const [isParticipantDialogOpen, setIsParticipantDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
 
-  // Load existing PCF on mount
   useEffect(() => {
     if (!manufacturerPartId) return;
     const load = async () => {
@@ -141,8 +76,7 @@ const PcfEditPage: React.FC = () => {
           setLoadError(t('error.pcfNotFound', 'PCF data not found for this part.'));
           return;
         }
-        // Deep clone so edits don't mutate cached data
-        setFormData(structuredClone(raw as unknown as PcfNestedData));
+        setInitialData(raw as Record<string, unknown>);
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load PCF data');
       } finally {
@@ -152,16 +86,8 @@ const PcfEditPage: React.FC = () => {
     load();
   }, [manufacturerPartId, t]);
 
-  // Generic section updater — replaces a top-level key in the nested structure
-  const updateSection = useCallback(
-    <K extends keyof PcfNestedData>(key: K, value: PcfNestedData[K]) => {
-      setFormData((prev) => (prev ? { ...prev, [key]: value } : prev));
-    },
-    []
-  );
-
-  // Governance policies helper — reuses the same logic as PcfManagementPage
-  const getGovernancePolicies = useMemo(() => {
+  // Governance policies — same logic as PcfManagementPage
+  const governancePolicies = useMemo(() => {
     const configured = getPcfExchangePoliciesConfig();
     if (configured.length > 0) {
       return configured.flatMap(def => generatePoliciesFromDefinition(def));
@@ -169,30 +95,27 @@ const PcfEditPage: React.FC = () => {
     return DEFAULT_PCF_POLICIES;
   }, []);
 
-  // --------------- Save handler ---------------
-  const handleSave = async () => {
-    if (!formData || !manufacturerPartId) return;
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const result = await updatePcfAndGetParticipants(
-        manufacturerPartId,
-        formData as unknown as Record<string, unknown>
-      );
-      // Normalize: backend may return an object or null instead of a plain string[]
-      const bpns = Array.isArray(result) ? result : [];
-      setParticipantBpns(bpns);
-      setIsParticipantDialogOpen(true);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save PCF';
-      setSaveError(msg);
-      setSnackbar({ open: true, message: msg, severity: 'error' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // --------------- SubmodelCreator save → update PCF → open notify dialog ---------------
+  const handleSubmodelSave = useCallback(
+    async (submodelData: Record<string, unknown>) => {
+      if (!manufacturerPartId) return;
+      setIsSaving(true);
+      try {
+        const result = await updatePcfAndGetParticipants(manufacturerPartId, submodelData);
+        const bpns = Array.isArray(result) ? result : [];
+        setParticipantBpns(bpns);
+        setIsParticipantDialogOpen(true);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to save PCF';
+        setSnackbar({ open: true, message: msg, severity: 'error' });
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [manufacturerPartId]
+  );
 
-  // --------------- Notify handler ---------------
+  // --------------- Notify participants → navigate home ---------------
   const handleNotify = useCallback(
     async (selectedBpns: string[]) => {
       if (!manufacturerPartId) return;
@@ -200,7 +123,7 @@ const PcfEditPage: React.FC = () => {
         manufacturerPartId,
         selectedBpns,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        getGovernancePolicies as any
+        governancePolicies as any
       );
       setSnackbar({
         open: true,
@@ -210,7 +133,7 @@ const PcfEditPage: React.FC = () => {
       setIsParticipantDialogOpen(false);
       navigate('/pcf/management');
     },
-    [manufacturerPartId, getGovernancePolicies, navigate]
+    [manufacturerPartId, governancePolicies, navigate]
   );
 
   const handleParticipantDialogClose = () => {
@@ -218,208 +141,47 @@ const PcfEditPage: React.FC = () => {
     navigate('/pcf/management');
   };
 
-  // --------------- Loading / Error states ---------------
+  const handleBack = () => navigate(-1);
+
+  // --------------- Loading state ---------------
   if (isLoading) {
     return (
       <Box className="pcf-edit-page__loading">
-        <CircularProgress sx={{ color: PCF_PRIMARY }} size={48} />
+        <CircularProgress sx={{ color: '#10b981' }} size={48} />
       </Box>
     );
   }
 
-  if (loadError || !formData) {
+  // --------------- Error state (load failed or schema missing) ---------------
+  if (loadError || !initialData || !pcfSchema) {
+    const message = loadError
+      ?? (!pcfSchema ? 'PCF schema definition not found. Please check the application configuration.' : 'PCF data not found for this part.');
     return (
       <Box className="pcf-edit-page__error">
-        <Alert severity="error" sx={{ maxWidth: 520 }}>{loadError}</Alert>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate(-1)}
-          sx={{ mt: 2, color: 'rgba(255,255,255,0.7)' }}
-        >
+        <Alert severity="error" sx={{ maxWidth: 520 }}>{message}</Alert>
+        <Button startIcon={<ArrowBack />} onClick={handleBack} sx={{ mt: 2, color: 'rgba(255,255,255,0.7)' }}>
           {t('common.back', 'Back')}
         </Button>
       </Box>
     );
   }
 
-  const productName =
-    formData?.companyAndProductInformation?.[0]?.productInformation?.[0]?.productNameCompany ??
-    manufacturerPartId;
-
-  // --------------- Render ---------------
+  // --------------- Main render — SubmodelCreator is always open (it IS the page) ---------------
   return (
-    <Box className="pcf-edit-page">
-      {/* ─── Sticky Header ─── */}
-      <Box className="pcf-edit-page__header">
-        <Paper elevation={0} className="pcf-edit-page__header-paper">
-          <Grid2 container spacing={2} alignItems="center" justifyContent="space-between">
-            {/* Left: back + title */}
-            <Grid2 size={{ xs: 12, md: 8 }}>
-              <Box className="pcf-edit-page__header-left">
-                <Button
-                  startIcon={<ArrowBack />}
-                  onClick={() => navigate(-1)}
-                  variant="outlined"
-                  className="pcf-edit-page__back-btn"
-                >
-                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                    Back
-                  </Box>
-                </Button>
-                <Box className="pcf-edit-page__title-block">
-                  <Box className="pcf-edit-page__icon-wrapper">
-                    <Co2 sx={{ fontSize: 22, color: PCF_PRIMARY }} />
-                  </Box>
-                  <Box>
-                    <Box className="pcf-edit-page__title-row">
-                      <Typography className="pcf-edit-page__title">
-                        {productName}
-                      </Typography>
-                      <Chip
-                        label="Edit Mode"
-                        size="small"
-                        className="pcf-edit-page__edit-chip"
-                      />
-                    </Box>
-                    <Typography className="pcf-edit-page__subtitle" component="span">
-                      {manufacturerPartId}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            </Grid2>
+    <>
+      <SubmodelCreator
+        open={true}
+        onClose={handleBack}
+        onBack={handleBack}
+        onCreateSubmodel={handleSubmodelSave}
+        selectedSchema={pcfSchema}
+        schemaKey={createSchemaKey(pcfSchema.metadata.semanticId)}
+        manufacturerPartId={manufacturerPartId}
+        initialData={initialData}
+        saveButtonLabel={t('management.update', 'Update PCF')}
+        loading={isSaving}
+      />
 
-            {/* Right: Save button */}
-            <Grid2 size={{ xs: 12, md: 4 }}>
-              <Box className="pcf-edit-page__header-right">
-                {saveError && (
-                  <Typography className="pcf-edit-page__save-error">{saveError}</Typography>
-                )}
-                <Button
-                  variant="contained"
-                  startIcon={isSaving ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <Save />}
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="pcf-edit-page__save-btn"
-                >
-                  {isSaving ? 'Saving…' : t('management.update', 'Save Changes')}
-                </Button>
-              </Box>
-            </Grid2>
-          </Grid2>
-        </Paper>
-
-        {/* ─── Sticky Tabs ─── */}
-        <Box className="pcf-edit-page__tabs-container">
-          {/* Desktop tabs */}
-          <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
-              variant="scrollable"
-              scrollButtons
-              allowScrollButtonsMobile
-              className="pcf-edit-page__tabs"
-            >
-              {EDIT_TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <Tab
-                    key={tab.id}
-                    icon={<Icon sx={{ fontSize: 18, mb: 0.5 }} />}
-                    iconPosition="start"
-                    label={tab.label}
-                  />
-                );
-              })}
-            </Tabs>
-          </Box>
-
-          {/* Mobile dropdown */}
-          <Box sx={{ px: 2, py: 1.5, display: { xs: 'block', md: 'none' } }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={(e) => setTabMenuAnchor(e.currentTarget)}
-              endIcon={<KeyboardArrowDown />}
-              startIcon={React.createElement(EDIT_TABS[activeTab].icon, { sx: { fontSize: 20 } })}
-              className="pcf-edit-page__mobile-tab-btn"
-            >
-              {EDIT_TABS[activeTab].label}
-            </Button>
-            <Menu
-              anchorEl={tabMenuAnchor}
-              open={Boolean(tabMenuAnchor)}
-              onClose={() => setTabMenuAnchor(null)}
-              PaperProps={{ className: 'pcf-edit-page__mobile-menu' }}
-            >
-              {EDIT_TABS.map((tab, idx) => {
-                const Icon = tab.icon;
-                return (
-                  <MenuItem
-                    key={tab.id}
-                    selected={activeTab === idx}
-                    onClick={() => { setActiveTab(idx); setTabMenuAnchor(null); }}
-                  >
-                    <ListItemIcon sx={{ color: activeTab === idx ? PCF_PRIMARY : 'rgba(255,255,255,0.5)' }}>
-                      <Icon sx={{ fontSize: 20 }} />
-                    </ListItemIcon>
-                    <ListItemText primary={tab.label} />
-                  </MenuItem>
-                );
-              })}
-            </Menu>
-          </Box>
-        </Box>
-      </Box>
-
-      {/* ─── Tab Content ─── */}
-      <Box className="pcf-edit-page__content">
-        {activeTab === 0 && (
-          <ScopeEditSection
-            items={formData.scopeOfPcfForm ?? []}
-            onChange={(v) => updateSection('scopeOfPcfForm', v)}
-          />
-        )}
-        {activeTab === 1 && (
-          <CompanyProductEditSection
-            items={formData.companyAndProductInformation ?? []}
-            onChange={(v) => updateSection('companyAndProductInformation', v)}
-          />
-        )}
-        {activeTab === 2 && (
-          <AssessmentMethodologyEditSection
-            items={formData.pcfAssessmentAndMethodology ?? []}
-            onChange={(v) => updateSection('pcfAssessmentAndMethodology', v)}
-          />
-        )}
-        {activeTab === 3 && (
-          <EmissionsEditSection
-            items={formData.productLifeCycleStagesAndEmissions ?? []}
-            onChange={(v) => updateSection('productLifeCycleStagesAndEmissions', v)}
-          />
-        )}
-        {activeTab === 4 && (
-          <CarbonContentEditSection
-            items={formData.carbonContent ?? []}
-            onChange={(v) => updateSection('carbonContent', v)}
-          />
-        )}
-        {activeTab === 5 && (
-          <GeneralEditSection
-            items={formData.general ?? []}
-            onChange={(v) => updateSection('general', v)}
-          />
-        )}
-        {activeTab === 6 && (
-          <AttestationEditSection
-            items={formData.attestationOfConformance ?? []}
-            onChange={(v) => updateSection('attestationOfConformance', v)}
-          />
-        )}
-      </Box>
-
-      {/* ─── Participant Selection Dialog (notify after save) ─── */}
       <ParticipantSelectionDialog
         open={isParticipantDialogOpen}
         onClose={handleParticipantDialogClose}
@@ -428,7 +190,6 @@ const PcfEditPage: React.FC = () => {
         manufacturerPartId={manufacturerPartId ?? ''}
       />
 
-      {/* ─── Snackbar ─── */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={5000}
@@ -443,7 +204,7 @@ const PcfEditPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </>
   );
 };
 
