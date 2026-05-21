@@ -222,18 +222,35 @@ export async function uploadPcf(
 }
 
 /**
- * Update PCF data and get list of participants who have received this PCF
- * Returns list of BPNs that have been shared with this part's PCF
+ * Response from the PUT /provider/pcfs/{manufacturerPartId} endpoint.
+ * The backend returns a status object that includes `sharedWithBpns` —
+ * the list of BPNs that have previously received this PCF and can be
+ * notified of the update.
+ */
+export interface PcfUpdateResponse {
+  manufacturerPartId: string;
+  pcfLocation: string;
+  status: string;
+  sharedWithBpns: string[];
+}
+
+/**
+ * Update PCF data and get list of participants who have received this PCF.
+ * Returns the `sharedWithBpns` array from the backend response — BPNs
+ * that have been shared this part's PCF and can be notified of changes.
  */
 export async function updatePcfAndGetParticipants(
   manufacturerPartId: string,
   pcfData: Record<string, unknown>
 ): Promise<string[]> {
-  const response = await httpClient.put<string[]>(
+  const response = await httpClient.put<PcfUpdateResponse>(
     `${getBaseUrl()}/provider/pcfs/${encodeURIComponent(manufacturerPartId)}`,
     pcfData
   );
-  return response.data;
+  // Extract `sharedWithBpns` from the response object.
+  // The API returns { manufacturerPartId, pcfLocation, status, sharedWithBpns },
+  // not a bare string array.
+  return response.data.sharedWithBpns ?? [];
 }
 
 /**

@@ -21,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -77,10 +77,13 @@ import {
   getPcfByManufacturerPartId,
   uploadPcf,
   updatePcfAndGetParticipants,
-  notifyParticipants
+  notifyParticipants,
+  DEFAULT_PCF_POLICIES
 } from '../../services/pcfApi';
 import { fetchCatalogPart } from '@/features/industry-core-kit/catalog-management/api';
 import { ParticipantSelectionDialog } from '../components';
+import { getPcfExchangePoliciesConfig } from '@/services/EnvironmentService';
+import { generatePoliciesFromDefinition } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 
 /** Map raw backend PCF JSON (nested Catena-X 9.0.0 format) to the flat PcfDataRecord expected by dialogs. */
 const toPcfDataRecord = (raw: Record<string, unknown> | null): PcfDataRecord | null => {
@@ -194,6 +197,16 @@ const PcfManagementPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Governance policies — use PCF_EXCHANGE_POLICIES_CONFIG from environment,
+  // falling back to the default PCF policies (same as PCF Request/Response flows).
+  const governancePolicies = useMemo(() => {
+    const configured = getPcfExchangePoliciesConfig();
+    if (configured.length > 0) {
+      return configured.flatMap(def => generatePoliciesFromDefinition(def));
+    }
+    return DEFAULT_PCF_POLICIES;
+  }, []);
 
   // Parse part ID and manufacturer ID from URL
   const manufacturerIdFromUrl = params?.manufacturerId;
@@ -402,12 +415,10 @@ const PcfManagementPage: React.FC = () => {
       setRawPcfData(updated);
       setPcfData(updated);
       setPcfEditDialogOpen(false);
-      if (participants && participants.length > 0) {
-        setAvailableParticipants(participants);
-        setParticipantDialogOpen(true);
-      } else if (manufacturerId) {
-        await loadPartData(manufacturerId, managedPart.manufacturerPartId);
-      }
+      // Always open the notify dialog so the user sees who will be notified
+      // (or learns that no one has requested this PCF yet).
+      setAvailableParticipants(participants);
+      setParticipantDialogOpen(true);
     } catch (err) {
       console.error('Failed to update PCF:', err);
     } finally {
@@ -425,17 +436,10 @@ const PcfManagementPage: React.FC = () => {
         managedPart.manufacturerPartId,
         rawPcfData
       );
-      
-      if (participants && participants.length > 0) {
-        // Show participant selection dialog
-        setAvailableParticipants(participants);
-        setParticipantDialogOpen(true);
-      } else {
-        // No participants — just refresh from backend
-        if (manufacturerId) {
-          await loadPartData(manufacturerId, managedPart.manufacturerPartId);
-        }
-      }
+      // Always open the notify dialog so the user sees who will be notified
+      // (or learns that no one has requested this PCF yet).
+      setAvailableParticipants(participants);
+      setParticipantDialogOpen(true);
     } catch (err) {
       console.error('Failed to upload PCF:', err);
     } finally {
@@ -449,7 +453,9 @@ const PcfManagementPage: React.FC = () => {
 
     setIsUpdating(true);
     try {
-      await notifyParticipants(managedPart.manufacturerPartId, selectedParticipants);
+      // Pass the same governance policies used for PCF Request/Response exchange.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await notifyParticipants(managedPart.manufacturerPartId, selectedParticipants, governancePolicies as any);
       
       // Refresh data after successful notification
       if (manufacturerId) {
