@@ -131,49 +131,50 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
           background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
           borderRadius: 3,
           border: `1px solid ${alpha(PCF_PRIMARY, 0.2)}`,
+          minWidth: { xs: '90vw', sm: 520 },
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          pb: 1,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <GroupIcon sx={{ color: '#fff', fontSize: 22 }} />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+      <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1.5 }}>
+        {/* Row 1: icon + title + close button */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.75 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${PCF_PRIMARY} 0%, ${PCF_SECONDARY} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <GroupIcon sx={{ color: '#fff', fontSize: 20 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.92)', lineHeight: 1.2, fontSize: '1rem' }}>
               Notify Participants
             </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Select participants to notify about PCF update
-            </Typography>
           </Box>
+          {!isLoading && (
+            <IconButton
+              onClick={onClose}
+              size="small"
+              sx={{ color: 'rgba(255,255,255,0.45)', ml: 1, '&:hover': { color: 'rgba(255,255,255,0.85)', bgcolor: 'rgba(255,255,255,0.08)' } }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          )}
         </Box>
-        {!isLoading && (
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        )}
+        {/* Row 2: subtitle — full width, no icon competing for space */}
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', pl: '52px', lineHeight: 1.4 }}>
+          Select participants to notify about this PCF update
+        </Typography>
       </DialogTitle>
 
-      <DialogContent>
-        <Box sx={{ pt: 1 }}>
+      <DialogContent sx={{ px: 3, pt: 0.5, pb: 1 }}>
+        <Box>
           <Box
             sx={{
               p: 2,
@@ -183,7 +184,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
               border: `1px solid ${alpha(PCF_PRIMARY, 0.15)}`,
             }}
           >
-            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', mb: 0.5, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
               Part ID
             </Typography>
             <Typography
@@ -201,7 +202,14 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
           {error && (
             <Alert
               severity="error"
-              sx={{ mb: 2 }}
+              variant="outlined"
+              sx={{
+                mb: 2,
+                bgcolor: alpha('#ef4444', 0.08),
+                border: `1px solid ${alpha('#ef4444', 0.3)}`,
+                color: '#fca5a5',
+                '& .MuiAlert-icon': { color: '#ef4444' },
+              }}
               onClose={() => setError(null)}
             >
               {error}
@@ -209,7 +217,17 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
           )}
 
           {participants.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{
+                mb: 2,
+                bgcolor: alpha('#3b82f6', 0.08),
+                border: `1px solid ${alpha('#3b82f6', 0.25)}`,
+                color: 'rgba(255,255,255,0.75)',
+                '& .MuiAlert-icon': { color: '#60a5fa' },
+              }}
+            >
               No participants have requested PCF data for this part. The update
               will be saved but no notifications will be sent.
             </Alert>
@@ -223,7 +241,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
                   mb: 2,
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.55)' }}>
                   {participants.length} participant{participants.length !== 1 ? 's' : ''}{' '}
                   interested in this PCF data
                 </Typography>
@@ -239,7 +257,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
                 </Button>
               </Box>
 
-              <Divider sx={{ mb: 2 }} />
+              <Divider sx={{ mb: 2, borderColor: 'rgba(255,255,255,0.08)' }} />
 
               <FormGroup>
                 {participants.map((bpn) => (
@@ -282,12 +300,13 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
                       label={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <BusinessIcon
-                            sx={{ fontSize: 18, color: 'text.secondary' }}
+                            sx={{ fontSize: 18, color: 'rgba(255,255,255,0.35)' }}
                           />
                           <Typography
                             sx={{
                               fontFamily: 'monospace',
                               fontSize: '0.875rem',
+                              color: 'rgba(255,255,255,0.82)',
                             }}
                           >
                             {bpn}
@@ -316,8 +335,12 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onClose} disabled={isLoading} color="inherit">
+      <DialogActions sx={{ px: 3, pt: 1, pb: 2.5, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          disabled={isLoading}
+          sx={{ color: 'rgba(255,255,255,0.55)', '&:hover': { color: 'rgba(255,255,255,0.85)', bgcolor: 'rgba(255,255,255,0.06)' } }}
+        >
           {participants.length === 0 ? 'Close' : 'Skip'}
         </Button>
         {participants.length > 0 && (
