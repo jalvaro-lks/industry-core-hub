@@ -38,7 +38,6 @@ from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 from tools.json_validator import json_validator_draft_aware
-from tools.edr_tools import remove_existing_edr
 from tools.exceptions import NotFoundError
 
 logger = LoggingManager.get_logger(__name__)
@@ -875,17 +874,28 @@ class PcfManagementManager:
 
         logger.info(f"[PCF EDC] Discovering connectors for BPN [{target_bpn}]")
 
-        # Remove stale EDR from the PostgreSQL table AND from the SDK's in-memory
-        # cache (open_connections). Without clearing both, the SDK returns the old
-        # transfer_id cached in memory → get_edr() fails with "EDC response was not
-        # successful" because the EDR has already expired on the connector side.
-        with RepositoryManagerFactory.create() as repos:
-            remove_existing_edr(repos, target_bpn, "ichub:asset:pcf-exchange:%")
-
-        # Also evict the stale entry from the SDK connection manager's in-memory cache.
+        # Evict any stale EDR for this counterparty from both the in-memory cache
+        # and the edr_connections DB table before attempting a fresh negotiation.
+        #
+        # In Saturn, the cache is keyed by the counterparty DID
+        # (e.g. "did:web:wallet.example.com:BPNL000000000065"). We resolve the
+        # exact DID first so that clear_connections_by_party can do a precise
+        # match. If discovery fails or the service is Jupiter, we fall back to
+        # the BPN value, which clear_connections_by_party also handles via
+        # substring matching (the DID always contains the BPN).
         if hasattr(consumer_connector_service, 'connection_manager'):
-            consumer_connector_service.connection_manager.open_connections.pop(target_bpn, None)
-            logger.debug(f"[PCF EDC] Cleared in-memory EDR cache for BPN [{target_bpn}]")
+            party_key = target_bpn
+            if hasattr(consumer_connector_service, 'get_discovery_info'):
+                try:
+                    _, party_key, _ = consumer_connector_service.get_discovery_info(bpnl=target_bpn)
+                    logger.debug(f"[PCF EDC] Resolved counterparty DID for BPN [{target_bpn}]: {party_key}")
+                except Exception as discovery_err:
+                    logger.warning(
+                        f"[PCF EDC] Could not resolve DID for BPN [{target_bpn}], "
+                        f"falling back to BPN substring clear: {discovery_err}"
+                    )
+            removed = consumer_connector_service.connection_manager.clear_connections_by_party(party_key)
+            logger.debug(f"[PCF EDC] Cleared EDR cache for [{party_key}] (removed {removed} entries)")
 
         connectors = connector_consumer_manager.get_connectors(target_bpn)
         if not connectors:
