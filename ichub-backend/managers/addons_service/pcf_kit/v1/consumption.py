@@ -463,8 +463,9 @@ class PcfConsumptionManager:
             sub_parts = part_info.list_sub_manufacturer_part_ids
             total_sub_parts = len(sub_parts)
             responded_sub_parts = 0
+            responded_statuses = {PcfExchangeStatus.DELIVERED.value, PcfExchangeStatus.UPDATED.value}
             for sub_part in sub_parts:
-                if sub_part.status == PcfExchangeStatus.DELIVERED.value and sub_part.type == PcfExchangeType.RESPONSE.value:
+                if sub_part.status in responded_statuses and sub_part.type == PcfExchangeType.RESPONSE.value:
                     responded_sub_parts += 1
             progress = (responded_sub_parts / total_sub_parts) * 100 if total_sub_parts > 0 else 100
             return PcfSpecificStateModel(
