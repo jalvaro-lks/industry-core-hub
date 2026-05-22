@@ -467,7 +467,7 @@ class PcfProvisionManager:
             pcf_data = self.view_existing_pcf(manufacturer_part_id=manufacturer_part_id)
             with RepositoryManagerFactory.create() as repo_manager:
                 for bpn in list_bpns:
-                    result = repo_manager.pcf_repository.find_by_bpn(bpn, manufacturer_part_id, direction=PcfExchangeDirection.OUTGOING, status=PcfExchangeStatus.DELIVERED)
+                    result = repo_manager.pcf_repository.find_by_bpn(bpn, manufacturer_part_id=manufacturer_part_id, direction=PcfExchangeDirection.OUTGOING, status=PcfExchangeStatus.DELIVERED)
                     if result:
                         request_id = str(result[0].request_id)
                         self._send_pcf_via_edc(
