@@ -66,6 +66,7 @@
     "requestedAt": "リクエスト日時",
     "deliveredAt": "配信日時",
     "carbonFootprint": "カーボンフットプリント",
+    "certificateLocation": "証明書の場所",
     "creatingSubpart": "サブパーツ関係を作成中...",
     "addSubpartGhost": "サブパーツ関係を追加",
     "subpartTooltip": {
@@ -76,6 +77,7 @@
       "deliveredNoValue": "PCFデータをサプライヤーに配信しました — クリックして詳細を展開します。",
       "receivedWithValue": "PCF応答を受信しました：{{value}} {{unit}} — クリックして詳細を展開します。",
       "receivedNoValue": "サプライヤーからPCF応答を受信しました — クリックして詳細を展開します。",
+      "updated": "サプライヤーが証明書を更新しました — クリックして詳細を展開します。",
       "rejectedWithReason": "サプライヤーがリクエストを拒否しました：{{reason}}",
       "rejectedNoReason": "リクエストはサプライヤーによって拒否されました。",
       "errorWithMessage": "リクエスト失敗: {{error}}",

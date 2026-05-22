@@ -39,13 +39,14 @@ export interface SubpartPcfResponse {
   supplierName: string;
   manufacturerPartId: string;
   partName: string;
-  pcfStatus: 'pending' | 'delivered' | 'received' | 'rejected' | 'error';
+  pcfStatus: 'pending' | 'delivered' | 'received' | 'rejected' | 'error' | 'updated';
   pcfValue?: number;
   pcfUnit?: string;
   requestedAt?: string;
   deliveredAt?: string;
   errorMessage?: string;
   rejectReason?: string;
+  pcfLocation?: string;
 }
 
 /**
@@ -242,12 +243,15 @@ export async function searchCatalogPartsByManufacturerPartId(
  */
 function convertToSubpartResponse(exchange: PcfExchangeModel): SubpartPcfResponse {
   // Derive UI status from both backend status and type:
+  // type:"response" + updated → 'updated' (certificate updated by supplier)
   // type:"response" + delivered/responded → 'received' (full cycle complete)
   // type:"request" + delivered/responded → 'delivered' (request delivered to supplier)
   const s = exchange.status.toLowerCase();
-  const isDelivered = s === 'delivered' || s === 'responded';
   const isResponse = exchange.type?.toLowerCase() === 'response';
-  const pcfStatus: SubpartPcfResponse['pcfStatus'] = isDelivered
+  const isDelivered = s === 'delivered' || s === 'responded';
+  const pcfStatus: SubpartPcfResponse['pcfStatus'] = s === 'updated' && isResponse
+    ? 'updated'
+    : isDelivered
     ? (isResponse ? 'received' : 'delivered')
     : s === 'rejected' ? 'rejected'
     : (s === 'failed' || s === 'error') ? 'error'
@@ -263,8 +267,10 @@ function convertToSubpartResponse(exchange: PcfExchangeModel): SubpartPcfRespons
     pcfValue: exchange.pcfData?.pcfValue as number | undefined,
     pcfUnit: (exchange.pcfData?.pcfUnit as string) || 'kg CO2e',
     requestedAt: new Date().toISOString(), // API should provide this
+    deliveredAt: exchange.pcfData?.deliveredAt as string | undefined,
     errorMessage: exchange.status.toLowerCase() === 'error' ? exchange.message : undefined,
-    rejectReason: exchange.status.toLowerCase() === 'rejected' ? exchange.message : undefined
+    rejectReason: exchange.status.toLowerCase() === 'rejected' ? exchange.message : undefined,
+    pcfLocation: exchange.pcfLocation
   };
 }
 

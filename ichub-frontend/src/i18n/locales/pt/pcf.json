@@ -66,6 +66,7 @@
     "requestedAt": "Solicitado em",
     "deliveredAt": "Entregue em",
     "carbonFootprint": "Pegada de Carbono",
+    "certificateLocation": "Local do Certificado",
     "creatingSubpart": "Criando relação de subcomponente...",
     "addSubpartGhost": "Adicionar Relação de Subcomponente",
     "subpartTooltip": {
@@ -76,6 +77,7 @@
       "deliveredNoValue": "Dados PCF entregues ao fornecedor — clique para expandir detalhes.",
       "receivedWithValue": "Resposta PCF recebida: {{value}} {{unit}} — clique para expandir detalhes.",
       "receivedNoValue": "Resposta PCF recebida do fornecedor — clique para expandir detalhes.",
+      "updated": "Certificado atualizado pelo fornecedor — clique para expandir detalhes.",
       "rejectedWithReason": "Solicitação rejeitada pelo fornecedor: {{reason}}",
       "rejectedNoReason": "A solicitação foi rejeitada pelo fornecedor.",
       "errorWithMessage": "Erro na solicitação: {{error}}",
