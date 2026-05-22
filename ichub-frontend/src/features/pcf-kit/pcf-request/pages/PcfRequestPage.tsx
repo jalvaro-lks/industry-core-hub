@@ -58,7 +58,8 @@ import {
   AccountTree,
   Send,
   Block,
-  Search
+  Search,
+  SystemUpdateAlt
 } from '@mui/icons-material';
 import { CatalogPartSearch, CatalogPartSearchResult as SharedCatalogPartSearchResult, PartInfoHeader } from '../../shared/components';
 import {
@@ -303,6 +304,8 @@ const PcfRequestPage: React.FC = () => {
         return { color: PCF_PRIMARY, icon: CheckCircle, label: 'Delivered', lineColor: PCF_PRIMARY };
       case 'received':
         return { color: PCF_PRIMARY, icon: MoveToInbox, label: 'Received', lineColor: PCF_PRIMARY };
+      case 'updated':
+        return { color: '#0ea5e9', icon: SystemUpdateAlt, label: 'Updated', lineColor: '#0ea5e9' };
       case 'rejected':
         return { color: '#ef4444', icon: Block, label: 'Rejected', lineColor: '#ef4444' };
       case 'error':
@@ -334,6 +337,8 @@ const PcfRequestPage: React.FC = () => {
               unit: subpart.pcfUnit || 'kg CO₂e'
             })
           : t('precalculation.subpartTooltip.receivedNoValue');
+      case 'updated':
+        return t('precalculation.subpartTooltip.updated');
       case 'rejected':
         return subpart.rejectReason
           ? t('precalculation.subpartTooltip.rejectedWithReason', {
@@ -411,7 +416,7 @@ const PcfRequestPage: React.FC = () => {
   // Calculate progress stats for the main part
   const stats = useMemo(() => {
     if (!partData) return { total: 0, delivered: 0, pending: 0, rejected: 0, error: 0, progress: 0 };
-    const delivered = partData.subparts.filter(s => s.pcfStatus === 'delivered' || s.pcfStatus === 'received').length;
+    const delivered = partData.subparts.filter(s => s.pcfStatus === 'delivered' || s.pcfStatus === 'received' || s.pcfStatus === 'updated').length;
     const total = partData.subparts.length;
     return {
       total,
@@ -1093,9 +1098,9 @@ const PcfRequestPage: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 2,
-                            cursor: (subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received') ? 'pointer' : 'default'
+                            cursor: (subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received' || subpart.pcfStatus === 'updated') ? 'pointer' : 'default'
                           }}
-                          onClick={() => (subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received') && toggleSubpartExpansion(subpart.id)}
+                          onClick={() => (subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received' || subpart.pcfStatus === 'updated') && toggleSubpartExpansion(subpart.id)}
                         >
                           {/* Supplier Info */}
                           <Box sx={{ flex: '0 0 200px' }}>
@@ -1136,7 +1141,7 @@ const PcfRequestPage: React.FC = () => {
 
                           {/* PCF Value */}
                           <Box sx={{ flex: '0 0 120px', textAlign: 'right' }}>
-                            {(subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received') && subpart.pcfValue ? (
+                            {(subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received' || subpart.pcfStatus === 'updated') && subpart.pcfValue ? (
                               <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600 }}>
                                 {subpart.pcfValue} {subpart.pcfUnit}
                               </Typography>
@@ -1185,17 +1190,10 @@ const PcfRequestPage: React.FC = () => {
                                     </IconButton>
                                   </Tooltip>
                                 )}
-                                {(subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received') && (
-                                  <>
-                                    <Tooltip title={t('precalculation.downloadPcf')}>
-                                      <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)', '&:hover': { color: PCF_PRIMARY } }}>
-                                        <Download sx={{ fontSize: 18 }} />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                      {isExpanded ? <ExpandLess /> : <ExpandMore />}
-                                    </IconButton>
-                                  </>
+                                {(subpart.pcfStatus === 'delivered' || subpart.pcfStatus === 'received' || subpart.pcfStatus === 'updated') && (
+                                  <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                                    {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                                  </IconButton>
                                 )}
                               </>
                             )}
@@ -1209,7 +1207,7 @@ const PcfRequestPage: React.FC = () => {
                             <Typography variant="subtitle2" sx={{ color: PCF_PRIMARY, mb: 1.5, fontWeight: 600 }}>
                               {t('precalculation.pcfDetails')}
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 4 }}>
+                            <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                               <Box>
                                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
                                   {t('precalculation.requestedAt')}
@@ -1231,9 +1229,19 @@ const PcfRequestPage: React.FC = () => {
                                   {t('precalculation.carbonFootprint')}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: PCF_PRIMARY, fontWeight: 600 }}>
-                                  {subpart.pcfValue} {subpart.pcfUnit}
+                                  {subpart.pcfValue ? `${subpart.pcfValue} ${subpart.pcfUnit}` : '—'}
                                 </Typography>
                               </Box>
+                              {subpart.pcfLocation && (
+                                <Box>
+                                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                                    {t('precalculation.certificateLocation')}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: '#fff', fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>
+                                    {subpart.pcfLocation}
+                                  </Typography>
+                                </Box>
+                              )}
                             </Box>
                           </Box>
                         </Collapse>

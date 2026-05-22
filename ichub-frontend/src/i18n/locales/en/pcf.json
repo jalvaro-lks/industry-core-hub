@@ -66,6 +66,7 @@
     "requestedAt": "Requested At",
     "deliveredAt": "Delivered At",
     "carbonFootprint": "Carbon Footprint",
+    "certificateLocation": "Certificate Location",
     "creatingSubpart": "Creating subpart relation...",
     "addSubpartGhost": "Add Subpart Relation",
     "subpartTooltip": {
@@ -76,6 +77,7 @@
       "deliveredNoValue": "PCF data delivered to supplier — click to expand details.",
       "receivedWithValue": "PCF response received: {{value}} {{unit}} — click to expand details.",
       "receivedNoValue": "PCF response received from supplier — click to expand details.",
+      "updated": "Certificate updated by supplier — click to expand details.",
       "rejectedWithReason": "Request rejected by supplier: {{reason}}",
       "rejectedNoReason": "Request was rejected by the supplier.",
       "errorWithMessage": "Request failed: {{error}}",

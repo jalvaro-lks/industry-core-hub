@@ -66,6 +66,7 @@
     "requestedAt": "请求时间",
     "deliveredAt": "交付时间",
     "carbonFootprint": "碳足迹",
+    "certificateLocation": "证书位置",
     "creatingSubpart": "正在创建子零件关系...",
     "addSubpartGhost": "添加子零件关系",
     "subpartTooltip": {
@@ -76,6 +77,7 @@
       "deliveredNoValue": "PCF数据已交付给供应商 — 单击展开详情。",
       "receivedWithValue": "已收到PCF响应：{{value}} {{unit}} — 单击展开详情。",
       "receivedNoValue": "已从供应商收到PCF响应 — 单击展开详情。",
+      "updated": "供应商已更新证书 — 单击展开详情。",
       "rejectedWithReason": "供应商拒绝了请求：{{reason}}",
       "rejectedNoReason": "该请求已被供应商拒绝。",
       "errorWithMessage": "请求失败：{{error}}",
