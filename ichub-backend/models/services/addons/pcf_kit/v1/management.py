@@ -23,73 +23,8 @@
 
 """Pydantic models for PCF Kit management API endpoints."""
 
-from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-
-
-class PcfResponseStatus(str, Enum):
-    """Status values for PCF responses."""
-    DELIVERED = "delivered"
-    UPDATED = "updated"
-    PENDING = "pending"
-    REJECTED = "rejected"
-
-
-class SendPcfRequestModel(BaseModel):
-    """Model for sending a new PCF request as a data consumer."""
-    manufacturer_part_id: Optional[str] = Field(
-        alias="manufacturerPartId",
-        default=None,
-        description="Manufacturer part ID for the product. At least one of manufacturerPartId or customerPartId must be provided."
-    )
-    customer_part_id: Optional[str] = Field(
-        alias="customerPartId",
-        default=None,
-        description="Customer part ID for the product. At least one of manufacturerPartId or customerPartId must be provided."
-    )
-    requesting_bpn: str = Field(
-        alias="requestingBpn",
-        description="Business Partner Number of the requesting party (data consumer)."
-    )
-    target_bpn: str = Field(
-        alias="targetBpn",
-        description="Business Partner Number of the target data provider."
-    )
-    message: Optional[str] = Field(
-        default=None,
-        description="Optional message to include with the request."
-    )
-    governance: Optional[List[Dict[str, Any]]] = Field(
-        None,
-        description="Governance policies for contract negotiation."
-    )
-
-
-class SendOrUpdatePcfResponseModel(BaseModel):
-    """Model for sending or updating a PCF response as a data provider.
-
-    The PCF payload is always retrieved from the product-scoped store keyed
-    by ``manufacturerPartId``.  The provider only needs to specify which
-    request to respond to and their BPN.
-    """
-    responding_bpn: str = Field(
-        alias="respondingBpn",
-        description="Business Partner Number of the responding party (data provider)."
-    )
-    status: Optional[PcfResponseStatus] = Field(
-        default=PcfResponseStatus.DELIVERED,
-        description="Status of the PCF response."
-    )
-    message: Optional[str] = Field(
-        default=None,
-        description="Optional message to include with the response."
-    )
-    governance: Optional[List[Dict[str, Any]]] = Field(
-        None,
-        description="Governance policies for contract negotiation."
-    )
-
 
 class GovernanceBodyModel(BaseModel):
     """Request body model for endpoints that only require governance policies."""
@@ -108,12 +43,4 @@ class NotifyUpdateModel(BaseModel):
     governance: Optional[List[Dict[str, Any]]] = Field(
         None,
         description="Governance policies for contract negotiation."
-    )
-
-
-class UploadPcfDataModel(BaseModel):
-    """Model for uploading or updating PCF data for a product."""
-    pcf_data: Dict[str, Any] = Field(
-        alias="pcfData",
-        description="The PCF payload conforming to the Catena-X PCF 9.0.0 schema."
     )

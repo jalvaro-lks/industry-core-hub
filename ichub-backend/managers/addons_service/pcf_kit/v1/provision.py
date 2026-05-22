@@ -41,7 +41,6 @@ from managers.addons_service.pcf_kit.v1.management import PcfManagementManager, 
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
-from models.metadata_database.notification.models import NotificationDirection
 from tools.constants import PCF
 
 logger = LoggingManager.get_logger(__name__)
@@ -102,149 +101,6 @@ class PcfProvisionManager:
         if self._own_bpn == None:
             logger.warning("BPN not configured in configuration.yml.")
             raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
-
-    def send_or_update_pcf_response(
-        self,
-        request_id: str,
-        responding_bpn: str,
-        status: str = "delivered",
-        message: Optional[str] = None,
-        list_policies: Optional[List[Dict]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Send or update a PCF response for a given request.
-
-        If the exchange record already has delivered/updated status, this is treated
-        as an update. Otherwise, it is a first-time delivery.
-
-        The PCF payload is always retrieved from the product-scoped store keyed
-        by ``manufacturerPartId``.  This means the PCF document must have been
-        uploaded beforehand (e.g. via the PCF store endpoint).
-
-        For synchronous data exchange (data pull), see PCF Standard CX-0136, chapter 5.2.
-
-        Args:
-            request_id: The ID of the PCF request being responded to.
-            responding_bpn: Business Partner Number of the responding party.
-            status: Status of the response (default: delivered).
-            message: Optional message accompanying the response.
-
-        Returns:
-            Dictionary with the response details and whether it was created or updated.
-
-        Raises:
-            ValueError: If the request is not found, no manufacturerPartId is
-                        associated, or no PCF data exists for the product.
-        """
-        logger.info(f"Processing PCF provision response for request {request_id}")
-
-        # Retrieve the exchange record to get the requesting BPN and manufacturer part ID
-        exchange_entity = self._get_exchange_entity(request_id)
-        is_update = exchange_entity is not None and exchange_entity.status in (
-            PcfExchangeStatus.DELIVERED,
-            PcfExchangeStatus.UPDATED,
-        )
-
-        manufacturer_part_id = (
-            exchange_entity.manufacturer_part_id if exchange_entity else None
-        )
-        if not manufacturer_part_id:
-            raise ValueError(
-                f"No manufacturerPartId associated with request {request_id}. "
-                "Cannot retrieve PCF data without a part identifier."
-            )
-
-        # Retrieve the PCF payload from the product-scoped store
-        pcf_data = self._retrieve_pcf_data(manufacturer_part_id)
-        if not pcf_data:
-            raise ValueError(
-                f"No PCF data found for manufacturerPartId [{manufacturer_part_id}]. "
-                "Ensure a PCF has been stored before responding to a request."
-            )
-        logger.info(
-            f"Retrieved PCF data for manufacturerPartId [{manufacturer_part_id}]"
-        )
-
-        # Send the PCF data to the requesting party via EDC data plane
-        if exchange_entity and exchange_entity.requesting_bpn:
-            self._send_pcf_via_edc(
-                request_id=request_id,
-                requesting_bpn=exchange_entity.requesting_bpn,
-                pcf_data=pcf_data,
-                is_update=is_update,
-                manufacturer_part_id=manufacturer_part_id,
-                list_policies=list_policies,
-            )
-        else:
-            logger.warning(
-                f"No requesting BPN found for request {request_id}. "
-                "Skipping EDC data exchange — PCF data stored locally only."
-            )
-
-        self._notify_pcf_response(
-            request_id=request_id,
-            responding_bpn=responding_bpn,
-            is_update=is_update,
-            message=message,
-        )
-
-        now = datetime.now(timezone.utc).isoformat()
-        response_data = {
-            "requestId": request_id,
-            "respondingBpn": responding_bpn,
-            "status": PcfExchangeStatus.UPDATED.value if is_update else PcfExchangeStatus.DELIVERED.value,
-            "message": message,
-            "isUpdate": is_update,
-            "manufacturerPartId": manufacturer_part_id,
-            "updatedAt": now,
-        }
-
-        logger.info(
-            f"PCF response for request {request_id} "
-            f"{'updated' if is_update else 'delivered'} successfully"
-        )
-
-        return response_data
-
-    def _get_exchange_entity(self, request_id: str):
-        """
-        Retrieve the PCF exchange entity from the database.
-
-        Args:
-            request_id: The request ID to look up.
-
-        Returns:
-            The PcfExchangeEntity if found, otherwise None.
-        """
-        try:
-            with RepositoryManagerFactory.create() as repo_manager:
-                return repo_manager.pcf_repository.find_by_request_id(UUID(request_id))
-        except Exception as e:
-            logger.debug(f"Could not retrieve exchange record for request {request_id}: {str(e)}")
-        return None
-
-    def _retrieve_pcf_data(self, manufacturer_part_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve a previously stored PCF document for a given manufacturer part.
-
-        Args:
-            manufacturer_part_id: The manufacturer part ID.
-
-        Returns:
-            The PCF payload if found, otherwise None.
-        """
-        submodel_id = _pcf_submodel_id(manufacturer_part_id)
-        try:
-            return self._submodel_service.get_twin_aspect_document(
-                submodel_id=submodel_id,
-                semantic_id=PCF_SEMANTIC_ID,
-            )
-        except Exception as e:
-            logger.debug(
-                f"No existing PCF found for manufacturerPartId "
-                f"[{manufacturer_part_id}]: {e}"
-            )
-            return None
 
     def _send_pcf_via_edc(
         self,
@@ -339,39 +195,6 @@ class PcfProvisionManager:
         except Exception as e:
             logger.error(f"Failed to update exchange record for request {request_id}: {str(e)}")
             raise ValueError(f"Failed to update exchange record: {str(e)}")
-
-    def _notify_pcf_response(
-        self,
-        request_id: str,
-        responding_bpn: str,
-        is_update: bool,
-        message: Optional[str] = None,
-    ) -> None:
-        """Create an outgoing notification for a PCF response or update."""
-        if not self._own_bpn:
-            logger.warning(
-                f"Cannot create notification for PCF response {request_id}: "
-                "bpn not configured in configuration.yml"
-            )
-            return
-
-        notification_type = "PCF_UPDATE_SENT" if is_update else "PCF_RESPONSE_SENT"
-        default_message = (
-            f"PCF data update sent by {responding_bpn}"
-            if is_update
-            else f"PCF data response sent by {responding_bpn}"
-        )
-
-        pcf_notification_manager.create_pcf_notification(
-            sender_bpn=self._own_bpn,
-            receiver_bpn=self._own_bpn,
-            notification_type=notification_type,
-            request_id=request_id,
-            responding_bpn=responding_bpn,
-            message=message or default_message,
-            is_update=is_update,
-            direction=NotificationDirection.OUTGOING,
-        )
 
     def upload_new_pcf(
             self,

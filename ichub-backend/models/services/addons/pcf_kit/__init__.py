@@ -21,4 +21,3 @@
 # SPDX-License-Identifier: Apache-2.0
 #################################################################################
 
-from .v1 import SendPcfRequestModel, SendOrUpdatePcfResponseModel, PcfResponseStatus

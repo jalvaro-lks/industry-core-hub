@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import consumption_manager
-from models.services.addons.pcf_kit.v1.management import SendPcfRequestModel, GovernanceBodyModel
+from models.services.addons.pcf_kit.v1.management import GovernanceBodyModel
 from models.services.addons.pcf_kit.v1.models import PcfSubPartModel, PcfRelationshipModel, PcfExchangeModel, PcfSpecificStateModel
 
 
@@ -39,34 +39,6 @@ router = APIRouter(
     tags=["PCF KIT Microservices"],
     dependencies=[Depends(get_authentication_dependency())],
 )
-
-
-@router.post("/requests", deprecated=True)
-async def send_pcf_request(body: SendPcfRequestModel):
-    """
-    Send a new PCF request to a data provider.
-
-    Initiates a PCF data exchange as a data consumer. At least one of
-    manufacturerPartId or customerPartId must be provided.
-    """
-    try:
-        result = consumption_manager.send_pcf_request(
-            manufacturer_part_id=body.manufacturer_part_id,
-            customer_part_id=body.customer_part_id,
-            requesting_bpn=body.requesting_bpn,
-            target_bpn=body.target_bpn,
-            message=body.message,
-            list_policies=body.governance,
-        )
-        return JSONResponse(status_code=201, content=result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating PCF request: {str(e)}")
-
-
-def _not_implemented() -> None:
-    raise HTTPException(status_code=501, detail="NotImplemented")
 
 
 @router.get("/parts/{manufacturerPartId}/subparts")
@@ -119,14 +91,6 @@ async def send_pcf_request_to_participant(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating PCF request: {str(e)}")
-
-
-@router.get("/parts/{manufacturerPartId}/requests")
-async def list_requests_for_part(
-    manufacturer_part_id: str = Path(..., alias="manufacturerPartId"),
-) -> Dict[str, Any]:
-    _ = manufacturer_part_id
-    _not_implemented()
 
 
 @router.get("/requests/{requestId}/response")
