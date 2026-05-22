@@ -65,7 +65,9 @@
     "pcfDetails": "Détails du PCF",
     "requestedAt": "Demandé le",
     "deliveredAt": "Livré le",
-    "carbonFootprint": "Empreinte carbone",    "certificateLocation": "Emplacement du certificat",    "creatingSubpart": "Création de la relation de sous-composant...",
+    "carbonFootprint": "Empreinte carbone", 
+    "certificateLocation": "Emplacement du certificat", 
+    "creatingSubpart": "Création de la relation de sous-composant...",
     "addSubpartGhost": "Ajouter une relation de sous-composant",
     "subpartTooltip": {
       "sending": "Envoi de la demande PCF au fournisseur...",
