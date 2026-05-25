@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Card, Chip, Typography } from '@mui/material';
 import { CalendarMonth } from '@mui/icons-material';
 import { HeaderCardProps } from '@/features/eco-pass-kit/passport-consumption/passport-types/base/BasePassportVisualization';
@@ -33,6 +34,7 @@ import './PcfPeriodCard.scss';
  * Extracted from pcfAssessmentAndMethodology.pcfAssessmentInformation.time.
  */
 export const PcfPeriodCard: React.FC<HeaderCardProps> = ({ data }) => {
+  const { t } = useTranslation('pcf');
   const pcf = data as unknown as PcfNestedData;
   const time =
     pcf.pcfAssessmentAndMethodology?.[0]?.pcfAssessmentInformation?.[0]?.time?.[0];
@@ -70,26 +72,26 @@ export const PcfPeriodCard: React.FC<HeaderCardProps> = ({ data }) => {
       </Box>
 
       <Typography className="pcf-period-card__title">
-        Reference Period
+        {t('headerCards.period.title')}
       </Typography>
 
       <Box className="pcf-period-card__rows">
         <Box className="pcf-period-card__row">
-          <Typography className="pcf-period-card__label">Start</Typography>
+          <Typography className="pcf-period-card__label">{t('headerCards.period.start')}</Typography>
           <Typography className="pcf-period-card__value">
             {formatDate(time?.referencePeriodStart)}
           </Typography>
         </Box>
 
         <Box className="pcf-period-card__row">
-          <Typography className="pcf-period-card__label">End</Typography>
+          <Typography className="pcf-period-card__label">{t('headerCards.period.end')}</Typography>
           <Typography className="pcf-period-card__value">
             {formatDate(time?.referencePeriodEnd)}
           </Typography>
         </Box>
 
         <Box className="pcf-period-card__row">
-          <Typography className="pcf-period-card__label">Valid Until</Typography>
+          <Typography className="pcf-period-card__label">{t('headerCards.period.validUntil')}</Typography>
           <Typography className="pcf-period-card__value">
             {formatDate(time?.validityPeriodEnd)}
           </Typography>
@@ -97,7 +99,7 @@ export const PcfPeriodCard: React.FC<HeaderCardProps> = ({ data }) => {
 
         {scope?.specVersion && (
           <Box className="pcf-period-card__row">
-            <Typography className="pcf-period-card__label">Spec</Typography>
+            <Typography className="pcf-period-card__label">{t('headerCards.period.spec')}</Typography>
             <Typography className="pcf-period-card__value pcf-period-card__value--mono">
               {scope.specVersion}
             </Typography>

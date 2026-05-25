@@ -29,10 +29,14 @@
     "ready": "Listo",
     "readyDesc": "Datos de la pieza cargados correctamente",
     "loadingPcf": "Cargando PCF",
-    "loadingPcfDesc": "Obteniendo datos PCF",
+    "loadingPcfDesc": "Obteniendo datos de PCF",
     "validating": "Validando",
     "validatingDesc": "Validando estructura PCF",
-    "dataLoadedDesc": "Datos cargados correctamente"
+    "dataLoadedDesc": "Datos cargados correctamente",
+    "searching": "Buscando",
+    "searchingDesc": "Localizando parte del catálogo en el registro",
+    "requests": "Solicitudes",
+    "requestsDesc": "Cargando solicitudes pendientes"
   },
   "error": {
     "failedToLoadPart": "Error al cargar la pieza",
@@ -203,7 +207,11 @@
     "requestedOn": "Solicitado {{date}}",
     "today": "Hoy a las {{time}}",
     "yesterday": "Ayer a las {{time}}",
-    "daysAgo": "Hace {{count}} días"
+    "daysAgo": "Hace {{count}} días",
+    "participantDialog": {
+      "title": "Notificar Participantes",
+      "subtitle": "Seleccione los participantes a notificar sobre esta actualización de PCF"
+    }
   },
   "rejectDialog": {
     "title": "Rechazar Solicitud PCF",
@@ -238,5 +246,40 @@
     "noStatusRequests": "Sin solicitudes {{status}}",
     "cardView": "Vista de tarjetas",
     "listView": "Vista de lista"
+  },
+  "exchange": {
+    "loading": {
+      "searching": "Buscando",
+      "searchingDesc": "Localizando parte del catálogo en el registro",
+      "loadingPcf": "Cargando PCF",
+      "loadingPcfDesc": "Obteniendo datos de PCF",
+      "requests": "Solicitudes",
+      "requestsDesc": "Cargando solicitudes pendientes",
+      "ready": "Listo",
+      "readyDesc": "Datos cargados exitosamente"
+    },
+    "pcfUpdateSent": "Actualización de PCF enviada a {{count}} participante(s) exitosamente."
+  },
+  "headerCards": {
+    "company": {
+      "title": "Empresa y Producto",
+      "company": "Empresa",
+      "bpn": "BPN",
+      "product": "Producto",
+      "unit": "Unidad"
+    },
+    "summary": {
+      "title": "Huella de Carbono",
+      "exclBiogenic": "Excl. Biogénico",
+      "inclBiogenic": "Incl. Biogénico",
+      "unit": "kg CO₂e/unidad"
+    },
+    "period": {
+      "title": "Período de Referencia",
+      "start": "Inicio",
+      "end": "Fin",
+      "validUntil": "Válido hasta",
+      "spec": "Especificación"
+    }
   }
 }

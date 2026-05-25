@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogTitle,
@@ -72,6 +73,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
   manufacturerPartId,
   isLoading: externalLoading = false,
 }) => {
+  const { t } = useTranslation('pcf');
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +156,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
               <GroupIcon sx={{ color: '#fff', fontSize: 20 }} />
             </Box>
             <Typography variant="h6" sx={{ fontWeight: 600, color: 'rgba(255,255,255,0.92)', lineHeight: 1.2, fontSize: '1rem' }}>
-              Notify Participants
+              {t('notifications.participantDialog.title')}
             </Typography>
           </Box>
           {!isLoading && (
@@ -169,7 +171,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
         </Box>
         {/* Row 2: subtitle — full width, no icon competing for space */}
         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', pl: '52px', lineHeight: 1.4 }}>
-          Select participants to notify about this PCF update
+          {t('notifications.participantDialog.subtitle')}
         </Typography>
       </DialogTitle>
 

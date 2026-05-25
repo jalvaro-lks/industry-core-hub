@@ -128,7 +128,7 @@ const PcfEditPage: React.FC = () => {
       );
       setSnackbar({
         open: true,
-        message: `PCF update sent to ${selectedBpns.length} participant(s) successfully.`,
+        message: t('exchange.pcfUpdateSent', { count: selectedBpns.length }),
         severity: 'success',
       });
       setIsParticipantDialogOpen(false);

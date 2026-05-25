@@ -22,6 +22,8 @@
     "title": "Loading Catalog Part",
     "searchingPart": "Searching Part",
     "searchingPartDesc": "Locating catalog part in registry",
+    "searching": "Searching",
+    "searchingDesc": "Locating catalog part in registry",
     "loadingSubparts": "Loading Subparts",
     "loadingSubpartsDesc": "Fetching linked subpart relations",
     "checkingStatus": "Checking Status",
@@ -30,6 +32,8 @@
     "readyDesc": "Part data loaded successfully",
     "loadingPcf": "Loading PCF",
     "loadingPcfDesc": "Fetching PCF data",
+    "requests": "Requests",
+    "requestsDesc": "Loading pending requests",
     "validating": "Validating",
     "validatingDesc": "Validating PCF structure",
     "dataLoadedDesc": "Data loaded successfully"
@@ -213,7 +217,11 @@
     "requestedOn": "Requested {{date}}",
     "today": "Today at {{time}}",
     "yesterday": "Yesterday at {{time}}",
-    "daysAgo": "{{count}} days ago"
+    "daysAgo": "{{count}} days ago",
+    "participantDialog": {
+      "title": "Notify Participants",
+      "subtitle": "Select participants to notify about this PCF update"
+    }
   },
   "rejectDialog": {
     "title": "Reject PCF Request",
@@ -237,6 +245,41 @@
       "accessNotAuthorized": "Access not authorized",
       "incorrectPartRef": "Incorrect part reference",
       "alreadyProcessed": "Request already processed"
+    }
+  },
+  "exchange": {
+    "loading": {
+      "searching": "Searching",
+      "searchingDesc": "Locating catalog part in registry",
+      "loadingPcf": "Loading PCF",
+      "loadingPcfDesc": "Fetching PCF data",
+      "requests": "Requests",
+      "requestsDesc": "Loading pending requests",
+      "ready": "Ready",
+      "readyDesc": "Data loaded successfully"
+    },
+    "pcfUpdateSent": "PCF update sent to {{count}} participant(s) successfully."
+  },
+  "headerCards": {
+    "company": {
+      "title": "Company & Product",
+      "company": "Company",
+      "bpn": "BPN",
+      "product": "Product",
+      "unit": "Unit"
+    },
+    "summary": {
+      "title": "Carbon Footprint",
+      "exclBiogenic": "Excl. Biogenic",
+      "inclBiogenic": "Incl. Biogenic",
+      "unit": "kg CO₂e/unit"
+    },
+    "period": {
+      "title": "Reference Period",
+      "start": "Start",
+      "end": "End",
+      "validUntil": "Valid Until",
+      "spec": "Spec"
     }
   }
 }
