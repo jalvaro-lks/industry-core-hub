@@ -31,17 +31,14 @@ Reference:
 
 from typing import Dict, Any, List, Optional
 from uuid import UUID, NAMESPACE_URL, uuid5
-from datetime import datetime, timezone
 
-from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
 from managers.enablement_services.submodel_service_manager import SubmodelServiceManager
-from managers.addons_service.pcf_kit.v1.management import PcfManagementManager, management_manager
+from managers.addons_service.pcf_kit.v1.management import management_manager
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
-from tools.constants import PCF
 from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)

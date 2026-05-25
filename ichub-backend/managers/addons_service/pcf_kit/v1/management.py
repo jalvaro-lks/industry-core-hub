@@ -25,9 +25,8 @@
 PCF Management Manager - Administrative operations for PCF data.
 """
 
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 from uuid import UUID, NAMESPACE_URL, uuid5
-from urllib.parse import quote
 import time
 
 from managers.config.log_manager import LoggingManager
@@ -110,7 +109,7 @@ class PcfManagementManager:
 
                 if not entity or not entity.manufacturer_part_id:
                     logger.warning(
-                        f"No manufacturerPartId for request {request_id}. "
+                        f"No manufacturerPartId for request {_s(request_id)}. "
                         "Cannot retrieve PCF data."
                     )
                     return None
@@ -149,7 +148,7 @@ class PcfManagementManager:
 
                 if not entity or not entity[0].manufacturer_part_id:
                     logger.warning(
-                        f"No manufacturerPartId for manufacturer part ID {manufacturer_part_id}. "
+                        f"No manufacturerPartId for manufacturer part ID {_s(manufacturer_part_id)}. "
                         "Cannot retrieve PCF data."
                     )
                     return None
@@ -273,8 +272,8 @@ class PcfManagementManager:
         self._update_pending_responses_with_pcf_location(manufacturer_part_id, pcf_location)
 
         logger.info(
-            f"PCF data uploaded for manufacturerPartId={manufacturer_part_id} "
-            f"(submodel_id={submodel_id})"
+            f"PCF data uploaded for manufacturerPartId={_s(manufacturer_part_id)} "
+            f"(submodel_id={_s(submodel_id)})"
         )
 
         return {
@@ -333,8 +332,8 @@ class PcfManagementManager:
         shared_bpns = self._get_shared_bpns(manufacturer_part_id)
 
         logger.info(
-            f"PCF data updated for manufacturerPartId={manufacturer_part_id} "
-            f"(submodel_id={submodel_id})"
+            f"PCF data updated for manufacturerPartId={_s(manufacturer_part_id)} "
+            f"(submodel_id={_s(submodel_id)})"
         )
 
         return {
@@ -486,8 +485,8 @@ class PcfManagementManager:
                     logger.debug(f"[PCF EDC] Resolved counterparty DID for BPN [{_s(target_bpn)}]: {_s(party_key)}")
                 except Exception as discovery_err:
                     logger.warning(
-                        f"[PCF EDC] Could not resolve DID for BPN [{target_bpn}], "
-                        f"falling back to BPN substring clear: {discovery_err}"
+                        f"[PCF EDC] Could not resolve DID for BPN [{_s(target_bpn)}], "
+                        f"falling back to BPN substring clear: {_s(discovery_err)}"
                     )
             removed = consumer_connector_service.connection_manager.clear_connections_by_party(party_key)
             logger.debug(f"[PCF EDC] Cleared EDR cache for [{_s(party_key)}] (removed {removed} entries)")
@@ -501,7 +500,7 @@ class PcfManagementManager:
         for connector_url in connectors:
             try:
                 logger.info(
-                    f"[PCF EDC] Attempting {http_method} on [{connector_url}] path=[{path}]"
+                    f"[PCF EDC] Attempting {_s(http_method)} on [{_s(connector_url)}] path=[{_s(path)}]"
                 )
 
                 if http_method.upper() == "GET":
@@ -527,14 +526,14 @@ class PcfManagementManager:
 
                 if response.status_code in (200, 201, 202, 204):
                     logger.info(
-                        f"[PCF EDC] {http_method} successful for request [{request_id}] "
-                        f"(HTTP {response.status_code})"
+                        f"[PCF EDC] {_s(http_method)} successful for request [{_s(request_id)}] "
+                        f"(HTTP {_s(response.status_code)})"
                     )
                     return response
 
                 logger.warning(
-                    f"[PCF EDC] {http_method} returned status {response.status_code} "
-                    f"on [{connector_url}]: {response.text}"
+                    f"[PCF EDC] {_s(http_method)} returned status {_s(response.status_code)} "
+                    f"on [{_s(connector_url)}]: {_s(response.text)}"
                 )
                 last_error = ValueError(
                     f"EDC data transfer failed with status {response.status_code}"
@@ -542,7 +541,7 @@ class PcfManagementManager:
 
             except Exception as e:
                 logger.warning(
-                    f"[PCF EDC] Failed on connector [{connector_url}]: {e}. "
+                    f"[PCF EDC] Failed on connector [{_s(connector_url)}]: {_s(e)}. "
                     f"Retrying in 3 seconds..."
                 )
                 last_error = e
@@ -552,7 +551,7 @@ class PcfManagementManager:
                 
                 try:
                     logger.info(
-                        f"[PCF EDC] Retry: Attempting {http_method} on [{connector_url}] path=[{path}]"
+                        f"[PCF EDC] Retry: Attempting {_s(http_method)} on [{_s(connector_url)}] path=[{_s(path)}]"
                     )
                     
                     if http_method.upper() == "GET":
@@ -576,7 +575,7 @@ class PcfManagementManager:
                     
                     if response.status_code in (200, 201, 202, 204):
                         logger.info(
-                            f"[PCF EDC] Retry successful for request [{request_id}] "
+                            f"[PCF EDC] Retry successful for request [{_s(request_id)}] "
                             f"(HTTP {response.status_code})"
                         )
                         return response
@@ -590,7 +589,7 @@ class PcfManagementManager:
                     
                 except Exception as retry_error:
                     logger.warning(
-                        f"[PCF EDC] Retry also failed: {retry_error}"
+                        f"[PCF EDC] Retry also failed: {_s(retry_error)}"
                     )
                     last_error = retry_error
 

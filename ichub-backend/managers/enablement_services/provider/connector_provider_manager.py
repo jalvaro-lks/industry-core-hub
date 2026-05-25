@@ -541,17 +541,6 @@ class ConnectorProviderManager:
     
     def create_pcf_exchange_asset(self, asset_id: str, pcf_exchange_url: str, dct_type:str, version:str="1.2.0", headers: dict = None):           
         # Create the pcf exchange asset
-        context = {
-            "edc": "https://w3id.org/edc/v0.0.1/ns/",
-            "odrl": "http://www.w3.org/ns/odrl/2/",
-            "dcat": "http://www.w3.org/ns/dcat#",
-            "dct": "http://purl.org/dc/terms/",
-            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-            "cx-taxo": "https://w3id.org/catenax/taxonomy#",
-            "cx-common": "https://w3id.org/catenax/ontology/common#",
-            "aas-semantics": "https://admin-shell.io/aas/3/0/HasSemantics/"
-        }
-
         private_properties = {
             "rdfs:label": "PCF Exchange API",
             "rdfs:comment": "Endpoint for PCF Exchange API"

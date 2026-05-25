@@ -29,11 +29,9 @@ Reference:
     - CX-0002 Digital Twins in Catena-X
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 from urllib.parse import quote
-
-from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
 
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager

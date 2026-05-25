@@ -30,7 +30,6 @@ Reference:
 """
 
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone
 from uuid import UUID, NAMESPACE_URL, uuid5
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 
@@ -193,7 +192,7 @@ class PcfExchangeManager:
             )
         else:
             logger.warning(
-                f"Cannot create notification for PCF request {request_id}: "
+                f"Cannot create notification for PCF request {_s(request_id)}: "
                 "bpn not configured in configuration.yml"
             )
         

@@ -76,7 +76,7 @@ async def put_pcf_with_path_id(
         HTTPException: 400 for bad request
     """
     # Log incoming request
-    logger.info(f"[PCF Exchange PUT] Incoming request: request_id={_s(request_id)}, edc_bpn={_s(edc_bpn)}, update={update}, message={_s(message)}")
+    logger.info(f"[PCF Exchange PUT] Incoming request: request_id={_s(request_id)}, edc_bpn={_s(edc_bpn)}, update={_s(update)}, message={_s(message)}")
     
     # Validate edc_bpn header
     if not edc_bpn:
