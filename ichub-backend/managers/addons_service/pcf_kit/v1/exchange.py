@@ -42,6 +42,7 @@ from managers.enablement_services.submodel_service_manager import SubmodelServic
 from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from tools.json_validator import json_validator_draft_aware
+from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -114,7 +115,7 @@ class PcfExchangeManager:
         if not manufacturer_part_id and not customer_part_id:
             raise ValueError("At least one of manufacturerPartId or customerPartId must be provided")
         
-        logger.info(f"Processing PCF request {request_id} from BPN {edc_bpn}")
+        logger.info(f"Processing PCF request {_s(request_id)} from BPN {_s(edc_bpn)}")
         
         try:
             # Store PCF request in database
@@ -138,9 +139,9 @@ class PcfExchangeManager:
                         customer_part_id=customer_part_id,
                         message=message
                     )
-                    logger.info(f"Created PCF exchange record for request {request_id} with status DELIVERED")
+                    logger.info(f"Created PCF exchange record for request {_s(request_id)} with status DELIVERED")
                 else:
-                    logger.info(f"PCF request {request_id} already exists, skipping incoming record creation")
+                    logger.info(f"PCF request {_s(request_id)} already exists, skipping incoming record creation")
                 
                 # Try to get existing PCF location, but handle case where it doesn't exist yet
                 pcf_location = None
@@ -148,7 +149,7 @@ class PcfExchangeManager:
                     try:
                         pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
                     except Exception as e:
-                        logger.info(f"No existing PCF data found for manufacturer_part_id {manufacturer_part_id}: {str(e)}")
+                        logger.info(f"No existing PCF data found for manufacturer_part_id {_s(manufacturer_part_id)}: {_s(e)}")
                         pcf_location = None
                 
                 # Check if outgoing response record already exists
@@ -171,12 +172,12 @@ class PcfExchangeManager:
                         message=message,
                         pcf_location=pcf_location
                     )
-                    logger.info(f"Created PCF exchange record for response to request {request_id} with status PENDING")
+                    logger.info(f"Created PCF exchange record for response to request {_s(request_id)} with status PENDING")
                 else:
-                    logger.info(f"PCF response {request_id} already exists, skipping response record creation")
+                    logger.info(f"PCF response {_s(request_id)} already exists, skipping response record creation")
                 
         except Exception as e:
-            logger.error(f"Failed to store PCF request {request_id}: {str(e)}")
+            logger.error(f"Failed to store PCF request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"Failed to store PCF request: {str(e)}")
         
         # Create notification for the incoming PCF request
@@ -196,7 +197,7 @@ class PcfExchangeManager:
                 "bpn not configured in configuration.yml"
             )
         
-        logger.info(f"PCF request {request_id} created successfully")
+        logger.info(f"PCF request {_s(request_id)} created successfully")
         
         return {
             "status": "PCF request received",
@@ -257,9 +258,9 @@ class PcfExchangeManager:
             pcf_schema_result = submodel_schema_finder("urn:samm:io.catenax.pcf:9.0.0#Pcf")
             # Use draft-aware validator (PCF schema uses Draft-04, not Draft-07)
             json_validator_draft_aware(pcf_schema_result['schema'], pcf_data)
-            logger.info(f"PCF data for request {request_id} validated successfully against schema")
+            logger.info(f"PCF data for request {_s(request_id)} validated successfully against schema")
         except Exception as e:
-            logger.error(f"PCF data validation failed for request {request_id}: {str(e)}")
+            logger.error(f"PCF data validation failed for request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"PCF data validation failed: {str(e)}")
         
 
@@ -272,7 +273,7 @@ class PcfExchangeManager:
                 responding_bpn=edc_bpn
             )
         except Exception as e:
-            logger.error(f"Failed to store PCF data for request {request_id}: {str(e)}")
+            logger.error(f"Failed to store PCF data for request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"Failed to store PCF data: {str(e)}")
         
         # Create notification for the received PCF data
@@ -296,7 +297,7 @@ class PcfExchangeManager:
                 "bpn not configured in configuration.yml"
             )
 
-        logger.info(f"PCF data for request {request_id} processed successfully")
+        logger.info(f"PCF data for request {_s(request_id)} processed successfully")
         
         return {
             "status": "PCF data received successfully",
@@ -349,7 +350,7 @@ class PcfExchangeManager:
                     # If is_update=False but data exists, check if it's the same data (idempotent)
                     existing_pcf = management_manager.get_pcf_data_by_manufacturer_part_id(manufacturer_part_id)
                     if existing_pcf == pcf_data:
-                        logger.info(f"PCF data for {manufacturer_part_id} already exists and is identical - treating as idempotent operation")
+                        logger.info(f"PCF data for {_s(manufacturer_part_id)} already exists and is identical - treating as idempotent operation")
                         # Continue with normal flow (create/update response record)
                     else:
                         # Data exists but is different - this is a conflict
@@ -375,12 +376,12 @@ class PcfExchangeManager:
                             new_status=PcfExchangeStatus.UPDATED,
                             type=PcfExchangeType.RESPONSE
                         )
-                        logger.info(f"Updated PCF INCOMING RESPONSE status to UPDATED for request {request_id}")
+                        logger.info(f"Updated PCF INCOMING RESPONSE status to UPDATED for request {_s(request_id)}")
                     else:
                         # First response, update location if not set
                         repo_manager.pcf_repository.update_pcf_location(existing_response.request_id, existing_response.type, pcf_location)
                         repo_manager.commit()
-                        logger.info(f"Updated PCF location for INCOMING RESPONSE {request_id}: {pcf_location}")
+                        logger.info(f"Updated PCF location for INCOMING RESPONSE {_s(request_id)}: {_s(pcf_location)}")
                 else:
                     # Create new INCOMING RESPONSE record
                     new_response = repo_manager.pcf_repository.create_new(
@@ -394,7 +395,7 @@ class PcfExchangeManager:
                         request_id=UUID(request_id)
                     )
                     repo_manager.commit()
-                    logger.info(f"Created PCF INCOMING RESPONSE for request {request_id} with status DELIVERED")
+                    logger.info(f"Created PCF INCOMING RESPONSE for request {_s(request_id)} with status DELIVERED")
             else:
                 # For other types (not typically used in response flow)
                 management_manager.update_pcf_exchange_status(
@@ -402,7 +403,7 @@ class PcfExchangeManager:
                     new_status=PcfExchangeStatus.UPDATED if is_update else PcfExchangeStatus.DELIVERED,
                     type=type
                 )
-                logger.info(f"Updated PCF exchange status for request {request_id}")
+                logger.info(f"Updated PCF exchange status for request {_s(request_id)}")
 
 
 # Module-level singleton for convenience

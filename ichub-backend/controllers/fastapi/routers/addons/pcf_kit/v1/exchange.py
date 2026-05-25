@@ -23,13 +23,14 @@
 
 """PCF Exchange API - EDC-level endpoints for PCF data exchange."""
 
-from typing import Optional, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, Header, Query, HTTPException, Path, Body
 from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import exchange_manager
 from managers.config.log_manager import LoggingManager
+from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -75,7 +76,7 @@ async def put_pcf_with_path_id(
         HTTPException: 400 for bad request
     """
     # Log incoming request
-    logger.info(f"[PCF Exchange PUT] Incoming request: request_id={request_id}, edc_bpn={edc_bpn}, update={update}, message={message}")
+    logger.info(f"[PCF Exchange PUT] Incoming request: request_id={_s(request_id)}, edc_bpn={_s(edc_bpn)}, update={update}, message={_s(message)}")
     
     # Validate edc_bpn header
     if not edc_bpn:
@@ -96,16 +97,16 @@ async def put_pcf_with_path_id(
             message=message
         )
         
-        logger.info(f"[PCF Exchange PUT] Response processed successfully: request_id={request_id}")
+        logger.info(f"[PCF Exchange PUT] Response processed successfully: request_id={_s(request_id)}")
         return JSONResponse(
             status_code=200,
             content=result
         )
     except ValueError as e:
-        logger.error(f"[PCF Exchange PUT] ValueError: {str(e)}", exc_info=True)
+        logger.error(f"[PCF Exchange PUT] ValueError: {_s(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
-        logger.error(f"[PCF Exchange PUT] Unexpected exception: {str(e)}", exc_info=True)
+        logger.error(f"[PCF Exchange PUT] Unexpected exception: {_s(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
@@ -138,7 +139,7 @@ async def request_pcf(
         HTTPException: 400 if both IDs are missing, 404 if request not found
     """
     # Log incoming request
-    logger.info(f"[PCF Exchange GET] Incoming request: request_id={request_id}, edc_bpn={edc_bpn}, manufacturerPartId={manufacturer_part_id}, customerPartId={customer_part_id}, message={message}")
+    logger.info(f"[PCF Exchange GET] Incoming request: request_id={_s(request_id)}, edc_bpn={_s(edc_bpn)}, manufacturerPartId={_s(manufacturer_part_id)}, customerPartId={_s(customer_part_id)}, message={_s(message)}")
     
     # Validate edc_bpn header
     if not edc_bpn:
@@ -150,7 +151,7 @@ async def request_pcf(
     
     # Validate that at least one part ID is provided
     if not manufacturer_part_id and not customer_part_id:
-        logger.warning(f"[PCF Exchange GET] Missing part IDs: manufacturerPartId={manufacturer_part_id}, customerPartId={customer_part_id}")
+        logger.warning(f"[PCF Exchange GET] Missing part IDs: manufacturerPartId={_s(manufacturer_part_id)}, customerPartId={_s(customer_part_id)}")
         raise HTTPException(
             status_code=400,
             detail="At least one of manufacturerPartId or customerPartId must be provided"
@@ -167,14 +168,14 @@ async def request_pcf(
             message=message
         )
         
-        logger.info(f"[PCF Exchange GET] Request processed successfully: request_id={request_id}")
+        logger.info(f"[PCF Exchange GET] Request processed successfully: request_id={_s(request_id)}")
         return JSONResponse(
             status_code=202,
             content=result
         )
     except ValueError as e:
-        logger.error(f"[PCF Exchange GET] ValueError: {str(e)}", exc_info=True)
+        logger.error(f"[PCF Exchange GET] ValueError: {_s(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
     except Exception as e:
-        logger.error(f"[PCF Exchange GET] Unexpected exception: {str(e)}", exc_info=True)
+        logger.error(f"[PCF Exchange GET] Unexpected exception: {_s(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")

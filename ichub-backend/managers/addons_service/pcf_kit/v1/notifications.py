@@ -38,6 +38,7 @@ from managers.config.log_manager import LoggingManager
 from models.metadata_database.notification.models import NotificationDirection
 from services.notifications.notifications_management_service import NotificationsManagementService
 from tools.constants import PCF
+from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -143,14 +144,14 @@ class PcfNotificationManager:
             )
 
             logger.info(
-                f"Created PCF notification for request {request_id}: "
-                f"type={notification_type}"
+                f"Created PCF notification for request {_s(request_id)}: "
+                f"type={_s(notification_type)}"
             )
 
         except Exception as e:
             logger.error(
-                f"Failed to create PCF notification for request {request_id}: "
-                f"{str(e)}"
+                f"Failed to create PCF notification for request {_s(request_id)}: "
+                f"{_s(e)}"
             )
             # Don't raise - notification creation failure shouldn't block the main flow
 

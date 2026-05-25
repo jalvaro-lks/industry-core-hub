@@ -38,6 +38,7 @@ from models.metadata_database.pcf import PcfExchangeEntity, PcfExchangeDirection
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 from tools.json_validator import json_validator_draft_aware
 from tools.exceptions import NotFoundError
+from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -101,7 +102,7 @@ class PcfManagementManager:
         Returns:
             The PCF data payload, or None if not found.
         """
-        logger.info(f"Retrieving PCF data for request {request_id}")
+        logger.info(f"Retrieving PCF data for request {_s(request_id)}")
         
         try:
             with RepositoryManagerFactory.create() as repo_manager:
@@ -124,7 +125,7 @@ class PcfManagementManager:
             )
             return pcf_data
         except Exception as e:
-            logger.warning(f"PCF data not found for request {request_id}: {str(e)}")
+            logger.warning(f"PCF data not found for request {_s(request_id)}: {_s(e)}")
             return None
         
     def get_pcf_data_by_manufacturer_part_id(self, manufacturer_part_id: str) -> Optional[Dict[str, Any]]:
@@ -140,7 +141,7 @@ class PcfManagementManager:
         Returns:
             The PCF data payload, or None if not found.
         """
-        logger.info(f"Retrieving PCF data for manufacturer part ID {manufacturer_part_id}")
+        logger.info(f"Retrieving PCF data for manufacturer part ID {_s(manufacturer_part_id)}")
         
         try:
             with RepositoryManagerFactory.create() as repo_manager:
@@ -163,7 +164,7 @@ class PcfManagementManager:
             )
             return pcf_data
         except Exception as e:
-            logger.warning(f"PCF data not found for manufacturer part ID {manufacturer_part_id}: {str(e)}")
+            logger.warning(f"PCF data not found for manufacturer part ID {_s(manufacturer_part_id)}: {_s(e)}")
             return None
 
     def update_pcf_exchange_status(
@@ -190,7 +191,7 @@ class PcfManagementManager:
             ValueError: If the status value is invalid.
         """
         status_label = new_status.value if isinstance(new_status, PcfExchangeStatus) else new_status
-        logger.info(f"Updating PCF exchange {request_id} status to {status_label}")
+        logger.info(f"Updating PCF exchange {_s(request_id)} status to {_s(status_label)}")
 
         try:
             with RepositoryManagerFactory.create() as repo_manager:
@@ -201,19 +202,19 @@ class PcfManagementManager:
                     message=message,
                 )
                 if not entity:
-                    logger.warning(f"PCF exchange {request_id} not found for status update")
+                    logger.warning(f"PCF exchange {_s(request_id)} not found for status update")
                     return None
 
                 # Convert entity to dict while session is still active
                 result = self._entity_to_dict(entity)
-                logger.info(f"PCF exchange {request_id} status updated to {status_label}")
+                logger.info(f"PCF exchange {_s(request_id)} status updated to {_s(status_label)}")
                 return result
                 
         except ValueError as e:
-            logger.error(f"Invalid request ID format: {request_id} - {str(e)}")
+            logger.error(f"Invalid request ID format: {_s(request_id)} - {_s(e)}")
             raise
         except Exception as e:
-            logger.error(f"Error updating PCF exchange {request_id}: {str(e)}")
+            logger.error(f"Error updating PCF exchange {_s(request_id)}: {_s(e)}")
             raise
 
     def upload_pcf_data(
@@ -237,7 +238,7 @@ class PcfManagementManager:
         Raises:
             ValueError: If the PCF data fails schema validation.
         """
-        logger.info(f"Uploading PCF data for manufacturerPartId={manufacturer_part_id}")
+        logger.info(f"Uploading PCF data for manufacturerPartId={_s(manufacturer_part_id)}")
 
         submodel_id = _pcf_submodel_id(manufacturer_part_id)
 
@@ -304,7 +305,7 @@ class PcfManagementManager:
             ValueError: If the PCF data fails schema validation or no
                         existing data is found.
         """
-        logger.info(f"Updating PCF data for manufacturerPartId={manufacturer_part_id}")
+        logger.info(f"Updating PCF data for manufacturerPartId={_s(manufacturer_part_id)}")
 
         submodel_id = _pcf_submodel_id(manufacturer_part_id)
 
@@ -390,7 +391,7 @@ class PcfManagementManager:
                     entity.type == PcfExchangeType.RESPONSE):
                     
                     repo_manager.pcf_repository.update_pcf_location(entity.request_id, entity.type, pcf_location)
-                    logger.info(f"Updated PCF location for pending response {entity.request_id}")
+                    logger.info(f"Updated PCF location for pending response {_s(entity.request_id)}")
             
             repo_manager.commit()
 
@@ -466,7 +467,7 @@ class PcfManagementManager:
         if not connector_consumer_manager or not consumer_connector_service:
             raise ValueError("EDC connector services are not available.")
 
-        logger.info(f"[PCF EDC] Discovering connectors for BPN [{target_bpn}]")
+        logger.info(f"[PCF EDC] Discovering connectors for BPN [{_s(target_bpn)}]")
 
         # Evict any stale EDR for this counterparty from both the in-memory cache
         # and the edr_connections DB table before attempting a fresh negotiation.
@@ -482,19 +483,19 @@ class PcfManagementManager:
             if hasattr(consumer_connector_service, 'get_discovery_info'):
                 try:
                     _, party_key, _ = consumer_connector_service.get_discovery_info(bpnl=target_bpn)
-                    logger.debug(f"[PCF EDC] Resolved counterparty DID for BPN [{target_bpn}]: {party_key}")
+                    logger.debug(f"[PCF EDC] Resolved counterparty DID for BPN [{_s(target_bpn)}]: {_s(party_key)}")
                 except Exception as discovery_err:
                     logger.warning(
                         f"[PCF EDC] Could not resolve DID for BPN [{target_bpn}], "
                         f"falling back to BPN substring clear: {discovery_err}"
                     )
             removed = consumer_connector_service.connection_manager.clear_connections_by_party(party_key)
-            logger.debug(f"[PCF EDC] Cleared EDR cache for [{party_key}] (removed {removed} entries)")
+            logger.debug(f"[PCF EDC] Cleared EDR cache for [{_s(party_key)}] (removed {removed} entries)")
 
         connectors = connector_consumer_manager.get_connectors(target_bpn)
         if not connectors:
             raise ValueError(f"No connector endpoints found for BPN [{target_bpn}].")
-        logger.info(f"[PCF EDC] Found {len(connectors)} connector(s) for BPN [{target_bpn}]")
+        logger.info(f"[PCF EDC] Found {len(connectors)} connector(s) for BPN [{_s(target_bpn)}]")
 
         last_error = None
         for connector_url in connectors:

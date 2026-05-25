@@ -41,6 +41,7 @@ from managers.metadata_database.manager import RepositoryManagerFactory
 from managers.addons_service.pcf_kit.v1.management import management_manager
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel, PcfRelationshipModel, PcfSpecificStateModel
+from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -163,7 +164,7 @@ class PcfConsumptionManager:
                 if len(sub_part) > 0:
                     result.list_sub_manufacturer_part_ids.append(PcfExchangeModel.from_entity(sub_part[0]))
                 else:
-                    logger.warning(f"Sub part with ID {sub_part_id} not found in PCF repository")
+                    logger.warning(f"Sub part with ID {_s(sub_part_id)} not found in PCF repository")
             
             return result
         
@@ -208,9 +209,9 @@ class PcfConsumptionManager:
                         customer_part_id=None,
                         message=None
                     )
-                    logger.info(f"Created new PCF request for sub-part {sub_manufacturer_part_id}")
+                    logger.info(f"Created new PCF request for sub-part {_s(sub_manufacturer_part_id)}")
                 else:
-                    logger.info(f"PCF request already exists for sub-part {sub_manufacturer_part_id}, skipping creation")
+                    logger.info(f"PCF request already exists for sub-part {_s(sub_manufacturer_part_id)}, skipping creation")
                 
                 # Add the sub-part to the main part's relationship (only if not already present)
                 repo_manager.pcf_relationship_repository.add_sub_manufacturer_part_id(
@@ -225,7 +226,7 @@ class PcfConsumptionManager:
             result = self.search_own_parts_by_manufacturer_part_id(main_manufacturer_part_id)
             return result
         except Exception as e:
-            logger.error(f"Failed to add sub part and create request for main part {main_manufacturer_part_id}: {str(e)}")
+            logger.error(f"Failed to add sub part and create request for main part {_s(main_manufacturer_part_id)}: {_s(e)}")
             raise ValueError(f"Failed to add sub part and create request: {str(e)}")
 
     def send_pcf_request_to_participant(
@@ -284,7 +285,7 @@ class PcfConsumptionManager:
                 type=PcfExchangeType.REQUEST,
                 new_status=PcfExchangeStatus.FAILED,
             )
-            logger.error(f"Failed to send PCF request {request_id} to participant: {str(e)}")
+            logger.error(f"Failed to send PCF request {_s(request_id)} to participant: {_s(e)}")
             raise ValueError(f"Failed to send PCF request to participant: {str(e)}")
 
     def consult_pcf_response(self, request_id: str) -> PcfExchangeModel:
@@ -308,7 +309,7 @@ class PcfConsumptionManager:
                 result.pcf_data = pcf_data
                 return result
         except Exception as e:
-            logger.error(f"Failed to consult PCF response for request {request_id}: {str(e)}")
+            logger.error(f"Failed to consult PCF response for request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"Failed to consult PCF response: {str(e)}")
 
     def consult_global_assembly_progress(self, manufacturer_part_id: str) -> PcfSpecificStateModel:
@@ -343,7 +344,7 @@ class PcfConsumptionManager:
             )
                 
         except Exception as e:
-            logger.error(f"Failed to consult global assembly progress for part {manufacturer_part_id}: {str(e)}")
+            logger.error(f"Failed to consult global assembly progress for part {_s(manufacturer_part_id)}: {_s(e)}")
             raise ValueError(f"Failed to consult global assembly progress: {str(e)}")
         
     def download_pcf_data(self, manufacturer_part_id: str) -> List[PcfExchangeModel]:
@@ -368,7 +369,7 @@ class PcfConsumptionManager:
                 pcf_exchange_collection.append(exchange)
             return pcf_exchange_collection
         except Exception as e:
-            logger.error(f"Failed to download PCF data for part {manufacturer_part_id}: {str(e)}")
+            logger.error(f"Failed to download PCF data for part {_s(manufacturer_part_id)}: {_s(e)}")
             raise ValueError(f"Failed to download PCF data: {str(e)}")
 
 # Module-level singleton for convenience

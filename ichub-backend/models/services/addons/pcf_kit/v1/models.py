@@ -23,7 +23,6 @@
 
 """Pydantic models for PCF Kit management API endpoints."""
 
-from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 from models.metadata_database.pcf.models import PcfExchangeEntity

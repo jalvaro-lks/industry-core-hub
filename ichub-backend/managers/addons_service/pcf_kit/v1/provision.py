@@ -42,6 +42,7 @@ from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
 from tools.constants import PCF
+from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -175,7 +176,7 @@ class PcfProvisionManager:
         """
         try:
             pcf_location = management_manager.get_pcf_location(manufacturer_part_id)
-            logger.info(f"Stored PCF data location for request {request_id}: {pcf_location}")
+            logger.info(f"Stored PCF data location for request {_s(request_id)}: {_s(pcf_location)}")
             
             if is_update:
                 management_manager.update_pcf_exchange_status(
@@ -193,7 +194,7 @@ class PcfProvisionManager:
                 )
 
         except Exception as e:
-            logger.error(f"Failed to update exchange record for request {request_id}: {str(e)}")
+            logger.error(f"Failed to update exchange record for request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"Failed to update exchange record: {str(e)}")
 
     def upload_new_pcf(
@@ -223,7 +224,7 @@ class PcfProvisionManager:
                 pcf_data=pcf_data
             )
         except Exception as e:
-            logger.error(f"Failed to upload PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            logger.error(f"Failed to upload PCF data for manufacturerPartId [{_s(manufacturer_part_id)}]: {_s(e)}")
             raise ValueError(f"Failed to upload PCF data: {str(e)}")
 
 
@@ -247,7 +248,7 @@ class PcfProvisionManager:
                 raise ValueError(f"No PCF data found for manufacturerPartId [{manufacturer_part_id}].")
             return result
         except Exception as e:
-            logger.error(f"Failed to retrieve PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            logger.error(f"Failed to retrieve PCF data for manufacturerPartId [{_s(manufacturer_part_id)}]: {_s(e)}")
             raise ValueError(f"Failed to retrieve PCF data: {str(e)}")
         
     def update_pcf_and_get_participants(            
@@ -265,7 +266,7 @@ class PcfProvisionManager:
             )
             return result
         except Exception as e:
-            logger.error(f"Failed to update PCF data for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            logger.error(f"Failed to update PCF data for manufacturerPartId [{_s(manufacturer_part_id)}]: {_s(e)}")
             raise ValueError(f"Failed to update PCF data: {str(e)}")
 
     def confirm_and_send_update_to_participants(
@@ -303,7 +304,7 @@ class PcfProvisionManager:
                         )
             return {"message": f"PCF update sent to {len(list_bpns)} participant(s) successfully."}
         except Exception as e:
-            logger.error(f"Failed to confirm and send PCF update for manufacturerPartId [{manufacturer_part_id}]: {str(e)}")
+            logger.error(f"Failed to confirm and send PCF update for manufacturerPartId [{_s(manufacturer_part_id)}]: {_s(e)}")
             raise ValueError(f"Failed to confirm and send PCF update: {str(e)}")
 
     def list_provider_notifications(self, status: Optional[str] = None, offset: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
@@ -330,7 +331,7 @@ class PcfProvisionManager:
                         limit=limit)
                 return [PcfExchangeModel.from_entity(n) for n in notifications]
         except Exception as e:
-            logger.error(f"Failed to list provider notifications: {str(e)}")
+            logger.error(f"Failed to list provider notifications: {_s(e)}")
             raise ValueError(f"Failed to list provider notifications: {str(e)}")
     
     def accept_request_and_send_response(self, request_id: str, list_policies: Optional[List[Dict]] = None) -> Dict[str, Any]:
@@ -377,10 +378,10 @@ class PcfProvisionManager:
                     type=PcfExchangeType.RESPONSE,
                     new_status=PcfExchangeStatus.FAILED,
                 )
-                logger.error(f"Failed to accept request and send response for request {request_id}: {str(e)}")
+                logger.error(f"Failed to accept request and send response for request {_s(request_id)}: {_s(e)}")
                 raise ValueError(f"Failed to accept request and send response: {str(e)}")
             else:
-                logger.error(f"Request {request_id} is already DELIVERED. No action taken. Error details: {str(e)}")
+                logger.error(f"Request {_s(request_id)} is already DELIVERED. No action taken. Error details: {_s(e)}")
                 raise ValueError(f"Request {request_id} is already DELIVERED. No action taken.")
 
     def refresh_pcf_data_for_request(self, request_id: str) -> PcfExchangeModel:
@@ -416,7 +417,7 @@ class PcfProvisionManager:
                 )
                 return PcfExchangeModel.from_entity(final_exchange)
         except Exception as e:
-            logger.error(f"Failed to refresh PCF data for request {request_id}: {str(e)}")
+            logger.error(f"Failed to refresh PCF data for request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"Failed to refresh PCF data: {str(e)}")
 
 # Module-level singleton for convenience
