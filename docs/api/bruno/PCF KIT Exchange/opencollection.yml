@@ -30,6 +30,10 @@ request:
       value: https://hackathon1-ichub-backend.esauto-x.com
     - name: SubICHUB-URL
       value: https://hackathon2-ichub-backend.esauto-x.com
+    - name: API_KEY
+      value: ""
+    - name: X_API_KEY
+      value: ""
 bundled: false
 extensions:
   bruno:

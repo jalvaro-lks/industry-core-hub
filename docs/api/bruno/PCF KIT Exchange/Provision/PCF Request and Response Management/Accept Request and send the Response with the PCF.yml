@@ -9,7 +9,8 @@ http:
   body:
     type: json
     data: |-
-      [
+      {
+        "governance": [
         {
           "odrl:permission": {
             "odrl:action": { "@id": "odrl:use" },
@@ -106,7 +107,8 @@ http:
           "odrl:prohibition": [],
           "odrl:obligation": []
         }
-      ]
+        ]
+      }
   auth: inherit
 
 runtime:
@@ -128,7 +130,8 @@ examples:
       body:
         type: json
         data: |-
-          [
+          {
+            "governance": [
             {
               "odrl:permission": {
                 "odrl:action": { "@id": "odrl:use" },
@@ -225,7 +228,8 @@ examples:
               "odrl:prohibition": [],
               "odrl:obligation": []
             }
-          ]
+            ]
+          }
     response:
       status: 200
       statusText: OK
@@ -250,7 +254,8 @@ examples:
       body:
         type: json
         data: |-
-          [
+          {
+            "governance": [
             {
               "odrl:permission": {
                 "odrl:action": { "@id": "odrl:use" },
@@ -347,7 +352,8 @@ examples:
               "odrl:prohibition": [],
               "odrl:obligation": []
             }
-          ]
+            ]
+          }
     response:
       status: 200
       statusText: OK

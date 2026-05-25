@@ -9,7 +9,8 @@ http:
   body:
     type: json
     data: |-
-      [
+      {
+        "governance": [
         {
           "odrl:permission": {
             "odrl:action": { "@id": "odrl:use" },
@@ -106,7 +107,8 @@ http:
           "odrl:prohibition": [],
           "odrl:obligation": []
         }
-      ]
+        ]
+      }
   auth: inherit
 
 runtime:
@@ -123,12 +125,13 @@ settings:
 examples:
   - name: Example-Sent
     request:
-      url: "{{MainICHUB-URL}}/v1/addons/pcf-kit/consumption/requests/{{Request-ID}}/send"
+      url: "{{MainICHUB-URL}}/v1/addons/pcf-kit/consumption/requests/{{Request-ID}}/retry"
       method: POST
       body:
         type: json
         data: |-
-          [
+          {
+            "governance": [
             {
               "odrl:permission": {
                 "odrl:action": { "@id": "odrl:use" },
@@ -225,7 +228,8 @@ examples:
               "odrl:prohibition": [],
               "odrl:obligation": []
             }
-          ]
+            ]
+          }
     response:
       status: 201
       statusText: Created
@@ -245,12 +249,13 @@ examples:
         data: "null"
   - name: Example-Sent2
     request:
-      url: "{{MainICHUB-URL}}/v1/addons/pcf-kit/consumption/requests/{{Request-ID}}/send"
+      url: "{{MainICHUB-URL}}/v1/addons/pcf-kit/consumption/requests/{{Request-ID}}/retry"
       method: POST
       body:
         type: json
         data: |-
-          [
+          {
+            "governance": [
             {
               "odrl:permission": {
                 "odrl:action": { "@id": "odrl:use" },
@@ -347,7 +352,8 @@ examples:
               "odrl:prohibition": [],
               "odrl:obligation": []
             }
-          ]
+            ]
+          }
     response:
       status: 201
       statusText: Created

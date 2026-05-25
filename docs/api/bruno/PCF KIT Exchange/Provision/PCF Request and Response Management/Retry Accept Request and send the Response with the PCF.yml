@@ -9,7 +9,8 @@ http:
   body:
     type: json
     data: |-
-      [
+      {
+        "governance": [
         {
           "odrl:permission": {
             "odrl:action": { "@id": "odrl:use" },
@@ -106,7 +107,8 @@ http:
           "odrl:prohibition": [],
           "odrl:obligation": []
         }
-      ]
+        ]
+      }
   auth: inherit
 
 runtime:
@@ -123,12 +125,13 @@ settings:
 examples:
   - name: Example - Send Succesfully
     request:
-      url: "{{SubICHUB-URL}}/v1/addons/pcf-kit/provider/requests/{{Request-ID}}/accept"
+      url: "{{SubICHUB-URL}}/v1/addons/pcf-kit/provider/requests/{{Request-ID}}/response/retry"
       method: POST
       body:
         type: json
         data: |-
-          [
+          {
+            "governance": [
             {
               "odrl:permission": {
                 "odrl:action": { "@id": "odrl:use" },
@@ -225,7 +228,8 @@ examples:
               "odrl:prohibition": [],
               "odrl:obligation": []
             }
-          ]
+            ]
+          }
     response:
       status: 200
       statusText: OK
