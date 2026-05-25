@@ -34,7 +34,8 @@ import {
   Cancel,
   LocalShipping,
   Notifications,
-  Error as ErrorIcon
+  Error as ErrorIcon,
+  SystemUpdateAlt
 } from '@mui/icons-material';
 import { PcfNotificationStatus } from '../api/pcfExchangeApi';
 
@@ -72,6 +73,12 @@ export const NOTIFICATION_STATUS_CONFIG: Record<PcfNotificationStatus, Notificat
     color: PCF_PRIMARY,
     bgColor: 'rgba(16, 185, 129, 0.15)',
     icon: LocalShipping
+  },
+  UPDATED: {
+    label: 'Updated',
+    color: '#0ea5e9',
+    bgColor: 'rgba(14, 165, 233, 0.15)',
+    icon: SystemUpdateAlt
   },
   FAILED: {
     label: 'Failed',
@@ -123,6 +130,13 @@ const NotificationFilters: React.FC<NotificationFiltersProps> = ({
       count: counts.DELIVERED,
       icon: NOTIFICATION_STATUS_CONFIG.DELIVERED.icon,
       color: NOTIFICATION_STATUS_CONFIG.DELIVERED.color
+    },
+    {
+      key: 'UPDATED',
+      label: t('notifications.statusUpdated'),
+      count: counts.UPDATED,
+      icon: NOTIFICATION_STATUS_CONFIG.UPDATED.icon,
+      color: NOTIFICATION_STATUS_CONFIG.UPDATED.color
     },
     {
       key: 'REJECTED',

@@ -194,6 +194,7 @@
     "statusDelivered": "配送済み",
     "statusRejected": "却下済み",
     "statusFailed": "失敗",
+    "statusUpdated": "更新済み",
     "unknownPart": "不明な部品",
     "noMessage": "メッセージなし",
     "recheckPcf": "PCFの場所が利用可能か再確認",

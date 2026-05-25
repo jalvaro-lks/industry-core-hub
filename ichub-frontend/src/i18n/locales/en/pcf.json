@@ -194,6 +194,7 @@
     "statusDelivered": "Delivered",
     "statusRejected": "Rejected",
     "statusFailed": "Failed",
+    "statusUpdated": "Updated",
     "unknownPart": "Unknown Part",
     "noMessage": "No message provided",
     "recheckPcf": "Re-check if PCF location is now available",

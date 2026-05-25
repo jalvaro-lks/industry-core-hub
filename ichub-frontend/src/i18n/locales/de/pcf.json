@@ -194,6 +194,7 @@
     "statusDelivered": "Geliefert",
     "statusRejected": "Abgelehnt",
     "statusFailed": "Fehlgeschlagen",
+    "statusUpdated": "Aktualisiert",
     "unknownPart": "Unbekanntes Teil",
     "noMessage": "Keine Nachricht angegeben",
     "recheckPcf": "Erneut pr\u00fcfen ob der PCF-Speicherort verf\u00fcgbar ist",

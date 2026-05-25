@@ -194,6 +194,7 @@
     "statusDelivered": "Livré",
     "statusRejected": "Rejeté",
     "statusFailed": "Échoué",
+    "statusUpdated": "Mis à jour",
     "unknownPart": "Pièce inconnue",
     "noMessage": "Aucun message fourni",
     "recheckPcf": "Vérifier à nouveau si l'emplacement PCF est disponible",

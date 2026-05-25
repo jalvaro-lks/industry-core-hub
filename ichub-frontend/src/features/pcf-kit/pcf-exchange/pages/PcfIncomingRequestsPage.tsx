@@ -93,6 +93,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
     ACCEPTED: 0,
     REJECTED: 0,
     DELIVERED: 0,
+    UPDATED: 0,
     FAILED: 0
   });
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +117,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
       ACCEPTED: apiCounts.accepted || 0,
       REJECTED: apiCounts.rejected || 0,
       DELIVERED: apiCounts.delivered || 0,
+      UPDATED: apiCounts.updated || 0,
       FAILED: apiCounts.failed || 0
     };
   }, []);
