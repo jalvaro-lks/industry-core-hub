@@ -58,6 +58,8 @@ import {
   RejectDialog
 } from '../../pcf-exchange/components';
 import { PcfNotification, PcfNotificationStatus } from '../api/pcfExchangeApi';
+import { fetchPartners } from '@/features/business-partner-kit/partner-management/api';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -110,6 +112,18 @@ const PcfIncomingRequestsPage: React.FC = () => {
   const [rejectingNotificationId, setRejectingNotificationId] = useState<string | null>(null);
   const [processingNotificationId, setProcessingNotificationId] = useState<string | null>(null);
 
+  // Contacts state (for resolving requester names and showing Add Contact button)
+  const [contacts, setContacts] = useState<PartnerInstance[]>([]);
+
+  const loadContacts = async () => {
+    try {
+      const partners = await fetchPartners();
+      setContacts(partners);
+    } catch {
+      // Contacts are non-critical; silently ignore errors
+    }
+  };
+
   // Convert API status to UI counts format
   const mapApiCountsToUi = useCallback((apiCounts: Record<string, number>): Record<PcfNotificationStatus, number> => {
     return {
@@ -125,6 +139,7 @@ const PcfIncomingRequestsPage: React.FC = () => {
   // Load initial data
   useEffect(() => {
     loadData();
+    loadContacts();
   }, []);
 
   const loadData = async () => {
@@ -433,6 +448,8 @@ const PcfIncomingRequestsPage: React.FC = () => {
                 onRefreshPcf={handleRefreshPcf}
                 isProcessing={processingNotificationId === notification.id}
                 viewMode={viewMode}
+                contacts={contacts}
+                onContactAdded={loadContacts}
               />
             ))
           )}
