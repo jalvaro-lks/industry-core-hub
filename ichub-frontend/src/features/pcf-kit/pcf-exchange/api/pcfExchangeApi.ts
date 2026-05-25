@@ -37,6 +37,7 @@ export type PcfNotificationStatus =
   | 'ACCEPTED'     // Request accepted, PCF will be/has been shared
   | 'REJECTED'     // Request rejected by provider
   | 'DELIVERED'    // PCF data has been delivered
+  | 'UPDATED'      // PCF data has been updated by provider
   | 'FAILED';      // Technical error during processing
 
 /**
@@ -126,6 +127,7 @@ export interface GroupedNotifications {
   accepted: PcfNotification[];
   rejected: PcfNotification[];
   delivered: PcfNotification[];
+  updated: PcfNotification[];
   failed: PcfNotification[];
 }
 
@@ -584,6 +586,8 @@ export async function getGroupedNotifications(): Promise<GroupedNotifications> {
       .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()),
     delivered: notifications.filter(n => n.status === 'DELIVERED')
       .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()),
+    updated: notifications.filter(n => n.status === 'UPDATED')
+      .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime()),
     failed: notifications.filter(n => n.status === 'FAILED')
       .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
   };
@@ -602,6 +606,7 @@ export async function getNotificationCounts(): Promise<Record<PcfNotificationSta
     ACCEPTED: notifications.filter(n => n.status === 'ACCEPTED').length,
     REJECTED: notifications.filter(n => n.status === 'REJECTED').length,
     DELIVERED: notifications.filter(n => n.status === 'DELIVERED').length,
+    UPDATED: notifications.filter(n => n.status === 'UPDATED').length,
     FAILED: notifications.filter(n => n.status === 'FAILED').length
   };
 }

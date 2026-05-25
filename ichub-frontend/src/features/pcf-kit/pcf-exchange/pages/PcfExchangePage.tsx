@@ -23,6 +23,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Box,
   Typography,
@@ -91,13 +92,6 @@ interface LoadingStep {
   description: string;
 }
 
-const LOADING_STEPS: LoadingStep[] = [
-  { id: 'search', label: 'Searching', icon: Search, description: 'Locating catalog part in registry' },
-  { id: 'pcf', label: 'Loading PCF', icon: Downloading, description: 'Fetching PCF data' },
-  { id: 'requests', label: 'Requests', icon: Security, description: 'Loading pending requests' },
-  { id: 'complete', label: 'Ready', icon: VerifiedUser, description: 'Data loaded successfully' }
-];
-
 type PageState = 'search' | 'loading' | 'visualization' | 'error';
 type SectionTab = 'management' | 'requests';
 type ViewMode = 'card' | 'list';
@@ -113,6 +107,15 @@ interface CatalogPartSearchResult {
 const PcfExchangePage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams();
+  const { t } = useTranslation('pcf');
+
+  // Loading steps for animation — moved inside component to use i18n
+  const LOADING_STEPS: LoadingStep[] = [
+    { id: 'search', label: t('exchange.loading.searching'), icon: Search, description: t('exchange.loading.searchingDesc') },
+    { id: 'pcf', label: t('exchange.loading.loadingPcf'), icon: Downloading, description: t('exchange.loading.loadingPcfDesc') },
+    { id: 'requests', label: t('exchange.loading.requests'), icon: Security, description: t('exchange.loading.requestsDesc') },
+    { id: 'complete', label: t('exchange.loading.ready'), icon: VerifiedUser, description: t('exchange.loading.readyDesc') }
+  ];
 
   // Page state
   const [pageState, setPageState] = useState<PageState>('search');
@@ -128,7 +131,8 @@ const PcfExchangePage: React.FC = () => {
     ACCEPTED: 0,
     REJECTED: 0,
     DELIVERED: 0,
-    FAILED: 0
+    FAILED: 0,
+    UPDATED: 0
   });
 
   // Search state

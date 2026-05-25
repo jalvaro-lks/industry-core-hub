@@ -5,7 +5,9 @@
     "loadingParts": "Katalogteile werden geladen...",
     "noMatchingParts": "Keine passenden Teile gefunden",
     "defaultPlaceholder": "Hersteller-Teile-ID eingeben...",
-    "defaultButtonText": "Teil suchen"
+    "defaultButtonText": "Teil suchen",
+    "createNew": "Neues Katalogteil erstellen",
+    "createWithId": "'{{id}}' erstellen"
   },
   "common": {
     "cancel": "Abbrechen",
@@ -26,11 +28,15 @@
     "checkingStatusDesc": "PCF-Anfragestatus werden abgerufen",
     "ready": "Bereit",
     "readyDesc": "Teildaten erfolgreich geladen",
-    "loadingPcf": "PCF laden",
+    "loadingPcf": "PCF wird geladen",
     "loadingPcfDesc": "PCF-Daten werden abgerufen",
     "validating": "Validierung",
     "validatingDesc": "PCF-Struktur wird validiert",
-    "dataLoadedDesc": "Daten erfolgreich geladen"
+    "dataLoadedDesc": "Daten erfolgreich geladen",
+    "searching": "Suchen",
+    "searchingDesc": "Katalogteile in der Registry suchen",
+    "requests": "Anfragen",
+    "requestsDesc": "Ausstehende Anfragen werden geladen"
   },
   "error": {
     "failedToLoadPart": "Teil konnte nicht geladen werden",
@@ -159,7 +165,7 @@
     "dropHere": "PCF-Datei hier ablegen",
     "dragDrop": "PCF JSON-Datei hierher ziehen & ablegen",
     "browse": "oder klicken zum Durchsuchen",
-    "supportedFormat": "Unterst\u00fctztes Format: JSON (.json)",
+    "supportedFormat": "Unterstütztes Format: JSON (.json)",
     "validatedTitle": "PCF-Daten validiert",
     "validationFailedTitle": "Validierung fehlgeschlagen",
     "loadedTitle": "PCF-Daten geladen",
@@ -169,21 +175,21 @@
     "validating": "Validiere...",
     "validated": "Validiert",
     "validate": "Validieren",
-    "clear": "L\u00f6schen",
+    "clear": "Löschen",
     "saving": "Speichere...",
     "uploadPcf": "PCF hochladen",
-    "saveChanges": "\u00c4nderungen speichern",
+    "saveChanges": "Änderungen speichern",
     "formBuilder": "PCF mit Formularersteller erstellen",
     "or": "ODER",
-    "invalidFileType": "Ung\u00fcltiger Dateityp. Bitte laden Sie eine JSON-Datei hoch.",
-    "fileTooLarge": "Die Datei ist zu gro\u00df. Die maximale Gr\u00f6\u00dfe betr\u00e4gt 10 MB.",
-    "invalidFormat": "Ung\u00fcltiges PCF-Format. Es wird ein JSON-Objekt erwartet.",
+    "invalidFileType": "Ungültiger Dateityp. Bitte laden Sie eine JSON-Datei hoch.",
+    "fileTooLarge": "Die Datei ist zu groß. Die maximale Größe beträgt 10 MB.",
+    "invalidFormat": "Ungültiges PCF-Format. Es wird ein JSON-Objekt erwartet.",
     "loadedSuccess": "PCF-Daten erfolgreich geladen. Bitte vor dem Speichern validieren.",
-    "parseError": "Fehler beim Parsen der JSON-Datei. Bitte \u00fcberpr\u00fcfen Sie das Dateiformat.",
+    "parseError": "Fehler beim Parsen der JSON-Datei. Bitte überprüfen Sie das Dateiformat.",
     "readError": "Fehler beim Lesen der Datei. Bitte versuchen Sie es erneut.",
     "validationRequired": "Bitte validieren Sie die PCF-Daten vor dem Speichern.",
     "validatedSuccess": "PCF-Daten erfolgreich validiert!",
-    "noSchemaValidation": "PCF-Daten akzeptiert (keine Schema-Validierung verf\u00fcgbar).",
+    "noSchemaValidation": "PCF-Daten akzeptiert (keine Schema-Validierung verfügbar).",
     "formBuilderSuccess": "PCF-Daten mit Formularersteller erstellt und bereit zum Speichern.",
     "validationErrors": "Validierung fehlgeschlagen mit {{count}} Fehler(n): {{errors}}"
   },
@@ -194,10 +200,11 @@
     "statusDelivered": "Geliefert",
     "statusRejected": "Abgelehnt",
     "statusFailed": "Fehlgeschlagen",
+    "statusUpdated": "Aktualisiert",
     "unknownPart": "Unbekanntes Teil",
     "noMessage": "Keine Nachricht angegeben",
-    "recheckPcf": "Erneut pr\u00fcfen ob der PCF-Speicherort verf\u00fcgbar ist",
-    "pcfLocationNotResolved": "PCF-Speicherort noch nicht aufgel\u00f6st \u2014 Aktualisieren verwenden",
+    "recheckPcf": "Erneut prüfen ob der PCF-Speicherort verfügbar ist",
+    "pcfLocationNotResolved": "PCF-Speicherort noch nicht aufgelöst — Aktualisieren verwenden",
     "accept": "Akzeptieren",
     "accepting": "Akzeptiere...",
     "reject": "Ablehnen",
@@ -206,34 +213,73 @@
     "respondedOn": "Beantwortet am {{date}}",
     "reason": "Grund: ",
     "pcfDelivered": "PCF-Daten wurden dem Anforderer geliefert",
-    "highPriority": "Hohe Priorit\u00e4t",
+    "highPriority": "Hohe Priorität",
     "requestedOn": "Angefordert {{date}}",
     "today": "Heute um {{time}}",
     "yesterday": "Gestern um {{time}}",
-    "daysAgo": "Vor {{count}} Tagen"
+    "daysAgo": "Vor {{count}} Tagen",
+    "participantDialog": {
+      "title": "Teilnehmer benachrichtigen",
+      "subtitle": "Wählen Sie Teilnehmer aus, die über diese PCF-Aktualisierung benachrichtigt werden sollen"
+    }
   },
   "rejectDialog": {
     "title": "PCF-Anfrage ablehnen",
-    "subtitle": "Geben Sie einen Grund f\u00fcr die Ablehnung dieser Anfrage an",
+    "subtitle": "Geben Sie einen Grund für die Ablehnung dieser Anfrage an",
     "requestDetails": "Anfragedetails",
     "requester": "Anforderer",
     "part": "Teil",
-    "cannotBeUndone": "Kann nicht r\u00fckg\u00e4ngig gemacht werden",
+    "cannotBeUndone": "Kann nicht rükgängig gemacht werden",
     "requesterNotified": "Der Anforderer wird benachrichtigt.",
     "rejectionReason": "Ablehnungsgrund",
-    "selectOrWrite": "W\u00e4hlen Sie einen h\u00e4ufigen Grund oder schreiben Sie Ihren eigenen unten",
-    "reasonPlaceholder": "Geben Sie einen detaillierten Grund f\u00fcr die Ablehnung dieser Anfrage an...",
-    "reasonHelper": "Diese Nachricht ist f\u00fcr den Anforderer sichtbar",
+    "selectOrWrite": "Wählen Sie einen häufigen Grund oder schreiben Sie Ihren eigenen unten",
+    "reasonPlaceholder": "Geben Sie einen detaillierten Grund für die Ablehnung dieser Anfrage an...",
+    "reasonHelper": "Diese Nachricht ist für den Anforderer sichtbar",
     "reasonRequired": "Bitte geben Sie einen Ablehnungsgrund an",
     "failedToReject": "Anfrage konnte nicht abgelehnt werden",
     "rejecting": "Ablehnen...",
     "rejectRequest": "Anfrage ablehnen",
     "quickReasons": {
-      "noBusinessRelation": "Keine Gesch\u00e4ftsbeziehung",
-      "dataNotAvailable": "Daten noch nicht verf\u00fcgbar",
+      "noBusinessRelation": "Keine Geschäftsbeziehung",
+      "dataNotAvailable": "Daten noch nicht verfügbar",
       "accessNotAuthorized": "Zugriff nicht autorisiert",
       "incorrectPartRef": "Falsche Teilreferenz",
       "alreadyProcessed": "Anfrage bereits bearbeitet"
+    }
+  },
+  "exchange": {
+    "loading": {
+      "searching": "Suchen",
+      "searchingDesc": "Katalogteile in der Registry suchen",
+      "loadingPcf": "PCF wird geladen",
+      "loadingPcfDesc": "PCF-Daten werden abgerufen",
+      "requests": "Anfragen",
+      "requestsDesc": "Ausstehende Anfragen werden geladen",
+      "ready": "Bereit",
+      "readyDesc": "Daten erfolgreich geladen"
+    },
+    "pcfUpdateSent": "PCF-Update an {{count}} Teilnehmer erfolgreich gesendet."
+  },
+  "headerCards": {
+    "company": {
+      "title": "Unternehmen & Produkt",
+      "company": "Unternehmen",
+      "bpn": "BPN",
+      "product": "Produkt",
+      "unit": "Einheit"
+    },
+    "summary": {
+      "title": "Carbon Footprint",
+      "exclBiogenic": "Ohne biogenes",
+      "inclBiogenic": "Mit biogenes",
+      "unit": "kg CO₂e/Einheit"
+    },
+    "period": {
+      "title": "Referenzzeitraum",
+      "start": "Start",
+      "end": "Ende",
+      "validUntil": "Gültig bis",
+      "spec": "Spezifikation"
     }
   }
 }

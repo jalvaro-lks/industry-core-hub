@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Card, Chip, Typography } from '@mui/material';
 import { Co2 } from '@mui/icons-material';
 import { HeaderCardProps } from '@/features/eco-pass-kit/passport-consumption/passport-types/base/BasePassportVisualization';
@@ -37,6 +38,7 @@ const PCF_SECONDARY = '#059669';
  * first production stage entry.
  */
 export const PcfSummaryCard: React.FC<HeaderCardProps> = ({ data }) => {
+  const { t } = useTranslation('pcf');
   const pcf = data as unknown as PcfNestedData;
   const productionStage = pcf.productLifeCycleStagesAndEmissions?.[0]?.productionStage?.[0];
   const scope = pcf.scopeOfPcfForm?.[0];
@@ -63,13 +65,13 @@ export const PcfSummaryCard: React.FC<HeaderCardProps> = ({ data }) => {
       </Box>
 
       <Typography className="pcf-summary-card__title">
-        Carbon Footprint
+        {t('headerCards.summary.title')}
       </Typography>
 
       <Box className="pcf-summary-card__values">
         <Box className="pcf-summary-card__value-item">
           <Typography className="pcf-summary-card__value-label">
-            Excl. Biogenic
+            {t('headerCards.summary.exclBiogenic')}
           </Typography>
           <Typography
             className="pcf-summary-card__value-number"
@@ -86,7 +88,7 @@ export const PcfSummaryCard: React.FC<HeaderCardProps> = ({ data }) => {
 
         <Box className="pcf-summary-card__value-item">
           <Typography className="pcf-summary-card__value-label">
-            Incl. Biogenic
+            {t('headerCards.summary.inclBiogenic')}
           </Typography>
           <Typography
             className="pcf-summary-card__value-number"

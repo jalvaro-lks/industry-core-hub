@@ -50,7 +50,6 @@ import {
   DeviceHub,
   KeyboardArrowRight,
   KeyboardArrowLeft,
-  PersonAdd,
   SortByAlpha,
   Menu as MenuIcon,
   Inbox,
@@ -71,7 +70,7 @@ import {
 } from '@mui/icons-material';
 import { useNotifications } from '../contexts/NotificationContext';
 import { InboxNotification, SenderGroup, NotificationSortBy, InboxFilterType } from '../types';
-import CreatePartnerDialog from '@/features/business-partner-kit/partner-management/components/general/CreatePartnerDialog';
+import AddContactIconButton from '@/features/business-partner-kit/partner-management/components/general/AddContactIconButton';
 
 /**
  * NotificationInbox component - displays notifications in list or grouped view
@@ -148,12 +147,6 @@ const NotificationInbox: React.FC = () => {
     mouseY: number;
     notification: InboxNotification;
   } | null>(null);
-
-  // State for add contact dialog
-  const [addContactDialog, setAddContactDialog] = useState<{
-    open: boolean;
-    bpn: string;
-  }>({ open: false, bpn: '' });
 
   // State for undo snackbars (supports stacking)
   interface UndoSnackbarItem {
@@ -356,13 +349,7 @@ const NotificationInbox: React.FC = () => {
   };
 
   // Handle add contact click
-  const handleAddContactClick = (bpn: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    setAddContactDialog({ open: true, bpn });
-  };
-
   const handleAddContactSuccess = () => {
-    setAddContactDialog({ open: false, bpn: '' });
     refreshPartners();
   };
 
@@ -599,19 +586,11 @@ const NotificationInbox: React.FC = () => {
               {senderName}
             </Typography>
             {!isKnown && (
-              <Tooltip title={t('inbox.addToContacts')} arrow>
-                <IconButton
-                  size="small"
-                  onClick={(e) => handleAddContactClick(senderBpn, e)}
-                  sx={{
-                    padding: '2px',
-                    color: '#ffb74d',
-                    '&:hover': { color: '#ffa726', backgroundColor: 'rgba(255, 167, 38, 0.15)' },
-                  }}
-                >
-                  <PersonAdd sx={{ fontSize: '0.85rem' }} />
-                </IconButton>
-              </Tooltip>
+              <AddContactIconButton
+                bpnl={senderBpn}
+                onContactAdded={handleAddContactSuccess}
+                tooltipTitle={t('inbox.addToContacts')}
+              />
             )}
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
@@ -761,19 +740,11 @@ const NotificationInbox: React.FC = () => {
               {senderName}
             </Typography>
             {!isKnown && (
-              <Tooltip title={t('inbox.addToContacts')} arrow>
-                <IconButton
-                  size="small"
-                  onClick={(e) => handleAddContactClick(senderBpn, e)}
-                  sx={{
-                    padding: '2px',
-                    color: '#ffb74d',
-                    '&:hover': { color: '#ffa726', backgroundColor: 'rgba(255, 167, 38, 0.15)' },
-                  }}
-                >
-                  <PersonAdd sx={{ fontSize: '0.95rem' }} />
-                </IconButton>
-              </Tooltip>
+              <AddContactIconButton
+                bpnl={senderBpn}
+                onContactAdded={handleAddContactSuccess}
+                tooltipTitle={t('inbox.addToContacts')}
+              />
             )}
           </Box>
 
@@ -948,22 +919,14 @@ const NotificationInbox: React.FC = () => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {group.sender.name}
+                {getContactName(group.sender.bpnl)}
               </Typography>
               {!isKnown && (
-                <Tooltip title={t('inbox.addToContacts')} arrow>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => handleAddContactClick(group.sender.bpnl, e)}
-                    sx={{
-                      padding: '2px',
-                      color: '#ffb74d',
-                      '&:hover': { color: '#ffa726', backgroundColor: 'rgba(255, 167, 38, 0.15)' },
-                    }}
-                  >
-                    <PersonAdd sx={{ fontSize: '0.85rem' }} />
-                  </IconButton>
-                </Tooltip>
+                <AddContactIconButton
+                  bpnl={group.sender.bpnl}
+                  onContactAdded={handleAddContactSuccess}
+                  tooltipTitle={t('inbox.addToContacts')}
+                />
               )}
             </Box>
             <Typography
@@ -1639,16 +1602,6 @@ const NotificationInbox: React.FC = () => {
 
       {/* Context menu */}
       {renderContextMenu()}
-
-      {/* Add contact dialog */}
-      {addContactDialog.open && (
-        <CreatePartnerDialog
-          open={addContactDialog.open}
-          onClose={() => setAddContactDialog({ open: false, bpn: '' })}
-          onSave={handleAddContactSuccess}
-          partnerData={{ bpnl: addContactDialog.bpn, name: '' }}
-        />
-      )}
 
       {/* Stacking Undo Snackbars */}
       <Box

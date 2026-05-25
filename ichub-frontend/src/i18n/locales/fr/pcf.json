@@ -5,7 +5,9 @@
     "loadingParts": "Chargement des pièces du catalogue...",
     "noMatchingParts": "Aucune pièce correspondante trouvée",
     "defaultPlaceholder": "Entrez l'ID de pièce fabricant...",
-    "defaultButtonText": "Rechercher pièce"
+    "defaultButtonText": "Rechercher pièce",
+    "createNew": "Créer une nouvelle pièce de catalogue",
+    "createWithId": "Créer '{{id}}'"
   },
   "common": {
     "cancel": "Annuler",
@@ -30,7 +32,11 @@
     "loadingPcfDesc": "Récupération des données PCF",
     "validating": "Validation",
     "validatingDesc": "Validation de la structure PCF",
-    "dataLoadedDesc": "Données chargées avec succès"
+    "dataLoadedDesc": "Données chargées avec succès",
+    "searching": "Recherche",
+    "searchingDesc": "Localisation de la pièce du catalogue dans le registre",
+    "requests": "Demandes",
+    "requestsDesc": "Chargement des demandes en attente"
   },
   "error": {
     "failedToLoadPart": "Échec du chargement de la pièce",
@@ -65,8 +71,8 @@
     "pcfDetails": "Détails du PCF",
     "requestedAt": "Demandé le",
     "deliveredAt": "Livré le",
-    "carbonFootprint": "Empreinte carbone", 
-    "certificateLocation": "Emplacement du certificat", 
+    "carbonFootprint": "Empreinte carbone",
+    "certificateLocation": "Emplacement du certificat",
     "creatingSubpart": "Création de la relation de sous-composant...",
     "addSubpartGhost": "Ajouter une relation de sous-composant",
     "subpartTooltip": {
@@ -194,6 +200,7 @@
     "statusDelivered": "Livré",
     "statusRejected": "Rejeté",
     "statusFailed": "Échoué",
+    "statusUpdated": "Mis à jour",
     "unknownPart": "Pièce inconnue",
     "noMessage": "Aucun message fourni",
     "recheckPcf": "Vérifier à nouveau si l'emplacement PCF est disponible",
@@ -210,7 +217,11 @@
     "requestedOn": "Demandé le {{date}}",
     "today": "Aujourd'hui à {{time}}",
     "yesterday": "Hier à {{time}}",
-    "daysAgo": "Il y a {{count}} jours"
+    "daysAgo": "Il y a {{count}} jours",
+    "participantDialog": {
+      "title": "Notifier les Participants",
+      "subtitle": "Sélectionnez les participants à notifier de cette mise à jour PCF"
+    }
   },
   "rejectDialog": {
     "title": "Rejeter la demande PCF",
@@ -234,6 +245,41 @@
       "accessNotAuthorized": "Accès non autorisé",
       "incorrectPartRef": "Référence de pièce incorrecte",
       "alreadyProcessed": "Demande déjà traitée"
+    }
+  },
+  "exchange": {
+    "loading": {
+      "searching": "Recherche",
+      "searchingDesc": "Localisation de la pièce du catalogue dans le registre",
+      "loadingPcf": "Chargement du PCF",
+      "loadingPcfDesc": "Récupération des données PCF",
+      "requests": "Demandes",
+      "requestsDesc": "Chargement des demandes en attente",
+      "ready": "Prêt",
+      "readyDesc": "Données chargées avec succès"
+    },
+    "pcfUpdateSent": "Mise à jour PCF envoyée à {{count}} participant(s) avec succès."
+  },
+  "headerCards": {
+    "company": {
+      "title": "Entreprise et Produit",
+      "company": "Entreprise",
+      "bpn": "BPN",
+      "product": "Produit",
+      "unit": "Unité"
+    },
+    "summary": {
+      "title": "Empreinte Carbone",
+      "exclBiogenic": "Excl. Biogénique",
+      "inclBiogenic": "Incl. Biogénique",
+      "unit": "kg CO₂e/unité"
+    },
+    "period": {
+      "title": "Période de Référence",
+      "start": "Début",
+      "end": "Fin",
+      "validUntil": "Valable jusqu'au",
+      "spec": "Spécification"
     }
   }
 }

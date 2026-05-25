@@ -5,7 +5,9 @@
     "loadingParts": "カタログ部品を読み込み中...",
     "noMatchingParts": "一致する部品が見つかりません",
     "defaultPlaceholder": "メーカー部品IDを入力...",
-    "defaultButtonText": "部品を検索"
+    "defaultButtonText": "部品を検索",
+    "createNew": "新しいカタログ部品を作成",
+    "createWithId": "'{{id}}' を作成"
   },
   "common": {
     "cancel": "キャンセル",
@@ -26,11 +28,15 @@
     "checkingStatusDesc": "PCFリクエストステータスを取得中",
     "ready": "準備完了",
     "readyDesc": "部品データの読み込みが完了しました",
-    "loadingPcf": "PCFを読み込み中",
-    "loadingPcfDesc": "PCFデータを取得中",
+    "loadingPcf": "PCF を読み込み中",
+    "loadingPcfDesc": "PCF データを取得中",
     "validating": "検証中",
     "validatingDesc": "PCF構造を検証中",
-    "dataLoadedDesc": "データの読み込みが完了しました"
+    "dataLoadedDesc": "データの読み込みが完了しました",
+    "searching": "検索中",
+    "searchingDesc": "レジストリでカタログパーツを検索中",
+    "requests": "リクエスト",
+    "requestsDesc": "保留中のリクエストを読み込み中"
   },
   "error": {
     "failedToLoadPart": "部品の読み込みに失敗しました",
@@ -194,6 +200,7 @@
     "statusDelivered": "配送済み",
     "statusRejected": "却下済み",
     "statusFailed": "失敗",
+    "statusUpdated": "更新済み",
     "unknownPart": "不明な部品",
     "noMessage": "メッセージなし",
     "recheckPcf": "PCFの場所が利用可能か再確認",
@@ -210,7 +217,11 @@
     "requestedOn": "{{date}}にリクエスト",
     "today": "今日{{time}}",
     "yesterday": "昨日{{time}}",
-    "daysAgo": "{{count}}日前"
+    "daysAgo": "{{count}}日前",
+    "participantDialog": {
+      "title": "参加者に通知",
+      "subtitle": "この PCF 更新について通知する参加者を選択してください"
+    }
   },
   "rejectDialog": {
     "title": "PCFリクエストを却下",
@@ -234,6 +245,41 @@
       "accessNotAuthorized": "アクセスが許可されていません",
       "incorrectPartRef": "部品参照が正しくありません",
       "alreadyProcessed": "リクエストは既に処理されました"
+    }
+  },
+  "exchange": {
+    "loading": {
+      "searching": "検索中",
+      "searchingDesc": "レジストリでカタログパーツを検索中",
+      "loadingPcf": "PCF を読み込み中",
+      "loadingPcfDesc": "PCF データを取得中",
+      "requests": "リクエスト",
+      "requestsDesc": "保留中のリクエストを読み込み中",
+      "ready": "準備完了",
+      "readyDesc": "データが正常に読み込まれました"
+    },
+    "pcfUpdateSent": "PCF 更新が {{count}} 人の参加者に正常に送信されました。"
+  },
+  "headerCards": {
+    "company": {
+      "title": "企業と製品",
+      "company": "企業",
+      "bpn": "BPN",
+      "product": "製品",
+      "unit": "単位"
+    },
+    "summary": {
+      "title": "カーボンフットプリント",
+      "exclBiogenic": "生物由来を除く",
+      "inclBiogenic": "生物由来を含む",
+      "unit": "kg CO₂e/単位"
+    },
+    "period": {
+      "title": "参照期間",
+      "start": "開始",
+      "end": "終了",
+      "validUntil": "有効期限",
+      "spec": "仕様"
     }
   }
 }

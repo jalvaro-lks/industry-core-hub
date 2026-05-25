@@ -37,15 +37,19 @@ import {
   Button,
   ClickAwayListener,
   Popper,
-  Chip
+  Chip,
+  Divider
 } from '@mui/material';
 import {
   Search,
   Close as CloseIcon,
   Category,
-  DraftsOutlined
+  DraftsOutlined,
+  AddCircleOutline
 } from '@mui/icons-material';
 import { fetchCatalogParts } from '../../../industry-core-kit/catalog-management/api';
+import CreateProductListDialog from '../../../industry-core-kit/catalog-management/components/product-list/CreateProductListDialog';
+import { PartType } from '../../../industry-core-kit/catalog-management/types/types';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -108,6 +112,8 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   const [filteredResults, setFilteredResults] = useState<CatalogPartSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
 
   // Load all parts from backend on first focus
@@ -130,6 +136,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
       console.error('Failed to load parts:', err);
     } finally {
       setIsInitialLoading(false);
+      setHasAttemptedLoad(true);
     }
   };
 
@@ -163,19 +170,33 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
 
   // Handle search submission
   const handleSearchSubmit = () => {
-    if (searchTerm.trim()) {
-      // If there are results, select the first one
-      if (filteredResults.length > 0) {
-        handleSelectPart(filteredResults[0]);
-      } else {
-        // Create a basic result from the search term
-        onPartSelect({
-          manufacturerId: '',
-          manufacturerPartId: searchTerm.trim(),
-          partName: `Product ${searchTerm.trim()}`
-        });
-      }
+    if (searchTerm.trim() && filteredResults.length > 0) {
+      handleSelectPart(filteredResults[0]);
     }
+  };
+
+  // Handle opening the create dialog
+  const handleOpenCreate = () => {
+    setShowDropdown(false);
+    setCreateDialogOpen(true);
+  };
+
+  // Handle successful catalog part creation
+  const handlePartCreated = (data: { part: PartType }) => {
+    const { part } = data;
+    const newPart: CatalogPartSearchResult = {
+      manufacturerId: part.manufacturerId,
+      manufacturerPartId: part.manufacturerPartId,
+      partName: part.name,
+      description: part.description,
+      category: part.category,
+      status: 'Draft'
+    };
+    // Add to local list so it shows in future searches
+    setAllParts(prev => [...prev, newPart]);
+    setCreateDialogOpen(false);
+    setSearchTerm('');
+    onPartSelect(newPart);
   };
 
   const handleClickAway = () => {
@@ -183,7 +204,8 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
   };
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 68.8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3, md: 4 } }}>
+    <>
+      <Box sx={{ minHeight: 'calc(100vh - 68.8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3, md: 4 } }}>
       <Box sx={{ width: '100%', maxWidth: '700px', textAlign: 'center' }}>
         {/* Header */}
         <Box sx={{ mb: 5 }}>
@@ -266,7 +288,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
 
                 {/* Dropdown using Popper for proper z-index */}
                 <Popper
-                  open={showDropdown && (filteredResults.length > 0 || isInitialLoading)}
+                  open={showDropdown && (isInitialLoading || filteredResults.length > 0 || hasAttemptedLoad)}
                   anchorEl={anchorRef.current}
                   placement="bottom-start"
                   style={{ zIndex: 1400, width: anchorRef.current?.offsetWidth }}
@@ -309,66 +331,130 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
                         </Typography>
                       </Box>
                     ) : filteredResults.length === 0 ? (
-                      <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                          {t('search.noMatchingParts')}
-                        </Typography>
-                      </Box>
-                    ) : (
-                      filteredResults.map((result) => (
+                      <Box>
+                        <Box sx={{ p: 3, textAlign: 'center' }}>
+                          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                            {t('search.noMatchingParts')}
+                          </Typography>
+                        </Box>
+                        {/* Create option — always shown when no results */}
+                        <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.06)' }} />
                         <Box
-                          key={`${result.manufacturerPartId}-${result.partName}`}
-                          onClick={() => handleSelectPart(result)}
+                          onClick={handleOpenCreate}
                           sx={{
                             p: 2,
                             cursor: 'pointer',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 2,
-                            '&:hover': { background: alpha(PCF_PRIMARY, 0.1) },
-                            '&:last-child': { borderBottom: 'none' }
+                            '&:hover': { background: 'rgba(14, 165, 233, 0.1)' }
                           }}
                         >
-                          <Box sx={{ 
-                            width: 36, 
-                            height: 36, 
-                            borderRadius: '8px', 
-                            background: result.status === 'Draft' ? 'rgba(234, 179, 8, 0.15)' : alpha(PCF_PRIMARY, 0.15), 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center' 
+                          <Box sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: '8px',
+                            background: 'rgba(14, 165, 233, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}>
-                            {result.status === 'Draft' ? (
-                              <DraftsOutlined sx={{ fontSize: 18, color: '#eab308' }} />
-                            ) : (
-                              <Category sx={{ fontSize: 18, color: PCF_PRIMARY }} />
-                            )}
+                            <AddCircleOutline sx={{ fontSize: 18, color: '#0ea5e9' }} />
                           </Box>
-                          <Box sx={{ flex: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{result.manufacturerPartId}</Typography>
-                              {result.status && (
-                                <Chip 
-                                  label={result.status} 
-                                  size="small" 
-                                  sx={{ 
-                                    height: 18, 
-                                    fontSize: '0.65rem', 
-                                    fontWeight: 600,
-                                    backgroundColor: result.status === 'Draft' ? 'rgba(234, 179, 8, 0.15)' : alpha(PCF_PRIMARY, 0.15),
-                                    color: result.status === 'Draft' ? '#eab308' : PCF_PRIMARY,
-                                    border: `1px solid ${result.status === 'Draft' ? 'rgba(234, 179, 8, 0.3)' : alpha(PCF_PRIMARY, 0.3)}`
-                                  }} 
-                                />
+                          <Typography variant="body2" sx={{ color: '#0ea5e9', fontWeight: 600 }}>
+                            {searchTerm.trim()
+                              ? t('search.createWithId', { id: searchTerm.trim() })
+                              : t('search.createNew')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box>
+                        {filteredResults.map((result) => (
+                          <Box
+                            key={`${result.manufacturerPartId}-${result.partName}`}
+                            onClick={() => handleSelectPart(result)}
+                            sx={{
+                              p: 2,
+                              cursor: 'pointer',
+                              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              '&:hover': { background: alpha(PCF_PRIMARY, 0.1) },
+                              '&:last-child': { borderBottom: 'none' }
+                            }}
+                          >
+                            <Box sx={{ 
+                              width: 36, 
+                              height: 36, 
+                              borderRadius: '8px', 
+                              background: result.status === 'Draft' ? 'rgba(234, 179, 8, 0.15)' : alpha(PCF_PRIMARY, 0.15), 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center' 
+                            }}>
+                              {result.status === 'Draft' ? (
+                                <DraftsOutlined sx={{ fontSize: 18, color: '#eab308' }} />
+                              ) : (
+                                <Category sx={{ fontSize: 18, color: PCF_PRIMARY }} />
                               )}
                             </Box>
-                            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                              {result.partName}{result.category && ` • ${result.category}`}
-                            </Typography>
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{result.manufacturerPartId}</Typography>
+                                {result.status && (
+                                  <Chip 
+                                    label={result.status} 
+                                    size="small" 
+                                    sx={{ 
+                                      height: 18, 
+                                      fontSize: '0.65rem', 
+                                      fontWeight: 600,
+                                      backgroundColor: result.status === 'Draft' ? 'rgba(234, 179, 8, 0.15)' : alpha(PCF_PRIMARY, 0.15),
+                                      color: result.status === 'Draft' ? '#eab308' : PCF_PRIMARY,
+                                      border: `1px solid ${result.status === 'Draft' ? 'rgba(234, 179, 8, 0.3)' : alpha(PCF_PRIMARY, 0.3)}`
+                                    }} 
+                                  />
+                                )}
+                              </Box>
+                              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                                {result.partName}{result.category && ` • ${result.category}`}
+                              </Typography>
+                            </Box>
                           </Box>
+                        ))}
+                        {/* Create option — always at the bottom when results exist */}
+                        <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.06)' }} />
+                        <Box
+                          onClick={handleOpenCreate}
+                          sx={{
+                            p: 2,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            '&:hover': { background: 'rgba(14, 165, 233, 0.1)' }
+                          }}
+                        >
+                          <Box sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: '8px',
+                            background: 'rgba(14, 165, 233, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <AddCircleOutline sx={{ fontSize: 18, color: '#0ea5e9' }} />
+                          </Box>
+                          <Typography variant="body2" sx={{ color: '#0ea5e9', fontWeight: 600 }}>
+                            {searchTerm.trim()
+                              ? t('search.createWithId', { id: searchTerm.trim() })
+                              : t('search.createNew')}
+                          </Typography>
                         </Box>
-                      ))
+                      </Box>
                     )}
                   </Paper>
                 </Popper>
@@ -379,7 +465,7 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
               fullWidth
               variant="contained"
               onClick={handleSearchSubmit}
-              disabled={!searchTerm.trim()}
+              disabled={!searchTerm.trim() || (hasAttemptedLoad && !isInitialLoading && filteredResults.length === 0)}
               sx={{
                 mt: 3,
                 py: 1.5,
@@ -397,6 +483,15 @@ export const CatalogPartSearch: React.FC<CatalogPartSearchProps> = ({
         </Card>
       </Box>
     </Box>
+
+    {/* Create Catalog Part dialog — wired to the search term */}
+    <CreateProductListDialog
+      open={createDialogOpen}
+      onClose={() => setCreateDialogOpen(false)}
+      onSave={handlePartCreated}
+      initialManufacturerPartId={searchTerm.trim()}
+    />
+    </>
   );
 };
 

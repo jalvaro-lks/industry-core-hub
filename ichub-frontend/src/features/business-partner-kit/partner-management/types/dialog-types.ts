@@ -27,4 +27,6 @@ export interface PartnerDialogProps {
     onClose: () => void;
     onSave?: (partner: { name: string; bpnl: string }) => void;
     partnerData?: PartnerInstance;
+    /** Pre-fill the BPNL field in create mode (does NOT activate edit mode) */
+    initialBpnl?: string;
 }

@@ -451,7 +451,7 @@ export function transformToProviderRequest(
 /**
  * Request status types used in UI (compatible with backend statuses)
  */
-export type PcfRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DELIVERED' | 'FAILED';
+export type PcfRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DELIVERED' | 'UPDATED' | 'FAILED';
 
 /**
  * Convert API status to UI status
@@ -462,6 +462,7 @@ export function mapStatusToUi(status: string): PcfRequestStatus {
     'delivered': 'DELIVERED',
     'accepted': 'ACCEPTED',
     'rejected': 'REJECTED',
+    'updated': 'UPDATED',
     'failed': 'FAILED',
     'error': 'FAILED'
   };
@@ -518,6 +519,7 @@ export function groupRequestsByStatus(
     delivered: [],
     accepted: [],
     rejected: [],
+    updated: [],
     failed: []
   };
 
@@ -545,6 +547,7 @@ export function countRequestsByStatus(
     delivered: 0,
     accepted: 0,
     rejected: 0,
+    updated: 0,
     failed: 0,
     all: requests.length
   };

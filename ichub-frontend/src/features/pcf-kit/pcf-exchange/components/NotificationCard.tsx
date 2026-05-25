@@ -53,6 +53,8 @@ import {
 } from '@mui/icons-material';
 import { PcfNotification } from '../api/pcfExchangeApi';
 import { NOTIFICATION_STATUS_CONFIG } from './NotificationFilters';
+import { PartnerInstance } from '@/features/business-partner-kit/partner-management/types/types';
+import AddContactIconButton from '@/features/business-partner-kit/partner-management/components/general/AddContactIconButton';
 
 // PCF Green Theme
 const PCF_PRIMARY = '#10b981';
@@ -66,6 +68,10 @@ interface NotificationCardProps {
   onRefreshPcf?: (notificationId: string) => Promise<void>;
   isProcessing?: boolean;
   viewMode?: 'card' | 'list';
+  /** Known contacts; used to resolve the requester name and show the Add Contact button */
+  contacts?: PartnerInstance[];
+  /** Called after a contact is successfully added via the Add Contact button */
+  onContactAdded?: () => void;
 }
 
 const NotificationCard: React.FC<NotificationCardProps> = ({
@@ -74,12 +80,17 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
   onReject,
   onRefreshPcf,
   isProcessing = false,
-  viewMode = 'card'
+  viewMode = 'card',
+  contacts,
+  onContactAdded
 }) => {
   const { t } = useTranslation('pcf');
   const [expanded, setExpanded] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRefreshingPcf, setIsRefreshingPcf] = useState(false);
+
+  const isKnown = contacts ? contacts.some(c => c.bpnl === notification.requesterId) : true;
+  const resolvedName = contacts?.find(c => c.bpnl === notification.requesterId)?.name ?? notification.requesterName;
 
   const statusConfig = NOTIFICATION_STATUS_CONFIG[notification.status];
   const StatusIcon = statusConfig.icon;
@@ -162,9 +173,17 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
                 justifyContent: 'center'
               }}
             >
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff', mb: 0.5 }}>
-                {notification.requesterName}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
+                  {resolvedName}
+                </Typography>
+                {!isKnown && (
+                  <AddContactIconButton
+                    bpnl={notification.requesterId}
+                    onContactAdded={onContactAdded}
+                  />
+                )}
+              </Box>
               <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontFamily: 'monospace', fontSize: '0.75rem' }}>
                 {notification.requesterId}
               </Typography>
@@ -411,9 +430,17 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
               <Business sx={{ fontSize: 20, color: '#3b82f6' }} />
             </Box>
             <Box>
-              <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
-                {notification.requesterName}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="body1" sx={{ fontWeight: 600, color: '#fff' }}>
+                  {resolvedName}
+                </Typography>
+                {!isKnown && (
+                  <AddContactIconButton
+                    bpnl={notification.requesterId}
+                    onContactAdded={onContactAdded}
+                  />
+                )}
+              </Box>
               <Typography
                 variant="caption"
                 sx={{ color: 'rgba(255, 255, 255, 0.5)', fontFamily: 'monospace' }}

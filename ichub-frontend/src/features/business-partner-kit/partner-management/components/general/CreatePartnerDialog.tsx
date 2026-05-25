@@ -31,7 +31,7 @@ import { PartnerDialogProps } from '@/features/business-partner-kit/partner-mana
 import { createPartner } from '@/features/business-partner-kit/partner-management/api';
 import { useEscapeDialog } from '@/hooks/useEscapeKey';
 
-const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDialogProps) => {
+const CreatePartnerDialog = ({ open, onClose, onSave, partnerData, initialBpnl }: PartnerDialogProps) => {
   const { t } = useTranslation(['partnerManagement', 'common']);
   const [name, setName] = useState('');
   const [bpnl, setBpnl] = useState('');
@@ -48,9 +48,9 @@ const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDial
       setBpnl(partnerData.bpnl || '');
     } else {
       setName('');
-      setBpnl('');
+      setBpnl(initialBpnl ?? '');
     }
-  }, [partnerData, open]);
+  }, [partnerData, initialBpnl, open]);
 
   const handleCreate = async () => {
     if ((!bpnl.trim()) || (!name.trim())) {
@@ -313,6 +313,7 @@ const CreatePartnerDialog = ({ open, onClose, onSave, partnerData }: PartnerDial
           variant="contained"
           color="primary"
           size="large"
+          disabled={!name.trim()}
           startIcon={partnerData ? <EditIcon /> : <AddIcon />}
           sx={{
             minWidth: '100px',

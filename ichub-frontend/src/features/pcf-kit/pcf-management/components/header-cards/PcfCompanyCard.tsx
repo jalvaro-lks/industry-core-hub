@@ -22,6 +22,7 @@
  ********************************************************************************/
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Card, Typography } from '@mui/material';
 import { Business } from '@mui/icons-material';
 import { HeaderCardProps } from '@/features/eco-pass-kit/passport-consumption/passport-types/base/BasePassportVisualization';
@@ -33,6 +34,7 @@ import './PcfCompanyCard.scss';
  * Extracted from companyAndProductInformation section.
  */
 export const PcfCompanyCard: React.FC<HeaderCardProps> = ({ data }) => {
+  const { t } = useTranslation('pcf');
   const pcf = data as unknown as PcfNestedData;
   const companyInfo = pcf.companyAndProductInformation?.[0]?.companyInformation?.[0];
   const productInfo = pcf.companyAndProductInformation?.[0]?.productInformation?.[0];
@@ -54,12 +56,12 @@ export const PcfCompanyCard: React.FC<HeaderCardProps> = ({ data }) => {
       </Box>
 
       <Typography className="pcf-company-card__title">
-        Company &amp; Product
+        {t('headerCards.company.title')}
       </Typography>
 
       <Box className="pcf-company-card__rows">
         <Box className="pcf-company-card__row">
-          <Typography className="pcf-company-card__label">Company</Typography>
+          <Typography className="pcf-company-card__label">{t('headerCards.company.company')}</Typography>
           <Typography className="pcf-company-card__value" title={companyName}>
             {truncate(companyName)}
           </Typography>
@@ -67,7 +69,7 @@ export const PcfCompanyCard: React.FC<HeaderCardProps> = ({ data }) => {
 
         {bpn && (
           <Box className="pcf-company-card__row">
-            <Typography className="pcf-company-card__label">BPN</Typography>
+            <Typography className="pcf-company-card__label">{t('headerCards.company.bpn')}</Typography>
             <Typography className="pcf-company-card__value pcf-company-card__value--mono" title={bpn}>
               {truncate(bpn, 20)}
             </Typography>
@@ -75,7 +77,7 @@ export const PcfCompanyCard: React.FC<HeaderCardProps> = ({ data }) => {
         )}
 
         <Box className="pcf-company-card__row">
-          <Typography className="pcf-company-card__label">Product</Typography>
+          <Typography className="pcf-company-card__label">{t('headerCards.company.product')}</Typography>
           <Typography className="pcf-company-card__value" title={productName}>
             {truncate(productName)}
           </Typography>
@@ -83,7 +85,7 @@ export const PcfCompanyCard: React.FC<HeaderCardProps> = ({ data }) => {
 
         {productInfo?.declaredUnitOfMeasurement && (
           <Box className="pcf-company-card__row">
-            <Typography className="pcf-company-card__label">Unit</Typography>
+            <Typography className="pcf-company-card__label">{t('headerCards.company.unit')}</Typography>
             <Typography className="pcf-company-card__value">
               {productInfo.declaredUnitAmount} {productInfo.declaredUnitOfMeasurement}
             </Typography>
