@@ -5,7 +5,9 @@
     "loadingParts": "正在加载目录零件...",
     "noMatchingParts": "未找到匹配的零件",
     "defaultPlaceholder": "输入制造商零件ID...",
-    "defaultButtonText": "搜索零件"
+    "defaultButtonText": "搜索零件",
+    "createNew": "创建新目录零件",
+    "createWithId": "创建 '{{id}}'"
   },
   "common": {
     "cancel": "取消",

@@ -5,7 +5,9 @@
     "loadingParts": "カタログ部品を読み込み中...",
     "noMatchingParts": "一致する部品が見つかりません",
     "defaultPlaceholder": "メーカー部品IDを入力...",
-    "defaultButtonText": "部品を検索"
+    "defaultButtonText": "部品を検索",
+    "createNew": "新しいカタログ部品を作成",
+    "createWithId": "'{{id}}' を作成"
   },
   "common": {
     "cancel": "キャンセル",

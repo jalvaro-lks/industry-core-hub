@@ -5,7 +5,9 @@
     "loadingParts": "Cargando piezas del catálogo...",
     "noMatchingParts": "No se encontraron piezas coincidentes",
     "defaultPlaceholder": "Introduce ID de pieza del fabricante...",
-    "defaultButtonText": "Buscar Pieza"
+    "defaultButtonText": "Buscar Pieza",
+    "createNew": "Crear nueva Catalog Part",
+    "createWithId": "Crear '{{id}}'"
   },
   "common": {
     "cancel": "Cancelar",

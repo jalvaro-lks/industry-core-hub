@@ -5,7 +5,9 @@
     "loadingParts": "Katalogteile werden geladen...",
     "noMatchingParts": "Keine passenden Teile gefunden",
     "defaultPlaceholder": "Hersteller-Teile-ID eingeben...",
-    "defaultButtonText": "Teil suchen"
+    "defaultButtonText": "Teil suchen",
+    "createNew": "Neues Katalogteil erstellen",
+    "createWithId": "'{{id}}' erstellen"
   },
   "common": {
     "cancel": "Abbrechen",
