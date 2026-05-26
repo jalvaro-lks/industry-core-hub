@@ -245,7 +245,7 @@ class PcfExchangeManager:
         """
         logger.info(
             f"Processing PCF {'update' if is_update else 'response'} "
-            f"for request {request_id} from BPN {edc_bpn}"
+            f"for request {_s(request_id)} from BPN {_s(edc_bpn)}"
         )
         
         # Validate PCF data structure (basic validation)
@@ -292,7 +292,7 @@ class PcfExchangeManager:
             )
         else:
             logger.warning(
-                f"Cannot create notification for PCF response {request_id}: "
+                f"Cannot create notification for PCF response {_s(request_id)}: "
                 "bpn not configured in configuration.yml"
             )
 
@@ -383,7 +383,7 @@ class PcfExchangeManager:
                         logger.info(f"Updated PCF location for INCOMING RESPONSE {_s(request_id)}: {_s(pcf_location)}")
                 else:
                     # Create new INCOMING RESPONSE record
-                    new_response = repo_manager.pcf_repository.create_new(
+                    repo_manager.pcf_repository.create_new(
                         requesting_bpn=requesting_bpn,
                         responding_bpn=responding_bpn,
                         direction=PcfExchangeDirection.INCOMING,

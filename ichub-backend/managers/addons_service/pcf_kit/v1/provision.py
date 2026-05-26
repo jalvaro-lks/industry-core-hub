@@ -96,7 +96,7 @@ class PcfProvisionManager:
         """Initialize the provision manager with the submodel service."""
         self._submodel_service = submodel_service or SubmodelServiceManager()
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
-        if self._own_bpn == None:
+        if self._own_bpn is None:
             logger.warning("BPN not configured in configuration.yml.")
             raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
 
