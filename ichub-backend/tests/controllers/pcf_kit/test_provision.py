@@ -43,6 +43,8 @@ All tests are pure controller tests: the manager layer is fully mocked.
 
 from unittest.mock import MagicMock
 
+from models.metadata_database.pcf.models import PcfExchangeStatus
+
 # ---------------------------------------------------------------------------
 # URL constants
 # ---------------------------------------------------------------------------
@@ -261,11 +263,11 @@ class TestListProviderNotifications:
     def test_filters_by_status_query_param(self, app_client, mock_provision_mgr):
         mock_provision_mgr.list_provider_notifications.return_value = []
 
-        resp = app_client.get(f"{BASE}/requests?status=PENDING&offset=5&limit=10")
+        resp = app_client.get(f"{BASE}/requests?status=pending&offset=5&limit=10")
 
         assert resp.status_code == 200
         mock_provision_mgr.list_provider_notifications.assert_called_once_with(
-            status="PENDING", offset=5, limit=10
+            status=PcfExchangeStatus.PENDING, offset=5, limit=10
         )
 
     def test_manager_value_error_returns_400(self, app_client, mock_provision_mgr):
