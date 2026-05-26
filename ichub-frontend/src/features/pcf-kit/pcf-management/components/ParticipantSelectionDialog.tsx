@@ -364,7 +364,7 @@ const ParticipantSelectionDialog: React.FC<ParticipantSelectionDialogProps> = ({
               },
             }}
           >
-            {isLoading ? 'Sending...' : 'Send Notifications'}
+            {isLoading ? 'Sending...' : 'Send PCF Update'}
           </Button>
         )}
       </DialogActions>
