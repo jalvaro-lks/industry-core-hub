@@ -51,8 +51,9 @@ class PcfExchangeModel(BaseModel):
         alias="requestingBpn",
         description="Business Partner Number of the requesting party (data consumer)."
     )
-    target_bpn: str = Field(
+    target_bpn: Optional[str] = Field(
         alias="targetBpn",
+        default=None,
         description="Business Partner Number of the target party (data provider)."
     )
     status: str = Field(
@@ -106,6 +107,8 @@ class PcfRelationshipModel(BaseModel):
 
 class PcfSubPartModel(BaseModel):
     """Model for representing a sub-part in the context of PCF relationships."""
+    model_config = ConfigDict(populate_by_name=True)
+
     manufacturer_part_id: str = Field(
         alias="manufacturerPartId",
         description="The manufacturer part ID of the sub-part."

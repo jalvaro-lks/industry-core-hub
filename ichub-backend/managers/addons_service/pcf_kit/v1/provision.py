@@ -30,7 +30,7 @@ Reference:
 """
 
 from typing import Dict, Any, List, Optional
-from uuid import UUID, NAMESPACE_URL, uuid5
+from uuid import UUID
 
 from managers.config.log_manager import LoggingManager
 from managers.config.config_manager import ConfigManager
@@ -40,23 +40,9 @@ from managers.metadata_database.manager import RepositoryManagerFactory
 from models.metadata_database.pcf import PcfExchangeDirection, PcfExchangeStatus, PcfExchangeType
 from models.services.addons.pcf_kit.v1.models import PcfExchangeModel
 from utils.log_utils import sanitize_log_value as _s
+from utils.pcf_utils import PCF_EXCHANGE_ASSET_TYPE
 
 logger = LoggingManager.get_logger(__name__)
-
-# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0 - async exchange use case)
-PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
-
-# Asset type used to identify PCF exchange assets in EDC catalogs (CX-0136)
-PCF_EXCHANGE_ASSET_TYPE = "https://w3id.org/catenax/taxonomy#PcfExchange"
-
-
-def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
-    """Derive a deterministic UUID for a manufacturer part ID.
-
-    Uses UUID5 with NAMESPACE_URL so the same part always maps to the
-    same submodel document in the submodel service.
-    """
-    return uuid5(NAMESPACE_URL, manufacturer_part_id)
 
 
 class PcfProvisionManager:
@@ -97,8 +83,7 @@ class PcfProvisionManager:
         self._submodel_service = submodel_service or SubmodelServiceManager()
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
         if self._own_bpn is None:
-            logger.warning("BPN not configured in configuration.yml.")
-            raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
+            logger.warning("BPN not configured in configuration.yml. PCF operations requiring BPN will fail at call time.")
 
     def _send_pcf_via_edc(
         self,
@@ -286,19 +271,23 @@ class PcfProvisionManager:
         """
         try:
             pcf_data = self.view_existing_pcf(manufacturer_part_id=manufacturer_part_id)
+            # Collect required data from DB first, then close session before EDC calls
+            send_targets: List[Dict[str, str]] = []
             with RepositoryManagerFactory.create() as repo_manager:
                 for bpn in list_bpns:
                     result = repo_manager.pcf_repository.find_by_bpn(bpn, manufacturer_part_id=manufacturer_part_id, direction=PcfExchangeDirection.OUTGOING, status=PcfExchangeStatus.DELIVERED)
                     if result:
-                        request_id = str(result[0].request_id)
-                        self._send_pcf_via_edc(
-                            request_id=request_id,
-                            requesting_bpn=bpn,
-                            pcf_data=pcf_data,
-                            is_update=True,
-                            manufacturer_part_id=manufacturer_part_id,
-                            list_policies=list_policies,
-                        )
+                        send_targets.append({"request_id": str(result[0].request_id), "bpn": bpn})
+            # Send EDC calls outside DB session to avoid holding connections
+            for target in send_targets:
+                self._send_pcf_via_edc(
+                    request_id=target["request_id"],
+                    requesting_bpn=target["bpn"],
+                    pcf_data=pcf_data,
+                    is_update=True,
+                    manufacturer_part_id=manufacturer_part_id,
+                    list_policies=list_policies,
+                )
             return {"message": f"PCF update sent to {len(list_bpns)} participant(s) successfully."}
         except Exception as e:
             logger.error(f"Failed to confirm and send PCF update for manufacturerPartId [{_s(manufacturer_part_id)}]: {_s(e)}")
@@ -344,6 +333,7 @@ class PcfProvisionManager:
         Raises:
             ValueError: If there is an error during the acceptance or sending process.
         """        
+        exchange_entity = None
         try:
             with RepositoryManagerFactory.create() as repo_manager:
                 exchange_entity = repo_manager.pcf_repository.find_by_request_id(UUID(request_id), type=PcfExchangeType.RESPONSE)
@@ -353,23 +343,29 @@ class PcfProvisionManager:
                     raise ValueError(f"Request {request_id} has no PCF assigned")
                 if exchange_entity.status == PcfExchangeStatus.DELIVERED:
                     raise ValueError(f"Request {request_id} is DELIVERED already. Use the update endpoint to send an update response instead of accepting the request again.")
-                pcf_data = management_manager.get_pcf_data_by_manufacturer_part_id(exchange_entity.manufacturer_part_id)
-                self._send_pcf_via_edc(
-                    request_id=request_id,
-                    requesting_bpn=exchange_entity.requesting_bpn,
-                    pcf_data=pcf_data,
-                    is_update=False,
-                    manufacturer_part_id=exchange_entity.manufacturer_part_id,
-                    list_policies=list_policies
-                )
-                management_manager.update_pcf_exchange_status(
-                    request_id=request_id,
-                    type=PcfExchangeType.RESPONSE,
-                    new_status=PcfExchangeStatus.DELIVERED,
-                )
+                # Extract data from entity while session is active
+                entity_requesting_bpn = exchange_entity.requesting_bpn
+                entity_manufacturer_part_id = exchange_entity.manufacturer_part_id
+                entity_status = exchange_entity.status
+
+            # Perform EDC calls outside DB session
+            pcf_data = management_manager.get_pcf_data_by_manufacturer_part_id(entity_manufacturer_part_id)
+            self._send_pcf_via_edc(
+                request_id=request_id,
+                requesting_bpn=entity_requesting_bpn,
+                pcf_data=pcf_data,
+                is_update=False,
+                manufacturer_part_id=entity_manufacturer_part_id,
+                list_policies=list_policies
+            )
+            management_manager.update_pcf_exchange_status(
+                request_id=request_id,
+                type=PcfExchangeType.RESPONSE,
+                new_status=PcfExchangeStatus.DELIVERED,
+            )
                 
         except Exception as e:
-            if exchange_entity.status != PcfExchangeStatus.DELIVERED:
+            if exchange_entity and entity_status != PcfExchangeStatus.DELIVERED:
                 management_manager.update_pcf_exchange_status(
                     request_id=request_id,
                     type=PcfExchangeType.RESPONSE,

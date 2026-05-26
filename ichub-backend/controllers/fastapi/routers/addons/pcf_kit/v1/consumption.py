@@ -30,8 +30,14 @@ from fastapi.responses import JSONResponse
 
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import consumption_manager
+from managers.config.log_manager import LoggingManager
 from models.services.addons.pcf_kit.v1.management import GovernanceBodyModel
 from models.services.addons.pcf_kit.v1.models import PcfSubPartModel, PcfRelationshipModel, PcfExchangeModel, PcfSpecificStateModel
+from tools.exceptions import NotFoundError
+from utils.log_utils import sanitize_log_value as _s
+from tools.constants import INTERNAL_SERVER_ERROR
+
+logger = LoggingManager.get_logger(__name__)
 
 
 router = APIRouter(
@@ -50,8 +56,11 @@ async def search_own_parts_by_manufacturer_part_id(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error searching own parts: {str(e)}")
+        logger.error(f"Error searching own parts: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 
 @router.post("/parts/{manufacturerPartId}/subparts", status_code=201)
@@ -70,8 +79,11 @@ async def add_subpart_and_create_request(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error adding subpart and creating request: {str(e)}")
+        logger.error(f"Error adding subpart and creating request: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 
 @router.post("/requests/{requestId}/send")
@@ -89,8 +101,11 @@ async def send_pcf_request_to_participant(
         return JSONResponse(status_code=201, content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating PCF request: {str(e)}")
+        logger.error(f"Error creating PCF request: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 
 @router.get("/requests/{requestId}/response")
@@ -100,8 +115,11 @@ async def consult_pcf_response(request_id: str = Path(..., alias="requestId")) -
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error consulting PCF response: {str(e)}")
+        logger.error(f"Error consulting PCF response: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 @router.post("/requests/{requestId}/retry")
 async def retry_pcf_request_sending(
@@ -123,8 +141,11 @@ async def retry_pcf_request_sending(
         return JSONResponse(status_code=201, content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrying PCF request: {str(e)}")
+        logger.error(f"Error retrying PCF request: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 
 @router.get("/parts/{manufacturerPartId}/pcf-status")
@@ -136,8 +157,11 @@ async def consult_global_assembly_progress(
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error consulting global assembly progress: {str(e)}")
+        logger.error(f"Error consulting global assembly progress: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 
 @router.get("/parts/{manufacturerPartId}/pcf-data/download")
@@ -149,5 +173,8 @@ async def download_consolidated_pcf_data(
         return JSONResponse(status_code=200, content=[item.model_dump(by_alias=True) for item in result])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error downloading PCF data: {str(e)}")
+        logger.error(f"Error downloading PCF data: {_s(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)

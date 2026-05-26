@@ -26,7 +26,7 @@ PCF Management Manager - Administrative operations for PCF data.
 """
 
 from typing import Dict, Any, Optional, List
-from uuid import UUID, NAMESPACE_URL, uuid5
+from uuid import UUID
 import time
 
 from managers.config.log_manager import LoggingManager
@@ -38,16 +38,9 @@ from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_find
 from tools.json_validator import json_validator_draft_aware
 from tools.exceptions import NotFoundError
 from utils.log_utils import sanitize_log_value as _s
+from utils.pcf_utils import PCF_SEMANTIC_ID, pcf_submodel_id
 
 logger = LoggingManager.get_logger(__name__)
-
-# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0 - async exchange use case)
-PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
-
-
-def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
-    """Derive a deterministic UUID for a manufacturer part ID."""
-    return uuid5(NAMESPACE_URL, manufacturer_part_id)
 
 
 class PcfManagementManager:
@@ -63,8 +56,7 @@ class PcfManagementManager:
         self._submodel_service = submodel_service or SubmodelServiceManager()
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
         if self._own_bpn is None:
-            logger.warning("BPN not configured in configuration.yml.")
-            raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
+            logger.warning("BPN not configured in configuration.yml. PCF operations requiring BPN will fail at call time.")
 
     def _entity_to_dict(self, entity: PcfExchangeEntity) -> Dict[str, Any]:
         """Convert a PcfExchangeEntity to a dictionary representation."""
@@ -117,7 +109,7 @@ class PcfManagementManager:
                 # Store the manufacturer_part_id while session is open
                 stored_manufacturer_part_id = entity.manufacturer_part_id
 
-            submodel_id = _pcf_submodel_id(stored_manufacturer_part_id)
+            submodel_id = pcf_submodel_id(stored_manufacturer_part_id)
             pcf_data = self._submodel_service.get_twin_aspect_document(
                 submodel_id=submodel_id,
                 semantic_id=PCF_SEMANTIC_ID
@@ -156,7 +148,7 @@ class PcfManagementManager:
                 # Store the manufacturer_part_id while session is open
                 stored_manufacturer_part_id = entity[0].manufacturer_part_id
 
-            submodel_id = _pcf_submodel_id(stored_manufacturer_part_id)
+            submodel_id = pcf_submodel_id(stored_manufacturer_part_id)
             pcf_data = self._submodel_service.get_twin_aspect_document(
                 submodel_id=submodel_id,
                 semantic_id=PCF_SEMANTIC_ID
@@ -239,7 +231,7 @@ class PcfManagementManager:
         """
         logger.info(f"Uploading PCF data for manufacturerPartId={_s(manufacturer_part_id)}")
 
-        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+        submodel_id = pcf_submodel_id(manufacturer_part_id)
 
         # Verify that existing data is not present
         try:
@@ -306,7 +298,7 @@ class PcfManagementManager:
         """
         logger.info(f"Updating PCF data for manufacturerPartId={_s(manufacturer_part_id)}")
 
-        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+        submodel_id = pcf_submodel_id(manufacturer_part_id)
 
         # Verify that existing data is present
         existing = self._submodel_service.get_twin_aspect_document(
@@ -352,7 +344,7 @@ class PcfManagementManager:
         Returns:
             The PCF location string (e.g., submodel URL).
         """
-        submodel_id = _pcf_submodel_id(manufacturer_part_id)
+        submodel_id = pcf_submodel_id(manufacturer_part_id)
 
         # Verify that existing data is present
         existing = self._submodel_service.get_twin_aspect_document(
@@ -499,30 +491,10 @@ class PcfManagementManager:
         last_error = None
         for connector_url in connectors:
             try:
-                logger.info(
-                    f"[PCF EDC] Attempting {_s(http_method)} on [{_s(connector_url)}] path=[{_s(path)}]"
+                response = self._dispatch_edc_request(
+                    consumer_connector_service, http_method, target_bpn,
+                    connector_url, asset_type, list_policies, path, params, json_data,
                 )
-
-                if http_method.upper() == "GET":
-                    response = consumer_connector_service.do_get_by_dct_type_with_bpnl(
-                        bpnl=target_bpn,
-                        counter_party_address=connector_url,
-                        dct_type=asset_type,
-                        policies=list_policies,
-                        path=path,
-                        params=params if params else None,
-                    )
-                elif http_method.upper() == "PUT":
-                    response = consumer_connector_service.do_put_by_dct_type_with_bpnl(
-                        bpnl=target_bpn,
-                        counter_party_address=connector_url,
-                        dct_type=asset_type,
-                        json=json_data if json_data is not None else {},
-                        policies=list_policies,
-                        path=path,
-                    )
-                else:
-                    raise ValueError(f"Unsupported HTTP method: {http_method}")
 
                 if response.status_code in (200, 201, 202, 204):
                     logger.info(
@@ -552,25 +524,10 @@ class PcfManagementManager:
                     logger.info(
                         f"[PCF EDC] Retry: Attempting {_s(http_method)} on [{_s(connector_url)}] path=[{_s(path)}]"
                     )
-                    
-                    if http_method.upper() == "GET":
-                        response = consumer_connector_service.do_get_by_dct_type_with_bpnl(
-                            bpnl=target_bpn,
-                            counter_party_address=connector_url,
-                            dct_type=asset_type,
-                            policies=list_policies,
-                            path=path,
-                            params=params if params else None,
-                        )
-                    elif http_method.upper() == "PUT":
-                        response = consumer_connector_service.do_put_by_dct_type_with_bpnl(
-                            bpnl=target_bpn,
-                            counter_party_address=connector_url,
-                            dct_type=asset_type,
-                            json=json_data if json_data is not None else {},
-                            policies=list_policies,
-                            path=path,
-                        )
+                    response = self._dispatch_edc_request(
+                        consumer_connector_service, http_method, target_bpn,
+                        connector_url, asset_type, list_policies, path, params, json_data,
+                    )
                     
                     if response.status_code in (200, 201, 202, 204):
                         logger.info(
@@ -595,6 +552,44 @@ class PcfManagementManager:
         raise ValueError(
             f"Failed to send PCF data via EDC to any connector for BPN [{target_bpn}]: {last_error}"
         )
+
+    def _dispatch_edc_request(
+        self,
+        consumer_connector_service,
+        http_method: str,
+        target_bpn: str,
+        connector_url: str,
+        asset_type: str,
+        list_policies: Optional[List[Dict]],
+        path: str,
+        params: Optional[Dict[str, str]],
+        json_data: Optional[Dict[str, Any]],
+    ):
+        """Execute a single EDC GET or PUT request and return the response."""
+        logger.info(
+            f"[PCF EDC] Attempting {_s(http_method)} on [{_s(connector_url)}] path=[{_s(path)}]"
+        )
+
+        if http_method.upper() == "GET":
+            return consumer_connector_service.do_get_by_dct_type_with_bpnl(
+                bpnl=target_bpn,
+                counter_party_address=connector_url,
+                dct_type=asset_type,
+                policies=list_policies,
+                path=path,
+                params=params if params else None,
+            )
+        elif http_method.upper() == "PUT":
+            return consumer_connector_service.do_put_by_dct_type_with_bpnl(
+                bpnl=target_bpn,
+                counter_party_address=connector_url,
+                dct_type=asset_type,
+                json=json_data if json_data is not None else {},
+                policies=list_policies,
+                path=path,
+            )
+        else:
+            raise ValueError(f"Unsupported HTTP method: {http_method}")
 
     def _get_connector_services(self):
         """

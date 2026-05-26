@@ -30,7 +30,7 @@ Reference:
 """
 
 from typing import Dict, Any, Optional
-from uuid import UUID, NAMESPACE_URL, uuid5
+from uuid import UUID
 from tractusx_sdk.dataspace.tools.validate_submodels import submodel_schema_finder
 
 from managers.addons_service.pcf_kit.v1.notifications import pcf_notification_manager
@@ -44,18 +44,6 @@ from tools.json_validator import json_validator_draft_aware
 from utils.log_utils import sanitize_log_value as _s
 
 logger = LoggingManager.get_logger(__name__)
-
-# PCF semantic ID constant (Catena-X PCF aspect model v9.0.0 - async exchange use case)
-PCF_SEMANTIC_ID = "urn:samm:io.catenax.pcf:9.0.0#PcfExchangeAsync"
-
-
-def _pcf_submodel_id(manufacturer_part_id: str) -> UUID:
-    """Derive a deterministic UUID for a manufacturer part ID.
-
-    Uses UUID5 with NAMESPACE_URL so the same part always maps to the
-    same submodel document in the submodel service.
-    """
-    return uuid5(NAMESPACE_URL, manufacturer_part_id)
 
 
 class PcfExchangeManager:

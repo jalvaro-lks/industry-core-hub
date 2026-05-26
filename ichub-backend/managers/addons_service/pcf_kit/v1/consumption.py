@@ -73,8 +73,7 @@ class PcfConsumptionManager:
         """Initialize the consumption manager."""
         self._own_bpn = ConfigManager.get_config("bpn", default=None)
         if self._own_bpn is None:
-            logger.warning("BPN not configured in configuration.yml.")
-            raise ValueError("BPN must be configured in configuration.yml to send PCF requests and create notifications.")
+            logger.warning("BPN not configured in configuration.yml. PCF operations requiring BPN will fail at call time.")
 
     def _send_pcf_request_via_edc(
         self,
@@ -306,6 +305,8 @@ class PcfConsumptionManager:
                 result = PcfExchangeModel.from_entity(exchange)
                 result.pcf_data = pcf_data
                 return result
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Failed to consult PCF response for request {_s(request_id)}: {_s(e)}")
             raise ValueError(f"Failed to consult PCF response: {str(e)}")
@@ -329,9 +330,14 @@ class PcfConsumptionManager:
             total_sub_parts = len(sub_parts)
             responded_sub_parts = 0
             responded_statuses = {PcfExchangeStatus.DELIVERED.value, PcfExchangeStatus.UPDATED.value}
-            for sub_part in sub_parts:
-                if sub_part.status in responded_statuses and sub_part.type == PcfExchangeType.RESPONSE.value:
-                    responded_sub_parts += 1
+            # Sub-parts are REQUEST records. Check if a RESPONSE record exists for each one.
+            with RepositoryManagerFactory.create() as repo_manager:
+                for sub_part in sub_parts:
+                    response_entity = repo_manager.pcf_repository.find_by_request_id(
+                        UUID(sub_part.request_id), type=PcfExchangeType.RESPONSE
+                    )
+                    if response_entity and response_entity.status.value in responded_statuses:
+                        responded_sub_parts += 1
             progress = (responded_sub_parts / total_sub_parts) * 100 if total_sub_parts > 0 else 100
             return PcfSpecificStateModel(
                 manufacturer_part_id=manufacturer_part_id,
@@ -341,6 +347,8 @@ class PcfConsumptionManager:
                 overall_status="PENDING" if responded_sub_parts < total_sub_parts else "COMPLETED"
             )
                 
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Failed to consult global assembly progress for part {_s(manufacturer_part_id)}: {_s(e)}")
             raise ValueError(f"Failed to consult global assembly progress: {str(e)}")
@@ -366,6 +374,8 @@ class PcfConsumptionManager:
                 exchange = self.consult_pcf_response(sub_part.request_id)
                 pcf_exchange_collection.append(exchange)
             return pcf_exchange_collection
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Failed to download PCF data for part {_s(manufacturer_part_id)}: {_s(e)}")
             raise ValueError(f"Failed to download PCF data: {str(e)}")

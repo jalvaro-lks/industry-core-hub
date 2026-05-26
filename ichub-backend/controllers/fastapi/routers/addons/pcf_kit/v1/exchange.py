@@ -30,7 +30,9 @@ from fastapi.responses import JSONResponse
 from controllers.fastapi.routers.authentication.auth_api import get_authentication_dependency
 from managers.addons_service.pcf_kit.v1 import exchange_manager
 from managers.config.log_manager import LoggingManager
+from tools.exceptions import NotFoundError
 from utils.log_utils import sanitize_log_value as _s
+from tools.constants import INTERNAL_SERVER_ERROR
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -52,7 +54,7 @@ async def put_pcf_with_path_id(
     request_id: str = Path(..., alias="requestId"),
     body: dict = Body(...),
     edc_bpn: Optional[str] = Header(None, alias="edc-bpn", description=EDC_BPN_DESCRIPTION),
-    message: Optional[str] = Query(None, description=MESSAGE_DESCRIPTION),
+    message: Optional[str] = Query(None, max_length=250, description=MESSAGE_DESCRIPTION),
     update: bool = Query(False, description="Whether this is an update to an existing request")
 ):
     """
@@ -104,10 +106,12 @@ async def put_pcf_with_path_id(
         )
     except ValueError as e:
         logger.error(f"[PCF Exchange PUT] ValueError: {_s(e)}", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
         logger.error(f"[PCF Exchange PUT] Unexpected exception: {_s(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
 
 
 @router.get("/{requestId}")
@@ -116,7 +120,7 @@ async def request_pcf(
     edc_bpn: Optional[str] = Header(None, alias="edc-bpn", description=EDC_BPN_DESCRIPTION),
     manufacturer_part_id: Optional[str] = Query(None, alias="manufacturerPartId", description="Manufacturer part ID"),
     customer_part_id: Optional[str] = Query(None, alias="customerPartId", description="Customer part ID"),
-    message: Optional[str] = Query(None, description=MESSAGE_DESCRIPTION)
+    message: Optional[str] = Query(None, max_length=250, description=MESSAGE_DESCRIPTION)
 ):
     """
     PCF Request endpoint.
@@ -175,7 +179,9 @@ async def request_pcf(
         )
     except ValueError as e:
         logger.error(f"[PCF Exchange GET] ValueError: {_s(e)}", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Bad Request: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except NotFoundError:
+        raise
     except Exception as e:
         logger.error(f"[PCF Exchange GET] Unexpected exception: {_s(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR)
