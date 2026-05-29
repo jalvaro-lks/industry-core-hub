@@ -125,7 +125,7 @@ async def list_provider_notifications(
 ) -> List[PcfExchangeModel]:
     try:
         result = provision_manager.list_provider_notifications(status=status, offset=offset, limit=limit)
-        return result
+        return JSONResponse(status_code=200, content=[item.model_dump(by_alias=True) for item in result])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except NotFoundError:
@@ -156,7 +156,7 @@ async def accept_request_and_send_response(
 async def refresh_pcf_data_for_request(request_id: str = Path(..., alias="requestId")) -> PcfExchangeModel:
     try:
         result = provision_manager.refresh_pcf_data_for_request(request_id=request_id)
-        return result
+        return JSONResponse(status_code=200, content=result.model_dump(by_alias=True))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except NotFoundError:

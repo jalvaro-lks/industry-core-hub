@@ -112,7 +112,7 @@ async def send_pcf_request_to_participant(
 async def consult_pcf_response(request_id: str = Path(..., alias="requestId")) -> PcfExchangeModel:
     try:
         result = consumption_manager.consult_pcf_response(request_id=request_id)
-        return result
+        return JSONResponse(status_code=200, content=result.model_dump(by_alias=True))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except NotFoundError:
