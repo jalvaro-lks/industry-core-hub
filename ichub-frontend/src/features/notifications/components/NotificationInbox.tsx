@@ -261,7 +261,7 @@ const NotificationInbox: React.FC = () => {
     if (diffMins < 60) return t('time.minutesAgo', { count: diffMins });
     if (diffHours < 24) return t('time.hoursAgo', { count: diffHours });
     if (diffDays < 7) return t('time.daysAgo', { count: diffDays });
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const getAvatarColor = (bpn: string): string => {
