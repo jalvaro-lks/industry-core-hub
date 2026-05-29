@@ -22,7 +22,7 @@
  ********************************************************************************/
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { parseUtcDate } from '../../../notifications/services/notificationMapper';
 import {
@@ -74,8 +74,11 @@ import {
 import {
   getPcfStatus,
   downloadPcfData,
-  PcfSpecificStateModel
+  PcfSpecificStateModel,
+  consultPcfResponse,
+  getSubparts,
 } from '../../services/pcfApi';
+import { fetchCatalogParts } from '../../../industry-core-kit/catalog-management/api';
 import { downloadJson } from '@/utils/downloadJson';
 import AddSubpartDialog from '../components/AddSubpartDialog';
 
@@ -138,6 +141,8 @@ const PcfRequestPage: React.FC = () => {
 
   // Parse part ID and manufacturer ID from URL
   const partIdFromUrl = params?.partId;
+  const [searchParams] = useSearchParams();
+  const requestIdFromUrl = searchParams.get('requestId');
 
   // Load part data when URL contains partId
   useEffect(() => {
@@ -146,6 +151,48 @@ const PcfRequestPage: React.FC = () => {
       loadPartData(decodedPartId);
     }
   }, [partIdFromUrl]);
+
+  // Auto-resolve catalog part from notification requestId query param
+  useEffect(() => {
+    if (!requestIdFromUrl || partIdFromUrl) return;
+    (async () => {
+      setPageState('loading');
+      setCurrentStep(0);
+      try {
+        // Step 1: get the subpart's manufacturerPartId from the exchange
+        const exchange = await consultPcfResponse(requestIdFromUrl);
+        const subpartId = exchange.manufacturerPartId;
+        if (!subpartId) {
+          setPageState('search');
+          return;
+        }
+        // Step 2: find which catalog part has this subpart
+        const catalogParts = await fetchCatalogParts();
+        let foundPartId: string | null = null;
+        for (const part of catalogParts) {
+          try {
+            const rel = await getSubparts(part.manufacturerPartId);
+            const hasSubpart = rel.listSubManufacturerPartIds.some(
+              (sub) => sub.manufacturerPartId === subpartId
+            );
+            if (hasSubpart) {
+              foundPartId = part.manufacturerPartId;
+              break;
+            }
+          } catch {
+            // skip parts that fail to load subparts
+          }
+        }
+        if (foundPartId) {
+          await loadPartData(foundPartId);
+        } else {
+          setPageState('search');
+        }
+      } catch {
+        setPageState('search');
+      }
+    })();
+  }, [requestIdFromUrl]);
 
   // Cleanup all polling intervals when the component unmounts
   useEffect(() => {
