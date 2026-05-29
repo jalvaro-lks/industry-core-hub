@@ -295,7 +295,7 @@ const mapPcfContent = (rawContent: Record<string, unknown>): PcfNotificationPayl
  * This helper appends "Z" when no timezone designator is present so the
  * timestamp is always interpreted as UTC, matching the backend's intent.
  */
-const parseUtcDate = (dateStr: string): Date => {
+export const parseUtcDate = (dateStr: string): Date => {
   const hasTimezone = dateStr.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr);
   return new Date(hasTimezone ? dateStr : `${dateStr}Z`);
 };

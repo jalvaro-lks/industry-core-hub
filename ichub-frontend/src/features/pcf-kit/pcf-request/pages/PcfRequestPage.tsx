@@ -24,6 +24,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { parseUtcDate } from '../../../notifications/services/notificationMapper';
 import {
   Box,
   Typography,
@@ -1213,7 +1214,7 @@ const PcfRequestPage: React.FC = () => {
                                   {t('precalculation.requestedAt')}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: '#fff' }}>
-                                  {subpart.requestedAt ? new Date(subpart.requestedAt).toLocaleString() : '—'}
+                                  {subpart.requestedAt ? parseUtcDate(subpart.requestedAt).toLocaleString() : '—'}
                                 </Typography>
                               </Box>
                               <Box>
@@ -1221,7 +1222,7 @@ const PcfRequestPage: React.FC = () => {
                                   {t('precalculation.deliveredAt')}
                                 </Typography>
                                 <Typography variant="body2" sx={{ color: '#fff' }}>
-                                  {subpart.deliveredAt ? new Date(subpart.deliveredAt).toLocaleString() : '—'}
+                                  {subpart.deliveredAt ? parseUtcDate(subpart.deliveredAt).toLocaleString() : '—'}
                                 </Typography>
                               </Box>
                               <Box>
