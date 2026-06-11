@@ -51,9 +51,8 @@
 
 .afp-panel {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  margin: auto;
   width: min(88vw, 1050px);
   height: min(82vh, 720px);
   display: flex;

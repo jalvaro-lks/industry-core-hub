@@ -425,7 +425,16 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
   if (!isOpen) return null;
 
   return ReactDOM.createPortal(
-    <>
+    // DndContext wraps the entire portal so DragOverlay renders as a sibling of
+    // .afp-panel in the DOM — not inside it. This prevents backdrop-filter and
+    // any future transforms on the panel from breaking position:fixed in the
+    // PositionedOverlay that dnd-kit renders for the drag ghost.
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleFeatDragStart}
+      onDragEnd={handleFeatDragEnd}
+    >
       {/* Backdrop */}
       <Box
         sx={{
@@ -489,38 +498,34 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
             ))}
           </Box>
 
-          {/* Right: draggable feature cards */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleFeatDragStart}
-            onDragEnd={handleFeatDragEnd}
+          {/* Right: sortable feature cards */}
+          <SortableContext
+            items={flatFeatures.map(f => f.id)}
+            strategy={rectSortingStrategy}
           >
-            <SortableContext
-              items={flatFeatures.map(f => f.id)}
-              strategy={rectSortingStrategy}
-            >
-              <Box className="afp-features-area">
-                {flatFeatures.map(feature => (
-                  <FeatureCard
-                    key={feature.id}
-                    feature={feature}
-                    isEnabled={!!featureStates[feature.id]}
-                    isHighlighted={highlightedKits.has(feature.kitId)}
-                    onNavigate={() => handleFeatureNavigate(feature)}
-                    onRightClick={e => handleFeatureRightClick(e, feature)}
-                    onDisabledClick={handleDisabledFeatureClick}
-                  />
-                ))}
-              </Box>
-            </SortableContext>
-
-            <DragOverlay>
-              {activeFeat && <GhostCard feature={activeFeat} />}
-            </DragOverlay>
-          </DndContext>
+            <Box className="afp-features-area">
+              {flatFeatures.map(feature => (
+                <FeatureCard
+                  key={feature.id}
+                  feature={feature}
+                  isEnabled={!!featureStates[feature.id]}
+                  isHighlighted={highlightedKits.has(feature.kitId)}
+                  onNavigate={() => handleFeatureNavigate(feature)}
+                  onRightClick={e => handleFeatureRightClick(e, feature)}
+                  onDisabledClick={handleDisabledFeatureClick}
+                />
+              ))}
+            </Box>
+          </SortableContext>
         </Box>
       </Box>
+
+      {/* DragOverlay outside .afp-panel: its PositionedOverlay (position:fixed) is
+          now a sibling of .afp-panel in the DOM, so backdrop-filter on .afp-panel
+          cannot affect its viewport-relative positioning. */}
+      <DragOverlay>
+        {activeFeat && <GhostCard feature={activeFeat} />}
+      </DragOverlay>
 
       {/* Locked feature right-click tooltip */}
       {lockedTooltip && (
@@ -545,7 +550,7 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
           <span>{disabledTooltip.message}</span>
         </Box>
       )}
-    </>,
+    </DndContext>,
     document.body
   );
 };
