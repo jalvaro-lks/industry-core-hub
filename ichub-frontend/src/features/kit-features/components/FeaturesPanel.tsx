@@ -117,7 +117,7 @@ const FeaturesPanel: React.FC<FeaturesPanelProps> = ({ isOpen, onClose, onFeatur
         left: '72px', // Position next to the fixed-width sidebar
         top: '50%',
         transform: 'translateY(-50%)',
-        width: '320px',
+        width: '430px',
         maxHeight: 'calc(100vh - 80px)',
         overflowY: 'auto',
         backgroundColor: 'rgba(0, 42, 126, 0.95)',

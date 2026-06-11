@@ -3,7 +3,14 @@
     "name": "インダストリーコアハブ"
   },
   "features": {
-    "addFeatures": "機能を追加"
+    "addFeatures": "機能を追加",
+    "allFeatures": "すべての機能",
+    "dragToReorder": "ドラッグして並び替え"
+  },
+  "hints": {
+    "dragFeatures": "ハンドルをドラッグして機能を並び替え",
+    "rightClickToggle": "右クリックで有効化 / 無効化",
+    "clickKitHighlight": "KITをクリックしてその機能を強調表示"
   },
   "actions": {
     "title": "アクション",
@@ -127,7 +134,9 @@
     "unshareTwin": "ツインの共有を解除",
     "deletePart": "部品を削除",
     "noGlobalAssetId": "グローバルアセットIDがありません",
-    "noAasId": "AAS IDがありません"
+    "noAasId": "AAS IDがありません",
+    "cannotToggle": "この機能は無効にできません",
+    "featureDisabled": "この機能は無効です"
   },
   "auth": {
     "initializingAuth": "認証を初期化中...",

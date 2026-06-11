@@ -62,4 +62,28 @@ export const kitThemes = {
     gradientEnd: '#4CAF50',
     shadowColor: 'rgba(27, 94, 32, 0.3)',
   },
+  /** Data Governance KIT — coming soon */
+  dataGovernance: {
+    gradientStart: '#F59E0B',
+    gradientEnd: '#D97706',
+    shadowColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  /** Data Chain KIT — coming soon */
+  dataChain: {
+    gradientStart: '#0EA5E9',
+    gradientEnd: '#0284C7',
+    shadowColor: 'rgba(14, 165, 233, 0.3)',
+  },
+  /** DCM KIT — coming soon */
+  dcm: {
+    gradientStart: '#A855F7',
+    gradientEnd: '#7C3AED',
+    shadowColor: 'rgba(168, 85, 247, 0.3)',
+  },
+  /** Traceability KIT — coming soon */
+  traceability: {
+    gradientStart: '#F97316',
+    gradientEnd: '#EA580C',
+    shadowColor: 'rgba(249, 115, 22, 0.3)',
+  },
 } as const satisfies Record<string, KitTheme>

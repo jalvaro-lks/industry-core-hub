@@ -24,12 +24,13 @@ import { useState, JSX, cloneElement, useRef, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Add, Assignment } from '@mui/icons-material';
+import { Add, MoreHoriz } from '@mui/icons-material';
 import { kitFeaturesConfig } from '../../features/main';
 import FeaturesPanel from '../../features/kit-features/components/FeaturesPanel';
+import AllFeaturesPanel from '../../features/kit-features/components/AllFeaturesPanel';
 import SidebarTooltip from './SidebarTooltip';
 import { useFeatures } from '../../contexts/FeatureContext';
-import { FeatureConfig, NavigationItem } from '@/types/routing';
+import { NavigationItem } from '@/types/routing';
 
 type SidebarItem = {
   icon: JSX.Element;
@@ -39,39 +40,24 @@ type SidebarItem = {
 
 const Sidebar = ({ items: _items }: { items: SidebarItem[] }) => {
   const { t } = useTranslation('common');
-  const [activeIndex, setActiveIndex] = useState(0);
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
+  const [showAllFeaturesPanel, setShowAllFeaturesPanel] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const previousPath = useRef<string>('/catalog');
   const isKitFeaturesActive = location.pathname === kitFeaturesConfig.navigationPath || location.pathname === '/';
   const { enabledFeatures } = useFeatures();
   
-  // Get all enabled features dynamically
-  const allFeatures: FeatureConfig[] = useMemo(() => {
-    return [
-      ...enabledFeatures,
-      // Add placeholder for additional features (disabled - opens features panel)
-      {
-        name: t('features.addFeatures'),
-        icon: <Assignment />,
-        navigationPath: '/add-features',
-        disabled: true,
-        routes: []
-      }
-    ];
-  }, [enabledFeatures, t]);
-  
-  // Convert to navigation items
+  // Convert enabled features to navigation items (no disabled placeholders — moved to utilityItems)
   const items: NavigationItem[] = useMemo(() => {
-    return allFeatures
+    return enabledFeatures
       .filter(feature => feature.icon)
       .map(feature => ({
         icon: feature.icon!,
         path: feature.navigationPath,
         disabled: feature.disabled
       }));
-  }, [allFeatures]);
+  }, [enabledFeatures]);
   
   // Guardar la ruta anterior cuando no estemos en KIT Features
   useEffect(() => {
@@ -90,13 +76,24 @@ const Sidebar = ({ items: _items }: { items: SidebarItem[] }) => {
       // If we're not in KIT Features, go to KIT Features
       navigate(kitFeaturesConfig.navigationPath);
     }
-    setActiveIndex(-1);
   };
 
   const handleAddFeatureClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setShowFeaturesPanel(!showFeaturesPanel);
+    setShowAllFeaturesPanel(false);
+  };
+
+  const handleAllFeaturesClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowAllFeaturesPanel(!showAllFeaturesPanel);
+    setShowFeaturesPanel(false);
+  };
+
+  const handleCloseAllFeaturesPanel = () => {
+    setShowAllFeaturesPanel(false);
   };
 
   const { toggleFeature } = useFeatures();
@@ -114,40 +111,51 @@ const Sidebar = ({ items: _items }: { items: SidebarItem[] }) => {
       <Box className="regularItems">
         {items.map((item, index) => {
           const isActive = location.pathname === item.path;
-          const isDisabled = item.disabled === true;
-          
-          // Find the feature configuration to get the name
-          const feature = allFeatures.find(f => f.navigationPath === item.path);
-          const tooltipTitle = isDisabled ? t('features.addFeatures') : (feature?.name || '');
+          const feature = enabledFeatures.find(f => f.navigationPath === item.path);
+          const tooltipTitle = feature?.name || '';
 
           return (
             <SidebarTooltip key={index} title={tooltipTitle}>
-              {isDisabled ? (
-                <Box
-                  className={`iconButton disabled`}
-                  onClick={handleAddFeatureClick}
-                  sx={{ cursor: 'pointer', textDecoration: 'none' }}
-                >
-                  <Box className={`iconWrapper disabled add-feature ${showFeaturesPanel ? 'active' : ''}`}>
-                    <Add />
-                  </Box>
+              <NavLink
+                to={item.path}
+                className={`iconButton ${isActive ? "active" : ""}`}
+                onClick={() => {}}
+              >
+                <Box className={`iconWrapper ${isActive ? 'active' : ''}`}>
+                  {item.icon}
                 </Box>
-              ) : (
-                <NavLink
-                  to={item.path}
-                  className={`iconButton ${isActive ? "active" : ""}`}
-                  onClick={() => setActiveIndex(index)}
-                >
-                  <Box className={`iconWrapper ${isActive ? 'active' : ''}`}>
-                    {item.icon}
-                  </Box>
-                </NavLink>
-              )}
+              </NavLink>
             </SidebarTooltip>
           );
         })}
       </Box>
-      
+
+      <Box className="utilityItems">
+        <SidebarTooltip title={t('features.allFeatures')}>
+          <Box
+            className={`iconButton`}
+            onClick={handleAllFeaturesClick}
+            sx={{ cursor: 'pointer', textDecoration: 'none' }}
+          >
+            <Box className={`iconWrapper all-features ${showAllFeaturesPanel ? 'active' : ''}`}>
+              <MoreHoriz />
+            </Box>
+          </Box>
+        </SidebarTooltip>
+
+        <SidebarTooltip title={t('features.addFeatures')}>
+          <Box
+            className={`iconButton disabled`}
+            onClick={handleAddFeatureClick}
+            sx={{ cursor: 'pointer', textDecoration: 'none' }}
+          >
+            <Box className={`iconWrapper disabled add-feature ${showFeaturesPanel ? 'active' : ''}`}>
+              <Add />
+            </Box>
+          </Box>
+        </SidebarTooltip>
+      </Box>
+
       <Box className="fixedItems">
         <SidebarTooltip title={kitFeaturesConfig.name}>
           <Box
@@ -161,12 +169,15 @@ const Sidebar = ({ items: _items }: { items: SidebarItem[] }) => {
           </Box>
         </SidebarTooltip>
       </Box>
-      
-      {/* Features Panel */}
+
       <FeaturesPanel
         isOpen={showFeaturesPanel}
         onClose={handleCloseFeaturesPanel}
         onFeatureToggle={handleFeatureToggle}
+      />
+      <AllFeaturesPanel
+        isOpen={showAllFeaturesPanel}
+        onClose={handleCloseAllFeaturesPanel}
       />
     </Box>
   );

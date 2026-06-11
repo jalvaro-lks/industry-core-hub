@@ -3,7 +3,14 @@
     "name": "Industry Core Hub"
   },
   "features": {
-    "addFeatures": "Añadir Funcionalidades"
+    "addFeatures": "Añadir Funcionalidades",
+    "allFeatures": "Todas las Funcionalidades",
+    "dragToReorder": "Arrastra para reordenar"
+  },
+  "hints": {
+    "dragFeatures": "Arrastra una feature por su asa para reordenar",
+    "rightClickToggle": "Clic derecho para activar / desactivar",
+    "clickKitHighlight": "Clic en un KIT para remarcar sus features"
   },
   "actions": {
     "title": "Acciones",
@@ -127,7 +134,9 @@
     "unshareTwin": "Dejar de Compartir Gemelo",
     "deletePart": "Eliminar Pieza",
     "noGlobalAssetId": "Sin ID de Activo Global",
-    "noAasId": "Sin ID de AAS"
+    "noAasId": "Sin ID de AAS",
+    "cannotToggle": "Esta feature no se puede deshabilitar",
+    "featureDisabled": "Esta feature está deshabilitada"
   },
   "auth": {
     "initializingAuth": "Inicializando autenticación...",

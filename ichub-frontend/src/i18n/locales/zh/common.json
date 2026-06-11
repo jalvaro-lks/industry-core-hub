@@ -3,7 +3,14 @@
     "name": "工业核心中心"
   },
   "features": {
-    "addFeatures": "添加功能"
+    "addFeatures": "添加功能",
+    "allFeatures": "所有功能",
+    "dragToReorder": "拖动以重新排序"
+  },
+  "hints": {
+    "dragFeatures": "拖动功能手柄以重新排序",
+    "rightClickToggle": "右键单击以启用 / 禁用",
+    "clickKitHighlight": "点击KIT以高亮其功能"
   },
   "actions": {
     "title": "操作",
@@ -127,7 +134,9 @@
     "unshareTwin": "取消分享孪生",
     "deletePart": "删除零件",
     "noGlobalAssetId": "无全局资产ID",
-    "noAasId": "无AAS ID"
+    "noAasId": "无AAS ID",
+    "cannotToggle": "此功能无法禁用",
+    "featureDisabled": "此功能已禁用"
   },
   "auth": {
     "initializingAuth": "正在初始化身份验证...",
