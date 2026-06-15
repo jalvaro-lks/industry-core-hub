@@ -1,7 +1,8 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation
+ * Copyright (c) 2026 LKS Next
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -20,7 +21,7 @@
  * SPDX-License-Identifier: Apache-2.0
 ********************************************************************************/
 
-import { useState, JSX, cloneElement, useRef, useEffect, useMemo } from "react";
+import { JSX, cloneElement, useRef, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ import FeaturesPanel from '../../features/kit-features/components/FeaturesPanel'
 import AllFeaturesPanel from '../../features/kit-features/components/AllFeaturesPanel';
 import SidebarTooltip from './SidebarTooltip';
 import { useFeatures } from '../../contexts/FeatureContext';
+import { usePanelContext } from '../../contexts/PanelContext';
 import { NavigationItem } from '@/types/routing';
 
 type SidebarItem = {
@@ -40,8 +42,7 @@ type SidebarItem = {
 
 const Sidebar = ({ items: _items }: { items: SidebarItem[] }) => {
   const { t } = useTranslation('common');
-  const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
-  const [showAllFeaturesPanel, setShowAllFeaturesPanel] = useState(false);
+  const { showFeaturesPanel, setShowFeaturesPanel, showAllFeaturesPanel, setShowAllFeaturesPanel } = usePanelContext();
   const location = useLocation();
   const navigate = useNavigate();
   const previousPath = useRef<string>('/catalog');

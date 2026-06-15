@@ -1,7 +1,8 @@
 /********************************************************************************
  * Eclipse Tractus-X - Industry Core Hub Frontend
  *
- * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation
+ * Copright (c) 2025 LKS Next
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -24,6 +25,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import { kitFeaturesFeature } from "./features/kit-features/routes";
 import { FeatureProvider, useFeatures } from "./contexts/FeatureContext";
+import { PanelProvider } from "./contexts/PanelContext";
 import { FeatureRouteGuard } from "./components/routing/FeatureRouteGuard";
 
 function DynamicRoutes() {
@@ -58,7 +60,9 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <FeatureProvider>
-        <DynamicRoutes />
+        <PanelProvider>
+          <DynamicRoutes />
+        </PanelProvider>
       </FeatureProvider>
     </BrowserRouter>
   );
