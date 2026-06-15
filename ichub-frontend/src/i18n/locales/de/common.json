@@ -5,12 +5,15 @@
   "features": {
     "addFeatures": "Funktionen hinzufügen",
     "allFeatures": "Alle Funktionen",
-    "dragToReorder": "Zum Neuordnen ziehen"
+    "dragToReorder": "Zum Neuordnen ziehen",
+    "allKits": "Alle KITs",
+    "searchPlaceholder": "Features suchen...",
+    "noResults": "Keine Features entsprechen Ihrer Suche"
   },
   "hints": {
     "dragFeatures": "Feature am Griff ziehen, um neu anzuordnen",
     "rightClickToggle": "Rechtsklick zum Aktivieren / Deaktivieren",
-    "clickKitHighlight": "KIT anklicken, um Features hervorzuheben"
+    "clickKitHighlight": "KIT anklicken, um seine Features zu filtern"
   },
   "actions": {
     "title": "Aktionen",

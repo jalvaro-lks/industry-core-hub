@@ -21,11 +21,11 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 
-import React, { useCallback, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
-import { Close, DragIndicator, Lock, Mouse, OpenWith, TouchApp } from '@mui/icons-material';
+import { Box, IconButton, InputAdornment, InputBase, Tooltip, Typography } from '@mui/material';
+import { Apps, Clear, Close, DragIndicator, Lock, Mouse, OpenWith, Search, TouchApp } from '@mui/icons-material';
 import {
   DndContext,
   DragEndEvent,
@@ -101,6 +101,7 @@ interface KitGuideItemProps {
   kitColor: string;
   isComingSoon: boolean;
   isHighlighted: boolean;
+  isSelected: boolean;
   onClick: () => void;
 }
 
@@ -109,6 +110,7 @@ const KitGuideItem: React.FC<KitGuideItemProps> = ({
   kitColor,
   isComingSoon,
   isHighlighted,
+  isSelected,
   onClick,
 }) => (
   <Box
@@ -116,6 +118,7 @@ const KitGuideItem: React.FC<KitGuideItemProps> = ({
       'afp-kit-guide-item',
       isComingSoon ? 'coming-soon' : '',
       isHighlighted ? 'highlighted' : '',
+      isSelected ? 'selected' : '',
     ]
       .filter(Boolean)
       .join(' ')}
@@ -291,10 +294,13 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
 
   const [activeFeatId, setActiveFeatId] = useState<string | null>(null);
   const [highlightedKits, setHighlightedKits] = useState<Set<string>>(new Set());
+  const [selectedKitId, setSelectedKitId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [lockedTooltip, setLockedTooltip] = useState<LockedTooltipState | null>(null);
   const lockedTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [disabledTooltip, setDisabledTooltip] = useState<LockedTooltipState | null>(null);
   const disabledTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -342,7 +348,24 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
     }));
   }, [featureOrder, featureLookup]);
 
-  // Feature drag — cross-KIT allowed
+  // Filtered features for display — recomputes connectLeft/connectRight for the subset
+  const displayedFeatures = useMemo((): FlatFeature[] => {
+    let raw = flatFeatures;
+    if (selectedKitId) {
+      raw = raw.filter(f => f.kitId === selectedKitId);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      raw = raw.filter(f => f.name.toLowerCase().includes(q));
+    }
+    return raw.map((feat, i) => ({
+      ...feat,
+      connectLeft: i > 0 && raw[i - 1].kitId === feat.kitId,
+      connectRight: i < raw.length - 1 && raw[i + 1].kitId === feat.kitId,
+    }));
+  }, [flatFeatures, selectedKitId, searchQuery]);
+
+  // Feature drag — operates on the full featureOrder even when display is filtered
   const handleFeatDragStart = useCallback((e: DragStartEvent) => {
     setActiveFeatId(e.active.id as string);
   }, []);
@@ -352,14 +375,13 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
       setActiveFeatId(null);
       const { active, over } = e;
       if (!over || active.id === over.id) return;
-      const ids = flatFeatures.map(f => f.id);
-      const oldIdx = ids.indexOf(active.id as string);
-      const newIdx = ids.indexOf(over.id as string);
+      const oldIdx = featureOrder.indexOf(active.id as string);
+      const newIdx = featureOrder.indexOf(over.id as string);
       if (oldIdx !== -1 && newIdx !== -1) {
         reorderFeatures(arrayMove([...featureOrder], oldIdx, newIdx));
       }
     },
-    [flatFeatures, featureOrder, reorderFeatures]
+    [featureOrder, reorderFeatures]
   );
 
   // Click → navigate
@@ -408,8 +430,10 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
     disabledTooltipTimerRef.current = setTimeout(() => setDisabledTooltip(null), 2000);
   }, [t]);
 
-  // KIT guide highlight — multiple simultaneous
+  // KIT guide click — toggle KIT filter; secondary pulse highlight still fires
   const handleKitGuideClick = useCallback((kitId: string) => {
+    setSelectedKitId(prev => (prev === kitId ? null : kitId));
+    setSearchQuery('');
     setHighlightedKits(prev => new Set([...prev, kitId]));
     setTimeout(() => {
       setHighlightedKits(prev => {
@@ -420,7 +444,12 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
     }, 1100);
   }, []);
 
-  const activeFeat = activeFeatId ? flatFeatures.find(f => f.id === activeFeatId) : null;
+  const activeFeat = activeFeatId ? flatFeatures.find(f => f.id === activeFeatId) ?? null : null;
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -483,8 +512,19 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
 
         {/* Body */}
         <Box className="afp-body">
-          {/* Left: static KIT color guide */}
+          {/* Left: KIT filter guide */}
           <Box className="afp-kit-guide">
+            {/* All KITs entry */}
+            <Box
+              className={['afp-kit-guide-item', 'afp-kit-guide-all', selectedKitId === null ? 'selected' : ''].filter(Boolean).join(' ')}
+              onClick={() => { setSelectedKitId(null); setSearchQuery(''); }}
+            >
+              <Apps sx={{ fontSize: '0.85rem', opacity: 0.7, flexShrink: 0 }} />
+              <Typography className="afp-kit-guide-name">{t('features.allKits')}</Typography>
+            </Box>
+
+            <Box className="afp-kit-guide-divider" />
+
             {guideKits.map(kit => (
               <KitGuideItem
                 key={kit.id}
@@ -493,30 +533,68 @@ const AllFeaturesPanel: React.FC<AllFeaturesPanelProps> = ({ isOpen, onClose }) 
                 kitColor={KIT_COLOR_MAP[kit.id] ?? '#576A8F'}
                 isComingSoon={kit.status === 'coming-soon'}
                 isHighlighted={highlightedKits.has(kit.id)}
+                isSelected={selectedKitId === kit.id}
                 onClick={() => handleKitGuideClick(kit.id)}
               />
             ))}
           </Box>
 
-          {/* Right: sortable feature cards */}
-          <SortableContext
-            items={flatFeatures.map(f => f.id)}
-            strategy={rectSortingStrategy}
-          >
-            <Box className="afp-features-area">
-              {flatFeatures.map(feature => (
-                <FeatureCard
-                  key={feature.id}
-                  feature={feature}
-                  isEnabled={!!featureStates[feature.id]}
-                  isHighlighted={highlightedKits.has(feature.kitId)}
-                  onNavigate={() => handleFeatureNavigate(feature)}
-                  onRightClick={e => handleFeatureRightClick(e, feature)}
-                  onDisabledClick={handleDisabledFeatureClick}
-                />
-              ))}
+          {/* Right: search + sortable feature cards */}
+          <Box className="afp-features-column">
+            {/* Search bar */}
+            <Box className="afp-search-bar">
+              <InputBase
+                inputRef={searchInputRef}
+                className="afp-search-input"
+                placeholder={t('features.searchPlaceholder')}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                startAdornment={
+                  <InputAdornment position="start">
+                    <Search sx={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.35)' }} />
+                  </InputAdornment>
+                }
+                endAdornment={
+                  searchQuery ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={handleClearSearch} sx={{ color: 'rgba(255,255,255,0.4)', padding: '2px' }}>
+                        <Clear sx={{ fontSize: '0.85rem' }} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null
+                }
+              />
             </Box>
-          </SortableContext>
+
+            {/* Feature grid */}
+            <SortableContext
+              items={displayedFeatures.map(f => f.id)}
+              strategy={rectSortingStrategy}
+            >
+              <Box className="afp-features-area">
+                {displayedFeatures.length > 0 ? (
+                  displayedFeatures.map(feature => (
+                    <FeatureCard
+                      key={feature.id}
+                      feature={feature}
+                      isEnabled={!!featureStates[feature.id]}
+                      isHighlighted={highlightedKits.has(feature.kitId)}
+                      onNavigate={() => handleFeatureNavigate(feature)}
+                      onRightClick={e => handleFeatureRightClick(e, feature)}
+                      onDisabledClick={handleDisabledFeatureClick}
+                    />
+                  ))
+                ) : (
+                  <Box className="afp-no-results">
+                    <Search sx={{ fontSize: '2rem', opacity: 0.25, marginBottom: '8px' }} />
+                    <Typography className="afp-no-results-text">
+                      {t('features.noResults')}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </SortableContext>
+          </Box>
         </Box>
       </Box>
 

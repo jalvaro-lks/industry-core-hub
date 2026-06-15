@@ -5,12 +5,15 @@
   "features": {
     "addFeatures": "機能を追加",
     "allFeatures": "すべての機能",
-    "dragToReorder": "ドラッグして並び替え"
+    "dragToReorder": "ドラッグして並び替え",
+    "allKits": "すべてのKIT",
+    "searchPlaceholder": "機能を検索...",
+    "noResults": "検索に一致する機能はありません"
   },
   "hints": {
     "dragFeatures": "ハンドルをドラッグして機能を並び替え",
     "rightClickToggle": "右クリックで有効化 / 無効化",
-    "clickKitHighlight": "KITをクリックしてその機能を強調表示"
+    "clickKitHighlight": "KITをクリックしてその機能をフィルタリング"
   },
   "actions": {
     "title": "アクション",

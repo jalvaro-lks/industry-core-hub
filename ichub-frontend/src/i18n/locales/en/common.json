@@ -5,12 +5,15 @@
   "features": {
     "addFeatures": "Add Features",
     "allFeatures": "All Features",
-    "dragToReorder": "Drag to reorder"
+    "allKits": "All KITs",
+    "dragToReorder": "Drag to reorder",
+    "searchPlaceholder": "Search features...",
+    "noResults": "No features match your search"
   },
   "hints": {
     "dragFeatures": "Drag a feature by its handle to reorder",
     "rightClickToggle": "Right-click to enable / disable",
-    "clickKitHighlight": "Click a KIT to highlight its features"
+    "clickKitHighlight": "Click a KIT to filter its features"
   },
   "actions": {
     "title": "Actions",

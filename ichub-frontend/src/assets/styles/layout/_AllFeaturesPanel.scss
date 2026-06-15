@@ -131,13 +131,13 @@
   overflow: hidden;
 }
 
-// ─── Left: KIT guide (static, wider for readability) ─────────────────────────
+// ─── Left: KIT guide (filter sidebar) ────────────────────────────────────────
 
 .afp-kit-guide {
   width: 175px;
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 12px 0;
+  padding: 8px 0;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.12);
 
@@ -150,13 +150,19 @@
   }
 }
 
+.afp-kit-guide-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 4px 10px;
+}
+
 .afp-kit-guide-item {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
   border-radius: 6px;
   margin: 1px 6px;
   user-select: none;
@@ -178,6 +184,23 @@
   &.highlighted {
     background: rgba(255, 255, 255, 0.13);
   }
+
+  &.selected {
+    background: rgba(66, 165, 245, 0.18);
+    border-left: 2px solid rgba(66, 165, 245, 0.7);
+    padding-left: 10px;
+
+    .afp-kit-guide-name {
+      color: rgba(255, 255, 255, 0.95) !important;
+      font-weight: 600 !important;
+    }
+  }
+
+  // "All KITs" entry uses the accent color when selected
+  &.afp-kit-guide-all.selected {
+    background: rgba(66, 165, 245, 0.18);
+    svg { color: rgba(66, 165, 245, 0.9); }
+  }
 }
 
 .afp-kit-dot {
@@ -197,12 +220,65 @@
   line-height: 1.25 !important;
 }
 
+// ─── Right: features column (search + grid) ───────────────────────────────────
+
+.afp-features-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// ─── Search bar ───────────────────────────────────────────────────────────────
+
+.afp-search-bar {
+  flex-shrink: 0;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.afp-search-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 0.78rem !important;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.075);
+  }
+
+  &.Mui-focused {
+    border-color: rgba(66, 165, 245, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  input {
+    padding: 0;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.78rem;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+      opacity: 1;
+    }
+  }
+
+  .MuiInputAdornment-root {
+    margin-right: 6px;
+    &.MuiInputAdornment-positionEnd { margin-right: 0; margin-left: 4px; }
+  }
+}
+
 // ─── Right: Features area ─────────────────────────────────────────────────────
 
 .afp-features-area {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 16px 16px 14px;
+  padding: 14px 16px 14px 14px;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
@@ -217,6 +293,25 @@
     background: rgba(66, 165, 245, 0.3);
     border-radius: 3px;
   }
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+.afp-no-results {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.afp-no-results-text {
+  color: rgba(255, 255, 255, 0.3) !important;
+  font-size: 0.8rem !important;
+  text-align: center;
 }
 
 // ─── Feature card ─────────────────────────────────────────────────────────────

@@ -5,12 +5,15 @@
   "features": {
     "addFeatures": "添加功能",
     "allFeatures": "所有功能",
-    "dragToReorder": "拖动以重新排序"
+    "dragToReorder": "拖动以重新排序",
+    "allKits": "所有KIT",
+    "searchPlaceholder": "搜索功能...",
+    "noResults": "没有功能与您的搜索匹配"
   },
   "hints": {
     "dragFeatures": "拖动功能手柄以重新排序",
     "rightClickToggle": "右键单击以启用 / 禁用",
-    "clickKitHighlight": "点击KIT以高亮其功能"
+    "clickKitHighlight": "点击KIT以筛选其功能"
   },
   "actions": {
     "title": "操作",
