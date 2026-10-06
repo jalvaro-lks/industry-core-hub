@@ -41,7 +41,7 @@ export type {
   GovernanceConstraint,
 } from '../config/schema';
 
-import type { AgreementConfig, DtrPolicyConfig, CcmPolicyConfig } from '../config/schema';
+import type { AgreementConfig, DtrPolicyConfig, CcmPolicyConfig, AuthUser } from '../config/schema';
 
 // =================================================================
 // REUSABLE CONFIGURATION UTILITIES
@@ -308,8 +308,21 @@ export const getConfiguredParticipantId = (): string =>
  * Controlled by the USE_KEYCLOAK_BPN flag (window.ENV / VITE_USE_KEYCLOAK_BPN).
  */
 export const isKeycloakBpnEnabled = (): boolean => {
+  // Without authentication there is no Keycloak token to read the BPN from.
+  if (!environmentService.isAuthEnabled()) return false;
   const raw = window?.ENV?.USE_KEYCLOAK_BPN ?? import.meta.env.VITE_USE_KEYCLOAK_BPN;
   return String(raw).toLowerCase() === 'true';
+};
+
+type AuthUserProvider = () => AuthUser | null;
+let authUserProvider: AuthUserProvider | null = null;
+
+/**
+ * Registers the function used to read the authenticated user. Called by AuthService on
+ * creation so this module does not need to import it (AuthService already imports this one).
+ */
+export const registerAuthUserProvider = (provider: AuthUserProvider): void => {
+  authUserProvider = provider;
 };
 
 /**
@@ -323,10 +336,9 @@ export const isKeycloakBpnEnabled = (): boolean => {
 export const getParticipantId = (): string => {
   if (isKeycloakBpnEnabled()) {
     try {
-      const authService = (window as any).__authService;
-      const user = authService?.getUser?.();
-      if (user?.attributes?.bpn) {
-        return user.attributes.bpn;
+      const bpn = authUserProvider?.()?.attributes?.bpn;
+      if (bpn) {
+        return bpn;
       }
     } catch (error) {
       console.warn('Failed to retrieve BPN from Keycloak token:', error);
@@ -345,12 +357,9 @@ export const getParticipantId = (): string => {
  */
 export const getBpns = (): string[] => {
   try {
-    const authService = (window as any).__authService;
-    if (authService) {
-      const user = authService.getUser();
-      if (Array.isArray(user?.attributes?.bpns)) {
-        return user.attributes.bpns;
-      }
+    const bpns = authUserProvider?.()?.attributes?.bpns;
+    if (Array.isArray(bpns)) {
+      return bpns;
     }
   } catch (error) {
     console.warn('Failed to retrieve BPNS from token:', error);

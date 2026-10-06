@@ -154,7 +154,6 @@ export default function PrimarySearchAppBar() {
             {user.email}
           </Typography>
         )}
-        {/* Company ID (BPNL) — click the chip to copy */}
         <Box sx={{ mt: 1.5 }}>
           <Typography
             variant="caption"
@@ -172,7 +171,6 @@ export default function PrimarySearchAppBar() {
           </Typography>
           <CopyableIdChip value={bpn} />
         </Box>
-        {/* Plants / Sites (BPNS) — one copyable chip per site */}
         {isAuthenticated && bpns.length > 0 && (
           <Box sx={{ mt: 1.5 }}>
             <Typography
@@ -220,7 +218,6 @@ export default function PrimarySearchAppBar() {
                   '&:focus': { backgroundColor: 'transparent' },
                   '&:focus-visible': { backgroundColor: 'transparent' },
                   '&.Mui-focusVisible': { backgroundColor: 'transparent' },
-                  // Subtle press feedback on the text itself.
                   '&:active': { transform: 'scale(0.97)', color: 'primary.dark' },
                 }}
               >

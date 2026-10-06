@@ -22,7 +22,7 @@
 ********************************************************************************/
  
 import Keycloak from 'keycloak-js';
-import environmentService, { AuthUser, AuthTokens } from './EnvironmentService';
+import environmentService, { AuthUser, AuthTokens, registerAuthUserProvider } from './EnvironmentService';
  
 export interface AuthState {
   isAuthenticated: boolean;
@@ -117,8 +117,6 @@ class AuthService {
  
     try {
       // Add timeout to prevent infinite hanging
-      // Note: Only requesting 'openid' scope since profile/email scopes are not defined in realm
-      // Protocol mappers in client configuration will include user claims automatically
       const initPromise = this.keycloak.init({
         onLoad: initOptions.onLoad,
         checkLoginIframe: initOptions.checkLoginIframe,
@@ -181,18 +179,6 @@ class AuthService {
         throw new Error('Invalid token received');
       }
 
-      // 🔍 DEBUG: Expose raw tokens for manual decoding
-      console.log('\n' + '='.repeat(80));
-      console.log('🎫 KEYCLOAK SESSION TOKENS');
-      console.log('='.repeat(80));
-      console.log('📋 Access Token (JWT - copy to jwt.io):');
-      console.log(token);
-      console.log('\n🆔 ID Token (JWT - copy to jwt.io):');
-      console.log(idToken || 'No ID token available');
-      console.log('='.repeat(80) + '\n');
-      
-      if (window.ENV && window.ENV.ENABLE_DEV_TOOLS === 'true') try { console.log('📋 Token parsed: (redacted)'); } catch(e) {}
- 
       // Normalize the multivalued `bpns` claim into a string[].
       // Depending on Keycloak config it may arrive as an array, a single string, or be absent.
       const rawBpns = tokenParsed.bpns ?? tokenParsed.BPNS;
@@ -210,7 +196,7 @@ class AuthService {
         roles: tokenParsed.realm_access?.roles || [],
         permissions: tokenParsed.resource_access?.[environmentService.getKeycloakClientId()]?.roles || [],
         attributes: {
-          bpn: tokenParsed.BPN || tokenParsed.bpn, // BPN puede venir en mayúsculas o minúsculas
+          bpn: tokenParsed.bpn || tokenParsed.BPN, // claim name is `bpn`; tolerate legacy upper-case
           bpns, // Business Partner Number Sites (plants), 0/1/many
         }
       };
@@ -387,9 +373,8 @@ class AuthService {
  
 const authService = new AuthService();
 
-if (typeof window !== 'undefined') {
-  (window as any).__authService = authService;
-}
+// Lets EnvironmentService resolve the BPN/BPNS from the current user without importing this module.
+registerAuthUserProvider(() => authService.getUser());
  
 export default authService;
 export { AuthService };
