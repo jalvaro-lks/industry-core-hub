@@ -58,6 +58,10 @@ frontend:
 
 # Backend configuration with Keycloak authentication
 backend:
+  # -- Optional Prometheus metrics endpoint exposed via prometheus-fastapi-instrumentator.
+  metrics:
+    enabled: true
+    endpoint: "/metrics"
   configuration:
     authorization:
       enabled: true
