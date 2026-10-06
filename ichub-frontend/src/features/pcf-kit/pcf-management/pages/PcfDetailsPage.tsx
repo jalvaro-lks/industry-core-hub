@@ -52,6 +52,7 @@ import { getPcfExchangePoliciesConfig } from '@/services/EnvironmentService';
 import { generatePoliciesFromDefinition } from '@/features/industry-core-kit/part-discovery/utils/governancePolicyUtils';
 import environmentService from '@/services/EnvironmentService';
 import { PCF_VERSIONS } from '../../services/pcfApi';
+import PcfSchema from '@/schemas/Pcf-schema.json';
 import './PcfDetailsPage.scss';
 
 const PCF_NAMESPACE = 'io.catenax.pcf';
