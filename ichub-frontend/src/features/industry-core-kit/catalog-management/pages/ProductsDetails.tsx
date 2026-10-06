@@ -268,14 +268,14 @@ const ProductsDetails = () => {
 
       if (result.success) {
         const messageKey = editingSubmodelId ? 'messages.submodelUpdatedSuccess' : 'messages.submodelCreatedSuccess';
-        setNotification({ 
-          open: true, 
-          severity: 'success', 
+        setNotification({
+          open: true,
+          severity: 'success',
           title: t(messageKey, { schemaName: selectedSchema.metadata.name })
         });
-        
+
         handleCloseSubmodelCreator();
-        
+
         // Refresh the data
         await fetchData();
       } else {
@@ -283,12 +283,46 @@ const ProductsDetails = () => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t('messages.submodelCreatedError');
-      setNotification({ 
-        open: true, 
-        severity: 'error', 
+      setNotification({
+        open: true,
+        severity: 'error',
         title: errorMessage
       });
     }
+  };
+
+  // Sync flow: register both PCF versions as independent twin-aspect submodels.
+  // Called by SchemaSelector when PCF_BACKWARD_COMPATIBILITY_SATURN=true and the
+  // DualPcfCreationWizard completes. Mirrors two sequential calls to the normal
+  // "create submodel" path, one per version.
+  const handleDualSchemaComplete = async (
+    v9Data: Record<string, unknown>,
+    v7Data: Record<string, unknown>,
+  ) => {
+    if (!twinDetails?.globalId) {
+      throw new Error('Twin must be created before adding submodels. Please create a twin first.');
+    }
+
+    const PCF_V9_SEMANTIC_ID = 'urn:samm:io.catenax.pcf:9.0.0#Pcf';
+    const PCF_V7_SEMANTIC_ID = 'urn:samm:io.catenax.pcf:7.0.0#Pcf';
+
+    const v9Result = await createTwinAspect(twinDetails.globalId, PCF_V9_SEMANTIC_ID, v9Data);
+    if (!v9Result.success) {
+      throw new Error(v9Result.message || t('messages.submodelCreatedError'));
+    }
+
+    const v7Result = await createTwinAspect(twinDetails.globalId, PCF_V7_SEMANTIC_ID, v7Data);
+    if (!v7Result.success) {
+      throw new Error(v7Result.message || t('messages.submodelCreatedError'));
+    }
+
+    setNotification({
+      open: true,
+      severity: 'success',
+      title: t('messages.submodelCreatedSuccess', { schemaName: 'PCF v9.0.0 + v7.0.0' }),
+    });
+
+    await fetchData();
   };
 
   const handleCloseNotification = () => {
@@ -334,15 +368,16 @@ const ProductsDetails = () => {
       overflow: "auto" // Enable scrolling when content overflows
     }}>
       <Grid2 container className="productDetail" sx={{ flexGrow: 1 }}>
-        <Grid2 size={4} display="flex" justifyContent="start" alignItems="center">
+        <Grid2 size={{ lg: 4, md: 12, sm: 12 }} display="flex" alignItems="center"
+          sx={{ justifyContent: { xs: 'center', lg: 'flex-start' }, mb: { xs: 2, lg: 0 } }}>
           {getStatusTag(partType?.status ?? PRODUCT_STATUS.DRAFT)}
         </Grid2>
-        <Grid2 size={4} display="flex" justifyContent="center" alignItems="center">
+        <Grid2 size={{ lg: 4, md: 12, sm: 6 }} display="flex" justifyContent="center" alignItems="center">
           <Button size="small" className="update-button" endIcon={<EditIcon />}>            
               <span className="update-button-content">{t('details.update')}</span>            
           </Button>
         </Grid2>
-        <Grid2 size={4} display="flex" justifyContent="end" alignItems="center">
+        <Grid2 size={{ lg: 4, md: 12, sm: 6 }} display="flex" justifyContent="end" alignItems="center">
           <ShareDropdown 
             partData={partType} 
             twinDetails={twinDetails} 
@@ -352,7 +387,7 @@ const ProductsDetails = () => {
           />
         </Grid2>
 
-  <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} onPartUpdated={fetchData} />
+        <ProductData part={partType} sharedParts={sharedPartners} twinDetails={twinDetails} onPartUpdated={fetchData} />
         
         <Grid2 container size={12} spacing={2}className="add-on-buttons">
           <Grid2 size={{ sm: 12 }}>
@@ -384,6 +419,7 @@ const ProductsDetails = () => {
           onClose={handleCloseSchemaSelector}
           onSchemaSelect={handleSchemaSelect}
           manufacturerPartId={partType?.manufacturerPartId}
+          onDualSchemaComplete={handleDualSchemaComplete}
         />
 
         {/* Submodel Creator Dialog */}
