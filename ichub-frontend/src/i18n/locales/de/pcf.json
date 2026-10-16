@@ -74,6 +74,7 @@
     "noSubpartsAdded": "Keine Unterteile hinzugefügt",
     "addSubpartsHint": "Fügen Sie Unterteil-Beziehungen hinzu, um PCF-Daten anzufordern",
     "addSubpart": "Unterteil hinzufügen",
+    "request": "Anfordern",
     "requestPcf": "PCF anfordern",
     "retryRequest": "Anfrage wiederholen",
     "downloadPcf": "PCF herunterladen",

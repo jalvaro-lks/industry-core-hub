@@ -32,6 +32,7 @@ import {
   CircularProgress,
   Stack,
   TextField,
+  Typography,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import VerifiedIcon from '@mui/icons-material/Verified';
@@ -197,22 +198,52 @@ const RequestCertificateDialog = ({ open, onClose, onSuccess }: RequestCertifica
               label={t('requestDialog.providerBpn')}
               placeholder={t('requestDialog.providerPlaceholder')}
             />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={support === 'checking' ? <CircularProgress size={16} /> : <VerifiedIcon />}
-                disabled={!providerValid || support === 'checking'}
-                onClick={verifySupport}
-              >
-                {t('requestDialog.verifyCcm')}
-              </Button>
+            <Box
+              role="group"
+              aria-labelledby="request-dialog-ccm-support-label"
+              sx={{
+                mt: 1,
+                p: 1.5,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+                backgroundColor: 'action.hover',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    id="request-dialog-ccm-support-label"
+                    variant="body2"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 600 }}
+                  >
+                    {t('requestDialog.ccmSupport')}
+                    <Typography component="span" aria-hidden="true" sx={{ color: 'error.main', fontWeight: 700, lineHeight: 1 }}>
+                      *
+                    </Typography>
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t('requestDialog.ccmSupportDescription')}
+                  </Typography>
+                </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={support === 'checking' ? <CircularProgress size={16} /> : <VerifiedIcon />}
+                  disabled={!providerValid || support === 'checking'}
+                  onClick={verifySupport}
+                  sx={{ flexShrink: 0, textTransform: 'none', fontWeight: 600 }}
+                >
+                  {t('requestDialog.verifyCcm')}
+                </Button>
+              </Box>
               {support === 'supported' && (
                 <Chip
                   size="small"
                   color="success"
                   icon={<CheckCircleIcon />}
                   label={t('requestDialog.ccmSupported')}
+                  sx={{ mt: 1 }}
                 />
               )}
             </Box>

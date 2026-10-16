@@ -74,6 +74,7 @@
     "noSubpartsAdded": "サブパーツ未追加",
     "addSubpartsHint": "サブパーツ関係を追加してPCFデータをリクエスト",
     "addSubpart": "サブパーツを追加",
+    "request": "リクエスト",
     "requestPcf": "PCFをリクエスト",
     "retryRequest": "リクエストを再試行",
     "downloadPcf": "PCFをダウンロード",

@@ -74,6 +74,7 @@
     "noSubpartsAdded": "未添加子零件",
     "addSubpartsHint": "添加子零件关系以请求PCF数据",
     "addSubpart": "添加子零件",
+    "request": "请求",
     "requestPcf": "请求PCF",
     "retryRequest": "重试请求",
     "downloadPcf": "下载PCF",

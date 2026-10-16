@@ -74,6 +74,7 @@
     "noSubpartsAdded": "Nenhum Subcomponente Adicionado",
     "addSubpartsHint": "Adicione relações de subcomponentes para solicitar dados PCF",
     "addSubpart": "Adicionar Subcomponente",
+    "request": "Solicitar",
     "requestPcf": "Solicitar PCF",
     "retryRequest": "Tentar Novamente",
     "downloadPcf": "Baixar PCF",
