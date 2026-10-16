@@ -493,6 +493,7 @@
     "save": "保存",
     "tooltipValidate": "スキーマに対してデータを検証する",
     "tooltipRevalidate": "スキーマに対してデータを再検証する",
+    "revalidate": "再検証",
     "tooltipValidateBoth": "両方のPCFバージョンをスキーマに対して検証する",
     "tooltipContinue": "次のステップに進む",
     "tooltipContinueDisabled": "続行するにはまずデータを検証してください",

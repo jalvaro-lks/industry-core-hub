@@ -481,6 +481,7 @@
     "tooltipValidateContinue": "Validate v7.0.0 data against the schema and proceed to the reconciliation review",
     "tooltipValidate": "Validate data against the schema",
     "tooltipRevalidate": "Revalidate data against the schema",
+    "revalidate": "Revalidate",
     "tooltipValidateBoth": "Validate both PCF versions against their schemas",
     "tooltipContinue": "Continue to the next step",
     "tooltipContinueDisabled": "Validate the data first to continue",

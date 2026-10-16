@@ -493,6 +493,7 @@
     "updating": "Aktualisierung…",
     "tooltipValidate": "Daten gegen das Schema validieren",
     "tooltipRevalidate": "Daten erneut gegen das Schema validieren",
+    "revalidate": "Erneut validieren",
     "tooltipValidateBoth": "Beide PCF-Versionen gegen ihre Schemas validieren",
     "tooltipContinue": "Zum nächsten Schritt weiter",
     "tooltipContinueDisabled": "Daten zuerst validieren, um fortzufahren",

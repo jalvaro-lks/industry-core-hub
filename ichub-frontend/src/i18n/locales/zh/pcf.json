@@ -493,6 +493,7 @@
     "save": "保存",
     "tooltipValidate": "根据架构验证数据",
     "tooltipRevalidate": "根据架构重新验证数据",
+    "revalidate": "重新验证",
     "tooltipValidateBoth": "根据各自的架构验证两个PCF版本",
     "tooltipContinue": "继续到下一步",
     "tooltipContinueDisabled": "请先验证数据以继续",

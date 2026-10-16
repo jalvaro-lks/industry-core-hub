@@ -493,6 +493,7 @@
     "save": "Guardar",
     "tooltipValidate": "Validar dados em relação ao esquema",
     "tooltipRevalidate": "Revalidar dados em relação ao esquema",
+    "revalidate": "Revalidar",
     "tooltipValidateBoth": "Validar ambas as versões PCF em relação aos seus esquemas",
     "tooltipContinue": "Continuar para o próximo passo",
     "tooltipContinueDisabled": "Valide os dados primeiro para continuar",

@@ -481,6 +481,7 @@
     "tooltipValidateContinue": "Validar datos v7.0.0 contra el esquema y proceder a la revisión de diferencias",
     "tooltipValidate": "Validar datos contra el esquema",
     "tooltipRevalidate": "Revalidar datos contra el esquema",
+    "revalidate": "Revalidar",
     "tooltipValidateBoth": "Validar ambas versiones de PCF contra sus esquemas",
     "tooltipContinue": "Continuar al siguiente paso",
     "tooltipContinueDisabled": "Valida los datos primero para continuar",

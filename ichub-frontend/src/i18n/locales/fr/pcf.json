@@ -493,6 +493,7 @@
     "save": "Enregistrer",
     "tooltipValidate": "Valider les données par rapport au schéma",
     "tooltipRevalidate": "Revalider les données par rapport au schéma",
+    "revalidate": "Revalider",
     "tooltipValidateBoth": "Valider les deux versions PCF par rapport à leurs schémas",
     "tooltipContinue": "Passer à l'étape suivante",
     "tooltipContinueDisabled": "Validez d'abord les données pour continuer",
