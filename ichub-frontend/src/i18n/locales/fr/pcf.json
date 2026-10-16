@@ -5,6 +5,7 @@
     "loadingParts": "Chargement des pièces du catalogue...",
     "noMatchingParts": "Aucune pièce correspondante trouvée",
     "defaultPlaceholder": "Entrez l'ID de pièce fabricant...",
+    "toggleOptions": "Afficher ou masquer les options de pièces",
     "defaultButtonText": "Rechercher pièce",
     "createNew": "Créer une nouvelle pièce de catalogue",
     "createWithId": "Créer '{{id}}'"

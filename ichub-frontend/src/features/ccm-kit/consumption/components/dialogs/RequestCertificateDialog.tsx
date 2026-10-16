@@ -237,6 +237,8 @@ const RequestCertificateDialog = ({ open, onClose, onSuccess }: RequestCertifica
             freeSolo
             autoSelect
             fullWidth
+            forcePopupIcon={ccmSharedConfig.certificateTypes.length > 0}
+            disableClearable={!certificateType}
             options={ccmSharedConfig.certificateTypes}
             value={
               ccmSharedConfig.certificateTypes.find((t) => t.value === certificateType) ??

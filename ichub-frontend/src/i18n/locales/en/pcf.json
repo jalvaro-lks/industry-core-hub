@@ -5,6 +5,7 @@
     "loadingParts": "Loading catalog parts...",
     "noMatchingParts": "No matching parts found",
     "defaultPlaceholder": "Enter Manufacturer Part ID...",
+    "toggleOptions": "Toggle available part options",
     "defaultButtonText": "Search Part",
     "createNew": "Create New Catalog Part",
     "createWithId": "Create '{{id}}'"

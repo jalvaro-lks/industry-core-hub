@@ -5,6 +5,7 @@
     "loadingParts": "正在加载目录零件...",
     "noMatchingParts": "未找到匹配的零件",
     "defaultPlaceholder": "输入制造商零件ID...",
+    "toggleOptions": "显示或隐藏零件选项",
     "defaultButtonText": "搜索零件",
     "createNew": "创建新目录零件",
     "createWithId": "创建 '{{id}}'"
