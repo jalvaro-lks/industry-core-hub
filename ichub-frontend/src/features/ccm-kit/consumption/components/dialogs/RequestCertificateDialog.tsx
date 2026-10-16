@@ -228,11 +228,23 @@ const RequestCertificateDialog = ({ open, onClose, onSuccess }: RequestCertifica
                 </Box>
                 <Button
                   size="small"
-                  variant="outlined"
-                  startIcon={support === 'checking' ? <CircularProgress size={16} /> : <VerifiedIcon />}
+                  variant="contained"
+                  disableElevation
+                  startIcon={support === 'checking' ? <CircularProgress size={14} /> : <VerifiedIcon sx={{ fontSize: 18 }} />}
                   disabled={!providerValid || support === 'checking'}
                   onClick={verifySupport}
-                  sx={{ flexShrink: 0, textTransform: 'none', fontWeight: 600 }}
+                  sx={{
+                    flexShrink: 0,
+                    minHeight: 32,
+                    px: 1.25,
+                    borderRadius: 1,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    boxShadow: 'none',
+                    '&:hover': { boxShadow: 'none' },
+                    '&:active': { transform: 'translateY(1px)' },
+                    '&:focus-visible': { outline: '2px solid', outlineOffset: 2 },
+                  }}
                 >
                   {t('requestDialog.verifyCcm')}
                 </Button>
