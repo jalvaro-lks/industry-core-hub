@@ -1208,8 +1208,9 @@ frontend:
     bpnValidationPattern: "^BPN[LAS]\\d{10}[a-zA-Z0-9]{2}$"
     # -- When true, the participant BPNL used across the app is taken from the
     # authenticated user's Keycloak token; when false, the top-level participantId is used.
-    # The token BPN must match the participantId configured for the backend/EDC.
-    useKeycloakBpn: true
+    # Opt-in: before enabling it, make sure the Keycloak users' BPN attribute matches the
+    # participantId / backend.configuration.bpn used by the backend and EDC.
+    useKeycloakBpn: false
 
     # Feature flags
     enableAdvancedLogging: false
