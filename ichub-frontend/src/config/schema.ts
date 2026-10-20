@@ -113,7 +113,7 @@ export interface AuthUser {
     bpn?: string;
     /** Business Partner Number Sites — plants/sites this user works with (0, 1 or many) */
     bpns?: string[];
-    [key: string]: any;
+    [key: string]: string | string[] | undefined;
   };
 }
 
